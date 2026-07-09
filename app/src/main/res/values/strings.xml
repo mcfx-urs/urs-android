@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">urs</string>
+    <string name="greeting_title">Hoi, I\'m urs.</string>
+    <string name="greeting_subtitle">Your bear for all your numbers.</string>
+    <string name="greeting_taps">Hoho × %1$d</string>
+</resources>

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Launch theme only: Compose draws the actual UI on top of this. -->
+    <style name="Theme.Urs" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
