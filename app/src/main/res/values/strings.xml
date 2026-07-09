@@ -4,4 +4,23 @@
     <string name="greeting_title">Hoi, I\'m urs.</string>
     <string name="greeting_subtitle">Your bear for all your numbers.</string>
     <string name="greeting_taps">Hoho × %1$d</string>
+
+    <string name="fuel_title">Fuel</string>
+    <string name="fill_add">New fill-up</string>
+    <string name="fill_car">Car</string>
+    <string name="fill_station">Filling station</string>
+    <string name="fill_odometer">Odometer (km)</string>
+    <string name="fill_last_odometer">Last: %1$s km</string>
+    <string name="fill_price_per_liter">Price / L</string>
+    <string name="fill_liters">Liters</string>
+    <string name="fill_date">Date (YYYY-MM-DD)</string>
+    <string name="fill_total">Total: %1$s</string>
+    <string name="fill_amount_at_price">%1$s L @ %2$s</string>
+    <string name="fill_odometer_km">%1$s km</string>
+    <string name="fills_empty">No fill-ups yet.</string>
+    <string name="save">Save</string>
+    <string name="saving">Saving…</string>
+    <string name="retry">Retry</string>
+    <string name="error_load">Could not reach the backend.</string>
+    <string name="error_save">Saving failed. Please try again.</string>
 </resources>
