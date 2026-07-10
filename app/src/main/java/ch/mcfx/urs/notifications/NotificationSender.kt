@@ -34,7 +34,7 @@ class NotificationSender(private val context: Context) {
         val manager = NotificationManagerCompat.from(context)
 
         val builder = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_notification_bear)
             .setContentTitle(title)
             .setContentText(body)
             .setAutoCancel(true)
@@ -78,7 +78,7 @@ class NotificationSender(private val context: Context) {
         }
 
         val summary = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_notification_bear)
             .setContentTitle(context.getString(R.string.app_name))
             .setContentText("${activeInGroup.size} new notifications")
             .setGroup(groupKey)

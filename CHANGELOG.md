@@ -19,6 +19,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   and app name ("urs (debug)"), so a debug build installs side by side
   with a release build instead of conflicting with it.
 
+### Changed
+
+- Replaced the placeholder bear emoji and hand-drawn vector app icon
+  with the actual mcfx brand mascot artwork: the new illustration is
+  now the app launcher icon and the nav-drawer logo, while the
+  original simple vector bear is kept as the notification status-bar
+  icon (Android renders that one as a flat single-color silhouette, so
+  a detailed multi-color illustration doesn't fit that slot).
+
 ## [0.2.0] - 2026-07-10
 
 ### Added
