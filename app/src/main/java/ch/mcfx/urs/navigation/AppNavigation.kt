@@ -27,10 +27,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import ch.mcfx.urs.R
 import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.fuel.FuelAddScreen
@@ -40,6 +42,9 @@ import ch.mcfx.urs.fuel.FuelScreen
 import ch.mcfx.urs.fuel.FuelStationsScreen
 import ch.mcfx.urs.fuel.FuelStatsScreen
 import ch.mcfx.urs.home.HomeScreen
+import ch.mcfx.urs.inventory.CategoryListScreen
+import ch.mcfx.urs.inventory.InventoryRoutes
+import ch.mcfx.urs.inventory.ProductListScreen
 import ch.mcfx.urs.settings.SettingsRoutes
 import ch.mcfx.urs.settings.SettingsScreen
 import ch.mcfx.urs.settings.VpnSettingsScreen
@@ -150,6 +155,24 @@ fun AppNavigation() {
                 }
                 composable(FuelRoutes.STATIONS) { FuelStationsScreen() }
                 composable(FuelRoutes.STATS) { FuelStatsScreen() }
+                composable(Destination.INVENTORY.route) {
+                    CategoryListScreen(
+                        onOpenCategory = { category ->
+                            navController.navigate(InventoryRoutes.products(category.id, category.name))
+                        },
+                    )
+                }
+                composable(
+                    route = InventoryRoutes.PRODUCTS,
+                    arguments = listOf(
+                        navArgument("categoryId") { type = NavType.StringType },
+                        navArgument("categoryName") { type = NavType.StringType },
+                    ),
+                ) { backStackEntry ->
+                    val categoryId = backStackEntry.arguments?.getString("categoryId") ?: return@composable
+                    val categoryName = backStackEntry.arguments?.getString("categoryName") ?: ""
+                    ProductListScreen(categoryId = categoryId, categoryName = categoryName)
+                }
                 composable(Destination.SETTINGS.route) {
                     SettingsScreen(onNavigate = { route -> navController.navigate(route) })
                 }
@@ -178,8 +201,13 @@ private val SETTINGS_ROUTE_LABELS = mapOf(
     SettingsRoutes.VPN to R.string.settings_tile_vpn,
 )
 
+private val INVENTORY_ROUTE_LABELS = mapOf(
+    InventoryRoutes.PRODUCTS to R.string.inventory_products_title,
+)
+
 private fun currentScreenLabel(route: String): Int =
     Destination.entries.find { it.route == route }?.labelRes
         ?: FUEL_ROUTE_LABELS[route]
         ?: SETTINGS_ROUTE_LABELS[route]
+        ?: INVENTORY_ROUTE_LABELS[route]
         ?: R.string.app_name

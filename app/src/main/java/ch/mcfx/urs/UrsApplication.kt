@@ -3,6 +3,7 @@ package ch.mcfx.urs
 import android.app.Application
 import android.content.Context
 import ch.mcfx.urs.data.FuelRepository
+import ch.mcfx.urs.data.InventoryRepository
 import ch.mcfx.urs.data.remote.UrsApi
 import ch.mcfx.urs.vpn.NetworkGate
 import ch.mcfx.urs.vpn.VpnConfigRepository
@@ -59,4 +60,5 @@ class AppContainer(context: Context) {
         .build()
 
     val fuelRepository = FuelRepository(retrofit.create(UrsApi::class.java))
+    val inventoryRepository = InventoryRepository(retrofit.create(UrsApi::class.java))
 }

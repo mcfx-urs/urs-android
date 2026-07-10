@@ -8,6 +8,7 @@
 
     <string name="nav_home">Home</string>
     <string name="nav_fuel">Fuel</string>
+    <string name="nav_inventory">Inventory</string>
     <string name="nav_health">Health</string>
     <string name="nav_gokart">Gokart</string>
     <string name="nav_price_monitor">Price Monitor</string>
@@ -81,4 +82,16 @@
     <string name="retry">Retry</string>
     <string name="error_load">Could not reach the backend.</string>
     <string name="error_save">Saving failed. Please try again.</string>
+
+    <string name="inventory_categories_empty">No categories yet — add one to start tracking stock.</string>
+    <string name="inventory_category_add">New category</string>
+    <string name="inventory_category_name">Category name</string>
+    <string name="inventory_category_remove">Remove %1$s</string>
+    <string name="inventory_products_title">Products</string>
+    <string name="inventory_products_empty">No products in this category yet.</string>
+    <string name="inventory_product_add">New product</string>
+    <string name="inventory_product_name">Product name</string>
+    <string name="inventory_product_increment">Increase quantity</string>
+    <string name="inventory_product_decrement">Decrease quantity</string>
+    <string name="inventory_product_remove">Remove %1$s</string>
 </resources>

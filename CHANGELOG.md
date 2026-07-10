@@ -7,6 +7,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Inventory tracking: a new Home tile leads straight to a list of
+  categories (e.g. "Medi's"), each holding products with a quantity and
+  a ±1 stepper (e.g. "Aspirin: 2"). Add categories/products via a FAB,
+  delete either via a trailing icon; a new product is auto-assigned to
+  the category it was added from. Talks to the backend's new
+  `/api/v1/inventory-category`/`/api/v1/inventory-product` endpoints.
 - WireGuard VPN integration: the self-hosted backend is only reachable
   over VPN, so the app now embeds WireGuard directly (`com.wireguard.android:tunnel:1.0.20260102`)
   instead of requiring the separate WireGuard app. A one-time Settings

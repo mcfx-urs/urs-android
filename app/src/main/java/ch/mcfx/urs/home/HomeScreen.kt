@@ -29,6 +29,7 @@ import ch.mcfx.urs.navigation.Destination
 
 private val FEATURE_TILES = listOf(
     Destination.FUEL,
+    Destination.INVENTORY,
     Destination.HEALTH,
     Destination.GOKART,
     Destination.PRICE_MONITOR,

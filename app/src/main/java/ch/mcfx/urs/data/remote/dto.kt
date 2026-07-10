@@ -67,3 +67,29 @@ data class FillPayload(
     @SerialName("driven") val driven: String,
     @SerialName("filling_station_counter") val stationCounter: String,
 )
+
+@Serializable
+data class InventoryCategoryDto(
+    @SerialName("inventory_category_id") val id: String,
+    @SerialName("inventory_category_name") val name: String,
+)
+
+@Serializable
+data class InventoryProductDto(
+    @SerialName("inventory_product_id") val id: String,
+    @SerialName("inventory_product_category_id") val categoryId: String,
+    @SerialName("inventory_product_name") val name: String,
+    @SerialName("inventory_product_quantity") val quantity: String,
+)
+
+@Serializable
+data class InventoryCategoryPayload(
+    @SerialName("inventory_category_name") val name: String,
+)
+
+@Serializable
+data class InventoryProductPayload(
+    @SerialName("inventory_product_category_id") val categoryId: String,
+    @SerialName("inventory_product_name") val name: String,
+    @SerialName("inventory_product_quantity") val quantity: String,
+)
