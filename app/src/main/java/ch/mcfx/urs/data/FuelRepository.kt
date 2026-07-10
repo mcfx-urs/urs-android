@@ -4,6 +4,7 @@ import ch.mcfx.urs.data.remote.CarDto
 import ch.mcfx.urs.data.remote.FillDto
 import ch.mcfx.urs.data.remote.FillPayload
 import ch.mcfx.urs.data.remote.FillingStationDto
+import ch.mcfx.urs.data.remote.FillingStationPayload
 import ch.mcfx.urs.data.remote.UrsApi
 import kotlinx.serialization.SerializationException
 
@@ -11,7 +12,11 @@ class FuelRepository(private val api: UrsApi) {
 
     suspend fun getCars(): List<CarDto> = api.getCars()
 
-    suspend fun getStations(): List<FillingStationDto> = api.getFillingStations()
+    suspend fun getStations(): List<FillingStationDto> = emptyAsNull { api.getFillingStations() }
+
+    suspend fun createStation(name: String, address: String = "") {
+        api.createFillingStation(FillingStationPayload(name = name, address = address))
+    }
 
     suspend fun getFills(): List<FillDto> =
         emptyAsNull { api.getFills() }.sortedByDescending { it.date }

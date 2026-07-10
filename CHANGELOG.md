@@ -7,6 +7,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Fuel hub with dedicated sub-screens: Fill-ups (existing list), a new
+  full-screen Add Fill-up flow (replaces the old bottom-sheet form), Gas
+  Stations (list + add, wired to the backend's existing station-create
+  endpoint), and Statistics (average consumption/price, totals, monthly
+  breakdown, car filter — computed client-side from raw fills, matching
+  urs-legacy-frontend's approach since the backend has no aggregation
+  endpoints). The Home dashboard's Fuel tile now shows a quick-stat: average
+  consumption over the last 6 months.
 - App navigation shell: hamburger navigation drawer, home tile dashboard, and
   a Settings placeholder screen (Navigation Compose). Mirrors the web app's
   sidebar sections (Home, Fuel, Health, Gokart, Price Monitor, Users) plus a

@@ -48,6 +48,14 @@ data class OdometerEntryDto(
 )
 
 @Serializable
+data class FillingStationPayload(
+    @SerialName("filling_station_name") val name: String,
+    @SerialName("filling_station_address") val address: String = "",
+    @SerialName("filling_station_latitude") val latitude: String = "",
+    @SerialName("filling_station_longitude") val longitude: String = "",
+)
+
+@Serializable
 data class FillPayload(
     @SerialName("fill_date") val date: String,
     @SerialName("fill_car_id") val carId: String,

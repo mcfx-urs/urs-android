@@ -3,6 +3,7 @@
     <string name="app_name">urs</string>
 
     <string name="open_menu">Open menu</string>
+    <string name="back">Back</string>
     <string name="coming_soon">soon</string>
 
     <string name="nav_home">Home</string>
@@ -17,6 +18,11 @@
     <string name="settings_description">This is where WireGuard connection status, Wi-Fi-based auto-sync, and login/multi-user management will live once those features are built.</string>
 
     <string name="fuel_title">Fuel</string>
+    <string name="fuel_avg_consumption_6mo">%1$.1f L/100km · 6mo avg</string>
+    <string name="fuel_tile_fills">Fill-ups</string>
+    <string name="fuel_tile_add">Add Fill-up</string>
+    <string name="fuel_tile_stations">Gas Stations</string>
+    <string name="fuel_tile_stats">Statistics</string>
     <string name="fill_add">New fill-up</string>
     <string name="fill_car">Car</string>
     <string name="fill_station">Filling station</string>
@@ -29,6 +35,22 @@
     <string name="fill_amount_at_price">%1$s L @ %2$s</string>
     <string name="fill_odometer_km">%1$s km</string>
     <string name="fills_empty">No fill-ups yet.</string>
+
+    <string name="station_add">New gas station</string>
+    <string name="station_name">Name</string>
+    <string name="station_address">Address (optional)</string>
+    <string name="stations_empty">No gas stations yet.</string>
+
+    <string name="stats_all_cars">All cars</string>
+    <string name="stats_avg_consumption">Average consumption</string>
+    <string name="stats_avg_price">Average price / L</string>
+    <string name="stats_total_cost">Total cost</string>
+    <string name="stats_total_km">Total driven</string>
+    <string name="stats_fill_count">Fill-ups</string>
+    <string name="stats_monthly_title">By month</string>
+    <string name="stats_l100km">%1$.1f L/100km</string>
+    <string name="stats_empty">Not enough data yet.</string>
+
     <string name="save">Save</string>
     <string name="saving">Saving…</string>
     <string name="retry">Retry</string>

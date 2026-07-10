@@ -13,6 +13,9 @@ interface UrsApi {
     @GET("api/v1/get-filling-station")
     suspend fun getFillingStations(): List<FillingStationDto>
 
+    @POST("api/v1/filling-station")
+    suspend fun createFillingStation(@Body payload: FillingStationPayload)
+
     @GET("api/v1/fill")
     suspend fun getFills(): List<FillDto>
 

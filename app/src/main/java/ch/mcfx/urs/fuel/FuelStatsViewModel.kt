@@ -1,0 +1,146 @@
+package ch.mcfx.urs.fuel
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import ch.mcfx.urs.UrsApplication
+import ch.mcfx.urs.data.FuelRepository
+import ch.mcfx.urs.data.remote.CarDto
+import ch.mcfx.urs.data.remote.FillDto
+import java.time.LocalDate
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+data class MonthlyFuelStat(
+    val yearMonth: String,
+    val totalCost: Float,
+    val totalKm: Float,
+    val avgConsumption: Float?,
+)
+
+data class FuelStatsUiState(
+    val loading: Boolean = true,
+    val error: Boolean = false,
+    val cars: List<CarDto> = emptyList(),
+    val selectedCarId: String? = null,
+    val avgConsumption: Float? = null,
+    val avgPricePerLiter: Float? = null,
+    val totalCost: Float = 0f,
+    val totalKm: Float = 0f,
+    val fillCount: Int = 0,
+    val monthly: List<MonthlyFuelStat> = emptyList(),
+)
+
+// Statistics are computed entirely client-side from the raw fills list, same
+// approach as urs-legacy-frontend's stats.vue — the backend has no
+// aggregation endpoints of its own.
+class FuelStatsViewModel(private val repository: FuelRepository) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(FuelStatsUiState())
+    val uiState: StateFlow<FuelStatsUiState> = _uiState.asStateFlow()
+
+    private var allFills: List<FillDto> = emptyList()
+
+    init {
+        viewModelScope.launch {
+            try {
+                val cars: List<CarDto>
+                coroutineScope {
+                    val carsDeferred = async { repository.getCars() }
+                    val fillsDeferred = async { repository.getFills() }
+                    cars = carsDeferred.await()
+                    allFills = fillsDeferred.await()
+                }
+                _uiState.update { it.copy(cars = cars) }
+                recompute()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                _uiState.update { it.copy(loading = false, error = true) }
+            }
+        }
+    }
+
+    fun selectCar(carId: String?) {
+        _uiState.update { it.copy(selectedCarId = carId) }
+        recompute()
+    }
+
+    private fun recompute() {
+        val carId = _uiState.value.selectedCarId
+        val fills = if (carId != null) allFills.filter { it.carId == carId } else allFills
+
+        val totalCost = fills.sumOf { fillCost(it) }.toFloat()
+        val totalLiters = fills.sumOf { it.liters.toDoubleOrNull() ?: 0.0 }
+        val avgPrice = if (totalLiters > 0.0) (totalCost / totalLiters).toFloat() else null
+
+        val samples = FuelStats.consumptionSamples(fills)
+        val totalKm = samples.sumOf { it.kmDriven.toDouble() }.toFloat()
+
+        _uiState.update {
+            it.copy(
+                loading = false,
+                error = false,
+                avgConsumption = FuelStats.averageConsumptionL100Km(fills),
+                avgPricePerLiter = avgPrice,
+                totalCost = totalCost,
+                totalKm = totalKm,
+                fillCount = fills.size,
+                monthly = monthlyStats(fills),
+            )
+        }
+    }
+
+    private fun monthlyStats(fills: List<FillDto>): List<MonthlyFuelStat> {
+        val costByMonth = fills
+            .mapNotNull { fill -> FuelStats.parseDate(fill.date)?.let { monthKey(it) to fillCost(fill) } }
+            .groupBy({ it.first }, { it.second })
+            .mapValues { (_, costs) -> costs.sum().toFloat() }
+
+        val samples = FuelStats.consumptionSamples(fills).groupBy { monthKey(it.date) }
+        val kmByMonth = samples.mapValues { (_, s) -> s.sumOf { it.kmDriven.toDouble() }.toFloat() }
+        val consumptionByMonth = samples.mapValues { (_, s) ->
+            val km = s.sumOf { it.kmDriven.toDouble() }
+            val liters = s.sumOf { it.liters.toDouble() }
+            if (km > 0.0) (liters / km * 100.0).toFloat() else null
+        }
+
+        return (costByMonth.keys + kmByMonth.keys)
+            .distinct()
+            .sortedDescending()
+            .map { month ->
+                MonthlyFuelStat(
+                    yearMonth = month,
+                    totalCost = costByMonth[month] ?: 0f,
+                    totalKm = kmByMonth[month] ?: 0f,
+                    avgConsumption = consumptionByMonth[month],
+                )
+            }
+    }
+
+    private fun fillCost(fill: FillDto): Double {
+        val price = fill.pricePerLiter.toDoubleOrNull() ?: 0.0
+        val liters = fill.liters.toDoubleOrNull() ?: 0.0
+        return price * liters
+    }
+
+    private fun monthKey(date: LocalDate): String = "%04d-%02d".format(date.year, date.monthValue)
+
+    companion object {
+        val Factory: ViewModelProvider.Factory = viewModelFactory {
+            initializer {
+                val app = this[APPLICATION_KEY] as UrsApplication
+                FuelStatsViewModel(app.container.fuelRepository)
+            }
+        }
+    }
+}

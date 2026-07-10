@@ -2,6 +2,7 @@ package ch.mcfx.urs.navigation
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -29,7 +30,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import ch.mcfx.urs.R
+import ch.mcfx.urs.fuel.FuelAddScreen
+import ch.mcfx.urs.fuel.FuelHubScreen
+import ch.mcfx.urs.fuel.FuelRoutes
 import ch.mcfx.urs.fuel.FuelScreen
+import ch.mcfx.urs.fuel.FuelStationsScreen
+import ch.mcfx.urs.fuel.FuelStatsScreen
 import ch.mcfx.urs.home.HomeScreen
 import ch.mcfx.urs.settings.SettingsScreen
 import kotlinx.coroutines.launch
@@ -43,6 +49,7 @@ fun AppNavigation() {
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route ?: Destination.HOME.route
+    val isTopLevel = Destination.entries.any { it.route == currentRoute }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -90,10 +97,19 @@ fun AppNavigation() {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text(stringResource(currentDestinationLabel(currentRoute))) },
+                    title = { Text(stringResource(currentScreenLabel(currentRoute))) },
                     navigationIcon = {
-                        IconButton(onClick = { coroutineScope.launch { drawerState.open() } }) {
-                            Icon(Icons.Filled.Menu, contentDescription = stringResource(R.string.open_menu))
+                        if (isTopLevel) {
+                            IconButton(onClick = { coroutineScope.launch { drawerState.open() } }) {
+                                Icon(Icons.Filled.Menu, contentDescription = stringResource(R.string.open_menu))
+                            }
+                        } else {
+                            IconButton(onClick = { navController.popBackStack() }) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = stringResource(R.string.back),
+                                )
+                            }
                         }
                     },
                 )
@@ -107,7 +123,17 @@ fun AppNavigation() {
                 composable(Destination.HOME.route) {
                     HomeScreen(onNavigate = { navController.navigateToDestination(it) })
                 }
-                composable(Destination.FUEL.route) { FuelScreen() }
+                composable(Destination.FUEL.route) {
+                    FuelHubScreen(onNavigate = { route -> navController.navigate(route) })
+                }
+                composable(FuelRoutes.FILLS) {
+                    FuelScreen(onAddFillUp = { navController.navigate(FuelRoutes.ADD) })
+                }
+                composable(FuelRoutes.ADD) {
+                    FuelAddScreen(onDone = { navController.popBackStack() })
+                }
+                composable(FuelRoutes.STATIONS) { FuelStationsScreen() }
+                composable(FuelRoutes.STATS) { FuelStatsScreen() }
                 composable(Destination.SETTINGS.route) { SettingsScreen() }
             }
         }
@@ -122,5 +148,14 @@ private fun NavHostController.navigateToDestination(destination: Destination) {
     }
 }
 
-private fun currentDestinationLabel(route: String): Int =
-    Destination.entries.find { it.route == route }?.labelRes ?: R.string.app_name
+private val FUEL_ROUTE_LABELS = mapOf(
+    FuelRoutes.FILLS to R.string.fuel_tile_fills,
+    FuelRoutes.ADD to R.string.fuel_tile_add,
+    FuelRoutes.STATIONS to R.string.fuel_tile_stations,
+    FuelRoutes.STATS to R.string.fuel_tile_stats,
+)
+
+private fun currentScreenLabel(route: String): Int =
+    Destination.entries.find { it.route == route }?.labelRes
+        ?: FUEL_ROUTE_LABELS[route]
+        ?: R.string.app_name

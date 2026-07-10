@@ -16,11 +16,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
 import ch.mcfx.urs.navigation.Destination
 
@@ -33,7 +36,12 @@ private val FEATURE_TILES = listOf(
 )
 
 @Composable
-fun HomeScreen(onNavigate: (Destination) -> Unit) {
+fun HomeScreen(
+    onNavigate: (Destination) -> Unit,
+    viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory),
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
         contentPadding = PaddingValues(16.dp),
@@ -42,13 +50,27 @@ fun HomeScreen(onNavigate: (Destination) -> Unit) {
         modifier = Modifier.fillMaxSize(),
     ) {
         items(FEATURE_TILES) { destination ->
-            FeatureTile(destination = destination, onClick = { onNavigate(destination) })
+            FeatureTile(
+                destination = destination,
+                subtitle = quickStat(destination, uiState),
+                onClick = { onNavigate(destination) },
+            )
         }
     }
 }
 
+// Only Fuel has a quick-stat today; other tiles simply show none until they
+// have data worth surfacing here too.
 @Composable
-private fun FeatureTile(destination: Destination, onClick: () -> Unit) {
+private fun quickStat(destination: Destination, state: HomeUiState): String? = when (destination) {
+    Destination.FUEL -> state.fuelAvgConsumptionL100Km?.let {
+        stringResource(R.string.fuel_avg_consumption_6mo, it)
+    }
+    else -> null
+}
+
+@Composable
+private fun FeatureTile(destination: Destination, subtitle: String? = null, onClick: () -> Unit) {
     val containerColor = if (destination.isAvailable) {
         MaterialTheme.colorScheme.primaryContainer
     } else {
@@ -79,6 +101,12 @@ private fun FeatureTile(destination: Destination, onClick: () -> Unit) {
         if (!destination.isAvailable) {
             Text(
                 text = stringResource(R.string.coming_soon),
+                style = MaterialTheme.typography.labelSmall,
+                color = contentColor,
+            )
+        } else if (subtitle != null) {
+            Text(
+                text = subtitle,
                 style = MaterialTheme.typography.labelSmall,
                 color = contentColor,
             )
