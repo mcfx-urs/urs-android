@@ -17,6 +17,7 @@ import ch.mcfx.urs.vpn.WireGuardManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -36,8 +37,13 @@ class UrsApplication : Application() {
         // Channels must exist before any notification can be posted to them.
         NotificationChannels.registerAll(this)
         // App-open case for missed scheduled reminders (the other case,
-        // device boot, is handled by BootCompletedReceiver).
-        container.reminderScheduler.rearmAndCheckMissed()
+        // device boot, is handled by BootCompletedReceiver). Suspend now
+        // (a conditional reminder needs a network round-trip), so this
+        // launches on the app's own process-lifetime scope rather than
+        // blocking onCreate().
+        container.applicationScope.launch {
+            container.reminderScheduler.rearmAndCheckMissed()
+        }
     }
 }
 
@@ -75,5 +81,8 @@ class AppContainer(context: Context) {
 
     val reminderStore = ReminderStore(context)
     val notificationSender = NotificationSender(context)
-    val reminderScheduler = ReminderScheduler(context, reminderStore, notificationSender)
+    val reminderScheduler = ReminderScheduler(
+        context, reminderStore, notificationSender,
+        quantityLookup = { categoryId, productId -> inventoryRepository.getProductQuantity(categoryId, productId) },
+    )
 }

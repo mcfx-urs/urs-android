@@ -18,6 +18,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Debug builds now use a distinct application ID (`ch.mcfx.urs.debug`)
   and app name ("urs (debug)"), so a debug build installs side by side
   with a release build instead of conflicting with it.
+- Inventory: long-press a product row to set its quantity directly
+  (instead of repeated +/- taps) and configure two independent
+  warning-color thresholds (row turns orange/red at or below each) and
+  an optional daily low-stock reminder ("notify at HH:MM if quantity is
+  below X"), all per product. Reminders reuse the notifications
+  infrastructure's `AlarmManager` scheduling, extended with an optional
+  condition check (`ReminderScheduler` re-verifies the current quantity
+  right before showing anything, so a reminder correctly stays silent
+  once stock is replenished) and a more specific deep-link target (the
+  product's own category list, not just the Inventory categories
+  overview).
 
 ### Changed
 

@@ -18,10 +18,19 @@ private val DATE_FORMAT = DateTimeFormatter.ISO_LOCAL_DATE
 // periodic work can drift by minutes to hours under Doze/battery
 // restrictions, which defeats the point of a reminder meant to fire at a
 // specific time (e.g. before leaving the house in the morning).
+//
+// quantityLookup is the hook a conditional reminder (e.g. Inventory's
+// low-stock reminder) needs to check "is this still actually true" right
+// before showing anything — kept as a plain suspend function type rather
+// than a hard dependency on InventoryRepository, so this generic package
+// doesn't need to know Inventory exists. AppContainer wires the real
+// implementation; the default here is only reached if something schedules
+// a condition without wiring a lookup, which would be a wiring bug.
 class ReminderScheduler(
     private val context: Context,
     private val store: ReminderStore,
     private val sender: NotificationSender,
+    private val quantityLookup: suspend (categoryId: String, productId: String) -> Int? = { _, _ -> null },
 ) {
 
     // canScheduleExactAlarms() itself requires API 31 — below that, exact
@@ -38,8 +47,16 @@ class ReminderScheduler(
         title: String,
         body: String,
         deepLinkRoute: String? = null,
+        conditionInventoryCategoryId: String? = null,
+        conditionInventoryProductId: String? = null,
+        conditionBelowQuantity: Int? = null,
     ) {
-        val reminder = ReminderConfig(id, channelId, hour, minute, title, body, deepLinkRoute, lastFiredDate = null)
+        val reminder = ReminderConfig(
+            id, channelId, hour, minute, title, body, deepLinkRoute, lastFiredDate = null,
+            conditionInventoryCategoryId = conditionInventoryCategoryId,
+            conditionInventoryProductId = conditionInventoryProductId,
+            conditionBelowQuantity = conditionBelowQuantity,
+        )
         store.save(reminder)
         armNext(reminder)
     }
@@ -54,7 +71,7 @@ class ReminderScheduler(
     // reboot) — re-arms every persisted reminder's next occurrence, firing
     // immediately first for any whose scheduled time already passed today
     // without having fired, rather than silently waiting for tomorrow.
-    fun rearmAndCheckMissed() {
+    suspend fun rearmAndCheckMissed() {
         val today = LocalDate.now()
         store.getAll().forEach { reminder ->
             val scheduledToday = today.atTime(reminder.hour, reminder.minute)
@@ -68,19 +85,35 @@ class ReminderScheduler(
     }
 
     // Called by ReminderAlarmReceiver when the exact alarm actually fires,
-    // and by rearmAndCheckMissed() for one that was missed.
-    internal fun fireNow(reminder: ReminderConfig) {
-        sender.show(
-            channelId = reminder.channelId,
-            notificationId = reminder.id,
-            title = reminder.title,
-            body = reminder.body,
-            deepLinkRoute = reminder.deepLinkRoute,
-            groupKey = reminder.channelId,
-        )
+    // and by rearmAndCheckMissed() for one that was missed. Suspend because
+    // a conditional reminder needs a network round-trip (quantityLookup)
+    // before deciding whether to actually show anything.
+    internal suspend fun fireNow(reminder: ReminderConfig) {
+        if (conditionMet(reminder)) {
+            sender.show(
+                channelId = reminder.channelId,
+                notificationId = reminder.id,
+                title = reminder.title,
+                body = reminder.body,
+                deepLinkRoute = reminder.deepLinkRoute,
+                groupKey = reminder.channelId,
+            )
+        }
         val updated = reminder.copy(lastFiredDate = LocalDate.now().format(DATE_FORMAT))
         store.save(updated)
         armNext(updated)
+    }
+
+    // No condition configured (the common case, e.g. a plain time-based
+    // reminder) always fires. When a condition is configured but the
+    // quantity can't be determined (product deleted, network unreachable),
+    // fails closed — skip rather than risk a false "still low" alert.
+    private suspend fun conditionMet(reminder: ReminderConfig): Boolean {
+        val categoryId = reminder.conditionInventoryCategoryId ?: return true
+        val productId = reminder.conditionInventoryProductId ?: return true
+        val threshold = reminder.conditionBelowQuantity ?: return true
+        val currentQuantity = quantityLookup(categoryId, productId) ?: return false
+        return currentQuantity < threshold
     }
 
     private fun armNext(reminder: ReminderConfig) {

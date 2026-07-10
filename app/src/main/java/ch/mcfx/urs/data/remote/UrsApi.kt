@@ -45,6 +45,9 @@ interface UrsApi {
     @PUT("api/v1/inventory-product/{id}")
     suspend fun updateInventoryProduct(@Path("id") id: String, @Body payload: InventoryProductPayload)
 
+    @PUT("api/v1/inventory-product/{id}/settings")
+    suspend fun updateInventoryProductSettings(@Path("id") id: String, @Body payload: InventoryProductSettingsPayload)
+
     @DELETE("api/v1/inventory-product/{id}")
     suspend fun deleteInventoryProduct(@Path("id") id: String)
 

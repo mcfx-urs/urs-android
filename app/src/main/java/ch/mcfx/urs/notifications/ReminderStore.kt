@@ -20,6 +20,16 @@ data class ReminderConfig(
     // "yyyy-MM-dd" of the last day this actually fired, null if never — lets
     // rearmAndCheckMissed() tell "already fired today" apart from "missed".
     val lastFiredDate: String? = null,
+    // Optional condition: if set, ReminderScheduler.fireNow() only actually
+    // shows the notification when the referenced Inventory product's
+    // current quantity is below conditionBelowQuantity — otherwise it skips
+    // silently and just re-arms for tomorrow. All three null means
+    // unconditional (fires every day at hour:minute, as before). categoryId
+    // travels alongside productId since the backend has no "get product by
+    // id" route — only "get products for category".
+    val conditionInventoryCategoryId: String? = null,
+    val conditionInventoryProductId: String? = null,
+    val conditionBelowQuantity: Int? = null,
 )
 
 // Persists the set of currently-scheduled daily reminders so

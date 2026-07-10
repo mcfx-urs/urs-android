@@ -4,6 +4,7 @@ import ch.mcfx.urs.data.remote.InventoryCategoryDto
 import ch.mcfx.urs.data.remote.InventoryCategoryPayload
 import ch.mcfx.urs.data.remote.InventoryProductDto
 import ch.mcfx.urs.data.remote.InventoryProductPayload
+import ch.mcfx.urs.data.remote.InventoryProductSettingsPayload
 import ch.mcfx.urs.data.remote.UrsApi
 import kotlinx.serialization.SerializationException
 
@@ -37,6 +38,37 @@ class InventoryRepository(private val api: UrsApi) {
     suspend fun deleteProduct(id: String) {
         api.deleteInventoryProduct(id)
     }
+
+    // Thresholds/reminder are deliberately a separate call from
+    // updateProductQuantity (different backend route entirely) so neither
+    // ever risks clobbering the other's fields.
+    suspend fun updateProductSettings(
+        productId: String,
+        firstThreshold: Int?,
+        secondThreshold: Int?,
+        reminderThreshold: Int?,
+        reminderHour: Int?,
+        reminderMinute: Int?,
+    ) {
+        api.updateInventoryProductSettings(
+            productId,
+            InventoryProductSettingsPayload(
+                firstThreshold = firstThreshold?.toString().orEmpty(),
+                secondThreshold = secondThreshold?.toString().orEmpty(),
+                reminderThreshold = reminderThreshold?.toString().orEmpty(),
+                reminderHour = reminderHour?.toString().orEmpty(),
+                reminderMinute = reminderMinute?.toString().orEmpty(),
+            ),
+        )
+    }
+
+    // Used by ReminderScheduler's conditional-fire check: looks up a single
+    // product's current quantity by re-fetching its category's product list
+    // (no dedicated "get product by id" backend route exists, and adding one
+    // just for this would be solving a problem the existing endpoint already
+    // covers).
+    suspend fun getProductQuantity(categoryId: String, productId: String): Int? =
+        getProducts(categoryId).find { it.id == productId }?.quantity?.toIntOrNull()
 
     // The backend encodes empty result sets as JSON `null` instead of `[]`.
     private suspend fun <T> emptyAsNull(call: suspend () -> List<T>): List<T> =

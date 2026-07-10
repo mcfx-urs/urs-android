@@ -80,6 +80,13 @@ data class InventoryProductDto(
     @SerialName("inventory_product_category_id") val categoryId: String,
     @SerialName("inventory_product_name") val name: String,
     @SerialName("inventory_product_quantity") val quantity: String,
+    // Empty string = not set for every field below (mirrors the backend's
+    // nullable-column-as-empty-string convention, e.g. user_height).
+    @SerialName("inventory_product_first_threshold") val firstThreshold: String = "",
+    @SerialName("inventory_product_second_threshold") val secondThreshold: String = "",
+    @SerialName("inventory_product_reminder_threshold") val reminderThreshold: String = "",
+    @SerialName("inventory_product_reminder_hour") val reminderHour: String = "",
+    @SerialName("inventory_product_reminder_minute") val reminderMinute: String = "",
 )
 
 @Serializable
@@ -92,6 +99,18 @@ data class InventoryProductPayload(
     @SerialName("inventory_product_category_id") val categoryId: String,
     @SerialName("inventory_product_name") val name: String,
     @SerialName("inventory_product_quantity") val quantity: String,
+)
+
+// Separate from InventoryProductPayload so updating thresholds/reminder can
+// never accidentally touch category/name/quantity — mirrors the backend's
+// dedicated PUT /api/v1/inventory-product/{id}/settings route.
+@Serializable
+data class InventoryProductSettingsPayload(
+    @SerialName("inventory_product_first_threshold") val firstThreshold: String,
+    @SerialName("inventory_product_second_threshold") val secondThreshold: String,
+    @SerialName("inventory_product_reminder_threshold") val reminderThreshold: String,
+    @SerialName("inventory_product_reminder_hour") val reminderHour: String,
+    @SerialName("inventory_product_reminder_minute") val reminderMinute: String,
 )
 
 @Serializable

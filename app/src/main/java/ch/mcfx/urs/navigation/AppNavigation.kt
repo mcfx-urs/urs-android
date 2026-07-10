@@ -199,6 +199,11 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                         navArgument("categoryId") { type = NavType.StringType },
                         navArgument("categoryName") { type = NavType.StringType },
                     ),
+                    // Per-product low-stock reminder target — more
+                    // specific than the categories-list summary deep link
+                    // above, since a single-product reminder can point
+                    // straight at the product's own list.
+                    deepLinks = listOf(navDeepLink { uriPattern = "urs://${InventoryRoutes.PRODUCTS}" }),
                 ) { backStackEntry ->
                     val categoryId = backStackEntry.arguments?.getString("categoryId") ?: return@composable
                     val categoryName = backStackEntry.arguments?.getString("categoryName") ?: ""
