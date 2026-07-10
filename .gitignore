@@ -13,6 +13,7 @@ local.properties
 # Signing
 *.jks
 *.keystore
+keystore.properties
 
 # Misc
 captures/
