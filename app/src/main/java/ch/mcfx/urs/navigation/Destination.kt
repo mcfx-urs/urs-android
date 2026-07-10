@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
 import ch.mcfx.urs.R
 import ch.mcfx.urs.fuel.FuelRoutes
+import ch.mcfx.urs.settings.SettingsRoutes
 
 // Mirrors the web app's sidebar (urs-frontend App.vue). Destinations with
 // isAvailable = false have no route or screen yet — they exist here only so
@@ -28,5 +29,5 @@ enum class Destination(
     GOKART("gokart", R.string.nav_gokart, Icons.Filled.Flag, isAvailable = false),
     PRICE_MONITOR("price_monitor", R.string.nav_price_monitor, Icons.Filled.QrCodeScanner, isAvailable = false),
     USERS("users", R.string.nav_users, Icons.Filled.People, isAvailable = false),
-    SETTINGS("settings", R.string.nav_settings, Icons.Filled.Settings, isAvailable = true),
+    SETTINGS(SettingsRoutes.HUB, R.string.nav_settings, Icons.Filled.Settings, isAvailable = true),
 }

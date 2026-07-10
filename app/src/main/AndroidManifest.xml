@@ -2,6 +2,23 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <!-- Reading the currently connected Wi-Fi SSID requires fine location on
+         Android (SSID is treated as location-sensitive), even though this app
+         only uses it to compare against the configured home-network name. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- On newer Android versions, unredacted Wi-Fi info (real SSID, not
+         "<unknown ssid>") also requires this even with location granted.
+         neverForLocation: this app only ever compares the SSID string
+         against a configured value, never derives physical location from
+         Wi-Fi scan results. -->
+    <uses-permission
+        android:name="android.permission.NEARBY_WIFI_DEVICES"
+        android:usesPermissionFlags="neverForLocation" />
+    <!-- For scanning the WireGuard config QR code; never used for anything else. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
         android:name=".UrsApplication"
@@ -19,6 +36,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".settings.PortraitCaptureActivity"
+            android:screenOrientation="portrait" />
 
     </application>
 

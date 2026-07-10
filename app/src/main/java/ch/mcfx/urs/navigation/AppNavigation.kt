@@ -18,9 +18,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -30,6 +32,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import ch.mcfx.urs.R
+import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.fuel.FuelAddScreen
 import ch.mcfx.urs.fuel.FuelHubScreen
 import ch.mcfx.urs.fuel.FuelRoutes
@@ -37,7 +40,9 @@ import ch.mcfx.urs.fuel.FuelScreen
 import ch.mcfx.urs.fuel.FuelStationsScreen
 import ch.mcfx.urs.fuel.FuelStatsScreen
 import ch.mcfx.urs.home.HomeScreen
+import ch.mcfx.urs.settings.SettingsRoutes
 import ch.mcfx.urs.settings.SettingsScreen
+import ch.mcfx.urs.settings.VpnSettingsScreen
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,6 +51,17 @@ fun AppNavigation() {
     val navController = rememberNavController()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    // Silent, best-effort only: the app is fully usable without any VPN set
+    // up at all. If a tunnel is already configured and permissions are
+    // already granted, try to bring it up in the background; otherwise do
+    // nothing here — no prompts, no banner. Screens that actually need the
+    // backend show their own existing error/retry state if it's unreachable.
+    LaunchedEffect(Unit) {
+        val app = context.applicationContext as UrsApplication
+        app.container.networkGate.ensureReachable()
+    }
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route ?: Destination.HOME.route
@@ -134,7 +150,10 @@ fun AppNavigation() {
                 }
                 composable(FuelRoutes.STATIONS) { FuelStationsScreen() }
                 composable(FuelRoutes.STATS) { FuelStatsScreen() }
-                composable(Destination.SETTINGS.route) { SettingsScreen() }
+                composable(Destination.SETTINGS.route) {
+                    SettingsScreen(onNavigate = { route -> navController.navigate(route) })
+                }
+                composable(SettingsRoutes.VPN) { VpnSettingsScreen() }
             }
         }
     }
@@ -155,7 +174,12 @@ private val FUEL_ROUTE_LABELS = mapOf(
     FuelRoutes.STATS to R.string.fuel_tile_stats,
 )
 
+private val SETTINGS_ROUTE_LABELS = mapOf(
+    SettingsRoutes.VPN to R.string.settings_tile_vpn,
+)
+
 private fun currentScreenLabel(route: String): Int =
     Destination.entries.find { it.route == route }?.labelRes
         ?: FUEL_ROUTE_LABELS[route]
+        ?: SETTINGS_ROUTE_LABELS[route]
         ?: R.string.app_name

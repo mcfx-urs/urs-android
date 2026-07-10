@@ -7,6 +7,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- WireGuard VPN integration: the self-hosted backend is only reachable
+  over VPN, so the app now embeds WireGuard directly (`com.wireguard.android:tunnel:1.0.20260102`)
+  instead of requiring the separate WireGuard app. A one-time Settings
+  setup (paste config text or scan its QR code) is stored via Android
+  Keystore-backed AES-256-GCM encryption, never plaintext. Multiple
+  home Wi-Fi networks can be saved (add/list/delete) — on any of them
+  the app skips VPN entirely; anywhere else it silently tries to bring
+  the tunnel up in the background before screens load, with no banner
+  or prompts. The app is fully usable without ever configuring VPN at
+  all; screens needing the backend fall back to their existing
+  error/retry state if it's unreachable.
+- Settings is now a hub with tiles (Users — coming soon, VPN) instead
+  of one flat screen, mirroring the Fuel hub pattern.
 - Fuel hub with dedicated sub-screens: Fill-ups (existing list), a new
   full-screen Add Fill-up flow (replaces the old bottom-sheet form), Gas
   Stations (list + add, wired to the backend's existing station-create

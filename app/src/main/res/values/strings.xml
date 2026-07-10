@@ -15,7 +15,32 @@
     <string name="nav_settings">Settings</string>
 
     <string name="settings_title">Settings</string>
-    <string name="settings_description">This is where WireGuard connection status, Wi-Fi-based auto-sync, and login/multi-user management will live once those features are built.</string>
+    <string name="settings_tile_users">Users</string>
+    <string name="settings_tile_vpn">VPN</string>
+    <string name="settings_users_description">Login and multi-user management will live here once that feature is built.</string>
+
+    <string name="vpn_title">VPN</string>
+    <string name="vpn_description">The backend is only reachable over WireGuard — paste your client config below (or scan its QR code) once. On a saved home Wi-Fi network, the app skips VPN entirely; anywhere else it brings the tunnel up automatically before reaching the backend.</string>
+    <string name="vpn_config_label">WireGuard config</string>
+    <string name="vpn_scan_qr">Scan QR code</string>
+    <string name="vpn_config_configured">WireGuard config saved</string>
+    <string name="vpn_config_not_configured">No WireGuard config saved yet</string>
+    <string name="vpn_edit_config">Edit</string>
+    <string name="vpn_home_ssid_label">Add home Wi-Fi SSID</string>
+    <string name="vpn_home_ssid_add">Add</string>
+    <string name="vpn_home_ssids_title">Home networks</string>
+    <string name="vpn_home_ssids_empty">No home networks saved yet — VPN is used everywhere until you add one.</string>
+    <string name="vpn_ssid_remove">Remove %1$s</string>
+    <string name="vpn_location_permission_needed">Location permission needed to detect Wi-Fi automatically</string>
+    <string name="vpn_grant">Grant</string>
+    <string name="vpn_save">Save</string>
+    <string name="vpn_saved">Saved</string>
+    <string name="vpn_status_disconnected">Disconnected</string>
+    <string name="vpn_status_connecting">Connecting…</string>
+    <string name="vpn_status_connected">Connected</string>
+    <string name="vpn_status_error">Connection failed</string>
+    <string name="vpn_connect">Connect</string>
+    <string name="vpn_disconnect">Disconnect</string>
 
     <string name="fuel_title">Fuel</string>
     <string name="fuel_avg_consumption_6mo">%1$.1f L/100km · 6mo avg</string>
