@@ -29,6 +29,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   once stock is replenished) and a more specific deep-link target (the
   product's own category list, not just the Inventory categories
   overview).
+- Inventory: decrementing past 0 now reaches a distinct "not tracked"
+  state (shown as "–"), one step below 0 rather than reusing it —
+  useful for a product you're pausing tracking on without losing its
+  saved thresholds/reminder. Incrementing from "–" returns to 0, not 1,
+  keeping the stepper's step size consistent in both directions.
+  Warning colors are suppressed while "not tracked", regardless of
+  configured thresholds.
 
 ### Changed
 

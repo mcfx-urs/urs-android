@@ -150,10 +150,15 @@ private fun ProductList(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(products, key = { it.id }) { product ->
-            val quantity = product.quantity.toIntOrNull() ?: 0
+            // null = "not currently tracked" (paused) — one step below 0,
+            // not the same as it. Suppresses warning colors regardless of
+            // thresholds, since there's no meaningful stock level to warn
+            // about while a product isn't being tracked.
+            val quantity = product.quantity.toIntOrNull()
             val secondThreshold = product.secondThreshold.toIntOrNull()
             val firstThreshold = product.firstThreshold.toIntOrNull()
             val warningColor = when {
+                quantity == null -> null
                 secondThreshold != null && quantity <= secondThreshold -> SecondWarningColor
                 firstThreshold != null && quantity <= firstThreshold -> FirstWarningColor
                 else -> null
@@ -179,11 +184,11 @@ private fun ProductList(
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.weight(1f),
                     )
-                    IconButton(onClick = { onDecrement(product) }, enabled = quantity > 0) {
+                    IconButton(onClick = { onDecrement(product) }, enabled = quantity != null) {
                         Icon(Icons.Filled.Remove, contentDescription = stringResource(R.string.inventory_product_decrement))
                     }
                     Text(
-                        quantity.toString(),
+                        quantity?.toString() ?: stringResource(R.string.inventory_product_not_tracked),
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.width(32.dp),
                         textAlign = TextAlign.Center,

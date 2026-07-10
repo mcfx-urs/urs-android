@@ -28,10 +28,16 @@ class InventoryRepository(private val api: UrsApi) {
         api.createInventoryProduct(InventoryProductPayload(categoryId = categoryId, name = name, quantity = "0"))
     }
 
-    suspend fun updateProductQuantity(product: InventoryProductDto, newQuantity: Int) {
+    // null means "not currently tracked" — sent as an empty string, the
+    // same not-set convention the backend uses for the threshold fields.
+    suspend fun updateProductQuantity(product: InventoryProductDto, newQuantity: Int?) {
         api.updateInventoryProduct(
             product.id,
-            InventoryProductPayload(categoryId = product.categoryId, name = product.name, quantity = newQuantity.toString()),
+            InventoryProductPayload(
+                categoryId = product.categoryId,
+                name = product.name,
+                quantity = newQuantity?.toString().orEmpty(),
+            ),
         )
     }
 

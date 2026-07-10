@@ -122,15 +122,26 @@ class ProductsViewModel(
     // Optimistic: the row updates immediately so the stepper feels instant;
     // if the backend call fails, load() reconciles the list back to the
     // real server state rather than leaving a stale local value around.
+    //
+    // null quantity means "not currently tracked" (paused) — a state below
+    // 0, not the same as it. Decrementing past 0 lands there; incrementing
+    // from there lands back on 0, not 1, so the stepper always moves by
+    // exactly one step in either direction (jumping straight to a specific
+    // number is what the long-press settings popup is for).
     private fun adjustQuantity(product: InventoryProductDto, delta: Int) {
-        val currentQuantity = product.quantity.toIntOrNull() ?: 0
-        val newQuantity = (currentQuantity + delta).coerceAtLeast(0)
+        val currentQuantity = product.quantity.toIntOrNull()
+        val newQuantity = when {
+            delta > 0 && currentQuantity == null -> 0
+            delta < 0 && currentQuantity == null -> return
+            delta < 0 && currentQuantity == 0 -> null
+            else -> (currentQuantity!! + delta).coerceAtLeast(0)
+        }
         if (newQuantity == currentQuantity) return
 
         val state = _uiState.value
         if (state !is ProductsUiState.Data) return
         _uiState.value = ProductsUiState.Data(
-            state.products.map { if (it.id == product.id) it.copy(quantity = newQuantity.toString()) else it },
+            state.products.map { if (it.id == product.id) it.copy(quantity = newQuantity?.toString().orEmpty()) else it },
         )
 
         viewModelScope.launch {
@@ -228,12 +239,15 @@ class ProductsViewModel(
             return
         }
 
-        val newQuantity = form.quantity.toIntOrNull() ?: 0
+        // Blank means "not tracked" here too, same as clearing it via the
+        // stepper — not defaulted to 0, so the popup can also be used to
+        // pause tracking a product.
+        val newQuantity = form.quantity.toIntOrNull()
 
         viewModelScope.launch {
             _settingsForm.update { it.copy(submitting = true, error = null) }
             try {
-                if (newQuantity.toString() != product.quantity) {
+                if (newQuantity?.toString().orEmpty() != product.quantity) {
                     repository.updateProductQuantity(product, newQuantity)
                 }
                 repository.updateProductSettings(
