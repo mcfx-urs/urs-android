@@ -1,0 +1,83 @@
+name: Release
+
+# Real releases only happen on a version tag push (v*), matching this
+# repo's existing tagging convention. workflow_dispatch is a manual,
+# side-effect-free convenience trigger for verifying the build/signing
+# steps still work — it never creates a GitHub Release.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch: {}
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      # Signing credentials never live in the repo (see keystore.properties,
+      # gitignored) — for CI they come from encrypted repository secrets,
+      # decoded into a keystore.properties matching exactly what
+      # app/build.gradle.kts already expects locally.
+      - name: Decode release keystore
+        run: echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > release.jks
+
+      - name: Write keystore.properties
+        run: |
+          cat > keystore.properties <<PROPS
+          storeFile=release.jks
+          storePassword=${{ secrets.RELEASE_STORE_PASSWORD }}
+          keyAlias=${{ secrets.RELEASE_KEY_ALIAS }}
+          keyPassword=${{ secrets.RELEASE_KEY_PASSWORD }}
+          PROPS
+
+      - name: Build signed release APK
+        run: ./gradlew assembleRelease
+
+      - name: Verify APK signature
+        run: |
+          BUILD_TOOLS=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)
+          "$BUILD_TOOLS/apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk
+
+      # Reuses CHANGELOG.md's per-version section as the GitHub Release
+      # body, since that's already maintained in every release commit.
+      - name: Extract changelog section for this version
+        if: github.event_name == 'push'
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          awk -v ver="$VERSION" '
+            $0 ~ "^## \\[" ver "\\]" { found=1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+          cat release-notes.md
+
+      - name: Create GitHub Release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            app/build/outputs/apk/release/app-release.apk \
+            --title "${{ github.ref_name }}" \
+            --notes-file release-notes.md
+
+      - name: Clean up signing material
+        if: always()
+        run: rm -f release.jks keystore.properties
