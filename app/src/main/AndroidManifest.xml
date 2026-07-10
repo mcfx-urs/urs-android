@@ -6,8 +6,13 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <!-- Reading the currently connected Wi-Fi SSID requires fine location on
          Android (SSID is treated as location-sensitive), even though this app
-         only uses it to compare against the configured home-network name. -->
+         only uses it to compare against the configured home-network name.
+         Android 12+ requires COARSE alongside FINE (the user can still only
+         grant COARSE via the system dialog — the app's own permission check
+         requires FINE specifically and degrades gracefully if only COARSE
+         was granted). -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- On newer Android versions, unredacted Wi-Fi info (real SSID, not
          "<unknown ssid>") also requires this even with location granted.
          neverForLocation: this app only ever compares the SSID string

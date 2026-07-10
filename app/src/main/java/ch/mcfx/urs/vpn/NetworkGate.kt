@@ -6,6 +6,8 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -112,11 +114,25 @@ class NetworkGate(
         val request = NetworkRequest.Builder()
             .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
             .build()
-        // FLAG_INCLUDE_LOCATION_INFO: without it, the WifiInfo delivered here
-        // always carries a redacted SSID ("<unknown ssid>") regardless of
-        // permissions held — location-sensitive fields are stripped from
-        // NetworkCapabilities by default and only included on request.
-        val callback = object : ConnectivityManager.NetworkCallback(FLAG_INCLUDE_LOCATION_INFO) {
+        // FLAG_INCLUDE_LOCATION_INFO (API 31+): without it, the WifiInfo
+        // delivered here always carries a redacted SSID ("<unknown ssid>")
+        // regardless of permissions held. Not available below API 31 — the
+        // plain no-arg constructor there means home-SSID detection simply
+        // can't work pre-31 (a real platform limitation, not a bug), so the
+        // gate always tunnels rather than risk skipping VPN on a network it
+        // can't actually verify.
+        val callback = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            wifiCallbackWithLocationInfo(scope)
+        } else {
+            wifiCallbackLegacy(scope)
+        }
+        connectivityManager.registerNetworkCallback(request, callback)
+        networkCallback = callback
+    }
+
+    @RequiresApi(Build.VERSION_CODES.S)
+    private fun wifiCallbackWithLocationInfo(scope: CoroutineScope): ConnectivityManager.NetworkCallback =
+        object : ConnectivityManager.NetworkCallback(FLAG_INCLUDE_LOCATION_INFO) {
             override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
                 ssidReader.onWifiCapabilitiesChanged(capabilities)
                 scope.launch { ensureReachable() }
@@ -127,9 +143,19 @@ class NetworkGate(
                 scope.launch { ensureReachable() }
             }
         }
-        connectivityManager.registerNetworkCallback(request, callback)
-        networkCallback = callback
-    }
+
+    private fun wifiCallbackLegacy(scope: CoroutineScope): ConnectivityManager.NetworkCallback =
+        object : ConnectivityManager.NetworkCallback() {
+            override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
+                ssidReader.onWifiCapabilitiesChanged(capabilities)
+                scope.launch { ensureReachable() }
+            }
+
+            override fun onLost(network: Network) {
+                ssidReader.onWifiLost()
+                scope.launch { ensureReachable() }
+            }
+        }
 
     fun stopObserving() {
         val callback = networkCallback ?: return

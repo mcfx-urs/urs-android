@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.net.NetworkCapabilities
 import android.net.wifi.WifiInfo
+import android.os.Build
 import androidx.core.content.ContextCompat
 
 private const val UNKNOWN_SSID = "<unknown ssid>"
@@ -33,6 +34,10 @@ class WifiSsidReader(private val context: Context) {
     fun currentSsid(): String? = if (hasPermission()) lastKnownSsid else null
 
     fun onWifiCapabilitiesChanged(capabilities: NetworkCapabilities) {
+        // transportInfo requires API 29 — below that, there's no way to read
+        // the SSID via this path at all (a platform limitation, not a bug);
+        // currentSsid() simply never resolves, so the gate always tunnels.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
         val info = capabilities.transportInfo as? WifiInfo ?: return
         val ssid = info.ssid?.trim('"')?.takeIf { it.isNotBlank() && it != UNKNOWN_SSID } ?: return
         lastKnownSsid = ssid
