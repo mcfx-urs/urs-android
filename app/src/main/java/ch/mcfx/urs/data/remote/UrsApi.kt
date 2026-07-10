@@ -47,4 +47,13 @@ interface UrsApi {
 
     @DELETE("api/v1/inventory-product/{id}")
     suspend fun deleteInventoryProduct(@Path("id") id: String)
+
+    @GET("api/v1/beer-log")
+    suspend fun getBeerLog(): List<BeerLogDto>
+
+    @POST("api/v1/beer-log")
+    suspend fun createBeerLog(@Body payload: BeerLogPayload)
+
+    @DELETE("api/v1/beer-log/{id}")
+    suspend fun deleteBeerLog(@Path("id") id: String)
 }

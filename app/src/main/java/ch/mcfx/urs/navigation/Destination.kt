@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SportsBar
 import androidx.compose.ui.graphics.vector.ImageVector
 import ch.mcfx.urs.R
 import ch.mcfx.urs.fuel.FuelRoutes
@@ -28,6 +29,7 @@ enum class Destination(
     HOME("home", R.string.nav_home, Icons.Filled.Home, isAvailable = true),
     FUEL(FuelRoutes.HUB, R.string.nav_fuel, Icons.Filled.LocalGasStation, isAvailable = true),
     INVENTORY(InventoryRoutes.CATEGORIES, R.string.nav_inventory, Icons.Filled.Inventory2, isAvailable = true),
+    BEER("beer", R.string.nav_beer, Icons.Filled.SportsBar, isAvailable = true),
     HEALTH("health", R.string.nav_health, Icons.Filled.MonitorHeart, isAvailable = false),
     GOKART("gokart", R.string.nav_gokart, Icons.Filled.Flag, isAvailable = false),
     PRICE_MONITOR("price_monitor", R.string.nav_price_monitor, Icons.Filled.QrCodeScanner, isAvailable = false),

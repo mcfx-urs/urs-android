@@ -9,6 +9,7 @@
     <string name="nav_home">Home</string>
     <string name="nav_fuel">Fuel</string>
     <string name="nav_inventory">Inventory</string>
+    <string name="nav_beer">Beer</string>
     <string name="nav_health">Health</string>
     <string name="nav_gokart">Gokart</string>
     <string name="nav_price_monitor">Price Monitor</string>
@@ -94,4 +95,14 @@
     <string name="inventory_product_increment">Increase quantity</string>
     <string name="inventory_product_decrement">Decrease quantity</string>
     <string name="inventory_product_remove">Remove %1$s</string>
+
+    <string name="beer_add_5dl">+1 · 5dl</string>
+    <string name="beer_add_33cl">+1 · 33cl</string>
+    <string name="beer_liters_this_year">Liters this year</string>
+    <string name="beer_fun_fact">That\'s about %1$s bathtubs (≈150L each)</string>
+    <string name="beer_chart_daily_title">Last 30 days</string>
+    <string name="beer_chart_monthly_title">Last 12 months</string>
+    <string name="beer_history_title">History</string>
+    <string name="beer_history_empty">No beers logged yet.</string>
+    <string name="beer_entry_remove">Remove entry</string>
 </resources>

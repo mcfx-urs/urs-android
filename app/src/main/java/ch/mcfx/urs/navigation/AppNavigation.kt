@@ -35,6 +35,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import ch.mcfx.urs.R
 import ch.mcfx.urs.UrsApplication
+import ch.mcfx.urs.beer.BeerScreen
 import ch.mcfx.urs.fuel.FuelAddScreen
 import ch.mcfx.urs.fuel.FuelHubScreen
 import ch.mcfx.urs.fuel.FuelRoutes
@@ -173,6 +174,7 @@ fun AppNavigation() {
                     val categoryName = backStackEntry.arguments?.getString("categoryName") ?: ""
                     ProductListScreen(categoryId = categoryId, categoryName = categoryName)
                 }
+                composable(Destination.BEER.route) { BeerScreen() }
                 composable(Destination.SETTINGS.route) {
                     SettingsScreen(onNavigate = { route -> navController.navigate(route) })
                 }

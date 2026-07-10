@@ -7,6 +7,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Beer counter: a new Home tile with two tally buttons ("+1 · 5dl",
+  "+1 · 33cl") that log a timestamped entry per tap. Shows a fun-fact
+  card (liters consumed this year, converted into an equivalent number
+  of bathtubs), a 30-day daily bar chart and a 12-month monthly bar
+  chart (auto-scaling axis with gridlines, always scrolled to today by
+  default), and a history list with per-entry delete. Talks to the
+  backend's new `/api/v1/beer-log` endpoints.
 - Inventory tracking: a new Home tile leads straight to a list of
   categories (e.g. "Medi's"), each holding products with a quantity and
   a ±1 stepper (e.g. "Aspirin: 2"). Add categories/products via a FAB,

@@ -93,3 +93,16 @@ data class InventoryProductPayload(
     @SerialName("inventory_product_name") val name: String,
     @SerialName("inventory_product_quantity") val quantity: String,
 )
+
+@Serializable
+data class BeerLogDto(
+    @SerialName("beer_log_id") val id: String,
+    @SerialName("beer_log_amount_ml") val amountMl: String,
+    @SerialName("beer_log_date") val date: String,
+)
+
+@Serializable
+data class BeerLogPayload(
+    @SerialName("beer_log_amount_ml") val amountMl: String,
+    @SerialName("beer_log_date") val date: String,
+)

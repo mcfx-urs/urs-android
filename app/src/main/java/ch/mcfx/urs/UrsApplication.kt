@@ -2,6 +2,7 @@ package ch.mcfx.urs
 
 import android.app.Application
 import android.content.Context
+import ch.mcfx.urs.data.BeerRepository
 import ch.mcfx.urs.data.FuelRepository
 import ch.mcfx.urs.data.InventoryRepository
 import ch.mcfx.urs.data.remote.UrsApi
@@ -61,4 +62,5 @@ class AppContainer(context: Context) {
 
     val fuelRepository = FuelRepository(retrofit.create(UrsApi::class.java))
     val inventoryRepository = InventoryRepository(retrofit.create(UrsApi::class.java))
+    val beerRepository = BeerRepository(retrofit.create(UrsApi::class.java))
 }
