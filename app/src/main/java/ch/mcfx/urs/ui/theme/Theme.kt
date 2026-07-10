@@ -9,6 +9,8 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.colorResource
+import ch.mcfx.urs.R
 
 @Composable
 fun UrsTheme(
@@ -22,8 +24,8 @@ fun UrsTheme(
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-        darkTheme -> darkColorScheme()
-        else -> lightColorScheme()
+        darkTheme -> darkColorScheme(primary = colorResource(R.color.apple_green))
+        else -> lightColorScheme(primary = colorResource(R.color.apple_green))
     }
 
     MaterialTheme(

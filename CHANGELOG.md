@@ -7,6 +7,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- App navigation shell: hamburger navigation drawer, home tile dashboard, and
+  a Settings placeholder screen (Navigation Compose). Mirrors the web app's
+  sidebar sections (Home, Fuel, Health, Gokart, Price Monitor, Users) plus a
+  new Settings area not present in the web app. Unbuilt features are shown
+  disabled with a "coming soon" marker in both the drawer and the home tiles;
+  no placeholder screens/routes exist for them yet.
+- Fallback Material accent color (apple green) for devices without Material
+  You dynamic color (Android < 12); dynamic-color devices are unaffected.
+
 - Fuel tracker (first vertical slice): recent fill-ups list and fill entry form
   (car/station dropdowns, odometer with last-value hint, price/liters with live
   total, date). Talks to the urs Go backend: staging in debug builds, production

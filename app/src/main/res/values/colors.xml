@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#F6E7CB</color>
+    <!-- Fallback accent for devices without Material You dynamic color (API < 31). -->
+    <color name="apple_green">#8DB600</color>
 </resources>
