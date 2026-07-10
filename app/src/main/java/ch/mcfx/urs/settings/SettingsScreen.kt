@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.Icon
@@ -37,6 +38,7 @@ private data class SettingsTile(
 private val SETTINGS_TILES = listOf(
     SettingsTile(null, R.string.settings_tile_users, Icons.Filled.People, isAvailable = false),
     SettingsTile(SettingsRoutes.VPN, R.string.settings_tile_vpn, Icons.Filled.VpnKey, isAvailable = true),
+    SettingsTile(SettingsRoutes.NOTIFICATIONS, R.string.settings_tile_notifications, Icons.Filled.Notifications, isAvailable = true),
 )
 
 @Composable

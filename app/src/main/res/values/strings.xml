@@ -19,7 +19,16 @@
     <string name="settings_title">Settings</string>
     <string name="settings_tile_users">Users</string>
     <string name="settings_tile_vpn">VPN</string>
+    <string name="settings_tile_notifications">Notifications</string>
     <string name="settings_users_description">Login and multi-user management will live here once that feature is built.</string>
+
+    <string name="notifications_title">Notifications</string>
+    <string name="notifications_description">Reminders and other alerts need both permissions below. Notification access shows the alert itself; exact-alarm access makes sure a scheduled reminder fires at the exact time you set, not sometime nearby.</string>
+    <string name="notifications_permission_label">Notification access</string>
+    <string name="notifications_exact_alarm_label">Exact alarm access</string>
+    <string name="notifications_granted">Granted</string>
+    <string name="notifications_grant">Grant</string>
+    <string name="notifications_send_test">Send test notification</string>
 
     <string name="vpn_title">VPN</string>
     <string name="vpn_description">The backend is only reachable over WireGuard — paste your client config below (or scan its QR code) once. On a saved home Wi-Fi network, the app skips VPN entirely; anywhere else it brings the tunnel up automatically before reaching the backend.</string>

@@ -6,6 +6,10 @@ import ch.mcfx.urs.data.BeerRepository
 import ch.mcfx.urs.data.FuelRepository
 import ch.mcfx.urs.data.InventoryRepository
 import ch.mcfx.urs.data.remote.UrsApi
+import ch.mcfx.urs.notifications.NotificationChannels
+import ch.mcfx.urs.notifications.NotificationSender
+import ch.mcfx.urs.notifications.ReminderScheduler
+import ch.mcfx.urs.notifications.ReminderStore
 import ch.mcfx.urs.vpn.NetworkGate
 import ch.mcfx.urs.vpn.VpnConfigRepository
 import ch.mcfx.urs.vpn.WifiSsidReader
@@ -29,6 +33,11 @@ class UrsApplication : Application() {
         // arriving home while the app is already open) is reacted to
         // immediately, not just at the next cold start.
         container.networkGate.startObserving(container.applicationScope)
+        // Channels must exist before any notification can be posted to them.
+        NotificationChannels.registerAll(this)
+        // App-open case for missed scheduled reminders (the other case,
+        // device boot, is handled by BootCompletedReceiver).
+        container.reminderScheduler.rearmAndCheckMissed()
     }
 }
 
@@ -63,4 +72,8 @@ class AppContainer(context: Context) {
     val fuelRepository = FuelRepository(retrofit.create(UrsApi::class.java))
     val inventoryRepository = InventoryRepository(retrofit.create(UrsApi::class.java))
     val beerRepository = BeerRepository(retrofit.create(UrsApi::class.java))
+
+    val reminderStore = ReminderStore(context)
+    val notificationSender = NotificationSender(context)
+    val reminderScheduler = ReminderScheduler(context, reminderStore, notificationSender)
 }

@@ -25,6 +25,19 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
+    <!-- Notifications infrastructure (Issue #1). POST_NOTIFICATIONS is a
+         normal runtime-dialog permission on API 33+; below that, showing a
+         notification just works without any prompt. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Exact-time daily reminders (not WorkManager's approximate periodic
+         work) need this. Not a runtime dialog — checked via
+         AlarmManager.canScheduleExactAlarms() and, if false, the user is
+         sent to the system settings screen for it. Mostly auto-granted on
+         API 34+; a no-op concept below API 31. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- So a scheduled reminder survives a reboot (exact alarms don't). -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <application
         android:name=".UrsApplication"
         android:label="@string/app_name"
@@ -35,16 +48,40 @@
 
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Notification-tap deep links (Issue #1). Custom scheme, not
+                 an https App Link — purely internal navigation, no domain
+                 verification needed. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="urs" />
             </intent-filter>
         </activity>
 
         <activity
             android:name=".settings.PortraitCaptureActivity"
             android:screenOrientation="portrait" />
+
+        <receiver
+            android:name=".notifications.ReminderAlarmReceiver"
+            android:exported="false" />
+
+        <!-- exported=true is required for BOOT_COMPLETED — the system, not
+             another app, is what delivers this broadcast. -->
+        <receiver
+            android:name=".notifications.BootCompletedReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
 
     </application>
 

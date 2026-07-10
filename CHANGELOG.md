@@ -5,6 +5,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Notifications infrastructure: general-purpose capability for any
+  feature to show immediate or scheduled notifications, not tied to a
+  single feature area. Exact daily-scheduled reminders (`AlarmManager`,
+  survives Doze), automatic catch-up for a missed reminder on next app
+  open or device boot, grouped/summary notifications when several fire
+  close together, and tap-to-deep-link (`urs://...`) into the relevant
+  screen. New Settings tile to grant notification/exact-alarm access
+  and send a test notification. (#1)
+- Debug builds now use a distinct application ID (`ch.mcfx.urs.debug`)
+  and app name ("urs (debug)"), so a debug build installs side by side
+  with a release build instead of conflicting with it.
+
 ## [0.2.0] - 2026-07-10
 
 ### Added

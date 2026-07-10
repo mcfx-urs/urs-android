@@ -33,6 +33,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.navigation.navDeepLink
 import ch.mcfx.urs.R
 import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.beer.BeerScreen
@@ -46,6 +47,7 @@ import ch.mcfx.urs.home.HomeScreen
 import ch.mcfx.urs.inventory.CategoryListScreen
 import ch.mcfx.urs.inventory.InventoryRoutes
 import ch.mcfx.urs.inventory.ProductListScreen
+import ch.mcfx.urs.settings.NotificationSettingsScreen
 import ch.mcfx.urs.settings.SettingsRoutes
 import ch.mcfx.urs.settings.SettingsScreen
 import ch.mcfx.urs.settings.VpnSettingsScreen
@@ -53,7 +55,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppNavigation() {
+fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
     val navController = rememberNavController()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val coroutineScope = rememberCoroutineScope()
@@ -68,6 +70,11 @@ fun AppNavigation() {
         val app = context.applicationContext as UrsApplication
         app.container.networkGate.ensureReachable()
     }
+
+    // Hands the controller back to MainActivity so a notification tap can
+    // deep-link while the app is already running (onNewIntent) as well as
+    // on cold start (handled once here, for the Activity's launching intent).
+    LaunchedEffect(navController) { onNavControllerReady(navController) }
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route ?: Destination.HOME.route
@@ -156,7 +163,14 @@ fun AppNavigation() {
                 }
                 composable(FuelRoutes.STATIONS) { FuelStationsScreen() }
                 composable(FuelRoutes.STATS) { FuelStatsScreen() }
-                composable(Destination.INVENTORY.route) {
+                composable(
+                    route = Destination.INVENTORY.route,
+                    // First deep-link target in the app (Issue #1) — a
+                    // grouped/summary low-stock notification opens the
+                    // category list, since a summary covers several
+                    // products at once rather than one specific item.
+                    deepLinks = listOf(navDeepLink { uriPattern = "urs://${Destination.INVENTORY.route}" }),
+                ) {
                     CategoryListScreen(
                         onOpenCategory = { category ->
                             navController.navigate(InventoryRoutes.products(category.id, category.name))
@@ -179,6 +193,7 @@ fun AppNavigation() {
                     SettingsScreen(onNavigate = { route -> navController.navigate(route) })
                 }
                 composable(SettingsRoutes.VPN) { VpnSettingsScreen() }
+                composable(SettingsRoutes.NOTIFICATIONS) { NotificationSettingsScreen() }
             }
         }
     }
@@ -201,6 +216,7 @@ private val FUEL_ROUTE_LABELS = mapOf(
 
 private val SETTINGS_ROUTE_LABELS = mapOf(
     SettingsRoutes.VPN to R.string.settings_tile_vpn,
+    SettingsRoutes.NOTIFICATIONS to R.string.settings_tile_notifications,
 )
 
 private val INVENTORY_ROUTE_LABELS = mapOf(

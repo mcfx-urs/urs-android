@@ -43,6 +43,11 @@ android {
 
     buildTypes {
         debug {
+            // Distinct applicationId so a debug build installs as a
+            // separate app next to the signed release install, instead
+            // of conflicting with it over the same package name/signature.
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
             buildConfigField("String", "BASE_URL", "\"https://urs-backend-stg.mcfx.ch/\"")
         }
         release {
