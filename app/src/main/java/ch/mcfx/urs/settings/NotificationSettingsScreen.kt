@@ -8,17 +8,14 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -36,6 +33,13 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
+import ch.mcfx.urs.ui.components.UrsCard
+import ch.mcfx.urs.ui.components.UrsOutlinedButton
+import ch.mcfx.urs.ui.components.UrsPill
+import ch.mcfx.urs.ui.components.UrsText
+import ch.mcfx.urs.ui.theme.UrsTheme
+import ch.mcfx.urs.ui.tokens.Radius
+import ch.mcfx.urs.ui.tokens.Spacing
 
 @Composable
 fun NotificationSettingsScreen(
@@ -70,57 +74,83 @@ fun NotificationSettingsScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
+    val colors = UrsTheme.colors
+
     Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = Modifier.fillMaxSize().padding(Spacing.xl),
+        verticalArrangement = Arrangement.spacedBy(Spacing.s),
     ) {
-        Text(stringResource(R.string.notifications_title), style = MaterialTheme.typography.headlineSmall)
-        Text(
+        UrsText(stringResource(R.string.notifications_title), style = UrsTheme.typography.screenTitle)
+        UrsText(
             stringResource(R.string.notifications_description),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = UrsTheme.typography.caption,
+            color = colors.onSurfaceMuted,
+            modifier = Modifier.padding(bottom = Spacing.s),
         )
 
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                PermissionRow(
-                    label = stringResource(R.string.notifications_permission_label),
-                    granted = hasNotificationPermission,
-                    onGrant = { notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) },
+        PermissionRow(
+            label = stringResource(R.string.notifications_permission_label),
+            granted = hasNotificationPermission,
+            onGrant = { notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) },
+        )
+        PermissionRow(
+            label = stringResource(R.string.notifications_exact_alarm_label),
+            granted = canScheduleExactAlarms,
+            onGrant = {
+                context.startActivity(
+                    Intent(
+                        Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                        Uri.parse("package:${context.packageName}"),
+                    ),
                 )
-                PermissionRow(
-                    label = stringResource(R.string.notifications_exact_alarm_label),
-                    granted = canScheduleExactAlarms,
-                    onGrant = {
-                        context.startActivity(
-                            Intent(
-                                Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
-                                Uri.parse("package:${context.packageName}"),
-                            ),
-                        )
-                    },
-                )
-            }
-        }
-
-        Button(onClick = viewModel::sendTestNotification, enabled = hasNotificationPermission) {
-            Text(stringResource(R.string.notifications_send_test))
-        }
+            },
+        )
+        ActionRow(
+            label = stringResource(R.string.notifications_send_test),
+            enabled = hasNotificationPermission,
+            onClick = viewModel::sendTestNotification,
+        )
     }
 }
 
 @Composable
 private fun PermissionRow(label: String, granted: Boolean, onGrant: () -> Unit) {
-    Row(
+    UrsCard(
+        radius = Radius.row,
+        contentPadding = PaddingValues(horizontal = Spacing.l, vertical = 14.dp),
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, style = MaterialTheme.typography.bodyLarge)
-        if (granted) {
-            Text(stringResource(R.string.notifications_granted), color = MaterialTheme.colorScheme.primary)
-        } else {
-            OutlinedButton(onClick = onGrant) { Text(stringResource(R.string.notifications_grant)) }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            UrsText(label, style = UrsTheme.typography.body)
+            if (granted) {
+                UrsPill(text = "✓ " + stringResource(R.string.notifications_granted))
+            } else {
+                UrsOutlinedButton(text = stringResource(R.string.notifications_grant), onClick = onGrant)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ActionRow(label: String, enabled: Boolean, onClick: () -> Unit) {
+    val colors = UrsTheme.colors
+    val alpha = if (enabled) 1f else colors.disabledAlpha
+    UrsCard(
+        radius = Radius.row,
+        contentPadding = PaddingValues(horizontal = Spacing.l, vertical = 14.dp),
+        modifier = Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onClick),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            UrsText(label, style = UrsTheme.typography.body, color = colors.onSurface.copy(alpha = alpha))
+            UrsText("→", style = UrsTheme.typography.statAccent, color = colors.accent.copy(alpha = alpha))
         }
     }
 }

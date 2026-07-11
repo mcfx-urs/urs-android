@@ -7,6 +7,8 @@
     <string name="coming_soon">soon</string>
 
     <string name="nav_home">Home</string>
+    <string name="home_welcome_back">Welcome back 👋</string>
+    <string name="home_bear_footer">urs looks out for you</string>
     <string name="nav_fuel">Fuel</string>
     <string name="nav_inventory">Inventory</string>
     <string name="nav_beer">Beer</string>
