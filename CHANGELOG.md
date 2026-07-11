@@ -52,6 +52,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   selector component (car/filling station).
 - Fuel Statistics and Beer: moved off Material 3. New filter chip and
   divider components.
+- Material 3 fully removed from the app and from the Gradle dependencies.
 - Replaced the placeholder bear emoji and hand-drawn vector app icon
   with the actual mcfx brand mascot artwork: the new illustration is
   now the app launcher icon and the nav-drawer logo, while the
