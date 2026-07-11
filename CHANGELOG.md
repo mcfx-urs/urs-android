@@ -43,6 +43,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   card/button components) replaces Material 3.
 - Navigation drawer and top bar: replaced with custom components,
   off Material 3.
+- Settings hub: moved to list-style rows, off Material 3.
 - Replaced the placeholder bear emoji and hand-drawn vector app icon
   with the actual mcfx brand mascot artwork: the new illustration is
   now the app launcher icon and the nav-drawer logo, while the
