@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -18,14 +17,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -37,6 +28,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
 import ch.mcfx.urs.data.remote.BeerLogDto
+import ch.mcfx.urs.ui.components.UrsButton
+import ch.mcfx.urs.ui.components.UrsCard
+import ch.mcfx.urs.ui.components.UrsDivider
+import ch.mcfx.urs.ui.components.UrsIconButton
+import ch.mcfx.urs.ui.components.UrsProgressIndicator
+import ch.mcfx.urs.ui.components.UrsText
+import ch.mcfx.urs.ui.theme.UrsTheme
+import ch.mcfx.urs.ui.tokens.Radius
+import ch.mcfx.urs.ui.tokens.Spacing
 import java.util.Locale
 
 private const val FIVE_DL_ML = 500
@@ -48,7 +48,7 @@ fun BeerScreen(viewModel: BeerViewModel = viewModel(factory = BeerViewModel.Fact
 
     when (val state = uiState) {
         BeerUiState.Loading -> Box(Modifier.fillMaxSize()) {
-            CircularProgressIndicator(Modifier.align(Alignment.Center))
+            UrsProgressIndicator(Modifier.align(Alignment.Center))
         }
 
         is BeerUiState.Error -> Box(Modifier.fillMaxSize()) {
@@ -56,9 +56,9 @@ fun BeerScreen(viewModel: BeerViewModel = viewModel(factory = BeerViewModel.Fact
                 modifier = Modifier.align(Alignment.Center),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text(stringResource(R.string.error_load), style = MaterialTheme.typography.bodyLarge)
-                Spacer(Modifier.height(16.dp))
-                Button(onClick = viewModel::load) { Text(stringResource(R.string.retry)) }
+                UrsText(stringResource(R.string.error_load), style = UrsTheme.typography.body)
+                Spacer(Modifier.height(Spacing.l))
+                UrsButton(text = stringResource(R.string.retry), onClick = viewModel::load)
             }
         }
 
@@ -75,21 +75,21 @@ private fun BeerContent(entries: List<BeerLogDto>, viewModel: BeerViewModel) {
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(Spacing.l),
+        verticalArrangement = Arrangement.spacedBy(Spacing.l),
     ) {
         item { LogButtonsRow(onLog = viewModel::logBeer) }
         item { FunFactCard(litersThisYear = litersThisYear, bathtubs = bathtubs) }
-        item { Text(stringResource(R.string.beer_chart_daily_title), style = MaterialTheme.typography.titleMedium) }
+        item { UrsText(stringResource(R.string.beer_chart_daily_title), style = UrsTheme.typography.cardTitle) }
         item { BarChart(daily) }
-        item { Text(stringResource(R.string.beer_chart_monthly_title), style = MaterialTheme.typography.titleMedium) }
+        item { UrsText(stringResource(R.string.beer_chart_monthly_title), style = UrsTheme.typography.cardTitle) }
         item { BarChart(monthly) }
-        item { Text(stringResource(R.string.beer_history_title), style = MaterialTheme.typography.titleMedium) }
+        item { UrsText(stringResource(R.string.beer_history_title), style = UrsTheme.typography.cardTitle) }
         if (entries.isEmpty()) {
             item {
-                Text(
+                UrsText(
                     stringResource(R.string.beer_history_empty),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = UrsTheme.colors.onSurfaceMuted,
                 )
             }
         } else {
@@ -102,33 +102,36 @@ private fun BeerContent(entries: List<BeerLogDto>, viewModel: BeerViewModel) {
 
 @Composable
 private fun LogButtonsRow(onLog: (Int) -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Button(onClick = { onLog(FIVE_DL_ML) }, modifier = Modifier.weight(1f)) {
-            Text(stringResource(R.string.beer_add_5dl))
-        }
-        Button(onClick = { onLog(THIRTY_THREE_CL_ML) }, modifier = Modifier.weight(1f)) {
-            Text(stringResource(R.string.beer_add_33cl))
-        }
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.m)) {
+        UrsButton(
+            text = stringResource(R.string.beer_add_5dl),
+            onClick = { onLog(FIVE_DL_ML) },
+            modifier = Modifier.weight(1f),
+        )
+        UrsButton(
+            text = stringResource(R.string.beer_add_33cl),
+            onClick = { onLog(THIRTY_THREE_CL_ML) },
+            modifier = Modifier.weight(1f),
+        )
     }
 }
 
 @Composable
 private fun FunFactCard(litersThisYear: Double, bathtubs: Double) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(stringResource(R.string.beer_liters_this_year), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(
-                    String.format(Locale.US, "%.1f L", litersThisYear),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-            }
-            Text(
-                stringResource(R.string.beer_fun_fact, String.format(Locale.US, "%.1f", bathtubs)),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+    UrsCard(modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            UrsText(stringResource(R.string.beer_liters_this_year), color = UrsTheme.colors.onSurfaceMuted)
+            UrsText(
+                String.format(Locale.US, "%.1f L", litersThisYear),
+                style = UrsTheme.typography.cardTitle,
             )
         }
+        Spacer(Modifier.height(Spacing.s))
+        UrsText(
+            stringResource(R.string.beer_fun_fact, String.format(Locale.US, "%.1f", bathtubs)),
+            style = UrsTheme.typography.body,
+            color = UrsTheme.colors.onSurfaceMuted,
+        )
     }
 }
 
@@ -148,20 +151,20 @@ private fun BarChart(buckets: List<BeerStats.Bucket>) {
             modifier = Modifier.height(CHART_BAR_MAX_HEIGHT).width(CHART_AXIS_WIDTH),
             horizontalAlignment = Alignment.End,
         ) {
-            Text(maxCount.toString(), style = MaterialTheme.typography.labelSmall)
+            UrsText(maxCount.toString(), style = UrsTheme.typography.caption)
             Spacer(Modifier.weight(1f))
-            Text((maxCount / 2).toString(), style = MaterialTheme.typography.labelSmall)
+            UrsText((maxCount / 2).toString(), style = UrsTheme.typography.caption)
             Spacer(Modifier.weight(1f))
-            Text("0", style = MaterialTheme.typography.labelSmall)
+            UrsText("0", style = UrsTheme.typography.caption)
         }
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(Spacing.s))
         Box {
             Column(Modifier.height(CHART_BAR_MAX_HEIGHT).fillMaxWidth()) {
-                HorizontalDivider()
+                UrsDivider()
                 Spacer(Modifier.weight(1f))
-                HorizontalDivider()
+                UrsDivider()
                 Spacer(Modifier.weight(1f))
-                HorizontalDivider()
+                UrsDivider()
             }
             // reverseLayout + newest-first order: the initial scroll position
             // then shows the most recent bars with today flush to the right
@@ -169,9 +172,9 @@ private fun BarChart(buckets: List<BeerStats.Bucket>) {
             // what's actually useful at a glance, older history is the part
             // worth scrolling (leftward) for, same convention as a chat view
             // resting on its latest message.
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(4.dp), reverseLayout = true) {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(Spacing.xs), reverseLayout = true) {
                 items(buckets.asReversed()) { bucket ->
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(24.dp)) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(Spacing.xl)) {
                         Box(
                             modifier = Modifier.height(CHART_BAR_MAX_HEIGHT).fillMaxWidth(),
                             contentAlignment = Alignment.BottomCenter,
@@ -180,10 +183,10 @@ private fun BarChart(buckets: List<BeerStats.Bucket>) {
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(CHART_BAR_MAX_HEIGHT * (bucket.count.toFloat() / maxCount))
-                                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(2.dp)),
+                                    .background(UrsTheme.colors.accent, RoundedCornerShape(2.dp)),
                             )
                         }
-                        Text(bucket.label, style = MaterialTheme.typography.labelSmall)
+                        UrsText(bucket.label, style = UrsTheme.typography.caption)
                     }
                 }
             }
@@ -193,23 +196,25 @@ private fun BarChart(buckets: List<BeerStats.Bucket>) {
 
 @Composable
 private fun EntryRow(entry: BeerLogDto, onDelete: (String) -> Unit) {
-    Card(Modifier.fillMaxWidth()) {
+    UrsCard(radius = Radius.row, modifier = Modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                Text(formatAmount(entry.amountMl), style = MaterialTheme.typography.titleMedium)
-                Text(
+                UrsText(formatAmount(entry.amountMl), style = UrsTheme.typography.cardTitle)
+                UrsText(
                     entry.date,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = UrsTheme.typography.caption,
+                    color = UrsTheme.colors.onSurfaceMuted,
                 )
             }
-            IconButton(onClick = { onDelete(entry.id) }) {
-                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.beer_entry_remove))
-            }
+            UrsIconButton(
+                onClick = { onDelete(entry.id) },
+                contentDescription = stringResource(R.string.beer_entry_remove),
+                imageVector = Icons.Filled.Close,
+            )
         }
     }
 }
