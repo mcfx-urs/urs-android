@@ -16,14 +16,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -31,16 +23,29 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
+import ch.mcfx.urs.ui.components.UrsButton
+import ch.mcfx.urs.ui.components.UrsCard
+import ch.mcfx.urs.ui.components.UrsIconButton
+import ch.mcfx.urs.ui.components.UrsOutlinedButton
+import ch.mcfx.urs.ui.components.UrsText
+import ch.mcfx.urs.ui.components.UrsTextField
+import ch.mcfx.urs.ui.theme.UrsTheme
+import ch.mcfx.urs.ui.tokens.Radius
+import ch.mcfx.urs.ui.tokens.Spacing
 import ch.mcfx.urs.vpn.VpnConnectionState
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
+
+// No "error" role in the design system's palette yet (see Color.kt) — same
+// local-constant pattern already used in FuelStationsScreen/ProductListScreen.
+private val FormErrorColor = Color(0xFFD64545)
 
 @Composable
 fun VpnSettingsScreen(viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory)) {
@@ -81,28 +86,30 @@ fun VpnSettingsScreen(viewModel: SettingsViewModel = viewModel(factory = Setting
     val wifiPermissions = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.NEARBY_WIFI_DEVICES)
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxSize().padding(Spacing.xl),
+        verticalArrangement = Arrangement.spacedBy(Spacing.s),
     ) {
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(R.string.vpn_title), style = MaterialTheme.typography.headlineSmall)
-                Text(
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.s)) {
+                UrsText(stringResource(R.string.vpn_title), style = UrsTheme.typography.screenTitle)
+                UrsText(
                     stringResource(R.string.vpn_description),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = UrsTheme.typography.body,
+                    color = UrsTheme.colors.onSurfaceMuted,
                 )
 
                 if (isEditingConfig) {
-                    OutlinedTextField(
+                    UrsTextField(
                         value = configText,
                         onValueChange = viewModel::setConfigText,
-                        label = { Text(stringResource(R.string.vpn_config_label)) },
+                        label = stringResource(R.string.vpn_config_label),
+                        singleLine = false,
                         minLines = 4,
                         modifier = Modifier.fillMaxWidth(),
                     )
 
-                    OutlinedButton(
+                    UrsOutlinedButton(
+                        text = stringResource(R.string.vpn_scan_qr),
                         onClick = {
                             scanLauncher.launch(
                                 ScanOptions()
@@ -113,51 +120,49 @@ fun VpnSettingsScreen(viewModel: SettingsViewModel = viewModel(factory = Setting
                             )
                         },
                         modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(stringResource(R.string.vpn_scan_qr))
-                    }
+                    )
 
-                    Button(
+                    UrsButton(
+                        text = stringResource(if (justSaved) R.string.vpn_saved else R.string.vpn_save),
                         onClick = {
                             viewModel.saveConfig()
                             isEditingConfig = false
                         },
                         modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(stringResource(if (justSaved) R.string.vpn_saved else R.string.vpn_save))
-                    }
+                    )
                 } else {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(
+                        UrsText(
                             stringResource(
                                 if (configText.isNotBlank()) R.string.vpn_config_configured else R.string.vpn_config_not_configured,
                             ),
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = UrsTheme.typography.body,
                         )
-                        OutlinedButton(onClick = { isEditingConfig = true }) {
-                            Text(stringResource(R.string.vpn_edit_config))
-                        }
+                        UrsOutlinedButton(
+                            text = stringResource(R.string.vpn_edit_config),
+                            onClick = { isEditingConfig = true },
+                        )
                     }
                 }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
+                    UrsText(
                         stringResource(tunnelStatusLabel(tunnelState)),
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = UrsTheme.typography.cardTitle,
                     )
                     if (tunnelState == VpnConnectionState.CONNECTED) {
-                        OutlinedButton(onClick = viewModel::disconnect) {
-                            Text(stringResource(R.string.vpn_disconnect))
-                        }
+                        UrsOutlinedButton(text = stringResource(R.string.vpn_disconnect), onClick = viewModel::disconnect)
                     } else {
-                        OutlinedButton(
+                        UrsOutlinedButton(
+                            text = stringResource(R.string.vpn_connect),
                             onClick = {
                                 val permissionIntent = viewModel.wireGuardManager.permissionIntentIfNeeded()
                                 if (permissionIntent != null) {
@@ -167,41 +172,41 @@ fun VpnSettingsScreen(viewModel: SettingsViewModel = viewModel(factory = Setting
                                 }
                             },
                             enabled = tunnelState != VpnConnectionState.CONNECTING,
-                        ) {
-                            Text(stringResource(R.string.vpn_connect))
-                        }
+                        )
                     }
                 }
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(Spacing.l))
 
-                Text(stringResource(R.string.vpn_home_ssids_title), style = MaterialTheme.typography.titleMedium)
+                UrsText(stringResource(R.string.vpn_home_ssids_title), style = UrsTheme.typography.cardTitle)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    OutlinedTextField(
+                    UrsTextField(
                         value = newSsidDraft,
                         onValueChange = viewModel::setNewSsidDraft,
-                        label = { Text(stringResource(R.string.vpn_home_ssid_label)) },
+                        label = stringResource(R.string.vpn_home_ssid_label),
                         singleLine = true,
                         modifier = Modifier.weight(1f),
                     )
-                    Button(
+                    UrsButton(
+                        text = stringResource(R.string.vpn_home_ssid_add),
                         onClick = {
                             if (!hasWifiDetectionPermissions) {
                                 wifiPermissionsLauncher.launch(wifiPermissions)
                             }
                             viewModel.addSsid()
                         },
-                    ) { Text(stringResource(R.string.vpn_home_ssid_add)) }
+                    )
                 }
 
                 if (homeSsids.isEmpty()) {
-                    Text(
+                    UrsText(
                         stringResource(R.string.vpn_home_ssids_empty),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = UrsTheme.typography.body,
+                        color = UrsTheme.colors.onSurfaceMuted,
                     )
                 } else if (!hasWifiDetectionPermissions) {
                     Row(
@@ -209,33 +214,34 @@ fun VpnSettingsScreen(viewModel: SettingsViewModel = viewModel(factory = Setting
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(
+                        UrsText(
                             stringResource(R.string.vpn_location_permission_needed),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.error,
+                            style = UrsTheme.typography.body,
+                            color = FormErrorColor,
                             modifier = Modifier.weight(1f),
                         )
-                        OutlinedButton(
+                        UrsOutlinedButton(
+                            text = stringResource(R.string.vpn_grant),
                             onClick = { wifiPermissionsLauncher.launch(wifiPermissions) },
-                        ) {
-                            Text(stringResource(R.string.vpn_grant))
-                        }
+                        )
                     }
                 }
             }
         }
 
         items(homeSsids.toList(), key = { it }) { ssid ->
-            Card(Modifier.fillMaxWidth()) {
+            UrsCard(radius = Radius.row, modifier = Modifier.fillMaxWidth()) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(ssid, style = MaterialTheme.typography.bodyLarge)
-                    IconButton(onClick = { viewModel.removeSsid(ssid) }) {
-                        Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.vpn_ssid_remove, ssid))
-                    }
+                    UrsText(ssid, style = UrsTheme.typography.body)
+                    UrsIconButton(
+                        onClick = { viewModel.removeSsid(ssid) },
+                        contentDescription = stringResource(R.string.vpn_ssid_remove, ssid),
+                        imageVector = Icons.Filled.Close,
+                    )
                 }
             }
         }
