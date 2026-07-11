@@ -11,64 +11,72 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
 import ch.mcfx.urs.data.remote.FillingStationDto
+import ch.mcfx.urs.ui.components.UrsButton
+import ch.mcfx.urs.ui.components.UrsBottomSheet
+import ch.mcfx.urs.ui.components.UrsCard
+import ch.mcfx.urs.ui.components.UrsFab
+import ch.mcfx.urs.ui.components.UrsProgressIndicator
+import ch.mcfx.urs.ui.components.UrsText
+import ch.mcfx.urs.ui.components.UrsTextField
+import ch.mcfx.urs.ui.theme.UrsTheme
+import ch.mcfx.urs.ui.tokens.Radius
+import ch.mcfx.urs.ui.tokens.Spacing
 
-@OptIn(ExperimentalMaterial3Api::class)
+// Same reasoning as FuelScreen's FabIconStyle — the type scale has no "big
+// FAB glyph" size of its own.
+private val FabIconStyle = TextStyle(fontSize = 28.sp)
+
+// No "error" role in the design system's palette yet (see Color.kt) — this
+// mirrors ProductListScreen's own local warning-color constants: already
+// decided, doesn't need to wait on the broader token set.
+private val FormErrorColor = Color(0xFFD64545)
+
 @Composable
 fun FuelStationsScreen(viewModel: StationsViewModel = viewModel(factory = StationsViewModel.Factory)) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val formState by viewModel.formState.collectAsStateWithLifecycle()
     val showForm by viewModel.showForm.collectAsStateWithLifecycle()
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        floatingActionButton = {
-            if (uiState is StationsUiState.Data) {
-                FloatingActionButton(onClick = viewModel::openForm) {
-                    Text("+", style = MaterialTheme.typography.headlineMedium)
-                }
+    Box(modifier = Modifier.fillMaxSize()) {
+        when (val state = uiState) {
+            StationsUiState.Loading -> UrsProgressIndicator(Modifier.align(Alignment.Center))
+
+            is StationsUiState.Error -> Column(
+                modifier = Modifier.align(Alignment.Center),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                UrsText(stringResource(R.string.error_load), style = UrsTheme.typography.body)
+                Spacer(Modifier.height(Spacing.l))
+                UrsButton(text = stringResource(R.string.retry), onClick = viewModel::load)
             }
-        },
-    ) { innerPadding ->
-        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            when (val state = uiState) {
-                StationsUiState.Loading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
 
-                is StationsUiState.Error -> Column(
-                    modifier = Modifier.align(Alignment.Center),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text(stringResource(R.string.error_load), style = MaterialTheme.typography.bodyLarge)
-                    Spacer(Modifier.height(16.dp))
-                    Button(onClick = viewModel::load) { Text(stringResource(R.string.retry)) }
-                }
+            is StationsUiState.Data -> StationList(state.stations)
+        }
 
-                is StationsUiState.Data -> StationList(state.stations)
+        if (uiState is StationsUiState.Data) {
+            UrsFab(
+                onClick = viewModel::openForm,
+                modifier = Modifier.align(Alignment.BottomEnd).padding(Spacing.l),
+            ) {
+                UrsText(text = "+", style = FabIconStyle, color = UrsTheme.colors.onAccent)
             }
         }
     }
 
     if (showForm) {
-        ModalBottomSheet(onDismissRequest = viewModel::closeForm) {
+        UrsBottomSheet(onDismissRequest = viewModel::closeForm) {
             StationForm(form = formState, viewModel = viewModel)
         }
     }
@@ -78,10 +86,10 @@ fun FuelStationsScreen(viewModel: StationsViewModel = viewModel(factory = Statio
 private fun StationList(stations: List<FillingStationDto>) {
     if (stations.isEmpty()) {
         Box(Modifier.fillMaxSize()) {
-            Text(
+            UrsText(
                 stringResource(R.string.stations_empty),
                 modifier = Modifier.align(Alignment.Center),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = UrsTheme.colors.onSurfaceMuted,
             )
         }
         return
@@ -89,20 +97,18 @@ private fun StationList(stations: List<FillingStationDto>) {
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(Spacing.l),
+        verticalArrangement = Arrangement.spacedBy(Spacing.s),
     ) {
         items(stations, key = { it.id }) { station ->
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp)) {
-                    Text(station.name, style = MaterialTheme.typography.titleMedium)
-                    if (station.address.isNotBlank()) {
-                        Text(
-                            station.address,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+            UrsCard(radius = Radius.row, modifier = Modifier.fillMaxWidth()) {
+                UrsText(station.name, style = UrsTheme.typography.cardTitle)
+                if (station.address.isNotBlank()) {
+                    UrsText(
+                        station.address,
+                        style = UrsTheme.typography.body,
+                        color = UrsTheme.colors.onSurfaceMuted,
+                    )
                 }
             }
         }
@@ -112,41 +118,40 @@ private fun StationList(stations: List<FillingStationDto>) {
 @Composable
 private fun StationForm(form: StationFormState, viewModel: StationsViewModel) {
     Column(
-        modifier = Modifier.padding(horizontal = 24.dp).padding(bottom = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.padding(horizontal = Spacing.xl).padding(bottom = Spacing.xxl),
+        verticalArrangement = Arrangement.spacedBy(Spacing.m),
     ) {
-        Text(stringResource(R.string.station_add), style = MaterialTheme.typography.headlineSmall)
+        UrsText(stringResource(R.string.station_add), style = UrsTheme.typography.screenTitle)
 
-        OutlinedTextField(
+        UrsTextField(
             value = form.name,
             onValueChange = viewModel::setName,
-            label = { Text(stringResource(R.string.station_name)) },
+            label = stringResource(R.string.station_name),
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
 
-        OutlinedTextField(
+        UrsTextField(
             value = form.address,
             onValueChange = viewModel::setAddress,
-            label = { Text(stringResource(R.string.station_address)) },
+            label = stringResource(R.string.station_address),
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
 
         if (form.submitFailed) {
-            Text(
+            UrsText(
                 stringResource(R.string.error_save),
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodyMedium,
+                color = FormErrorColor,
+                style = UrsTheme.typography.body,
             )
         }
 
-        Button(
+        UrsButton(
+            text = stringResource(if (form.submitting) R.string.saving else R.string.save),
             onClick = viewModel::submit,
             enabled = form.isValid && !form.submitting,
             modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(stringResource(if (form.submitting) R.string.saving else R.string.save))
-        }
+        )
     }
 }

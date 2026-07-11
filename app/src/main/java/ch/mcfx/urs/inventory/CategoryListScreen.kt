@@ -15,30 +15,39 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
 import ch.mcfx.urs.data.remote.InventoryCategoryDto
+import ch.mcfx.urs.ui.components.UrsBottomSheet
+import ch.mcfx.urs.ui.components.UrsButton
+import ch.mcfx.urs.ui.components.UrsCard
+import ch.mcfx.urs.ui.components.UrsFab
+import ch.mcfx.urs.ui.components.UrsIconButton
+import ch.mcfx.urs.ui.components.UrsProgressIndicator
+import ch.mcfx.urs.ui.components.UrsText
+import ch.mcfx.urs.ui.components.UrsTextField
+import ch.mcfx.urs.ui.theme.UrsTheme
+import ch.mcfx.urs.ui.tokens.Radius
+import ch.mcfx.urs.ui.tokens.Spacing
 
-@OptIn(ExperimentalMaterial3Api::class)
+// Same reasoning as FuelScreen's FabIconStyle — the type scale has no "big
+// FAB glyph" size of its own.
+private val FabIconStyle = TextStyle(fontSize = 28.sp)
+
+// No "error" role in the design system's palette yet (see Color.kt) — this
+// mirrors ProductListScreen's own local warning-color constants: already
+// decided, doesn't need to wait on the broader token set.
+private val FormErrorColor = Color(0xFFD64545)
+
 @Composable
 fun CategoryListScreen(
     onOpenCategory: (InventoryCategoryDto) -> Unit,
@@ -48,40 +57,38 @@ fun CategoryListScreen(
     val formState by viewModel.formState.collectAsStateWithLifecycle()
     val showForm by viewModel.showForm.collectAsStateWithLifecycle()
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        floatingActionButton = {
-            if (uiState is CategoriesUiState.Data) {
-                FloatingActionButton(onClick = viewModel::openForm) {
-                    Text("+", style = MaterialTheme.typography.headlineMedium)
-                }
+    Box(modifier = Modifier.fillMaxSize()) {
+        when (val state = uiState) {
+            CategoriesUiState.Loading -> UrsProgressIndicator(Modifier.align(Alignment.Center))
+
+            is CategoriesUiState.Error -> Column(
+                modifier = Modifier.align(Alignment.Center),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                UrsText(stringResource(R.string.error_load), style = UrsTheme.typography.body)
+                Spacer(Modifier.height(Spacing.l))
+                UrsButton(text = stringResource(R.string.retry), onClick = viewModel::load)
             }
-        },
-    ) { innerPadding ->
-        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            when (val state = uiState) {
-                CategoriesUiState.Loading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
 
-                is CategoriesUiState.Error -> Column(
-                    modifier = Modifier.align(Alignment.Center),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text(stringResource(R.string.error_load), style = MaterialTheme.typography.bodyLarge)
-                    Spacer(Modifier.height(16.dp))
-                    Button(onClick = viewModel::load) { Text(stringResource(R.string.retry)) }
-                }
+            is CategoriesUiState.Data -> CategoryList(
+                categories = state.categories,
+                onOpenCategory = onOpenCategory,
+                onDeleteCategory = viewModel::deleteCategory,
+            )
+        }
 
-                is CategoriesUiState.Data -> CategoryList(
-                    categories = state.categories,
-                    onOpenCategory = onOpenCategory,
-                    onDeleteCategory = viewModel::deleteCategory,
-                )
+        if (uiState is CategoriesUiState.Data) {
+            UrsFab(
+                onClick = viewModel::openForm,
+                modifier = Modifier.align(Alignment.BottomEnd).padding(Spacing.l),
+            ) {
+                UrsText(text = "+", style = FabIconStyle, color = UrsTheme.colors.onAccent)
             }
         }
     }
 
     if (showForm) {
-        ModalBottomSheet(onDismissRequest = viewModel::closeForm) {
+        UrsBottomSheet(onDismissRequest = viewModel::closeForm) {
             CategoryForm(form = formState, viewModel = viewModel)
         }
     }
@@ -95,10 +102,10 @@ private fun CategoryList(
 ) {
     if (categories.isEmpty()) {
         Box(Modifier.fillMaxSize()) {
-            Text(
+            UrsText(
                 stringResource(R.string.inventory_categories_empty),
                 modifier = Modifier.align(Alignment.Center),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = UrsTheme.colors.onSurfaceMuted,
             )
         }
         return
@@ -106,30 +113,32 @@ private fun CategoryList(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(Spacing.l),
+        verticalArrangement = Arrangement.spacedBy(Spacing.s),
     ) {
         items(categories, key = { it.id }) { category ->
-            Card(modifier = Modifier.fillMaxWidth()) {
+            UrsCard(
+                radius = Radius.row,
+                contentPadding = PaddingValues(horizontal = Spacing.l, vertical = Spacing.s),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onOpenCategory(category) },
+            ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onOpenCategory(category) }
-                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
+                    UrsText(
                         category.name,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = UrsTheme.typography.cardTitle,
                         modifier = Modifier.weight(1f),
                     )
-                    IconButton(onClick = { onDeleteCategory(category.id) }) {
-                        Icon(
-                            Icons.Filled.Close,
-                            contentDescription = stringResource(R.string.inventory_category_remove, category.name),
-                        )
-                    }
+                    UrsIconButton(
+                        onClick = { onDeleteCategory(category.id) },
+                        contentDescription = stringResource(R.string.inventory_category_remove, category.name),
+                        imageVector = Icons.Filled.Close,
+                    )
                 }
             }
         }
@@ -139,33 +148,32 @@ private fun CategoryList(
 @Composable
 private fun CategoryForm(form: CategoryFormState, viewModel: CategoriesViewModel) {
     Column(
-        modifier = Modifier.padding(horizontal = 24.dp).padding(bottom = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.padding(horizontal = Spacing.xl).padding(bottom = Spacing.xxl),
+        verticalArrangement = Arrangement.spacedBy(Spacing.m),
     ) {
-        Text(stringResource(R.string.inventory_category_add), style = MaterialTheme.typography.headlineSmall)
+        UrsText(stringResource(R.string.inventory_category_add), style = UrsTheme.typography.screenTitle)
 
-        OutlinedTextField(
+        UrsTextField(
             value = form.name,
             onValueChange = viewModel::setName,
-            label = { Text(stringResource(R.string.inventory_category_name)) },
+            label = stringResource(R.string.inventory_category_name),
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
 
         if (form.submitFailed) {
-            Text(
+            UrsText(
                 stringResource(R.string.error_save),
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodyMedium,
+                color = FormErrorColor,
+                style = UrsTheme.typography.body,
             )
         }
 
-        Button(
+        UrsButton(
+            text = stringResource(if (form.submitting) R.string.saving else R.string.save),
             onClick = viewModel::submit,
             enabled = form.isValid && !form.submitting,
             modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(stringResource(if (form.submitting) R.string.saving else R.string.save))
-        }
+        )
     }
 }

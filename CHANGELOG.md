@@ -45,6 +45,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   off Material 3.
 - Settings hub: moved to list-style rows, off Material 3.
 - Fuel hub: moved to the card-tile pattern, off Material 3.
+- Fill-ups, Gas Stations, and Inventory: moved to card-based lists, off
+  Material 3. New bottom sheet, text field, floating action button,
+  checkbox, and loading spinner components.
 - Replaced the placeholder bear emoji and hand-drawn vector app icon
   with the actual mcfx brand mascot artwork: the new illustration is
   now the app launcher icon and the nav-drawer logo, while the

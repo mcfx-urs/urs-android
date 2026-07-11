@@ -15,45 +15,50 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
 import ch.mcfx.urs.data.remote.InventoryProductDto
+import ch.mcfx.urs.ui.components.UrsBottomSheet
+import ch.mcfx.urs.ui.components.UrsButton
+import ch.mcfx.urs.ui.components.UrsCard
+import ch.mcfx.urs.ui.components.UrsCheckbox
+import ch.mcfx.urs.ui.components.UrsFab
+import ch.mcfx.urs.ui.components.UrsIconButton
+import ch.mcfx.urs.ui.components.UrsProgressIndicator
+import ch.mcfx.urs.ui.components.UrsText
+import ch.mcfx.urs.ui.components.UrsTextField
+import ch.mcfx.urs.ui.theme.UrsTheme
+import ch.mcfx.urs.ui.tokens.Radius
+import ch.mcfx.urs.ui.tokens.Spacing
 
-// Warning-color tones agreed in  (the broader app-theme redesign is
-// still pending, but these two specific colors are already decided and
-// don't need to wait for it).
+// Fixed warning-color tones, independent of the light/dark theme palette.
 private val FirstWarningColor = Color(0xFFE0813F)
 private val SecondWarningColor = Color(0xFFD64545)
 
-@OptIn(ExperimentalMaterial3Api::class)
+// No "error" role in the design system's palette yet (see Color.kt) — kept
+// distinct from the two warning colors above, which mean something else
+// (stock level, not form validation).
+private val FormErrorColor = Color(0xFFD64545)
+
+// Same reasoning as FuelScreen's FabIconStyle — the type scale has no "big
+// FAB glyph" size of its own.
+private val FabIconStyle = TextStyle(fontSize = 28.sp)
+
 @Composable
 fun ProductListScreen(
     categoryId: String,
@@ -66,59 +71,57 @@ fun ProductListScreen(
     val settingsForm by viewModel.settingsForm.collectAsStateWithLifecycle()
     val showSettings by viewModel.showSettings.collectAsStateWithLifecycle()
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        floatingActionButton = {
-            if (uiState is ProductsUiState.Data) {
-                FloatingActionButton(onClick = viewModel::openForm) {
-                    Text("+", style = MaterialTheme.typography.headlineMedium)
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize()) {
+            UrsText(
+                categoryName,
+                style = UrsTheme.typography.screenTitle,
+                modifier = Modifier.padding(horizontal = Spacing.l, vertical = Spacing.m),
+            )
+            when (val state = uiState) {
+                ProductsUiState.Loading -> Box(Modifier.fillMaxSize()) {
+                    UrsProgressIndicator(Modifier.align(Alignment.Center))
                 }
-            }
-        },
-    ) { innerPadding ->
-        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            Column(Modifier.fillMaxSize()) {
-                Text(
-                    categoryName,
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+
+                is ProductsUiState.Error -> Box(Modifier.fillMaxSize()) {
+                    Column(
+                        modifier = Modifier.align(Alignment.Center),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        UrsText(stringResource(R.string.error_load), style = UrsTheme.typography.body)
+                        Spacer(Modifier.height(Spacing.l))
+                        UrsButton(text = stringResource(R.string.retry), onClick = viewModel::load)
+                    }
+                }
+
+                is ProductsUiState.Data -> ProductList(
+                    products = state.products,
+                    onIncrement = viewModel::increment,
+                    onDecrement = viewModel::decrement,
+                    onDeleteProduct = viewModel::deleteProduct,
+                    onLongPress = viewModel::openSettings,
                 )
-                when (val state = uiState) {
-                    ProductsUiState.Loading -> Box(Modifier.fillMaxSize()) {
-                        CircularProgressIndicator(Modifier.align(Alignment.Center))
-                    }
+            }
+        }
 
-                    is ProductsUiState.Error -> Box(Modifier.fillMaxSize()) {
-                        Column(
-                            modifier = Modifier.align(Alignment.Center),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            Text(stringResource(R.string.error_load), style = MaterialTheme.typography.bodyLarge)
-                            Spacer(Modifier.height(16.dp))
-                            Button(onClick = viewModel::load) { Text(stringResource(R.string.retry)) }
-                        }
-                    }
-
-                    is ProductsUiState.Data -> ProductList(
-                        products = state.products,
-                        onIncrement = viewModel::increment,
-                        onDecrement = viewModel::decrement,
-                        onDeleteProduct = viewModel::deleteProduct,
-                        onLongPress = viewModel::openSettings,
-                    )
-                }
+        if (uiState is ProductsUiState.Data) {
+            UrsFab(
+                onClick = viewModel::openForm,
+                modifier = Modifier.align(Alignment.BottomEnd).padding(Spacing.l),
+            ) {
+                UrsText(text = "+", style = FabIconStyle, color = UrsTheme.colors.onAccent)
             }
         }
     }
 
     if (showForm) {
-        ModalBottomSheet(onDismissRequest = viewModel::closeForm) {
+        UrsBottomSheet(onDismissRequest = viewModel::closeForm) {
             ProductForm(form = formState, viewModel = viewModel)
         }
     }
 
     if (showSettings) {
-        ModalBottomSheet(onDismissRequest = viewModel::closeSettings) {
+        UrsBottomSheet(onDismissRequest = viewModel::closeSettings) {
             ProductSettingsForm(form = settingsForm, viewModel = viewModel)
         }
     }
@@ -135,10 +138,10 @@ private fun ProductList(
 ) {
     if (products.isEmpty()) {
         Box(Modifier.fillMaxSize()) {
-            Text(
+            UrsText(
                 stringResource(R.string.inventory_products_empty),
                 modifier = Modifier.align(Alignment.Center),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = UrsTheme.colors.onSurfaceMuted,
             )
         }
         return
@@ -146,8 +149,8 @@ private fun ProductList(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(Spacing.l),
+        verticalArrangement = Arrangement.spacedBy(Spacing.s),
     ) {
         items(products, key = { it.id }) { product ->
             // null = "not currently tracked" (paused) — one step below 0,
@@ -163,45 +166,52 @@ private fun ProductList(
                 firstThreshold != null && quantity <= firstThreshold -> FirstWarningColor
                 else -> null
             }
+            val contentColor = if (warningColor != null) Color.White else UrsTheme.colors.onSurface
 
-            Card(
+            UrsCard(
+                radius = Radius.row,
+                contentPadding = PaddingValues(horizontal = Spacing.l, vertical = Spacing.s),
+                backgroundColor = warningColor ?: UrsTheme.colors.surface,
                 modifier = Modifier
                     .fillMaxWidth()
                     .combinedClickable(onClick = {}, onLongClick = { onLongPress(product) }),
-                colors = if (warningColor != null) {
-                    CardDefaults.cardColors(containerColor = warningColor, contentColor = Color.White)
-                } else {
-                    CardDefaults.cardColors()
-                },
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
+                    UrsText(
                         product.name,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = UrsTheme.typography.cardTitle,
+                        color = contentColor,
                         modifier = Modifier.weight(1f),
                     )
-                    IconButton(onClick = { onDecrement(product) }, enabled = quantity != null) {
-                        Icon(Icons.Filled.Remove, contentDescription = stringResource(R.string.inventory_product_decrement))
-                    }
-                    Text(
-                        quantity?.toString() ?: stringResource(R.string.inventory_product_not_tracked),
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.width(32.dp),
-                        textAlign = TextAlign.Center,
+                    UrsIconButton(
+                        onClick = { onDecrement(product) },
+                        enabled = quantity != null,
+                        contentDescription = stringResource(R.string.inventory_product_decrement),
+                        imageVector = Icons.Filled.Remove,
+                        tint = contentColor,
                     )
-                    IconButton(onClick = { onIncrement(product) }) {
-                        Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.inventory_product_increment))
-                    }
-                    IconButton(onClick = { onDeleteProduct(product.id) }) {
-                        Icon(
-                            Icons.Filled.Close,
-                            contentDescription = stringResource(R.string.inventory_product_remove, product.name),
-                        )
-                    }
+                    UrsText(
+                        quantity?.toString() ?: stringResource(R.string.inventory_product_not_tracked),
+                        style = UrsTheme.typography.cardTitle.copy(textAlign = TextAlign.Center),
+                        color = contentColor,
+                        modifier = Modifier.width(32.dp),
+                    )
+                    UrsIconButton(
+                        onClick = { onIncrement(product) },
+                        contentDescription = stringResource(R.string.inventory_product_increment),
+                        imageVector = Icons.Filled.Add,
+                        tint = contentColor,
+                    )
+                    UrsIconButton(
+                        onClick = { onDeleteProduct(product.id) },
+                        contentDescription = stringResource(R.string.inventory_product_remove, product.name),
+                        imageVector = Icons.Filled.Close,
+                        tint = contentColor,
+                    )
                 }
             }
         }
@@ -211,34 +221,33 @@ private fun ProductList(
 @Composable
 private fun ProductForm(form: ProductFormState, viewModel: ProductsViewModel) {
     Column(
-        modifier = Modifier.padding(horizontal = 24.dp).padding(bottom = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.padding(horizontal = Spacing.xl).padding(bottom = Spacing.xxl),
+        verticalArrangement = Arrangement.spacedBy(Spacing.m),
     ) {
-        Text(stringResource(R.string.inventory_product_add), style = MaterialTheme.typography.headlineSmall)
+        UrsText(stringResource(R.string.inventory_product_add), style = UrsTheme.typography.screenTitle)
 
-        OutlinedTextField(
+        UrsTextField(
             value = form.name,
             onValueChange = viewModel::setName,
-            label = { Text(stringResource(R.string.inventory_product_name)) },
+            label = stringResource(R.string.inventory_product_name),
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
 
         if (form.submitFailed) {
-            Text(
+            UrsText(
                 stringResource(R.string.error_save),
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodyMedium,
+                color = FormErrorColor,
+                style = UrsTheme.typography.body,
             )
         }
 
-        Button(
+        UrsButton(
+            text = stringResource(if (form.submitting) R.string.saving else R.string.save),
             onClick = viewModel::submit,
             enabled = form.isValid && !form.submitting,
             modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(stringResource(if (form.submitting) R.string.saving else R.string.save))
-        }
+        )
     }
 }
 
@@ -251,72 +260,74 @@ private fun ProductSettingsForm(form: ProductSettingsFormState, viewModel: Produ
     val reminderBody = stringResource(R.string.inventory_settings_reminder_body, product.name)
 
     Column(
-        modifier = Modifier.padding(horizontal = 24.dp).padding(bottom = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.padding(horizontal = Spacing.xl).padding(bottom = Spacing.xxl),
+        verticalArrangement = Arrangement.spacedBy(Spacing.m),
     ) {
-        Text(
+        UrsText(
             stringResource(R.string.inventory_settings_title, product.name),
-            style = MaterialTheme.typography.headlineSmall,
+            style = UrsTheme.typography.screenTitle,
         )
 
-        OutlinedTextField(
+        UrsTextField(
             value = form.quantity,
             onValueChange = viewModel::setSettingsQuantity,
-            label = { Text(stringResource(R.string.inventory_settings_quantity)) },
+            label = stringResource(R.string.inventory_settings_quantity),
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
-        OutlinedTextField(
+        UrsTextField(
             value = form.firstThreshold,
             onValueChange = viewModel::setFirstThreshold,
-            label = { Text(stringResource(R.string.inventory_settings_first_threshold)) },
+            label = stringResource(R.string.inventory_settings_first_threshold),
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
-        OutlinedTextField(
+        UrsTextField(
             value = form.secondThreshold,
             onValueChange = viewModel::setSecondThreshold,
-            label = { Text(stringResource(R.string.inventory_settings_second_threshold)) },
+            label = stringResource(R.string.inventory_settings_second_threshold),
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
 
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = form.reminderEnabled, onCheckedChange = viewModel::setReminderEnabled)
-            Text(stringResource(R.string.inventory_settings_reminder_enable))
+            UrsCheckbox(checked = form.reminderEnabled, onCheckedChange = viewModel::setReminderEnabled)
+            Spacer(Modifier.width(Spacing.s))
+            UrsText(stringResource(R.string.inventory_settings_reminder_enable), style = UrsTheme.typography.body)
         }
 
         if (form.reminderEnabled) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.m)) {
+                UrsTextField(
                     value = form.reminderHour,
                     onValueChange = viewModel::setReminderHour,
-                    label = { Text(stringResource(R.string.inventory_settings_reminder_hour)) },
+                    label = stringResource(R.string.inventory_settings_reminder_hour),
                     singleLine = true,
                     modifier = Modifier.weight(1f),
                 )
-                OutlinedTextField(
+                UrsTextField(
                     value = form.reminderMinute,
                     onValueChange = viewModel::setReminderMinute,
-                    label = { Text(stringResource(R.string.inventory_settings_reminder_minute)) },
+                    label = stringResource(R.string.inventory_settings_reminder_minute),
                     singleLine = true,
                     modifier = Modifier.weight(1f),
                 )
             }
-            OutlinedTextField(
+            UrsTextField(
                 value = form.reminderThreshold,
                 onValueChange = viewModel::setReminderThreshold,
-                label = { Text(stringResource(R.string.inventory_settings_reminder_threshold)) },
+                label = stringResource(R.string.inventory_settings_reminder_threshold),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
         }
 
         if (form.error != null) {
-            Text(form.error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+            UrsText(form.error, color = FormErrorColor, style = UrsTheme.typography.body)
         }
 
-        Button(
+        UrsButton(
+            text = stringResource(if (form.submitting) R.string.saving else R.string.save),
             onClick = {
                 viewModel.submitSettings(
                     thresholdOrderError = thresholdOrderError,
@@ -327,8 +338,6 @@ private fun ProductSettingsForm(form: ProductSettingsFormState, viewModel: Produ
             },
             enabled = !form.submitting,
             modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(stringResource(if (form.submitting) R.string.saving else R.string.save))
-        }
+        )
     }
 }

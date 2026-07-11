@@ -12,24 +12,32 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
+import ch.mcfx.urs.ui.components.UrsButton
+import ch.mcfx.urs.ui.components.UrsCard
+import ch.mcfx.urs.ui.components.UrsFab
+import ch.mcfx.urs.ui.components.UrsProgressIndicator
+import ch.mcfx.urs.ui.components.UrsText
+import ch.mcfx.urs.ui.theme.UrsTheme
+import ch.mcfx.urs.ui.tokens.Radius
+import ch.mcfx.urs.ui.tokens.Spacing
 import java.util.Locale
+
+// Same reasoning as FuelHubScreen's/HomeScreen's own local text-style
+// constants — the design system's type scale doesn't have a "big FAB glyph"
+// size, so this is a one-off rather than a new shared token.
+private val FabIconStyle = TextStyle(fontSize = 28.sp)
 
 @Composable
 fun FuelScreen(
@@ -38,30 +46,28 @@ fun FuelScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        floatingActionButton = {
-            if (uiState is FuelUiState.Data) {
-                FloatingActionButton(onClick = onAddFillUp) {
-                    Text("+", style = MaterialTheme.typography.headlineMedium)
-                }
+    Box(modifier = Modifier.fillMaxSize()) {
+        when (val state = uiState) {
+            FuelUiState.Loading -> UrsProgressIndicator(Modifier.align(Alignment.Center))
+
+            is FuelUiState.Error -> Column(
+                modifier = Modifier.align(Alignment.Center),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                UrsText(stringResource(R.string.error_load), style = UrsTheme.typography.body)
+                Spacer(Modifier.height(Spacing.l))
+                UrsButton(text = stringResource(R.string.retry), onClick = viewModel::load)
             }
-        },
-    ) { innerPadding ->
-        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            when (val state = uiState) {
-                FuelUiState.Loading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
 
-                is FuelUiState.Error -> Column(
-                    modifier = Modifier.align(Alignment.Center),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text(stringResource(R.string.error_load), style = MaterialTheme.typography.bodyLarge)
-                    Spacer(Modifier.height(16.dp))
-                    Button(onClick = viewModel::load) { Text(stringResource(R.string.retry)) }
-                }
+            is FuelUiState.Data -> FillList(state)
+        }
 
-                is FuelUiState.Data -> FillList(state)
+        if (uiState is FuelUiState.Data) {
+            UrsFab(
+                onClick = onAddFillUp,
+                modifier = Modifier.align(Alignment.BottomEnd).padding(Spacing.l),
+            ) {
+                UrsText(text = "+", style = FabIconStyle, color = UrsTheme.colors.onAccent)
             }
         }
     }
@@ -78,10 +84,10 @@ private fun FillList(state: FuelUiState.Data) {
 
     if (state.fills.isEmpty()) {
         Box(Modifier.fillMaxSize()) {
-            Text(
+            UrsText(
                 stringResource(R.string.fills_empty),
                 modifier = Modifier.align(Alignment.Center),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = UrsTheme.colors.onSurfaceMuted,
             )
         }
         return
@@ -89,48 +95,40 @@ private fun FillList(state: FuelUiState.Data) {
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(Spacing.l),
+        verticalArrangement = Arrangement.spacedBy(Spacing.s),
     ) {
         items(state.fills, key = { it.id }) { fill ->
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text(
-                            carNames[fill.carId] ?: fill.carId,
-                            style = MaterialTheme.typography.titleMedium,
-                        )
-                        Text(
-                            totalCost(fill.pricePerLiter, fill.liters),
-                            style = MaterialTheme.typography.titleMedium,
-                        )
-                    }
-                    Spacer(Modifier.height(4.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text(
-                            "${fill.date.substringBefore(' ')} · ${stationNames[fill.stationId] ?: fill.stationId}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            stringResource(R.string.fill_amount_at_price, fill.liters, fill.pricePerLiter),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        stringResource(R.string.fill_odometer_km, fill.odometer),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+            UrsCard(radius = Radius.row, modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    UrsText(carNames[fill.carId] ?: fill.carId, style = UrsTheme.typography.cardTitle)
+                    UrsText(totalCost(fill.pricePerLiter, fill.liters), style = UrsTheme.typography.cardTitle)
+                }
+                Spacer(Modifier.height(Spacing.xs))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    UrsText(
+                        "${fill.date.substringBefore(' ')} · ${stationNames[fill.stationId] ?: fill.stationId}",
+                        style = UrsTheme.typography.body,
+                        color = UrsTheme.colors.onSurfaceMuted,
+                    )
+                    UrsText(
+                        stringResource(R.string.fill_amount_at_price, fill.liters, fill.pricePerLiter),
+                        style = UrsTheme.typography.body,
+                        color = UrsTheme.colors.onSurfaceMuted,
                     )
                 }
+                Spacer(Modifier.height(Spacing.xs))
+                UrsText(
+                    stringResource(R.string.fill_odometer_km, fill.odometer),
+                    style = UrsTheme.typography.caption,
+                    color = UrsTheme.colors.onSurfaceMuted,
+                )
             }
         }
     }
