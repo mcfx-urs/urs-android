@@ -2,10 +2,16 @@ package ch.mcfx.urs
 
 import android.app.Application
 import android.content.Context
+import androidx.room.Room
 import ch.mcfx.urs.data.BeerRepository
 import ch.mcfx.urs.data.FuelRepository
 import ch.mcfx.urs.data.InventoryRepository
+import ch.mcfx.urs.data.local.AppDatabase
 import ch.mcfx.urs.data.remote.UrsApi
+import ch.mcfx.urs.data.sync.ReachabilityChecker
+import ch.mcfx.urs.data.sync.SyncManager
+import ch.mcfx.urs.data.sync.SyncWorker
+import ch.mcfx.urs.location.LocationCapture
 import ch.mcfx.urs.notifications.NotificationChannels
 import ch.mcfx.urs.notifications.NotificationSender
 import ch.mcfx.urs.notifications.ReminderScheduler
@@ -44,6 +50,16 @@ class UrsApplication : Application() {
         container.applicationScope.launch {
             container.reminderScheduler.rearmAndCheckMissed()
         }
+        // First-launch-before-any-successful-sync fallback so the fuel
+        // currency picker works fully offline — replaced by the server's
+        // own list as soon as a refresh succeeds (see FuelViewModel.load).
+        container.applicationScope.launch {
+            container.fuelRepository.seedCurrenciesIfEmpty()
+        }
+        // Durability backstop for the offline fill outbox (15-minute floor);
+        // a much faster connectivity-triggered path also exists via
+        // NetworkGate's own callback, see AppContainer.networkGate below.
+        SyncWorker.enqueuePeriodic(this)
     }
 }
 
@@ -51,13 +67,26 @@ class UrsApplication : Application() {
 // graph. A DI framework (Hilt) can replace this later if it grows.
 class AppContainer(context: Context) {
 
+    private val appContext = context.applicationContext
+
     private val json = Json { ignoreUnknownKeys = true }
 
     val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
+    // No migration strategy exists yet for this pre-release database (first
+    // Room use in this app) — destructive fallback is acceptable now since
+    // no shipped build has real user data at stake; revisit before a schema
+    // change ever needs to preserve an existing outbox in the wild.
+    val database: AppDatabase = Room.databaseBuilder(appContext, AppDatabase::class.java, "urs.db")
+        .fallbackToDestructiveMigration(dropAllTables = true)
+        .build()
+
     val vpnConfigRepository = VpnConfigRepository(context)
     val wireGuardManager = WireGuardManager(context, vpnConfigRepository)
-    val networkGate = NetworkGate(context, WifiSsidReader(context), vpnConfigRepository, wireGuardManager)
+    val networkGate = NetworkGate(
+        context, WifiSsidReader(context), vpnConfigRepository, wireGuardManager,
+        onConnectivityAvailable = { SyncWorker.enqueueOneTime(appContext) },
+    )
 
     private val httpClient = OkHttpClient.Builder()
         .apply {
@@ -75,7 +104,30 @@ class AppContainer(context: Context) {
         .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
         .build()
 
-    val fuelRepository = FuelRepository(retrofit.create(UrsApi::class.java))
+    private val ursApi = retrofit.create(UrsApi::class.java)
+
+    val reachabilityChecker = ReachabilityChecker()
+    val syncManager = SyncManager(
+        api = ursApi,
+        fillDao = database.fillDao(),
+        fillingStationDao = database.fillingStationDao(),
+        outboxDao = database.outboxDao(),
+        reachabilityChecker = reachabilityChecker,
+        json = json,
+    )
+    val locationCapture = LocationCapture(context)
+
+    val fuelRepository = FuelRepository(
+        api = ursApi,
+        fillDao = database.fillDao(),
+        fillingStationDao = database.fillingStationDao(),
+        currencyDao = database.currencyDao(),
+        carDao = database.carDao(),
+        outboxDao = database.outboxDao(),
+        syncManager = syncManager,
+        applicationScope = applicationScope,
+        json = json,
+    )
     val inventoryRepository = InventoryRepository(retrofit.create(UrsApi::class.java))
     val beerRepository = BeerRepository(retrofit.create(UrsApi::class.java))
 

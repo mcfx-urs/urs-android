@@ -36,6 +36,11 @@ data class FillDto(
     @SerialName("fill_price") val pricePerLiter: String,
     @SerialName("fill_amount") val liters: String,
     @SerialName("fill_odometer") val odometer: String,
+    @SerialName("fill_currency_code") val currencyCode: String = "CHF",
+    // Empty until the async FX-resolution job (backend-side) fills it in;
+    // "" mirrors the backend's own nullable-column-as-empty-string convention.
+    @SerialName("fill_amount_chf") val amountChf: String = "",
+    @SerialName("fill_amount_chf_locked") val amountChfLocked: String = "0",
 )
 
 @Serializable
@@ -59,13 +64,29 @@ data class FillingStationPayload(
 data class FillPayload(
     @SerialName("fill_date") val date: String,
     @SerialName("fill_car_id") val carId: String,
-    @SerialName("fill_station_id") val stationId: String,
+    // Null/empty signals "create an ad-hoc station instead" — matches the
+    // backend's own `FillStationID == ""` check — in which case
+    // [stationLatitude]/[stationLongitude] are required.
+    @SerialName("fill_station_id") val stationId: String? = null,
     @SerialName("fill_fuel_id") val fuelId: String,
     @SerialName("fill_price") val pricePerLiter: String,
     @SerialName("fill_amount") val liters: String,
     @SerialName("fill_odometer") val odometer: String,
     @SerialName("driven") val driven: String,
     @SerialName("filling_station_counter") val stationCounter: String,
+    // Always sent explicitly rather than left to the backend's own default:
+    // the backend echoes back whatever string was sent, not its resolved
+    // default, so relying on omission here would desync local state from
+    // what the create response actually reports.
+    @SerialName("fill_currency_code") val currencyCode: String = "CHF",
+    @SerialName("station_latitude") val stationLatitude: String? = null,
+    @SerialName("station_longitude") val stationLongitude: String? = null,
+)
+
+@Serializable
+data class CurrencyDto(
+    @SerialName("currency_code") val code: String,
+    @SerialName("currency_name") val name: String,
 )
 
 @Serializable

@@ -8,37 +8,45 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.data.FuelRepository
-import ch.mcfx.urs.data.remote.CarDto
-import ch.mcfx.urs.data.remote.FillDto
-import ch.mcfx.urs.data.remote.FillingStationDto
+import ch.mcfx.urs.data.local.CurrencyEntity
+import ch.mcfx.urs.data.local.FillEntity
+import ch.mcfx.urs.data.local.FillingStationEntity
+import ch.mcfx.urs.data.local.CarEntity
+import ch.mcfx.urs.location.LocationCapture
 import java.time.LocalDate
 import java.util.Locale
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 sealed interface FuelUiState {
     data object Loading : FuelUiState
-    data class Error(val message: String) : FuelUiState
     data class Data(
-        val cars: List<CarDto>,
-        val stations: List<FillingStationDto>,
-        val fills: List<FillDto>,
+        val cars: List<CarEntity>,
+        val stations: List<FillingStationEntity>,
+        val fills: List<FillEntity>,
+        val currencies: List<CurrencyEntity>,
     ) : FuelUiState
 }
 
 data class FillFormState(
-    val car: CarDto? = null,
-    val station: FillingStationDto? = null,
+    val car: CarEntity? = null,
+    val station: FillingStationEntity? = null,
+    // Mutually exclusive with `station`: either a known station is picked,
+    // or GPS coordinates are captured for an ad-hoc stop — never both.
+    val useGps: Boolean = false,
+    val gpsLatitude: String? = null,
+    val gpsLongitude: String? = null,
+    val capturingLocation: Boolean = false,
     val odometer: String = "",
     val pricePerLiter: String = "",
     val liters: String = "",
     val date: String = LocalDate.now().toString(),
+    val currencyCode: String = "CHF",
     val lastOdometer: String? = null,
     val submitting: Boolean = false,
     val submitFailed: Boolean = false,
@@ -51,13 +59,17 @@ data class FillFormState(
         }
 
     val isValid: Boolean
-        get() = car != null && station != null &&
+        get() = car != null &&
+            (station != null || (gpsLatitude != null && gpsLongitude != null)) &&
             odometer.toFloatOrNull() != null &&
             pricePerLiter.toFloatOrNull() != null &&
             liters.toFloatOrNull() != null
 }
 
-class FuelViewModel(private val repository: FuelRepository) : ViewModel() {
+class FuelViewModel(
+    private val repository: FuelRepository,
+    private val locationCapture: LocationCapture,
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow<FuelUiState>(FuelUiState.Loading)
     val uiState: StateFlow<FuelUiState> = _uiState.asStateFlow()
@@ -69,25 +81,24 @@ class FuelViewModel(private val repository: FuelRepository) : ViewModel() {
     val showForm: StateFlow<Boolean> = _showForm.asStateFlow()
 
     init {
+        // Cars/fills/stations/currencies are all Room-backed Flows now, so
+        // this screen (including the Add-fill form's car picker) has
+        // something to show even on a cold start with no connectivity —
+        // load() below only refreshes the cache opportunistically.
+        viewModelScope.launch {
+            combine(
+                repository.observeCars(),
+                repository.observeStations(),
+                repository.observeFills(),
+                repository.observeCurrencies(),
+            ) { cars, stations, fills, currencies -> FuelUiState.Data(cars, stations, fills, currencies) }
+                .collect { _uiState.value = it }
+        }
         load()
     }
 
     fun load() {
-        _uiState.value = FuelUiState.Loading
-        viewModelScope.launch {
-            try {
-                coroutineScope {
-                    val cars = async { repository.getCars() }
-                    val stations = async { repository.getStations() }
-                    val fills = async { repository.getFills() }
-                    _uiState.value = FuelUiState.Data(cars.await(), stations.await(), fills.await())
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                _uiState.value = FuelUiState.Error(e.message ?: "unknown")
-            }
-        }
+        viewModelScope.launch { repository.refreshFromBackend() }
     }
 
     fun openForm() {
@@ -99,7 +110,7 @@ class FuelViewModel(private val repository: FuelRepository) : ViewModel() {
         _showForm.value = false
     }
 
-    fun selectCar(car: CarDto) {
+    fun selectCar(car: CarEntity) {
         _formState.update { it.copy(car = car, lastOdometer = null) }
         viewModelScope.launch {
             val last = try {
@@ -113,7 +124,38 @@ class FuelViewModel(private val repository: FuelRepository) : ViewModel() {
         }
     }
 
-    fun selectStation(station: FillingStationDto) = _formState.update { it.copy(station = station) }
+    fun selectStation(station: FillingStationEntity) =
+        _formState.update { it.copy(station = station, useGps = false, gpsLatitude = null, gpsLongitude = null) }
+
+    fun setUseGps(useGps: Boolean) = _formState.update {
+        if (useGps) {
+            it.copy(useGps = true, station = null)
+        } else {
+            it.copy(useGps = false, gpsLatitude = null, gpsLongitude = null)
+        }
+    }
+
+    fun captureLocation() {
+        _formState.update { it.copy(capturingLocation = true) }
+        viewModelScope.launch {
+            val location = try {
+                locationCapture.captureLocation()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                null
+            }
+            _formState.update {
+                it.copy(
+                    capturingLocation = false,
+                    gpsLatitude = location?.latitude?.toString() ?: it.gpsLatitude,
+                    gpsLongitude = location?.longitude?.toString() ?: it.gpsLongitude,
+                )
+            }
+        }
+    }
+
+    fun setCurrencyCode(value: String) = _formState.update { it.copy(currencyCode = value) }
 
     fun setOdometer(value: String) = _formState.update { it.copy(odometer = value) }
 
@@ -126,7 +168,6 @@ class FuelViewModel(private val repository: FuelRepository) : ViewModel() {
     fun submit() {
         val form = _formState.value
         val car = form.car ?: return
-        val station = form.station ?: return
         if (!form.isValid || form.submitting) return
 
         viewModelScope.launch {
@@ -134,15 +175,21 @@ class FuelViewModel(private val repository: FuelRepository) : ViewModel() {
             try {
                 repository.createFill(
                     car = car,
-                    station = station,
+                    station = form.station,
                     date = form.date,
                     odometer = form.odometer,
                     pricePerLiter = form.pricePerLiter,
                     liters = form.liters,
                     lastOdometer = form.lastOdometer,
+                    currencyCode = form.currencyCode,
+                    gpsLatitude = form.gpsLatitude,
+                    gpsLongitude = form.gpsLongitude,
                 )
+                // createFill is a local-only write and returns instantly —
+                // no network round-trip to wait on, so the form can close
+                // right away. A later sync failure surfaces via the row's
+                // own pending/failed badge (see FuelScreen), not here.
                 _showForm.value = false
-                load()
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
@@ -155,7 +202,7 @@ class FuelViewModel(private val repository: FuelRepository) : ViewModel() {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as UrsApplication
-                FuelViewModel(app.container.fuelRepository)
+                FuelViewModel(app.container.fuelRepository, app.container.locationCapture)
             }
         }
     }

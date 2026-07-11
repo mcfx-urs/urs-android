@@ -16,7 +16,7 @@ interface UrsApi {
     suspend fun getFillingStations(): List<FillingStationDto>
 
     @POST("api/v1/filling-station")
-    suspend fun createFillingStation(@Body payload: FillingStationPayload)
+    suspend fun createFillingStation(@Body payload: FillingStationPayload): FillingStationDto
 
     @GET("api/v1/fill")
     suspend fun getFills(): List<FillDto>
@@ -25,7 +25,10 @@ interface UrsApi {
     suspend fun getOdometer(@Path("carId") carId: String): List<OdometerEntryDto>
 
     @POST("api/v1/fill")
-    suspend fun createFill(@Body payload: FillPayload)
+    suspend fun createFill(@Body payload: FillPayload): FillDto
+
+    @GET("api/v1/currency")
+    suspend fun getCurrencies(): List<CurrencyDto>
 
     @GET("api/v1/inventory-category")
     suspend fun getInventoryCategories(): List<InventoryCategoryDto>

@@ -61,9 +61,19 @@
     <string name="fuel_tile_add">Add Fill-up</string>
     <string name="fuel_tile_stations">Gas Stations</string>
     <string name="fuel_tile_stats">Statistics</string>
+    <string name="fuel_tile_sync_now">Sync now</string>
+    <string name="fuel_tile_syncing">Syncing…</string>
     <string name="fill_add">New fill-up</string>
     <string name="fill_car">Car</string>
     <string name="fill_station">Filling station</string>
+    <string name="fill_no_station">No station / on the go</string>
+    <string name="fill_currency">Currency</string>
+    <string name="fill_capture_location">Capture location</string>
+    <string name="fill_capturing_location">Capturing location…</string>
+    <string name="fill_location_captured">%1$s, %2$s</string>
+    <string name="fill_location_missing">No location captured yet</string>
+    <string name="fill_location_permission_needed">Location permission needed to capture a stop</string>
+    <string name="fill_grant">Grant</string>
     <string name="fill_odometer">Odometer (km)</string>
     <string name="fill_last_odometer">Last: %1$s km</string>
     <string name="fill_price_per_liter">Price / L</string>
@@ -72,6 +82,9 @@
     <string name="fill_total">Total: %1$s</string>
     <string name="fill_amount_at_price">%1$s L @ %2$s</string>
     <string name="fill_odometer_km">%1$s km</string>
+    <string name="fill_status_pending">Pending</string>
+    <string name="fill_status_failed">Failed</string>
+    <string name="fill_pending_location">Location captured</string>
     <string name="fills_empty">No fill-ups yet.</string>
 
     <string name="station_add">New gas station</string>

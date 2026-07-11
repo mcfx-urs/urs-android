@@ -36,6 +36,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   keeping the stepper's step size consistent in both directions.
   Warning colors are suppressed while "not tracked", regardless of
   configured thresholds.
+- Fuel: fill-ups can now be captured fully offline and in a foreign
+  currency. A "no station / on the go" toggle captures a GPS fix
+  instead of picking a known station; a currency picker (defaulting to
+  CHF, cached locally) accompanies the price field. Every new fill-up
+  is written to a local, always-available store first and queued for
+  background sync, so the Fill-ups list, its pending/failed status
+  badges, and the Add-fill form all keep working without a network
+  connection. Syncing happens automatically on a connectivity change or
+  periodically in the background, or immediately via a new "Sync now"
+  tile in the Fuel hub.
 
 ### Changed
 

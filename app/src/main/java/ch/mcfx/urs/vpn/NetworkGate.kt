@@ -27,6 +27,13 @@ class NetworkGate(
     private val ssidReader: WifiSsidReader,
     private val configRepository: VpnConfigRepository,
     private val wireGuardManager: WireGuardManager,
+    // Invoked whenever this class's own Wi-Fi callback observes connectivity
+    // becoming available — used to opportunistically trigger a faster-than-
+    // the-15-minute-floor outbox sync attempt (see SyncWorker.enqueueOneTime),
+    // layered alongside (not replacing) this class's own VPN-tunnel decision.
+    // No WorkManager dependency here; the caller supplies what "available"
+    // should do.
+    private val onConnectivityAvailable: () -> Unit = {},
 ) {
 
     sealed interface Result {
@@ -136,6 +143,7 @@ class NetworkGate(
             override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
                 ssidReader.onWifiCapabilitiesChanged(capabilities)
                 scope.launch { ensureReachable() }
+                onConnectivityAvailable()
             }
 
             override fun onLost(network: Network) {
@@ -149,6 +157,7 @@ class NetworkGate(
             override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
                 ssidReader.onWifiCapabilitiesChanged(capabilities)
                 scope.launch { ensureReachable() }
+                onConnectivityAvailable()
             }
 
             override fun onLost(network: Network) {

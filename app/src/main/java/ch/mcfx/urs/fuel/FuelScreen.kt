@@ -17,16 +17,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
+import ch.mcfx.urs.data.local.SyncStatus
 import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsFab
+import ch.mcfx.urs.ui.components.UrsPill
 import ch.mcfx.urs.ui.components.UrsProgressIndicator
 import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.theme.UrsTheme
@@ -39,6 +41,10 @@ import java.util.Locale
 // size, so this is a one-off rather than a new shared token.
 private val FabIconStyle = TextStyle(fontSize = 28.sp)
 
+// No "error" role in the design system's palette yet (see Color.kt) — same
+// local-constant pattern already used elsewhere (FuelAddScreen, FuelStationsScreen).
+private val FormErrorColor = Color(0xFFD64545)
+
 @Composable
 fun FuelScreen(
     onAddFillUp: () -> Unit,
@@ -49,16 +55,6 @@ fun FuelScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         when (val state = uiState) {
             FuelUiState.Loading -> UrsProgressIndicator(Modifier.align(Alignment.Center))
-
-            is FuelUiState.Error -> Column(
-                modifier = Modifier.align(Alignment.Center),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                UrsText(stringResource(R.string.error_load), style = UrsTheme.typography.body)
-                Spacer(Modifier.height(Spacing.l))
-                UrsButton(text = stringResource(R.string.retry), onClick = viewModel::load)
-            }
-
             is FuelUiState.Data -> FillList(state)
         }
 
@@ -103,17 +99,26 @@ private fun FillList(state: FuelUiState.Data) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     UrsText(carNames[fill.carId] ?: fill.carId, style = UrsTheme.typography.cardTitle)
-                    UrsText(totalCost(fill.pricePerLiter, fill.liters), style = UrsTheme.typography.cardTitle)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        SyncStatusPill(fill.syncStatus)
+                        UrsText(totalCost(fill.pricePerLiter, fill.liters), style = UrsTheme.typography.cardTitle)
+                    }
                 }
                 Spacer(Modifier.height(Spacing.xs))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
+                    val stationLabel = fill.stationId?.let { stationNames[it] ?: it }
+                        ?: stringResource(R.string.fill_pending_location)
                     UrsText(
-                        "${fill.date.substringBefore(' ')} · ${stationNames[fill.stationId] ?: fill.stationId}",
+                        "${fill.date.substringBefore(' ')} · $stationLabel",
                         style = UrsTheme.typography.body,
                         color = UrsTheme.colors.onSurfaceMuted,
                     )
@@ -131,6 +136,19 @@ private fun FillList(state: FuelUiState.Data) {
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun SyncStatusPill(status: SyncStatus) {
+    when (status) {
+        SyncStatus.PENDING -> UrsPill(text = stringResource(R.string.fill_status_pending))
+        SyncStatus.FAILED -> UrsPill(
+            text = stringResource(R.string.fill_status_failed),
+            containerColor = FormErrorColor.copy(alpha = 0.15f),
+            contentColor = FormErrorColor,
+        )
+        SyncStatus.SYNCED -> Unit
     }
 }
 
