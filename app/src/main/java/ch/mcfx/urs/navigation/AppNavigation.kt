@@ -1,26 +1,17 @@
 package ch.mcfx.urs.navigation
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.NavigationDrawerItem
-import androidx.compose.material3.NavigationDrawerItemDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -30,7 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -57,13 +47,22 @@ import ch.mcfx.urs.settings.NotificationSettingsScreen
 import ch.mcfx.urs.settings.SettingsRoutes
 import ch.mcfx.urs.settings.SettingsScreen
 import ch.mcfx.urs.settings.VpnSettingsScreen
+import ch.mcfx.urs.ui.components.UrsDrawerValue
+import ch.mcfx.urs.ui.components.UrsIconButton
+import ch.mcfx.urs.ui.components.UrsNavigationDrawer
+import ch.mcfx.urs.ui.components.UrsNavigationDrawerItem
+import ch.mcfx.urs.ui.components.UrsPill
+import ch.mcfx.urs.ui.components.UrsText
+import ch.mcfx.urs.ui.components.UrsTopBar
+import ch.mcfx.urs.ui.components.rememberUrsDrawerState
+import ch.mcfx.urs.ui.theme.UrsTheme
+import ch.mcfx.urs.ui.tokens.Spacing
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
     val navController = rememberNavController()
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val drawerState = rememberUrsDrawerState(initialValue = UrsDrawerValue.Closed)
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -86,135 +85,138 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
     val currentRoute = backStackEntry?.destination?.route ?: Destination.HOME.route
     val isTopLevel = Destination.entries.any { it.route == currentRoute }
 
-    ModalNavigationDrawer(
+    UrsNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            ModalDrawerSheet {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.padding(16.dp),
-                ) {
-                    Image(
-                        painter = painterResource(R.drawable.urs_bear_logo),
-                        contentDescription = null,
-                        modifier = Modifier.size(32.dp),
-                    )
-                    Text(
-                        text = "urs",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-                Destination.entries.forEach { destination ->
-                    NavigationDrawerItem(
-                        label = { Text(stringResource(destination.labelRes)) },
-                        icon = { Icon(destination.icon, contentDescription = null) },
-                        selected = destination.route == currentRoute,
-                        badge = {
-                            if (!destination.isAvailable) {
-                                Text(
-                                    stringResource(R.string.coming_soon),
-                                    style = MaterialTheme.typography.labelSmall,
-                                )
-                            }
-                        },
-                        colors = if (destination.isAvailable) {
-                            NavigationDrawerItemDefaults.colors()
-                        } else {
-                            NavigationDrawerItemDefaults.colors(
-                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+                modifier = Modifier.padding(Spacing.l),
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.urs_bear_logo),
+                    contentDescription = null,
+                    modifier = Modifier.size(28.dp),
+                )
+                UrsText(stringResource(R.string.app_name), style = UrsTheme.typography.brand)
+            }
+            Destination.entries.forEach { destination ->
+                UrsNavigationDrawerItem(
+                    label = stringResource(destination.labelRes),
+                    icon = destination.icon,
+                    selected = destination.route == currentRoute,
+                    enabled = destination.isAvailable,
+                    trailing = if (destination.isAvailable) {
+                        null
+                    } else {
+                        {
+                            UrsPill(
+                                text = stringResource(R.string.coming_soon).uppercase(),
+                                containerColor = UrsTheme.colors.surface,
+                                contentColor = UrsTheme.colors.onSurfaceMuted,
+                                style = UrsTheme.typography.tag,
                             )
-                        },
-                        onClick = {
-                            if (destination.isAvailable) {
-                                navController.navigateToDestination(destination)
-                            }
-                            coroutineScope.launch { drawerState.close() }
-                        },
-                        modifier = Modifier.padding(horizontal = 12.dp),
-                    )
-                }
+                        }
+                    },
+                    onClick = {
+                        navController.navigateToDestination(destination)
+                        coroutineScope.launch { drawerState.close() }
+                    },
+                )
             }
         },
     ) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text(stringResource(currentScreenLabel(currentRoute))) },
-                    navigationIcon = {
-                        if (isTopLevel) {
-                            IconButton(onClick = { coroutineScope.launch { drawerState.open() } }) {
-                                Icon(Icons.Filled.Menu, contentDescription = stringResource(R.string.open_menu))
-                            }
-                        } else {
-                            IconButton(onClick = { navController.popBackStack() }) {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.ArrowBack,
-                                    contentDescription = stringResource(R.string.back),
-                                )
-                            }
+        Column(modifier = Modifier.fillMaxSize().background(UrsTheme.colors.background)) {
+            UrsTopBar(
+                navigationIcon = {
+                    if (isTopLevel) {
+                        UrsIconButton(
+                            onClick = { coroutineScope.launch { drawerState.open() } },
+                            contentDescription = stringResource(R.string.open_menu),
+                            imageVector = Icons.Filled.Menu,
+                        )
+                    } else {
+                        UrsIconButton(
+                            onClick = { navController.popBackStack() },
+                            contentDescription = stringResource(R.string.back),
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        )
+                    }
+                },
+                title = {
+                    if (currentRoute == Destination.HOME.route) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+                        ) {
+                            Image(
+                                painter = painterResource(R.drawable.urs_bear_logo),
+                                contentDescription = null,
+                                modifier = Modifier.size(28.dp),
+                            )
+                            UrsText(stringResource(R.string.app_name), style = UrsTheme.typography.brand)
                         }
-                    },
-                )
-            },
-        ) { innerPadding ->
-            NavHost(
-                navController = navController,
-                startDestination = Destination.HOME.route,
-                modifier = Modifier.padding(innerPadding),
-            ) {
-                composable(Destination.HOME.route) {
-                    HomeScreen(onNavigate = { navController.navigateToDestination(it) })
-                }
-                composable(Destination.FUEL.route) {
-                    FuelHubScreen(onNavigate = { route -> navController.navigate(route) })
-                }
-                composable(FuelRoutes.FILLS) {
-                    FuelScreen(onAddFillUp = { navController.navigate(FuelRoutes.ADD) })
-                }
-                composable(FuelRoutes.ADD) {
-                    FuelAddScreen(onDone = { navController.popBackStack() })
-                }
-                composable(FuelRoutes.STATIONS) { FuelStationsScreen() }
-                composable(FuelRoutes.STATS) { FuelStatsScreen() }
-                composable(
-                    route = Destination.INVENTORY.route,
-                    // First deep-link target in the app (Issue #1) — a
-                    // grouped/summary low-stock notification opens the
-                    // category list, since a summary covers several
-                    // products at once rather than one specific item.
-                    deepLinks = listOf(navDeepLink { uriPattern = "urs://${Destination.INVENTORY.route}" }),
+                    } else {
+                        UrsText(stringResource(currentScreenLabel(currentRoute)), style = UrsTheme.typography.screenTitle)
+                    }
+                },
+            )
+            Box(modifier = Modifier.fillMaxSize()) {
+                NavHost(
+                    navController = navController,
+                    startDestination = Destination.HOME.route,
                 ) {
-                    CategoryListScreen(
-                        onOpenCategory = { category ->
-                            navController.navigate(InventoryRoutes.products(category.id, category.name))
-                        },
-                    )
+                    composable(Destination.HOME.route) {
+                        HomeScreen(onNavigate = { navController.navigateToDestination(it) })
+                    }
+                    composable(Destination.FUEL.route) {
+                        FuelHubScreen(onNavigate = { route -> navController.navigate(route) })
+                    }
+                    composable(FuelRoutes.FILLS) {
+                        FuelScreen(onAddFillUp = { navController.navigate(FuelRoutes.ADD) })
+                    }
+                    composable(FuelRoutes.ADD) {
+                        FuelAddScreen(onDone = { navController.popBackStack() })
+                    }
+                    composable(FuelRoutes.STATIONS) { FuelStationsScreen() }
+                    composable(FuelRoutes.STATS) { FuelStatsScreen() }
+                    composable(
+                        route = Destination.INVENTORY.route,
+                        // First deep-link target in the app (Issue #1) — a
+                        // grouped/summary low-stock notification opens the
+                        // category list, since a summary covers several
+                        // products at once rather than one specific item.
+                        deepLinks = listOf(navDeepLink { uriPattern = "urs://${Destination.INVENTORY.route}" }),
+                    ) {
+                        CategoryListScreen(
+                            onOpenCategory = { category ->
+                                navController.navigate(InventoryRoutes.products(category.id, category.name))
+                            },
+                        )
+                    }
+                    composable(
+                        route = InventoryRoutes.PRODUCTS,
+                        arguments = listOf(
+                            navArgument("categoryId") { type = NavType.StringType },
+                            navArgument("categoryName") { type = NavType.StringType },
+                        ),
+                        // Per-product low-stock reminder target — more
+                        // specific than the categories-list summary deep link
+                        // above, since a single-product reminder can point
+                        // straight at the product's own list.
+                        deepLinks = listOf(navDeepLink { uriPattern = "urs://${InventoryRoutes.PRODUCTS}" }),
+                    ) { backStackEntry ->
+                        val categoryId = backStackEntry.arguments?.getString("categoryId") ?: return@composable
+                        val categoryName = backStackEntry.arguments?.getString("categoryName") ?: ""
+                        ProductListScreen(categoryId = categoryId, categoryName = categoryName)
+                    }
+                    composable(Destination.BEER.route) { BeerScreen() }
+                    composable(Destination.SETTINGS.route) {
+                        SettingsScreen(onNavigate = { route -> navController.navigate(route) })
+                    }
+                    composable(SettingsRoutes.VPN) { VpnSettingsScreen() }
+                    composable(SettingsRoutes.NOTIFICATIONS) { NotificationSettingsScreen() }
                 }
-                composable(
-                    route = InventoryRoutes.PRODUCTS,
-                    arguments = listOf(
-                        navArgument("categoryId") { type = NavType.StringType },
-                        navArgument("categoryName") { type = NavType.StringType },
-                    ),
-                    // Per-product low-stock reminder target — more
-                    // specific than the categories-list summary deep link
-                    // above, since a single-product reminder can point
-                    // straight at the product's own list.
-                    deepLinks = listOf(navDeepLink { uriPattern = "urs://${InventoryRoutes.PRODUCTS}" }),
-                ) { backStackEntry ->
-                    val categoryId = backStackEntry.arguments?.getString("categoryId") ?: return@composable
-                    val categoryName = backStackEntry.arguments?.getString("categoryName") ?: ""
-                    ProductListScreen(categoryId = categoryId, categoryName = categoryName)
-                }
-                composable(Destination.BEER.route) { BeerScreen() }
-                composable(Destination.SETTINGS.route) {
-                    SettingsScreen(onNavigate = { route -> navController.navigate(route) })
-                }
-                composable(SettingsRoutes.VPN) { VpnSettingsScreen() }
-                composable(SettingsRoutes.NOTIFICATIONS) { NotificationSettingsScreen() }
             }
         }
     }
