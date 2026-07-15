@@ -7,17 +7,27 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -30,8 +40,6 @@ import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.components.UrsTextField
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Spacing
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 
 // No "error" role in the design system's palette yet — same local-constant
 // pattern already used in FuelAddScreen.
@@ -67,6 +75,22 @@ fun WorkTimeAddScreen(
 
 @Composable
 private fun EntryForm(form: WorkTimeFormState, viewModel: WorkTimeViewModel) {
+    val focusManager = LocalFocusManager.current
+    // "Next" on every field's IME action, instead of the default tick/done —
+    // one shared instance since the behavior (move to the next field) is
+    // identical everywhere in this form.
+    val nextFieldAction = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Next) })
+
+    // Keyed by break id (not list position) so a request survives breaks
+    // being added/removed elsewhere in the list — see pendingFocusBreakId.
+    val breakStartFocusRequesters = remember { mutableStateMapOf<Long, FocusRequester>() }
+    var pendingFocusBreakId by remember { mutableStateOf<Long?>(null) }
+    LaunchedEffect(pendingFocusBreakId) {
+        val id = pendingFocusBreakId ?: return@LaunchedEffect
+        breakStartFocusRequesters[id]?.requestFocus()
+        pendingFocusBreakId = null
+    }
+
     Column(
         modifier = Modifier.padding(horizontal = Spacing.xl).padding(vertical = Spacing.xl),
         verticalArrangement = Arrangement.spacedBy(Spacing.m),
@@ -75,6 +99,8 @@ private fun EntryForm(form: WorkTimeFormState, viewModel: WorkTimeViewModel) {
             value = form.date,
             onValueChange = viewModel::setDate,
             label = stringResource(R.string.worktime_date),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            keyboardActions = nextFieldAction,
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -84,7 +110,8 @@ private fun EntryForm(form: WorkTimeFormState, viewModel: WorkTimeViewModel) {
                 value = timeFieldValue(form.workStart),
                 onValueChange = { viewModel.setWorkStart(formatTimeInput(it).text) },
                 label = stringResource(R.string.worktime_work_start),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                keyboardActions = nextFieldAction,
                 singleLine = true,
                 modifier = Modifier.weight(1f),
             )
@@ -92,7 +119,8 @@ private fun EntryForm(form: WorkTimeFormState, viewModel: WorkTimeViewModel) {
                 value = timeFieldValue(form.workEnd),
                 onValueChange = { viewModel.setWorkEnd(formatTimeInput(it).text) },
                 label = stringResource(R.string.worktime_work_end),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                keyboardActions = nextFieldAction,
                 singleLine = true,
                 modifier = Modifier.weight(1f),
             )
@@ -102,6 +130,8 @@ private fun EntryForm(form: WorkTimeFormState, viewModel: WorkTimeViewModel) {
             value = form.targetDailyHours,
             onValueChange = viewModel::setTargetDailyHours,
             label = stringResource(R.string.worktime_target_hours),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+            keyboardActions = nextFieldAction,
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -109,6 +139,8 @@ private fun EntryForm(form: WorkTimeFormState, viewModel: WorkTimeViewModel) {
         UrsText(stringResource(R.string.worktime_breaks_title), style = UrsTheme.typography.cardTitle)
 
         form.breaks.forEach { breakDraft ->
+            val startFocusRequester = remember(breakDraft.id) { FocusRequester() }
+            SideEffect { breakStartFocusRequesters[breakDraft.id] = startFocusRequester }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(Spacing.s),
@@ -118,7 +150,9 @@ private fun EntryForm(form: WorkTimeFormState, viewModel: WorkTimeViewModel) {
                     value = timeFieldValue(breakDraft.startTime),
                     onValueChange = { viewModel.setBreakStart(breakDraft.id, formatTimeInput(it).text) },
                     label = stringResource(R.string.worktime_break_start),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                    keyboardActions = nextFieldAction,
+                    focusRequester = startFocusRequester,
                     singleLine = true,
                     modifier = Modifier.weight(1f),
                 )
@@ -126,21 +160,32 @@ private fun EntryForm(form: WorkTimeFormState, viewModel: WorkTimeViewModel) {
                     value = timeFieldValue(breakDraft.endTime),
                     onValueChange = { viewModel.setBreakEnd(breakDraft.id, formatTimeInput(it).text) },
                     label = stringResource(R.string.worktime_break_end),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                    keyboardActions = nextFieldAction,
                     singleLine = true,
                     modifier = Modifier.weight(1f),
                 )
                 UrsIconButton(
-                    onClick = { viewModel.removeBreak(breakDraft.id) },
+                    onClick = {
+                        breakStartFocusRequesters.remove(breakDraft.id)
+                        viewModel.removeBreak(breakDraft.id)
+                    },
                     contentDescription = stringResource(R.string.worktime_remove_break),
                     imageVector = Icons.Filled.Close,
+                    // Excluded from "Next" traversal — a non-text button in
+                    // the middle of the tab order would otherwise strand
+                    // focus there with no keyboard action to press.
+                    modifier = Modifier.focusProperties { canFocus = false },
                 )
             }
         }
 
         UrsOutlinedButton(
             text = stringResource(R.string.worktime_add_break),
-            onClick = viewModel::addBreak,
+            // Saves the caller a tap: the newly added break's start-time
+            // field is focused immediately, works for every add since it's
+            // keyed by the new break's own id, not by list position.
+            onClick = { pendingFocusBreakId = viewModel.addBreak() },
             modifier = Modifier.fillMaxWidth(),
         )
 

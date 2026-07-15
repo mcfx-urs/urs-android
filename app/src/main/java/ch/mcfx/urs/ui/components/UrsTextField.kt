@@ -9,11 +9,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
@@ -41,6 +44,9 @@ fun UrsTextField(
     singleLine: Boolean = true,
     minLines: Int = 1,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    /** Lets a caller programmatically move focus onto this field, e.g. a newly added form row. */
+    focusRequester: FocusRequester? = null,
     /** Small caption rendered below the field, e.g. a "last known value" hint. */
     supportingText: String? = null,
 ) {
@@ -55,10 +61,11 @@ fun UrsTextField(
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().let { if (focusRequester != null) it.focusRequester(focusRequester) else it },
             singleLine = singleLine,
             minLines = minLines,
             keyboardOptions = keyboardOptions,
+            keyboardActions = keyboardActions,
             textStyle = UrsTheme.typography.body.copy(color = colors.onSurface),
             cursorBrush = SolidColor(colors.accent),
             interactionSource = interactionSource,
@@ -85,6 +92,8 @@ fun UrsTextField(
     singleLine: Boolean = true,
     minLines: Int = 1,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    focusRequester: FocusRequester? = null,
     supportingText: String? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -98,10 +107,11 @@ fun UrsTextField(
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().let { if (focusRequester != null) it.focusRequester(focusRequester) else it },
             singleLine = singleLine,
             minLines = minLines,
             keyboardOptions = keyboardOptions,
+            keyboardActions = keyboardActions,
             textStyle = UrsTheme.typography.body.copy(color = colors.onSurface),
             cursorBrush = SolidColor(colors.accent),
             interactionSource = interactionSource,

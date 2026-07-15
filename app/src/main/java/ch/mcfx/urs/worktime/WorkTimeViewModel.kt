@@ -111,7 +111,12 @@ class WorkTimeViewModel(
 
     fun setTargetDailyHours(value: String) = _formState.update { it.copy(targetDailyHours = value) }
 
-    fun addBreak() = _formState.update { it.copy(breaks = it.breaks + BreakDraft()) }
+    /** @return the new break's id, so the caller can move keyboard focus onto its start-time field. */
+    fun addBreak(): Long {
+        val draft = BreakDraft()
+        _formState.update { it.copy(breaks = it.breaks + draft) }
+        return draft.id
+    }
 
     fun removeBreak(id: Long) = _formState.update { state -> state.copy(breaks = state.breaks.filterNot { it.id == id }) }
 
