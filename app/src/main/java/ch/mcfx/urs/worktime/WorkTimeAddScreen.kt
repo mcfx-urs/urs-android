@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -17,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
@@ -80,15 +82,17 @@ private fun EntryForm(form: WorkTimeFormState, viewModel: WorkTimeViewModel) {
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.m)) {
             UrsTextField(
                 value = form.workStart,
-                onValueChange = viewModel::setWorkStart,
+                onValueChange = { viewModel.setWorkStart(formatTimeInput(it)) },
                 label = stringResource(R.string.worktime_work_start),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
                 modifier = Modifier.weight(1f),
             )
             UrsTextField(
                 value = form.workEnd,
-                onValueChange = viewModel::setWorkEnd,
+                onValueChange = { viewModel.setWorkEnd(formatTimeInput(it)) },
                 label = stringResource(R.string.worktime_work_end),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
                 modifier = Modifier.weight(1f),
             )
@@ -112,15 +116,17 @@ private fun EntryForm(form: WorkTimeFormState, viewModel: WorkTimeViewModel) {
             ) {
                 UrsTextField(
                     value = breakDraft.startTime,
-                    onValueChange = { viewModel.setBreakStart(breakDraft.id, it) },
+                    onValueChange = { viewModel.setBreakStart(breakDraft.id, formatTimeInput(it)) },
                     label = stringResource(R.string.worktime_break_start),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     modifier = Modifier.weight(1f),
                 )
                 UrsTextField(
                     value = breakDraft.endTime,
-                    onValueChange = { viewModel.setBreakEnd(breakDraft.id, it) },
+                    onValueChange = { viewModel.setBreakEnd(breakDraft.id, formatTimeInput(it)) },
                     label = stringResource(R.string.worktime_break_end),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     modifier = Modifier.weight(1f),
                 )

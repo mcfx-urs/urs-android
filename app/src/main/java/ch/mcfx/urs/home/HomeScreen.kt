@@ -35,7 +35,12 @@ import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Spacing
 
+// WORK_TIME leads the list on purpose: it's the day-to-day recurring entry
+// (unlike an occasional fuel fill-up), so it takes over the featured,
+// two-column top slot that FUEL used to occupy — see FeaturedCard below,
+// which always renders whichever destination is first here.
 private val FEATURE_TILES = listOf(
+    Destination.WORK_TIME,
     Destination.FUEL,
     Destination.INVENTORY,
     Destination.BEER,
@@ -58,6 +63,7 @@ private val FeaturedIconStyle = TextStyle(fontSize = 42.sp)
 private val TileIconStyle = TextStyle(fontSize = 32.sp)
 
 private val TILE_EMOJI = mapOf(
+    Destination.WORK_TIME to "🕒",
     Destination.FUEL to "⛽",
     Destination.INVENTORY to "📦",
     Destination.BEER to "🍺",

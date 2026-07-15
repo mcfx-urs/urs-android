@@ -44,8 +44,8 @@ data class WorkTimeFormState(
     val submitFailed: Boolean = false,
 ) {
     val isValid: Boolean
-        get() = date.isNotBlank() && workStart.isNotBlank() && workEnd.isNotBlank() &&
-            breaks.all { it.startTime.isNotBlank() && it.endTime.isNotBlank() }
+        get() = date.isNotBlank() && isValidTimeInput(workStart) && isValidTimeInput(workEnd) &&
+            breaks.all { isValidTimeInput(it.startTime) && isValidTimeInput(it.endTime) }
 }
 
 class WorkTimeViewModel(
@@ -160,4 +160,6 @@ class WorkTimeViewModel(
     }
 }
 
-private fun String.withSeconds(): String = if (count { it == ':' } >= 2) this else "$this:00"
+// Submit is only reachable once isValidTimeInput has confirmed "HH:mm", so
+// appending seconds unconditionally is safe.
+private fun String.withSeconds(): String = "$this:00"

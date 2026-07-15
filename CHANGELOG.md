@@ -10,9 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `ARCHITECTURE.md` documenting the system architecture and
   offline-sync design.
 - Work-time tracking: new Work Time section with an offline-capable entry
-  form (start/end time, add/remove breaks) and a history list showing the
-  computed daily total and over-/undertime per day; new settings field for
-  the default daily target hours.
+  form (start/end time, add/remove breaks, military-time auto-formatting
+  as you type) and a history list showing the computed daily total and
+  over-/undertime per day; featured tile on the home screen; new settings
+  field for the default daily target hours.
 
 ## [0.3.0] - 2026-07-11
 
