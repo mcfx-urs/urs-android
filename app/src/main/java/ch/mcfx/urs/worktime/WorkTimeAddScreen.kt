@@ -81,16 +81,16 @@ private fun EntryForm(form: WorkTimeFormState, viewModel: WorkTimeViewModel) {
 
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.m)) {
             UrsTextField(
-                value = form.workStart,
-                onValueChange = { viewModel.setWorkStart(formatTimeInput(it)) },
+                value = timeFieldValue(form.workStart),
+                onValueChange = { viewModel.setWorkStart(formatTimeInput(it).text) },
                 label = stringResource(R.string.worktime_work_start),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
                 modifier = Modifier.weight(1f),
             )
             UrsTextField(
-                value = form.workEnd,
-                onValueChange = { viewModel.setWorkEnd(formatTimeInput(it)) },
+                value = timeFieldValue(form.workEnd),
+                onValueChange = { viewModel.setWorkEnd(formatTimeInput(it).text) },
                 label = stringResource(R.string.worktime_work_end),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
@@ -115,16 +115,16 @@ private fun EntryForm(form: WorkTimeFormState, viewModel: WorkTimeViewModel) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 UrsTextField(
-                    value = breakDraft.startTime,
-                    onValueChange = { viewModel.setBreakStart(breakDraft.id, formatTimeInput(it)) },
+                    value = timeFieldValue(breakDraft.startTime),
+                    onValueChange = { viewModel.setBreakStart(breakDraft.id, formatTimeInput(it).text) },
                     label = stringResource(R.string.worktime_break_start),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     modifier = Modifier.weight(1f),
                 )
                 UrsTextField(
-                    value = breakDraft.endTime,
-                    onValueChange = { viewModel.setBreakEnd(breakDraft.id, formatTimeInput(it)) },
+                    value = timeFieldValue(breakDraft.endTime),
+                    onValueChange = { viewModel.setBreakEnd(breakDraft.id, formatTimeInput(it).text) },
                     label = stringResource(R.string.worktime_break_end),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,

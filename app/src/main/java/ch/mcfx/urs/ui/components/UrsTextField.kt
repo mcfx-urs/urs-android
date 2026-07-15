@@ -15,7 +15,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import ch.mcfx.urs.ui.theme.UrsColors
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Radius
 import ch.mcfx.urs.ui.tokens.Spacing
@@ -42,10 +44,85 @@ fun UrsTextField(
     /** Small caption rendered below the field, e.g. a "last known value" hint. */
     supportingText: String? = null,
 ) {
-    val colors = UrsTheme.colors
     val interactionSource = remember { MutableInteractionSource() }
+    UrsTextFieldChrome(
+        hasValue = value.isNotEmpty(),
+        label = label,
+        modifier = modifier,
+        supportingText = supportingText,
+        interactionSource = interactionSource,
+    ) { colors ->
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = singleLine,
+            minLines = minLines,
+            keyboardOptions = keyboardOptions,
+            textStyle = UrsTheme.typography.body.copy(color = colors.onSurface),
+            cursorBrush = SolidColor(colors.accent),
+            interactionSource = interactionSource,
+        )
+    }
+}
+
+/**
+ * [TextFieldValue] variant of the field above — needed whenever the caller
+ * must control cursor/selection explicitly, e.g. a format-as-you-type input.
+ * The plain `String` overload keeps whatever selection index the user's
+ * keystroke produced and just swaps in the new text, which is wrong once
+ * that text has been transformed to a different length (see
+ * `ch.mcfx.urs.worktime`'s military-time auto-formatting, which inserts a
+ * `:` the user didn't type) — the cursor ends up pointing at the wrong
+ * character instead of where the user actually just typed.
+ */
+@Composable
+fun UrsTextField(
+    value: TextFieldValue,
+    onValueChange: (TextFieldValue) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    singleLine: Boolean = true,
+    minLines: Int = 1,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    supportingText: String? = null,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    UrsTextFieldChrome(
+        hasValue = value.text.isNotEmpty(),
+        label = label,
+        modifier = modifier,
+        supportingText = supportingText,
+        interactionSource = interactionSource,
+    ) { colors ->
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = singleLine,
+            minLines = minLines,
+            keyboardOptions = keyboardOptions,
+            textStyle = UrsTheme.typography.body.copy(color = colors.onSurface),
+            cursorBrush = SolidColor(colors.accent),
+            interactionSource = interactionSource,
+        )
+    }
+}
+
+// Shared label/border/box chrome for both UrsTextField overloads above —
+// they differ only in the value type they hand to BasicTextField.
+@Composable
+private fun UrsTextFieldChrome(
+    hasValue: Boolean,
+    label: String,
+    modifier: Modifier,
+    supportingText: String?,
+    interactionSource: MutableInteractionSource,
+    field: @Composable (UrsColors) -> Unit,
+) {
+    val colors = UrsTheme.colors
     val focused by interactionSource.collectIsFocusedAsState()
-    val labelAbove = focused || value.isNotEmpty()
+    val labelAbove = focused || hasValue
     val borderColor = if (focused) colors.accent else colors.onSurfaceMuted.copy(alpha = 0.3f)
     val shape = RoundedCornerShape(Radius.row)
 
@@ -67,17 +144,7 @@ fun UrsTextField(
             if (!labelAbove) {
                 UrsText(text = label, style = UrsTheme.typography.body, color = colors.onSurfaceMuted)
             }
-            BasicTextField(
-                value = value,
-                onValueChange = onValueChange,
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = singleLine,
-                minLines = minLines,
-                keyboardOptions = keyboardOptions,
-                textStyle = UrsTheme.typography.body.copy(color = colors.onSurface),
-                cursorBrush = SolidColor(colors.accent),
-                interactionSource = interactionSource,
-            )
+            field(colors)
         }
         if (supportingText != null) {
             UrsText(
