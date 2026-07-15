@@ -49,6 +49,9 @@ import ch.mcfx.urs.settings.SettingsRoutes
 import ch.mcfx.urs.settings.SettingsScreen
 import ch.mcfx.urs.settings.VpnSettingsScreen
 import ch.mcfx.urs.settings.WorkTimeSettingsScreen
+import ch.mcfx.urs.shoppinglist.ListDetailScreen
+import ch.mcfx.urs.shoppinglist.ShoppingListRoutes
+import ch.mcfx.urs.shoppinglist.ShoppingListsScreen
 import ch.mcfx.urs.ui.components.UrsDrawerValue
 import ch.mcfx.urs.ui.components.UrsIconButton
 import ch.mcfx.urs.ui.components.UrsNavigationDrawer
@@ -215,6 +218,18 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                         val categoryName = backStackEntry.arguments?.getString("categoryName") ?: ""
                         ProductListScreen(categoryId = categoryId, categoryName = categoryName)
                     }
+                    composable(Destination.SHOPPING_LIST.route) {
+                        ShoppingListsScreen(
+                            onOpenList = { list -> navController.navigate(ShoppingListRoutes.listDetail(list.publicId)) },
+                        )
+                    }
+                    composable(
+                        route = ShoppingListRoutes.LIST_DETAIL,
+                        arguments = listOf(navArgument("listId") { type = NavType.StringType }),
+                    ) { backStackEntry ->
+                        val listId = backStackEntry.arguments?.getString("listId") ?: return@composable
+                        ListDetailScreen(listId = listId)
+                    }
                     composable(Destination.BEER.route) { BeerScreen() }
                     composable(Destination.WORK_TIME.route) {
                         WorkTimeScreen(
@@ -269,9 +284,14 @@ private val INVENTORY_ROUTE_LABELS = mapOf(
     InventoryRoutes.PRODUCTS to R.string.inventory_products_title,
 )
 
+private val SHOPPING_LIST_ROUTE_LABELS = mapOf(
+    ShoppingListRoutes.LIST_DETAIL to R.string.shoppinglist_list_detail_title,
+)
+
 private fun currentScreenLabel(route: String): Int =
     Destination.entries.find { it.route == route }?.labelRes
         ?: FUEL_ROUTE_LABELS[route]
         ?: SETTINGS_ROUTE_LABELS[route]
         ?: INVENTORY_ROUTE_LABELS[route]
+        ?: SHOPPING_LIST_ROUTE_LABELS[route]
         ?: R.string.app_name

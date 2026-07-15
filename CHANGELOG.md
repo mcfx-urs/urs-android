@@ -7,14 +7,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- Read-only Room cache for the predefined product catalog, refreshed
-  from the backend on demand (not yet wired into any screen).
+- Shopping lists: create, rename, and delete lists from a new Shopping
+  List section in the navigation drawer; each list's items are grouped
+  by inventory category, with checked-off items sinking to the bottom
+  of their group. Products can be added by searching the predefined
+  catalog or the household's own inventory, or by creating a brand-new
+  custom product on the spot; the same product can be added to a list
+  more than once with different notes.
 
 ### Changed
 
 - Inventory categories and products are now offline-first: cached locally
   in Room, created offline via the same outbox/sync pattern as fuel fills
   and work-time entries, with a pending/failed sync badge on unsynced rows.
+- The predefined product catalog cache now refreshes automatically when
+  the Shopping List section is opened, rather than only on demand.
 
 ### Fixed
 

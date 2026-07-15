@@ -57,6 +57,30 @@ interface UrsApi {
     @GET("api/v1/catalog-product")
     suspend fun getCatalogProducts(): List<CatalogProductDto>
 
+    @POST("api/v1/list")
+    suspend fun createList(@Body payload: ListPayload): ListDto
+
+    @GET("api/v1/list")
+    suspend fun getLists(): List<ListDto>
+
+    @PUT("api/v1/list/{id}")
+    suspend fun updateList(@Path("id") id: String, @Body payload: ListPayload)
+
+    @DELETE("api/v1/list/{id}")
+    suspend fun deleteList(@Path("id") id: String)
+
+    @POST("api/v1/list-item")
+    suspend fun createListItem(@Body payload: ListItemPayload): ListItemDto
+
+    @GET("api/v1/list/{listId}/list-item")
+    suspend fun getListItems(@Path("listId") listId: String): List<ListItemDto>
+
+    @PUT("api/v1/list-item/{id}")
+    suspend fun updateListItem(@Path("id") id: String, @Body payload: ListItemUpdatePayload)
+
+    @DELETE("api/v1/list-item/{id}")
+    suspend fun deleteListItem(@Path("id") id: String)
+
     @GET("api/v1/getuser")
     suspend fun getUsers(): List<UserDto>
 

@@ -41,14 +41,22 @@ class InventoryRepository(
     fun observeProducts(categoryId: String): Flow<List<InventoryProductEntity>> =
         inventoryProductDao.observeByCategory(categoryId).map { it.sortedBy { p -> p.name.alphabeticSortKey() } }
 
+    /** Household-product half of AddProductScreen's search — see [InventoryProductDao.search]'s doc comment. */
+    fun searchProducts(query: String): Flow<List<InventoryProductEntity>> = inventoryProductDao.search(query)
+
     /**
      * Offline-first write path — the *only* way a category gets created,
      * online or offline. Same shape as [FuelRepository.createFill]: both
      * writes below (the outbox row and the local [InventoryCategoryEntity],
      * status [SyncStatus.PENDING]) are local-only and instant, a background
      * sync attempt is fired immediately afterwards but never awaited here.
+     *
+     * @return the new row's local [InventoryCategoryEntity.id] — used by
+     * [ch.mcfx.urs.data.ShoppingListRepository.addCatalogProduct] to resolve
+     * this category's [ch.mcfx.urs.data.local.publicId] for the product
+     * create that follows it, without a second Room read.
      */
-    suspend fun createCategory(name: String) {
+    suspend fun createCategory(name: String): Long {
         val payload = OutboxInventoryCategoryPayload(name = name)
         val outboxId = outboxDao.insert(
             OutboxMutationEntity(
@@ -57,10 +65,11 @@ class InventoryRepository(
                 createdAt = System.currentTimeMillis(),
             ),
         )
-        inventoryCategoryDao.upsert(
+        val localId = inventoryCategoryDao.upsert(
             InventoryCategoryEntity(outboxId = outboxId, name = name, syncStatus = SyncStatus.PENDING),
         )
         applicationScope.launch { syncManager.syncNow() }
+        return localId
     }
 
     /**
@@ -68,8 +77,13 @@ class InventoryRepository(
      * is whatever [InventoryCategoryEntity.publicId] the caller currently
      * knows the parent category by (a real backend id, or a not-yet-synced
      * stand-in) — `SyncManager` resolves it to the real id at replay time.
+     * [catalogProductId] links this product back to the predefined catalog
+     * entry it was created from (see [ShoppingListRepository.addCatalogProduct])
+     * — `null` for a manually added product.
+     *
+     * @return the new row's local [InventoryProductEntity.id], same reason as [createCategory]'s.
      */
-    suspend fun createProduct(categoryId: String, name: String, quantity: Int?) {
+    suspend fun createProduct(categoryId: String, name: String, quantity: Int?, catalogProductId: String? = null): Long {
         val payload = OutboxInventoryProductPayload(categoryId = categoryId, name = name, quantity = quantity)
         val outboxId = outboxDao.insert(
             OutboxMutationEntity(
@@ -78,16 +92,18 @@ class InventoryRepository(
                 createdAt = System.currentTimeMillis(),
             ),
         )
-        inventoryProductDao.upsert(
+        val localId = inventoryProductDao.upsert(
             InventoryProductEntity(
                 outboxId = outboxId,
                 categoryId = categoryId,
                 name = name,
                 quantity = quantity,
+                catalogProductId = catalogProductId,
                 syncStatus = SyncStatus.PENDING,
             ),
         )
         applicationScope.launch { syncManager.syncNow() }
+        return localId
     }
 
     // Direct REST write, no outbox — deliberately not offline-first in this
@@ -228,8 +244,11 @@ private fun InventoryProductDto.toEntity() = InventoryProductEntity(
 // letter that follows it (e.g. "🍖Kitchen" next to other emoji, not next to
 // other K's) — some categories are expected to have an emoji prefix, some
 // not, so sorting needs to skip past any leading non-letter/non-digit
-// codepoints (emoji or otherwise) before comparing.
-private fun String.alphabeticSortKey(): String {
+// codepoints (emoji or otherwise) before comparing. Internal (not private):
+// ch.mcfx.urs.shoppinglist reuses this for the same category-name sort
+// order, so shopping-list category groups and the inventory category list
+// itself never disagree on ordering.
+internal fun String.alphabeticSortKey(): String {
     var charIndex = 0
     val codePoints = codePoints().toArray()
     for (codePoint in codePoints) {

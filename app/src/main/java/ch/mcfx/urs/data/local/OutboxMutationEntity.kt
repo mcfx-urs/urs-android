@@ -13,7 +13,12 @@ enum class OutboxStatus { PENDING, SYNCING, FAILED }
  * creation / daily-total computation server-side as part of that same
  * request in both cases, so one row per submission is enough),
  * [OutboxInventoryCategoryPayload] for [TYPE_CREATE_INVENTORY_CATEGORY],
- * [OutboxInventoryProductPayload] for [TYPE_CREATE_INVENTORY_PRODUCT].
+ * [OutboxInventoryProductPayload] for [TYPE_CREATE_INVENTORY_PRODUCT],
+ * [OutboxListPayload]/[OutboxListUpdatePayload]/[OutboxListDeletePayload]
+ * for [TYPE_CREATE_LIST]/[TYPE_UPDATE_LIST]/[TYPE_DELETE_LIST],
+ * [OutboxListItemPayload]/[OutboxListItemUpdatePayload]/
+ * [OutboxListItemDeletePayload] for [TYPE_CREATE_LIST_ITEM]/
+ * [TYPE_UPDATE_LIST_ITEM]/[TYPE_DELETE_LIST_ITEM].
  * [createdAt] drives strict FIFO replay order (see `SyncManager`), not
  * wall-clock display.
  */
@@ -34,5 +39,11 @@ data class OutboxMutationEntity(
         const val TYPE_DELETE_WORK_TIME_ENTRY = "DELETE_WORK_TIME_ENTRY"
         const val TYPE_CREATE_INVENTORY_CATEGORY = "CREATE_INVENTORY_CATEGORY"
         const val TYPE_CREATE_INVENTORY_PRODUCT = "CREATE_INVENTORY_PRODUCT"
+        const val TYPE_CREATE_LIST = "CREATE_LIST"
+        const val TYPE_UPDATE_LIST = "UPDATE_LIST"
+        const val TYPE_DELETE_LIST = "DELETE_LIST"
+        const val TYPE_CREATE_LIST_ITEM = "CREATE_LIST_ITEM"
+        const val TYPE_UPDATE_LIST_ITEM = "UPDATE_LIST_ITEM"
+        const val TYPE_DELETE_LIST_ITEM = "DELETE_LIST_ITEM"
     }
 }

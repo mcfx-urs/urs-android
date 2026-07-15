@@ -32,13 +32,23 @@ data class InventoryProductEntity(
     val reminderThreshold: Int? = null,
     val reminderHour: Int? = null,
     val reminderMinute: Int? = null,
-    // Not written by anything yet — the column exists so this entity already
-    // round-trips correctly once the backend field it mirrors lands
-    // (tracked separately from this offline-cache phase).
+    // Set when this product was created from a catalog entry (see
+    // ShoppingListRepository.addCatalogProduct) — the backend accepts this
+    // on create (inventory_product_catalog_product_id) but never echoes it
+    // back on any GET, so [InventoryProductDao.upsertFromServer] preserves
+    // whatever value a local row already has across a backend refresh
+    // rather than trusting the (always-absent) server value.
     val catalogProductId: String? = null,
     val syncStatus: SyncStatus,
 )
 
-/** Same stand-in-until-synced scheme as [InventoryCategoryEntity.publicId]. */
+/**
+ * Same stand-in-until-synced scheme as [InventoryCategoryEntity.publicId] —
+ * see [localInventoryProductId] for the reverse lookup a queued list-item
+ * create uses to resolve its still-pending parent product at replay time.
+ */
 val InventoryProductEntity.publicId: String
-    get() = serverId ?: "local-$id"
+    get() = serverId ?: localIdStandIn(id)
+
+/** Reverses [publicId] — same shape as [localInventoryCategoryId]. */
+fun localInventoryProductId(value: String): Long? = parseLocalIdStandIn(value)

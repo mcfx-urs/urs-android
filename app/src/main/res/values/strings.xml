@@ -11,6 +11,7 @@
     <string name="home_bear_footer">urs looks out for you</string>
     <string name="nav_fuel">Fuel</string>
     <string name="nav_inventory">Inventory</string>
+    <string name="nav_shopping_list">Shopping List</string>
     <string name="nav_beer">Beer</string>
     <string name="nav_health">Health</string>
     <string name="nav_gokart">Gokart</string>
@@ -141,6 +142,22 @@
     <string name="inventory_settings_error_reminder_fields">Fill in a valid hour (0–23), minute (0–59), and threshold for the reminder</string>
     <string name="inventory_settings_reminder_title">Low stock: %1$s</string>
     <string name="inventory_settings_reminder_body">%1$s is running low</string>
+
+    <string name="shoppinglist_lists_empty">No shopping lists yet — add one to start.</string>
+    <string name="shoppinglist_list_add">New list</string>
+    <string name="shoppinglist_list_rename">Rename</string>
+    <string name="shoppinglist_list_delete">Delete</string>
+    <string name="shoppinglist_list_name">List name</string>
+    <string name="shoppinglist_list_delete_confirm_title">Delete this list?</string>
+    <string name="shoppinglist_list_delete_confirm_body">This can\'t be undone.</string>
+    <string name="shoppinglist_list_detail_title">Shopping List</string>
+    <string name="shoppinglist_items_empty">No products on this list yet.</string>
+    <string name="shoppinglist_item_note">Note (optional)</string>
+    <string name="shoppinglist_add_product_title">Add a product</string>
+    <string name="shoppinglist_add_product_search">Search products</string>
+    <string name="shoppinglist_add_product_no_results">No matching products.</string>
+    <string name="shoppinglist_add_product_add">Add</string>
+    <string name="shoppinglist_add_custom_product">Add custom product</string>
 
     <string name="beer_add_5dl">+1 · 5dl</string>
     <string name="beer_add_33cl">+1 · 33cl</string>

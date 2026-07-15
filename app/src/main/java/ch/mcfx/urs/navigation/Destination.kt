@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.SportsBar
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -16,6 +17,7 @@ import ch.mcfx.urs.R
 import ch.mcfx.urs.fuel.FuelRoutes
 import ch.mcfx.urs.inventory.InventoryRoutes
 import ch.mcfx.urs.settings.SettingsRoutes
+import ch.mcfx.urs.shoppinglist.ShoppingListRoutes
 import ch.mcfx.urs.worktime.WorkTimeRoutes
 
 // Mirrors the web app's sidebar (urs-frontend App.vue). Destinations with
@@ -31,6 +33,7 @@ enum class Destination(
     HOME("home", R.string.nav_home, Icons.Filled.Home, isAvailable = true),
     FUEL(FuelRoutes.HUB, R.string.nav_fuel, Icons.Filled.LocalGasStation, isAvailable = true),
     INVENTORY(InventoryRoutes.CATEGORIES, R.string.nav_inventory, Icons.Filled.Inventory2, isAvailable = true),
+    SHOPPING_LIST(ShoppingListRoutes.LISTS, R.string.nav_shopping_list, Icons.Filled.ShoppingCart, isAvailable = true),
     BEER("beer", R.string.nav_beer, Icons.Filled.SportsBar, isAvailable = true),
     WORK_TIME(WorkTimeRoutes.HISTORY, R.string.nav_work_time, Icons.Filled.Schedule, isAvailable = true),
     HEALTH("health", R.string.nav_health, Icons.Filled.MonitorHeart, isAvailable = false),

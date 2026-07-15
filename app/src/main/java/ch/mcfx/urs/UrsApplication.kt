@@ -7,6 +7,7 @@ import ch.mcfx.urs.data.BeerRepository
 import ch.mcfx.urs.data.CatalogRepository
 import ch.mcfx.urs.data.FuelRepository
 import ch.mcfx.urs.data.InventoryRepository
+import ch.mcfx.urs.data.ShoppingListRepository
 import ch.mcfx.urs.data.UserRepository
 import ch.mcfx.urs.data.WorkTimeRepository
 import ch.mcfx.urs.data.local.AppDatabase
@@ -117,6 +118,8 @@ class AppContainer(context: Context) {
         workTimeDao = database.workTimeDao(),
         inventoryCategoryDao = database.inventoryCategoryDao(),
         inventoryProductDao = database.inventoryProductDao(),
+        listDao = database.listDao(),
+        listItemDao = database.listItemDao(),
         outboxDao = database.outboxDao(),
         reachabilityChecker = reachabilityChecker,
         json = json,
@@ -146,6 +149,18 @@ class AppContainer(context: Context) {
     val catalogRepository = CatalogRepository(
         api = ursApi,
         catalogProductDao = database.catalogProductDao(),
+    )
+    val shoppingListRepository = ShoppingListRepository(
+        api = ursApi,
+        listDao = database.listDao(),
+        listItemDao = database.listItemDao(),
+        inventoryProductDao = database.inventoryProductDao(),
+        inventoryCategoryDao = database.inventoryCategoryDao(),
+        inventoryRepository = inventoryRepository,
+        outboxDao = database.outboxDao(),
+        syncManager = syncManager,
+        applicationScope = applicationScope,
+        json = json,
     )
     val beerRepository = BeerRepository(retrofit.create(UrsApi::class.java))
     val workTimeRepository = WorkTimeRepository(

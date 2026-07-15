@@ -13,8 +13,32 @@ interface InventoryProductDao {
     @Query("SELECT * FROM inventory_product WHERE categoryId = :categoryId")
     fun observeByCategory(categoryId: String): Flow<List<InventoryProductEntity>>
 
+    // Used by ShoppingListRepository.observeItems to resolve each list
+    // item's product name/category across every category at once, not just
+    // one — see that repository's doc comment for why this is a plain Room
+    // query combined in Kotlin rather than a cross-table SQL join.
+    @Query("SELECT * FROM inventory_product")
+    fun observeAll(): Flow<List<InventoryProductEntity>>
+
+    // Household-product half of AddProductViewModel's search (the other
+    // half is CatalogProductDao.search) — global across every category,
+    // unlike observeByCategory, since AddProductScreen searches the whole
+    // household, not one category at a time.
+    @Query("SELECT * FROM inventory_product WHERE name LIKE '%' || :query || '%'")
+    fun search(query: String): Flow<List<InventoryProductEntity>>
+
     @Query("SELECT * FROM inventory_product WHERE outboxId = :outboxId LIMIT 1")
     suspend fun getByOutboxId(outboxId: Long): InventoryProductEntity?
+
+    @Query("SELECT * FROM inventory_product WHERE id = :id LIMIT 1")
+    suspend fun getById(id: Long): InventoryProductEntity?
+
+    // Dedup lookup for ShoppingListRepository.addCatalogProduct: is there
+    // already a household product for this catalog entry, so adding the
+    // same catalog product to a list twice reuses one inventory_product row
+    // instead of creating a second one each time.
+    @Query("SELECT * FROM inventory_product WHERE catalogProductId = :catalogProductId LIMIT 1")
+    suspend fun findByCatalogProductId(catalogProductId: String): InventoryProductEntity?
 
     @Query("SELECT serverId FROM inventory_product WHERE categoryId = :categoryId AND serverId IS NOT NULL")
     suspend fun serverIdsInCategory(categoryId: String): List<String>
@@ -29,13 +53,20 @@ interface InventoryProductDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(product: InventoryProductEntity): Long
 
-    /** Backend-refresh write path — see [InventoryCategoryDao.upsertFromServer]. */
+    /**
+     * Backend-refresh write path — see [InventoryCategoryDao.upsertFromServer].
+     * [InventoryProductEntity.catalogProductId] is carried over from
+     * whatever local row already exists rather than taken from [products]
+     * (always `null` there — see that field's doc comment), so a refresh
+     * never erases what a local create already knows.
+     */
     @Transaction
     suspend fun upsertFromServer(products: List<InventoryProductEntity>) {
         products.forEach { product ->
             val serverId = product.serverId ?: return@forEach
             val existingLocalId = findLocalIdByServerId(serverId)
-            replace(product.copy(id = existingLocalId ?: 0))
+            val preservedCatalogProductId = existingLocalId?.let { getById(it)?.catalogProductId }
+            replace(product.copy(id = existingLocalId ?: 0, catalogProductId = preservedCatalogProductId))
         }
     }
 

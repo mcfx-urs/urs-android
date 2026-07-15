@@ -5,10 +5,18 @@ import ch.mcfx.urs.data.local.FillingStationDao
 import ch.mcfx.urs.data.local.FillingStationEntity
 import ch.mcfx.urs.data.local.InventoryCategoryDao
 import ch.mcfx.urs.data.local.InventoryProductDao
+import ch.mcfx.urs.data.local.ListDao
+import ch.mcfx.urs.data.local.ListItemDao
 import ch.mcfx.urs.data.local.OutboxDao
 import ch.mcfx.urs.data.local.OutboxFillPayload
 import ch.mcfx.urs.data.local.OutboxInventoryCategoryPayload
 import ch.mcfx.urs.data.local.OutboxInventoryProductPayload
+import ch.mcfx.urs.data.local.OutboxListDeletePayload
+import ch.mcfx.urs.data.local.OutboxListItemDeletePayload
+import ch.mcfx.urs.data.local.OutboxListItemPayload
+import ch.mcfx.urs.data.local.OutboxListItemUpdatePayload
+import ch.mcfx.urs.data.local.OutboxListPayload
+import ch.mcfx.urs.data.local.OutboxListUpdatePayload
 import ch.mcfx.urs.data.local.OutboxMutationEntity
 import ch.mcfx.urs.data.local.OutboxWorkTimeEntryDeletePayload
 import ch.mcfx.urs.data.local.OutboxWorkTimeEntryPayload
@@ -16,9 +24,14 @@ import ch.mcfx.urs.data.local.OutboxWorkTimeEntryUpdatePayload
 import ch.mcfx.urs.data.local.WorkTimeBreakEntity
 import ch.mcfx.urs.data.local.WorkTimeDao
 import ch.mcfx.urs.data.local.localInventoryCategoryId
+import ch.mcfx.urs.data.local.localInventoryProductId
+import ch.mcfx.urs.data.local.localListId
 import ch.mcfx.urs.data.remote.FillPayload
 import ch.mcfx.urs.data.remote.InventoryCategoryPayload
 import ch.mcfx.urs.data.remote.InventoryProductPayload
+import ch.mcfx.urs.data.remote.ListItemPayload
+import ch.mcfx.urs.data.remote.ListItemUpdatePayload
+import ch.mcfx.urs.data.remote.ListPayload
 import ch.mcfx.urs.data.remote.UrsApi
 import ch.mcfx.urs.data.remote.WorkTimeBreakPayload
 import ch.mcfx.urs.data.remote.WorkTimeEntryPayload
@@ -47,6 +60,8 @@ class SyncManager(
     private val workTimeDao: WorkTimeDao,
     private val inventoryCategoryDao: InventoryCategoryDao,
     private val inventoryProductDao: InventoryProductDao,
+    private val listDao: ListDao,
+    private val listItemDao: ListItemDao,
     private val outboxDao: OutboxDao,
     private val reachabilityChecker: ReachabilityChecker,
     private val json: Json,
@@ -79,6 +94,12 @@ class SyncManager(
                 OutboxMutationEntity.TYPE_DELETE_WORK_TIME_ENTRY -> replayDeleteWorkTimeEntry(mutation)
                 OutboxMutationEntity.TYPE_CREATE_INVENTORY_CATEGORY -> replayCreateInventoryCategory(mutation)
                 OutboxMutationEntity.TYPE_CREATE_INVENTORY_PRODUCT -> replayCreateInventoryProduct(mutation)
+                OutboxMutationEntity.TYPE_CREATE_LIST -> replayCreateList(mutation)
+                OutboxMutationEntity.TYPE_UPDATE_LIST -> replayUpdateList(mutation)
+                OutboxMutationEntity.TYPE_DELETE_LIST -> replayDeleteList(mutation)
+                OutboxMutationEntity.TYPE_CREATE_LIST_ITEM -> replayCreateListItem(mutation)
+                OutboxMutationEntity.TYPE_UPDATE_LIST_ITEM -> replayUpdateListItem(mutation)
+                OutboxMutationEntity.TYPE_DELETE_LIST_ITEM -> replayDeleteListItem(mutation)
                 else -> {
                     // Forward-compat placeholder — nothing else is queued today.
                     outboxDao.markFailed(mutation.id, "unknown outbox mutation type: ${mutation.type}")
@@ -323,5 +344,118 @@ class SyncManager(
         inventoryProductDao.markSynced(localProduct.id, created.id, resolvedCategoryId)
         outboxDao.delete(mutation.id)
         return true
+    }
+
+    /**
+     * Unlike [replayCreateInventoryCategory], the backend's create-list
+     * route echoes the assigned id directly in its response body (see
+     * `urs-backend`'s `postList`) — no re-fetch-and-match-by-name workaround
+     * needed here.
+     */
+    private suspend fun replayCreateList(mutation: OutboxMutationEntity): Boolean {
+        val localList = listDao.getByOutboxId(mutation.id) ?: run {
+            outboxDao.delete(mutation.id)
+            return true
+        }
+        val payload = json.decodeFromString(OutboxListPayload.serializer(), mutation.payloadJson)
+
+        val response = api.createList(ListPayload(name = payload.name))
+
+        listDao.markSynced(localList.id, response.id)
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    // No local-row lookup needed — payload.serverId identifies the target
+    // directly (same reasoning as OutboxWorkTimeEntryUpdatePayload's doc
+    // comment), and the PUT route returns no body to reconcile against.
+    private suspend fun replayUpdateList(mutation: OutboxMutationEntity): Boolean {
+        val payload = json.decodeFromString(OutboxListUpdatePayload.serializer(), mutation.payloadJson)
+        api.updateList(payload.serverId, ListPayload(name = payload.name))
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    // No local row to look up — deleteList() already removed it immediately,
+    // offline-first, before this mutation was ever queued (same shape as
+    // replayDeleteWorkTimeEntry).
+    private suspend fun replayDeleteList(mutation: OutboxMutationEntity): Boolean {
+        val payload = json.decodeFromString(OutboxListDeletePayload.serializer(), mutation.payloadJson)
+        api.deleteList(payload.serverId)
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    /**
+     * Unlike [replayCreateInventoryProduct], the backend's create-list-item
+     * route also echoes the assigned id directly (see `urs-backend`'s
+     * `postListItem`) — no re-fetch-and-match workaround needed. Resolves
+     * both [OutboxListItemPayload.listId] and [OutboxListItemPayload
+     * .productId] first, same stand-in-until-synced reasoning as
+     * [replayCreateInventoryProduct]'s categoryId resolution — FIFO replay
+     * order means both parents' own creates have normally already replayed
+     * earlier in this same pass; if not, this mutation fails too and is
+     * simply retried next sync.
+     */
+    private suspend fun replayCreateListItem(mutation: OutboxMutationEntity): Boolean {
+        val localItem = listItemDao.getByOutboxId(mutation.id) ?: run {
+            outboxDao.delete(mutation.id)
+            return true
+        }
+        val payload = json.decodeFromString(OutboxListItemPayload.serializer(), mutation.payloadJson)
+
+        val resolvedListId = resolveListId(payload.listId) ?: run {
+            outboxDao.markFailed(mutation.id, "parent list not yet synced")
+            return false
+        }
+        val resolvedProductId = resolveProductId(payload.productId) ?: run {
+            outboxDao.markFailed(mutation.id, "parent product not yet synced")
+            return false
+        }
+
+        val response = api.createListItem(
+            ListItemPayload(listId = resolvedListId, productId = resolvedProductId, note = payload.note.orEmpty()),
+        )
+
+        listItemDao.markSynced(localItem.id, response.id, resolvedListId, resolvedProductId)
+
+        // The create route has no checked field of its own (a freshly
+        // created list_item is always unchecked server-side) — if the item
+        // was already checked locally before its own create ever synced
+        // (tapping it while still offline), push that state through right
+        // away so it doesn't silently revert to unchecked once this
+        // mutation replays.
+        if (localItem.checked) {
+            api.updateListItem(response.id, ListItemUpdatePayload(note = payload.note.orEmpty(), checked = true))
+        }
+
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    // Same "no local-row lookup needed" reasoning as replayUpdateList.
+    private suspend fun replayUpdateListItem(mutation: OutboxMutationEntity): Boolean {
+        val payload = json.decodeFromString(OutboxListItemUpdatePayload.serializer(), mutation.payloadJson)
+        api.updateListItem(payload.serverId, ListItemUpdatePayload(note = payload.note.orEmpty(), checked = payload.checked))
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    // Same "no local row to look up" reasoning as replayDeleteList.
+    private suspend fun replayDeleteListItem(mutation: OutboxMutationEntity): Boolean {
+        val payload = json.decodeFromString(OutboxListItemDeletePayload.serializer(), mutation.payloadJson)
+        api.deleteListItem(payload.serverId)
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    private suspend fun resolveListId(value: String): String? {
+        val localId = localListId(value) ?: return value
+        return listDao.getById(localId)?.serverId
+    }
+
+    private suspend fun resolveProductId(value: String): String? {
+        val localId = localInventoryProductId(value) ?: return value
+        return inventoryProductDao.getById(localId)?.serverId
     }
 }

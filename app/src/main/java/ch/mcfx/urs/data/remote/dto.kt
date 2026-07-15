@@ -120,6 +120,11 @@ data class InventoryProductPayload(
     @SerialName("inventory_product_category_id") val categoryId: String,
     @SerialName("inventory_product_name") val name: String,
     @SerialName("inventory_product_quantity") val quantity: String,
+    // Only meaningful on create — the backend's own update route ignores
+    // this field entirely, so updateProductQuantity leaves it at its
+    // default. Empty string = "not created from a catalog entry", same
+    // nullable-column-as-empty-string convention as the threshold fields.
+    @SerialName("inventory_product_catalog_product_id") val catalogProductId: String = "",
 )
 
 // Separate from InventoryProductPayload so updating thresholds/reminder can
@@ -145,6 +150,51 @@ data class CatalogProductDto(
     @SerialName("catalog_product_brands") val brands: String = "",
     @SerialName("catalog_product_popularity_index") val popularityIndex: String = "",
     @SerialName("catalog_product_catalog_image_id") val catalogImageId: String = "",
+)
+
+@Serializable
+data class ListDto(
+    @SerialName("list_id") val id: String,
+    @SerialName("list_name") val name: String,
+)
+
+@Serializable
+data class ListPayload(
+    @SerialName("list_name") val name: String,
+)
+
+// Covers both the plain create-response shape (list_item_id/list_item_list_id/
+// list_item_product_id/list_item_note/list_item_checked only — see
+// web.ListItem in urs-backend) and the denormalized GET-list shape (adds the
+// joined product/category names — see data.ListItem) with one type: the
+// three joined fields simply stay at their default on a create response.
+@Serializable
+data class ListItemDto(
+    @SerialName("list_item_id") val id: String,
+    @SerialName("list_item_list_id") val listId: String,
+    @SerialName("list_item_product_id") val productId: String,
+    @SerialName("inventory_product_name") val productName: String = "",
+    @SerialName("inventory_product_category_id") val productCategoryId: String = "",
+    @SerialName("inventory_category_name") val categoryName: String = "",
+    @SerialName("list_item_note") val note: String = "",
+    @SerialName("list_item_checked") val checked: Boolean = false,
+)
+
+@Serializable
+data class ListItemPayload(
+    @SerialName("list_item_list_id") val listId: String,
+    @SerialName("list_item_product_id") val productId: String,
+    @SerialName("list_item_note") val note: String = "",
+)
+
+// Separate from ListItemPayload so an update can never accidentally touch
+// listId/productId — mirrors InventoryProductSettingsPayload's split from
+// InventoryProductPayload, and matches the backend's own PUT route, which
+// only ever reads list_item_note/list_item_checked from the body.
+@Serializable
+data class ListItemUpdatePayload(
+    @SerialName("list_item_note") val note: String = "",
+    @SerialName("list_item_checked") val checked: Boolean = false,
 )
 
 @Serializable

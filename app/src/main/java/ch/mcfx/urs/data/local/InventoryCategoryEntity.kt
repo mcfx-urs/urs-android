@@ -25,23 +25,19 @@ data class InventoryCategoryEntity(
     val syncStatus: SyncStatus,
 )
 
-// Prefix for a not-yet-synced category's stand-in id (see [publicId]) — used
-// nowhere else, so a real server id can never collide with it in practice.
-private const val LOCAL_ID_PREFIX = "local-"
-
 /**
  * The id the UI/outbox payloads address this category by: the real backend
- * id once known, otherwise a stand-in derived from the stable local [id] —
- * see [localInventoryCategoryId] for the reverse lookup a queued product
- * create uses to resolve its still-pending parent category at replay time.
+ * id once known, otherwise a stand-in derived from the stable local [id]
+ * (see [LOCAL_ID_PREFIX]) — see [localInventoryCategoryId] for the reverse
+ * lookup a queued product create uses to resolve its still-pending parent
+ * category at replay time.
  */
 val InventoryCategoryEntity.publicId: String
-    get() = serverId ?: "$LOCAL_ID_PREFIX$id"
+    get() = serverId ?: localIdStandIn(id)
 
 /**
  * Reverses [publicId]: the local row id encoded in a not-yet-synced
  * category's stand-in id, or `null` if [value] is already a real server id
  * (nothing to resolve).
  */
-fun localInventoryCategoryId(value: String): Long? =
-    value.takeIf { it.startsWith(LOCAL_ID_PREFIX) }?.removePrefix(LOCAL_ID_PREFIX)?.toLongOrNull()
+fun localInventoryCategoryId(value: String): Long? = parseLocalIdStandIn(value)

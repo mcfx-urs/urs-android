@@ -17,8 +17,10 @@ import androidx.room.TypeConverters
         InventoryCategoryEntity::class,
         InventoryProductEntity::class,
         CatalogProductEntity::class,
+        ListEntity::class,
+        ListItemEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -33,4 +35,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun inventoryCategoryDao(): InventoryCategoryDao
     abstract fun inventoryProductDao(): InventoryProductDao
     abstract fun catalogProductDao(): CatalogProductDao
+    abstract fun listDao(): ListDao
+    abstract fun listItemDao(): ListItemDao
 }
