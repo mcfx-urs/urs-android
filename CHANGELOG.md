@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- Inventory categories and products are now offline-first: cached locally
+  in Room, created offline via the same outbox/sync pattern as fuel fills
+  and work-time entries, with a pending/failed sync badge on unsynced rows.
+
 ### Fixed
 
 - Dropdown option lists (currency, station, etc.) no longer overflow past

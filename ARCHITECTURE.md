@@ -44,8 +44,9 @@ otherwise it establishes the tunnel on demand before syncing.
 
 ## Offline-first data flow
 
-Some features (currently: fuel fill-ups, work-time entries) are built
-offline-first: a write is never blocked on live network reachability.
+Some features (currently: fuel fill-ups, work-time entries, inventory
+categories/products) are built offline-first: a write is never blocked
+on live network reachability.
 
 ```mermaid
 sequenceDiagram

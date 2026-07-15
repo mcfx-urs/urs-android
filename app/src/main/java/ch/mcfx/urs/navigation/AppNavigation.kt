@@ -40,6 +40,7 @@ import ch.mcfx.urs.fuel.FuelScreen
 import ch.mcfx.urs.fuel.FuelStationsScreen
 import ch.mcfx.urs.fuel.FuelStatsScreen
 import ch.mcfx.urs.home.HomeScreen
+import ch.mcfx.urs.data.local.publicId
 import ch.mcfx.urs.inventory.CategoryListScreen
 import ch.mcfx.urs.inventory.InventoryRoutes
 import ch.mcfx.urs.inventory.ProductListScreen
@@ -194,7 +195,7 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                     ) {
                         CategoryListScreen(
                             onOpenCategory = { category ->
-                                navController.navigate(InventoryRoutes.products(category.id, category.name))
+                                navController.navigate(InventoryRoutes.products(category.publicId, category.name))
                             },
                         )
                     }

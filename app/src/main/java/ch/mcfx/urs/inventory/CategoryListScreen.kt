@@ -6,10 +6,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -26,12 +24,14 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
-import ch.mcfx.urs.data.remote.InventoryCategoryDto
+import ch.mcfx.urs.data.local.InventoryCategoryEntity
+import ch.mcfx.urs.data.local.SyncStatus
 import ch.mcfx.urs.ui.components.UrsBottomSheet
 import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsFab
 import ch.mcfx.urs.ui.components.UrsIconButton
+import ch.mcfx.urs.ui.components.UrsPill
 import ch.mcfx.urs.ui.components.UrsProgressIndicator
 import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.components.UrsTextField
@@ -50,7 +50,7 @@ private val FormErrorColor = Color(0xFFD64545)
 
 @Composable
 fun CategoryListScreen(
-    onOpenCategory: (InventoryCategoryDto) -> Unit,
+    onOpenCategory: (InventoryCategoryEntity) -> Unit,
     viewModel: CategoriesViewModel = viewModel(factory = CategoriesViewModel.Factory),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -60,15 +60,6 @@ fun CategoryListScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         when (val state = uiState) {
             CategoriesUiState.Loading -> UrsProgressIndicator(Modifier.align(Alignment.Center))
-
-            is CategoriesUiState.Error -> Column(
-                modifier = Modifier.align(Alignment.Center),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                UrsText(stringResource(R.string.error_load), style = UrsTheme.typography.body)
-                Spacer(Modifier.height(Spacing.l))
-                UrsButton(text = stringResource(R.string.retry), onClick = viewModel::load)
-            }
 
             is CategoriesUiState.Data -> CategoryList(
                 categories = state.categories,
@@ -96,9 +87,9 @@ fun CategoryListScreen(
 
 @Composable
 private fun CategoryList(
-    categories: List<InventoryCategoryDto>,
-    onOpenCategory: (InventoryCategoryDto) -> Unit,
-    onDeleteCategory: (String) -> Unit,
+    categories: List<InventoryCategoryEntity>,
+    onOpenCategory: (InventoryCategoryEntity) -> Unit,
+    onDeleteCategory: (InventoryCategoryEntity) -> Unit,
 ) {
     if (categories.isEmpty()) {
         Box(Modifier.fillMaxSize()) {
@@ -134,14 +125,36 @@ private fun CategoryList(
                         style = UrsTheme.typography.cardTitle,
                         modifier = Modifier.weight(1f),
                     )
-                    UrsIconButton(
-                        onClick = { onDeleteCategory(category.id) },
-                        contentDescription = stringResource(R.string.inventory_category_remove, category.name),
-                        imageVector = Icons.Filled.Close,
-                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        CategorySyncStatusPill(category.syncStatus)
+                        // Delete needs a real backend id — see
+                        // CategoriesViewModel.deleteCategory.
+                        UrsIconButton(
+                            onClick = { onDeleteCategory(category) },
+                            enabled = category.syncStatus == SyncStatus.SYNCED,
+                            contentDescription = stringResource(R.string.inventory_category_remove, category.name),
+                            imageVector = Icons.Filled.Close,
+                        )
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun CategorySyncStatusPill(status: SyncStatus) {
+    when (status) {
+        SyncStatus.PENDING -> UrsPill(text = stringResource(R.string.fill_status_pending))
+        SyncStatus.FAILED -> UrsPill(
+            text = stringResource(R.string.fill_status_failed),
+            containerColor = FormErrorColor.copy(alpha = 0.15f),
+            contentColor = FormErrorColor,
+        )
+        SyncStatus.SYNCED -> Unit
     }
 }
 

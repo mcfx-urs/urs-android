@@ -8,7 +8,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.data.InventoryRepository
-import ch.mcfx.urs.data.remote.InventoryCategoryDto
+import ch.mcfx.urs.data.local.InventoryCategoryEntity
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,8 +18,7 @@ import kotlinx.coroutines.launch
 
 sealed interface CategoriesUiState {
     data object Loading : CategoriesUiState
-    data class Error(val message: String) : CategoriesUiState
-    data class Data(val categories: List<InventoryCategoryDto>) : CategoriesUiState
+    data class Data(val categories: List<InventoryCategoryEntity>) : CategoriesUiState
 }
 
 data class CategoryFormState(
@@ -42,20 +41,17 @@ class CategoriesViewModel(private val repository: InventoryRepository) : ViewMod
     val showForm: StateFlow<Boolean> = _showForm.asStateFlow()
 
     init {
+        // Room-backed Flow, so this screen has something to show even on a
+        // cold start with no connectivity — load() below only refreshes the
+        // cache opportunistically (see FuelViewModel for the same shape).
+        viewModelScope.launch {
+            repository.observeCategories().collect { _uiState.value = CategoriesUiState.Data(it) }
+        }
         load()
     }
 
     fun load() {
-        _uiState.value = CategoriesUiState.Loading
-        viewModelScope.launch {
-            try {
-                _uiState.value = CategoriesUiState.Data(repository.getCategories())
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                _uiState.value = CategoriesUiState.Error(e.message ?: "unknown")
-            }
-        }
+        viewModelScope.launch { repository.refreshFromBackend() }
     }
 
     fun openForm() {
@@ -77,8 +73,10 @@ class CategoriesViewModel(private val repository: InventoryRepository) : ViewMod
             _formState.update { it.copy(submitting = true, submitFailed = false) }
             try {
                 repository.createCategory(name = form.name.trim())
+                // createCategory is a local-only write and returns
+                // instantly — no network round-trip to wait on, so the
+                // form can close right away (see FuelViewModel.submit).
                 _showForm.value = false
-                load()
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
@@ -87,11 +85,14 @@ class CategoriesViewModel(private val repository: InventoryRepository) : ViewMod
         }
     }
 
-    fun deleteCategory(id: String) {
+    fun deleteCategory(category: InventoryCategoryEntity) {
+        // Delete stays a direct network call in this phase (see
+        // InventoryRepository.deleteCategory) — nothing to delete
+        // server-side yet for a category that hasn't synced.
+        val serverId = category.serverId ?: return
         viewModelScope.launch {
             try {
-                repository.deleteCategory(id)
-                load()
+                repository.deleteCategory(serverId)
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {

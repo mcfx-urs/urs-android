@@ -8,7 +8,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.data.InventoryRepository
-import ch.mcfx.urs.data.remote.InventoryProductDto
+import ch.mcfx.urs.data.local.InventoryProductEntity
 import ch.mcfx.urs.notifications.NotificationChannels
 import ch.mcfx.urs.notifications.ReminderScheduler
 import kotlinx.coroutines.CancellationException
@@ -20,8 +20,7 @@ import kotlinx.coroutines.launch
 
 sealed interface ProductsUiState {
     data object Loading : ProductsUiState
-    data class Error(val message: String) : ProductsUiState
-    data class Data(val products: List<InventoryProductDto>) : ProductsUiState
+    data class Data(val products: List<InventoryProductEntity>) : ProductsUiState
 }
 
 data class ProductFormState(
@@ -35,7 +34,7 @@ data class ProductFormState(
 // Long-press popup state: quantity + the two warning-color thresholds +
 // an optional daily low-stock reminder, all for one specific product.
 data class ProductSettingsFormState(
-    val product: InventoryProductDto? = null,
+    val product: InventoryProductEntity? = null,
     val quantity: String = "",
     val firstThreshold: String = "",
     val secondThreshold: String = "",
@@ -70,20 +69,16 @@ class ProductsViewModel(
     val showSettings: StateFlow<Boolean> = _showSettings.asStateFlow()
 
     init {
+        // Room-backed Flow, same shape as CategoriesViewModel/FuelViewModel —
+        // load() below only refreshes the cache opportunistically.
+        viewModelScope.launch {
+            repository.observeProducts(categoryId).collect { _uiState.value = ProductsUiState.Data(it) }
+        }
         load()
     }
 
     fun load() {
-        _uiState.value = ProductsUiState.Loading
-        viewModelScope.launch {
-            try {
-                _uiState.value = ProductsUiState.Data(repository.getProducts(categoryId))
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                _uiState.value = ProductsUiState.Error(e.message ?: "unknown")
-            }
-        }
+        viewModelScope.launch { repository.refreshFromBackend() }
     }
 
     fun openForm() {
@@ -104,9 +99,11 @@ class ProductsViewModel(
         viewModelScope.launch {
             _formState.update { it.copy(submitting = true, submitFailed = false) }
             try {
-                repository.createProduct(categoryId = categoryId, name = form.name.trim())
+                repository.createProduct(categoryId = categoryId, name = form.name.trim(), quantity = 0)
+                // createProduct is a local-only write and returns instantly —
+                // no network round-trip to wait on, so the form can close
+                // right away (see FuelViewModel.submit).
                 _showForm.value = false
-                load()
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
@@ -115,21 +112,23 @@ class ProductsViewModel(
         }
     }
 
-    fun increment(product: InventoryProductDto) = adjustQuantity(product, +1)
+    fun increment(product: InventoryProductEntity) = adjustQuantity(product, +1)
 
-    fun decrement(product: InventoryProductDto) = adjustQuantity(product, -1)
+    fun decrement(product: InventoryProductEntity) = adjustQuantity(product, -1)
 
-    // Optimistic: the row updates immediately so the stepper feels instant;
-    // if the backend call fails, load() reconciles the list back to the
-    // real server state rather than leaving a stale local value around.
+    // Direct network call, no outbox — see InventoryRepository
+    // .updateProductQuantity's doc comment. Nothing to update server-side
+    // for a product that hasn't synced yet, so the stepper is a no-op for
+    // one until then.
     //
     // null quantity means "not currently tracked" (paused) — a state below
     // 0, not the same as it. Decrementing past 0 lands there; incrementing
     // from there lands back on 0, not 1, so the stepper always moves by
     // exactly one step in either direction (jumping straight to a specific
     // number is what the long-press settings popup is for).
-    private fun adjustQuantity(product: InventoryProductDto, delta: Int) {
-        val currentQuantity = product.quantity.toIntOrNull()
+    private fun adjustQuantity(product: InventoryProductEntity, delta: Int) {
+        val serverId = product.serverId ?: return
+        val currentQuantity = product.quantity
         val newQuantity = when {
             delta > 0 && currentQuantity == null -> 0
             delta < 0 && currentQuantity == null -> return
@@ -138,28 +137,30 @@ class ProductsViewModel(
         }
         if (newQuantity == currentQuantity) return
 
-        val state = _uiState.value
-        if (state !is ProductsUiState.Data) return
-        _uiState.value = ProductsUiState.Data(
-            state.products.map { if (it.id == product.id) it.copy(quantity = newQuantity?.toString().orEmpty()) else it },
-        )
-
         viewModelScope.launch {
             try {
-                repository.updateProductQuantity(product, newQuantity)
+                repository.updateProductQuantity(
+                    categoryId = categoryId,
+                    productId = serverId,
+                    name = product.name,
+                    newQuantity = newQuantity,
+                )
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
-                load()
+                // Best-effort: the row simply keeps showing the last-known
+                // quantity if the update failed server-side.
             }
         }
     }
 
-    fun deleteProduct(id: String) {
+    fun deleteProduct(product: InventoryProductEntity) {
+        // Same "nothing to delete server-side yet" guard as
+        // CategoriesViewModel.deleteCategory.
+        val serverId = product.serverId ?: return
         viewModelScope.launch {
             try {
-                repository.deleteProduct(id)
-                load()
+                repository.deleteProduct(serverId)
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
@@ -173,17 +174,16 @@ class ProductsViewModel(
     // product. Prefilled from whatever's already persisted on the backend —
     // reminderEnabled is derived from those fields being non-empty rather
     // than tracked separately, so a fresh load() always reflects reality.
-    fun openSettings(product: InventoryProductDto) {
+    fun openSettings(product: InventoryProductEntity) {
         _settingsForm.value = ProductSettingsFormState(
             product = product,
-            quantity = product.quantity,
-            firstThreshold = product.firstThreshold,
-            secondThreshold = product.secondThreshold,
-            reminderEnabled = product.reminderHour.isNotEmpty() &&
-                product.reminderMinute.isNotEmpty() && product.reminderThreshold.isNotEmpty(),
-            reminderHour = product.reminderHour,
-            reminderMinute = product.reminderMinute,
-            reminderThreshold = product.reminderThreshold,
+            quantity = product.quantity?.toString().orEmpty(),
+            firstThreshold = product.firstThreshold?.toString().orEmpty(),
+            secondThreshold = product.secondThreshold?.toString().orEmpty(),
+            reminderEnabled = product.reminderHour != null && product.reminderMinute != null && product.reminderThreshold != null,
+            reminderHour = product.reminderHour?.toString().orEmpty(),
+            reminderMinute = product.reminderMinute?.toString().orEmpty(),
+            reminderThreshold = product.reminderThreshold?.toString().orEmpty(),
         )
         _showSettings.value = true
     }
@@ -220,6 +220,7 @@ class ProductsViewModel(
     ) {
         val form = _settingsForm.value
         val product = form.product ?: return
+        val serverId = product.serverId ?: return
         if (form.submitting) return
 
         val first = form.firstThreshold.toIntOrNull()
@@ -247,11 +248,13 @@ class ProductsViewModel(
         viewModelScope.launch {
             _settingsForm.update { it.copy(submitting = true, error = null) }
             try {
-                if (newQuantity?.toString().orEmpty() != product.quantity) {
-                    repository.updateProductQuantity(product, newQuantity)
+                if (newQuantity != product.quantity) {
+                    repository.updateProductQuantity(
+                        categoryId = categoryId, productId = serverId, name = product.name, newQuantity = newQuantity,
+                    )
                 }
                 repository.updateProductSettings(
-                    productId = product.id,
+                    productId = serverId,
                     firstThreshold = first,
                     secondThreshold = second,
                     reminderThreshold = if (form.reminderEnabled) reminderThreshold else null,
@@ -259,7 +262,7 @@ class ProductsViewModel(
                     reminderMinute = if (form.reminderEnabled) minute else null,
                 )
 
-                val reminderId = reminderIdFor(product.id)
+                val reminderId = reminderIdFor(serverId)
                 if (form.reminderEnabled && hour != null && minute != null && reminderThreshold != null) {
                     reminderScheduler.scheduleDaily(
                         id = reminderId,
@@ -270,7 +273,7 @@ class ProductsViewModel(
                         body = reminderBody,
                         deepLinkRoute = InventoryRoutes.products(categoryId, categoryName),
                         conditionInventoryCategoryId = categoryId,
-                        conditionInventoryProductId = product.id,
+                        conditionInventoryProductId = serverId,
                         conditionBelowQuantity = reminderThreshold,
                     )
                 } else {
@@ -278,7 +281,6 @@ class ProductsViewModel(
                 }
 
                 _showSettings.value = false
-                load()
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {

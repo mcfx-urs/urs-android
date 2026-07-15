@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -32,13 +31,15 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
-import ch.mcfx.urs.data.remote.InventoryProductDto
+import ch.mcfx.urs.data.local.InventoryProductEntity
+import ch.mcfx.urs.data.local.SyncStatus
 import ch.mcfx.urs.ui.components.UrsBottomSheet
 import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsCheckbox
 import ch.mcfx.urs.ui.components.UrsFab
 import ch.mcfx.urs.ui.components.UrsIconButton
+import ch.mcfx.urs.ui.components.UrsPill
 import ch.mcfx.urs.ui.components.UrsProgressIndicator
 import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.components.UrsTextField
@@ -83,17 +84,6 @@ fun ProductListScreen(
                     UrsProgressIndicator(Modifier.align(Alignment.Center))
                 }
 
-                is ProductsUiState.Error -> Box(Modifier.fillMaxSize()) {
-                    Column(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        UrsText(stringResource(R.string.error_load), style = UrsTheme.typography.body)
-                        Spacer(Modifier.height(Spacing.l))
-                        UrsButton(text = stringResource(R.string.retry), onClick = viewModel::load)
-                    }
-                }
-
                 is ProductsUiState.Data -> ProductList(
                     products = state.products,
                     onIncrement = viewModel::increment,
@@ -130,11 +120,11 @@ fun ProductListScreen(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ProductList(
-    products: List<InventoryProductDto>,
-    onIncrement: (InventoryProductDto) -> Unit,
-    onDecrement: (InventoryProductDto) -> Unit,
-    onDeleteProduct: (String) -> Unit,
-    onLongPress: (InventoryProductDto) -> Unit,
+    products: List<InventoryProductEntity>,
+    onIncrement: (InventoryProductEntity) -> Unit,
+    onDecrement: (InventoryProductEntity) -> Unit,
+    onDeleteProduct: (InventoryProductEntity) -> Unit,
+    onLongPress: (InventoryProductEntity) -> Unit,
 ) {
     if (products.isEmpty()) {
         Box(Modifier.fillMaxSize()) {
@@ -157,9 +147,9 @@ private fun ProductList(
             // not the same as it. Suppresses warning colors regardless of
             // thresholds, since there's no meaningful stock level to warn
             // about while a product isn't being tracked.
-            val quantity = product.quantity.toIntOrNull()
-            val secondThreshold = product.secondThreshold.toIntOrNull()
-            val firstThreshold = product.firstThreshold.toIntOrNull()
+            val quantity = product.quantity
+            val secondThreshold = product.secondThreshold
+            val firstThreshold = product.firstThreshold
             val warningColor = when {
                 quantity == null -> null
                 secondThreshold != null && quantity <= secondThreshold -> SecondWarningColor
@@ -167,6 +157,9 @@ private fun ProductList(
                 else -> null
             }
             val contentColor = if (warningColor != null) Color.White else UrsTheme.colors.onSurface
+            // The stepper/settings/delete actions all need a real backend id
+            // — see ProductsViewModel.adjustQuantity/deleteProduct.
+            val synced = product.syncStatus == SyncStatus.SYNCED
 
             UrsCard(
                 radius = Radius.row,
@@ -187,9 +180,10 @@ private fun ProductList(
                         color = contentColor,
                         modifier = Modifier.weight(1f),
                     )
+                    ProductSyncStatusPill(product.syncStatus)
                     UrsIconButton(
                         onClick = { onDecrement(product) },
-                        enabled = quantity != null,
+                        enabled = synced && quantity != null,
                         contentDescription = stringResource(R.string.inventory_product_decrement),
                         imageVector = Icons.Filled.Remove,
                         tint = contentColor,
@@ -202,12 +196,14 @@ private fun ProductList(
                     )
                     UrsIconButton(
                         onClick = { onIncrement(product) },
+                        enabled = synced,
                         contentDescription = stringResource(R.string.inventory_product_increment),
                         imageVector = Icons.Filled.Add,
                         tint = contentColor,
                     )
                     UrsIconButton(
-                        onClick = { onDeleteProduct(product.id) },
+                        onClick = { onDeleteProduct(product) },
+                        enabled = synced,
                         contentDescription = stringResource(R.string.inventory_product_remove, product.name),
                         imageVector = Icons.Filled.Close,
                         tint = contentColor,
@@ -215,6 +211,19 @@ private fun ProductList(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ProductSyncStatusPill(status: SyncStatus) {
+    when (status) {
+        SyncStatus.PENDING -> UrsPill(text = stringResource(R.string.fill_status_pending))
+        SyncStatus.FAILED -> UrsPill(
+            text = stringResource(R.string.fill_status_failed),
+            containerColor = FormErrorColor.copy(alpha = 0.15f),
+            contentColor = FormErrorColor,
+        )
+        SyncStatus.SYNCED -> Unit
     }
 }
 

@@ -3,15 +3,22 @@ package ch.mcfx.urs.data.sync
 import ch.mcfx.urs.data.local.FillDao
 import ch.mcfx.urs.data.local.FillingStationDao
 import ch.mcfx.urs.data.local.FillingStationEntity
+import ch.mcfx.urs.data.local.InventoryCategoryDao
+import ch.mcfx.urs.data.local.InventoryProductDao
 import ch.mcfx.urs.data.local.OutboxDao
 import ch.mcfx.urs.data.local.OutboxFillPayload
+import ch.mcfx.urs.data.local.OutboxInventoryCategoryPayload
+import ch.mcfx.urs.data.local.OutboxInventoryProductPayload
 import ch.mcfx.urs.data.local.OutboxMutationEntity
 import ch.mcfx.urs.data.local.OutboxWorkTimeEntryDeletePayload
 import ch.mcfx.urs.data.local.OutboxWorkTimeEntryPayload
 import ch.mcfx.urs.data.local.OutboxWorkTimeEntryUpdatePayload
 import ch.mcfx.urs.data.local.WorkTimeBreakEntity
 import ch.mcfx.urs.data.local.WorkTimeDao
+import ch.mcfx.urs.data.local.localInventoryCategoryId
 import ch.mcfx.urs.data.remote.FillPayload
+import ch.mcfx.urs.data.remote.InventoryCategoryPayload
+import ch.mcfx.urs.data.remote.InventoryProductPayload
 import ch.mcfx.urs.data.remote.UrsApi
 import ch.mcfx.urs.data.remote.WorkTimeBreakPayload
 import ch.mcfx.urs.data.remote.WorkTimeEntryPayload
@@ -38,6 +45,8 @@ class SyncManager(
     private val fillDao: FillDao,
     private val fillingStationDao: FillingStationDao,
     private val workTimeDao: WorkTimeDao,
+    private val inventoryCategoryDao: InventoryCategoryDao,
+    private val inventoryProductDao: InventoryProductDao,
     private val outboxDao: OutboxDao,
     private val reachabilityChecker: ReachabilityChecker,
     private val json: Json,
@@ -68,6 +77,8 @@ class SyncManager(
                 OutboxMutationEntity.TYPE_CREATE_WORK_TIME_ENTRY -> replayCreateWorkTimeEntry(mutation)
                 OutboxMutationEntity.TYPE_UPDATE_WORK_TIME_ENTRY -> replayUpdateWorkTimeEntry(mutation)
                 OutboxMutationEntity.TYPE_DELETE_WORK_TIME_ENTRY -> replayDeleteWorkTimeEntry(mutation)
+                OutboxMutationEntity.TYPE_CREATE_INVENTORY_CATEGORY -> replayCreateInventoryCategory(mutation)
+                OutboxMutationEntity.TYPE_CREATE_INVENTORY_PRODUCT -> replayCreateInventoryProduct(mutation)
                 else -> {
                     // Forward-compat placeholder — nothing else is queued today.
                     outboxDao.markFailed(mutation.id, "unknown outbox mutation type: ${mutation.type}")
@@ -228,6 +239,88 @@ class SyncManager(
         // No local row to look up — deleteEntry() already removed it
         // immediately, offline-first, before this mutation was ever queued.
         api.deleteWorkTimeEntry(payload.serverId)
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    /**
+     * Unlike [replayCreateFill]/[replayCreateWorkTimeEntry], the backend's
+     * create-category route echoes the request body without the assigned
+     * id (no dedicated create-and-return contract exists for it) — the
+     * freshly assigned id is recovered by re-fetching and matching on name
+     * against whatever this app doesn't already know about locally. Fine
+     * for this app's accepted single-user, single-device scope (see this
+     * class's own doc comment); a name collision between two categories
+     * queued in the same batch is not disambiguated further than that.
+     */
+    private suspend fun replayCreateInventoryCategory(mutation: OutboxMutationEntity): Boolean {
+        val localCategory = inventoryCategoryDao.getByOutboxId(mutation.id) ?: run {
+            outboxDao.delete(mutation.id)
+            return true
+        }
+        val payload = json.decodeFromString(OutboxInventoryCategoryPayload.serializer(), mutation.payloadJson)
+
+        api.createInventoryCategory(InventoryCategoryPayload(name = payload.name))
+
+        val knownServerIds = inventoryCategoryDao.allServerIds().toSet()
+        val created = api.getInventoryCategories().firstOrNull { it.name == payload.name && it.id !in knownServerIds }
+            ?: run {
+                outboxDao.markFailed(mutation.id, "created category not found on refetch")
+                return false
+            }
+
+        inventoryCategoryDao.markSynced(localCategory.id, created.id)
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    /**
+     * Same id-recovery caveat as [replayCreateInventoryCategory]. Also
+     * resolves [OutboxInventoryProductPayload.categoryId] to the parent
+     * category's real backend id first — if the category was itself still
+     * offline when this product was queued, that id is only a local
+     * stand-in (see `InventoryCategoryEntity.publicId`) until the
+     * category's own create mutation has replayed; FIFO replay
+     * order means that normally already happened earlier in this same
+     * pass, but if it hasn't (e.g. the category's create failed this
+     * round), this mutation fails too and is simply retried next sync.
+     */
+    private suspend fun replayCreateInventoryProduct(mutation: OutboxMutationEntity): Boolean {
+        val localProduct = inventoryProductDao.getByOutboxId(mutation.id) ?: run {
+            outboxDao.delete(mutation.id)
+            return true
+        }
+        val payload = json.decodeFromString(OutboxInventoryProductPayload.serializer(), mutation.payloadJson)
+
+        val localCategoryId = localInventoryCategoryId(payload.categoryId)
+        // No local placeholder to resolve means payload.categoryId was
+        // already a real backend id when this was queued — use it as-is.
+        val resolvedCategoryId = if (localCategoryId == null) {
+            payload.categoryId
+        } else {
+            inventoryCategoryDao.getById(localCategoryId)?.serverId ?: run {
+                outboxDao.markFailed(mutation.id, "parent category not yet synced")
+                return false
+            }
+        }
+
+        api.createInventoryProduct(
+            InventoryProductPayload(
+                categoryId = resolvedCategoryId,
+                name = payload.name,
+                quantity = payload.quantity?.toString().orEmpty(),
+            ),
+        )
+
+        val knownServerIds = inventoryProductDao.serverIdsInCategory(resolvedCategoryId).toSet()
+        val created = api.getInventoryProducts(resolvedCategoryId)
+            .firstOrNull { it.name == payload.name && it.id !in knownServerIds }
+            ?: run {
+                outboxDao.markFailed(mutation.id, "created product not found on refetch")
+                return false
+            }
+
+        inventoryProductDao.markSynced(localProduct.id, created.id, resolvedCategoryId)
         outboxDao.delete(mutation.id)
         return true
     }

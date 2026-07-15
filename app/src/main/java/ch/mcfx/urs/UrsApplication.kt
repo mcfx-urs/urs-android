@@ -114,6 +114,8 @@ class AppContainer(context: Context) {
         fillDao = database.fillDao(),
         fillingStationDao = database.fillingStationDao(),
         workTimeDao = database.workTimeDao(),
+        inventoryCategoryDao = database.inventoryCategoryDao(),
+        inventoryProductDao = database.inventoryProductDao(),
         outboxDao = database.outboxDao(),
         reachabilityChecker = reachabilityChecker,
         json = json,
@@ -131,7 +133,15 @@ class AppContainer(context: Context) {
         applicationScope = applicationScope,
         json = json,
     )
-    val inventoryRepository = InventoryRepository(retrofit.create(UrsApi::class.java))
+    val inventoryRepository = InventoryRepository(
+        api = ursApi,
+        inventoryCategoryDao = database.inventoryCategoryDao(),
+        inventoryProductDao = database.inventoryProductDao(),
+        outboxDao = database.outboxDao(),
+        syncManager = syncManager,
+        applicationScope = applicationScope,
+        json = json,
+    )
     val beerRepository = BeerRepository(retrofit.create(UrsApi::class.java))
     val workTimeRepository = WorkTimeRepository(
         api = ursApi,
