@@ -1,7 +1,11 @@
 package ch.mcfx.urs.worktime
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,11 +15,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.sp
@@ -25,8 +33,12 @@ import ch.mcfx.urs.R
 import ch.mcfx.urs.data.computeTotals
 import ch.mcfx.urs.data.local.SyncStatus
 import ch.mcfx.urs.data.local.WorkTimeEntryWithBreaks
+import ch.mcfx.urs.ui.components.UrsBottomSheet
+import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsFab
+import ch.mcfx.urs.ui.components.UrsIcon
+import ch.mcfx.urs.ui.components.UrsOutlinedButton
 import ch.mcfx.urs.ui.components.UrsPill
 import ch.mcfx.urs.ui.components.UrsProgressIndicator
 import ch.mcfx.urs.ui.components.UrsText
@@ -44,14 +56,17 @@ private val FormErrorColor = Color(0xFFD64545)
 @Composable
 fun WorkTimeScreen(
     onAddEntry: () -> Unit,
+    onEditEntry: (Long) -> Unit,
     viewModel: WorkTimeViewModel = viewModel(factory = WorkTimeViewModel.Factory),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val actionSheetEntry by viewModel.actionSheetEntry.collectAsStateWithLifecycle()
+    val pendingDeleteEntry by viewModel.pendingDeleteEntry.collectAsStateWithLifecycle()
 
     Box(modifier = Modifier.fillMaxSize()) {
         when (val state = uiState) {
             WorkTimeUiState.Loading -> UrsProgressIndicator(Modifier.align(Alignment.Center))
-            is WorkTimeUiState.Data -> EntryList(state)
+            is WorkTimeUiState.Data -> EntryList(state, onLongPress = viewModel::openActionSheet)
         }
 
         if (uiState is WorkTimeUiState.Data) {
@@ -63,10 +78,31 @@ fun WorkTimeScreen(
             }
         }
     }
+
+    // Long-press → Edit/Delete: reuses the same UrsBottomSheet mechanic as
+    // the delete-confirmation sheet below it, just with different content.
+    actionSheetEntry?.let { entry ->
+        UrsBottomSheet(onDismissRequest = viewModel::closeActionSheet) {
+            EntryActionSheet(
+                onEdit = {
+                    viewModel.closeActionSheet()
+                    onEditEntry(entry.entry.id)
+                },
+                onDelete = viewModel::requestDelete,
+            )
+        }
+    }
+
+    if (pendingDeleteEntry != null) {
+        UrsBottomSheet(onDismissRequest = viewModel::cancelDelete) {
+            DeleteConfirmSheet(onConfirm = viewModel::confirmDelete, onCancel = viewModel::cancelDelete)
+        }
+    }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun EntryList(state: WorkTimeUiState.Data) {
+private fun EntryList(state: WorkTimeUiState.Data, onLongPress: (WorkTimeEntryWithBreaks) -> Unit) {
     if (state.entries.isEmpty()) {
         Box(Modifier.fillMaxSize()) {
             UrsText(
@@ -84,16 +120,22 @@ private fun EntryList(state: WorkTimeUiState.Data) {
         verticalArrangement = Arrangement.spacedBy(Spacing.s),
     ) {
         items(state.entries, key = { it.entry.id }) { entryWithBreaks ->
-            EntryCard(entryWithBreaks, state.userDefaultTargetHours)
+            EntryCard(entryWithBreaks, state.userDefaultTargetHours, onLongPress = { onLongPress(entryWithBreaks) })
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun EntryCard(entryWithBreaks: WorkTimeEntryWithBreaks, userDefaultTargetHours: String) {
+private fun EntryCard(entryWithBreaks: WorkTimeEntryWithBreaks, userDefaultTargetHours: String, onLongPress: () -> Unit) {
     val totals = entryWithBreaks.computeTotals(userDefaultTargetHours)
 
-    UrsCard(radius = Radius.row, modifier = Modifier.fillMaxWidth()) {
+    UrsCard(
+        radius = Radius.row,
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(onClick = {}, onLongClick = onLongPress),
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -155,6 +197,53 @@ private fun SyncStatusPill(status: SyncStatus) {
             contentColor = FormErrorColor,
         )
         SyncStatus.SYNCED -> Unit
+    }
+}
+
+@Composable
+private fun EntryActionSheet(onEdit: () -> Unit, onDelete: () -> Unit) {
+    Column(modifier = Modifier.padding(horizontal = Spacing.l).padding(bottom = Spacing.l)) {
+        ActionSheetRow(label = stringResource(R.string.worktime_edit), icon = Icons.Filled.Edit, onClick = onEdit)
+        ActionSheetRow(
+            label = stringResource(R.string.worktime_delete),
+            icon = Icons.Filled.Delete,
+            onClick = onDelete,
+            tint = FormErrorColor,
+        )
+    }
+}
+
+@Composable
+private fun ActionSheetRow(label: String, icon: ImageVector, onClick: () -> Unit, tint: Color = UrsTheme.colors.onSurface) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = Spacing.m),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.m),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        UrsIcon(imageVector = icon, contentDescription = null, tint = tint)
+        UrsText(label, style = UrsTheme.typography.cardTitle, color = tint)
+    }
+}
+
+@Composable
+private fun DeleteConfirmSheet(onConfirm: () -> Unit, onCancel: () -> Unit) {
+    Column(
+        modifier = Modifier.padding(horizontal = Spacing.l).padding(bottom = Spacing.l),
+        verticalArrangement = Arrangement.spacedBy(Spacing.m),
+    ) {
+        UrsText(stringResource(R.string.worktime_delete_confirm_title), style = UrsTheme.typography.cardTitle)
+        UrsText(
+            stringResource(R.string.worktime_delete_confirm_body),
+            style = UrsTheme.typography.body,
+            color = UrsTheme.colors.onSurfaceMuted,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.m)) {
+            UrsOutlinedButton(text = stringResource(R.string.cancel), onClick = onCancel, modifier = Modifier.weight(1f))
+            UrsButton(text = stringResource(R.string.worktime_delete), onClick = onConfirm, modifier = Modifier.weight(1f))
+        }
     }
 }
 

@@ -17,6 +17,13 @@ interface WorkTimeDao {
     @Query("SELECT * FROM work_time_entry WHERE outboxId = :outboxId LIMIT 1")
     suspend fun getByOutboxId(outboxId: Long): WorkTimeEntryEntity?
 
+    @Query("SELECT * FROM work_time_entry WHERE id = :id")
+    suspend fun getById(id: Long): WorkTimeEntryEntity?
+
+    @Transaction
+    @Query("SELECT * FROM work_time_entry WHERE id = :id")
+    suspend fun getWithBreaksById(id: Long): WorkTimeEntryWithBreaks?
+
     @Insert
     suspend fun insertEntry(entry: WorkTimeEntryEntity): Long
 
@@ -62,4 +69,30 @@ interface WorkTimeDao {
 
     @Query("UPDATE work_time_entry SET syncStatus = 'FAILED' WHERE id = :id")
     suspend fun markFailed(id: Long)
+
+    @Query(
+        "UPDATE work_time_entry SET date = :date, workStart = :workStart, workEnd = :workEnd, " +
+            "targetDailyHours = :targetDailyHours, syncStatus = :syncStatus, outboxId = :outboxId " +
+            "WHERE id = :id",
+    )
+    suspend fun updateFields(
+        id: Long,
+        date: String,
+        workStart: String,
+        workEnd: String,
+        targetDailyHours: String,
+        syncStatus: SyncStatus,
+        outboxId: Long?,
+    )
+
+    @Query("DELETE FROM work_time_entry WHERE id = :id")
+    suspend fun deleteEntryRow(id: Long)
+
+    // work_time_break rows have no Room-level foreign key/cascade (unlike
+    // the backend's ON DELETE CASCADE) — deleted explicitly here.
+    @Transaction
+    suspend fun deleteEntry(id: Long) {
+        deleteBreaks(id)
+        deleteEntryRow(id)
+    }
 }

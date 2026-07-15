@@ -109,6 +109,7 @@
 
     <string name="save">Save</string>
     <string name="saving">Saving…</string>
+    <string name="cancel">Cancel</string>
     <string name="retry">Retry</string>
     <string name="error_load">Could not reach the backend.</string>
     <string name="error_save">Saving failed. Please try again.</string>
@@ -149,6 +150,7 @@
     <string name="beer_entry_remove">Remove entry</string>
 
     <string name="worktime_date">Date (YYYY-MM-DD)</string>
+    <string name="worktime_date_locked">Date can\'t be changed once created</string>
     <string name="worktime_work_start">Start (HH:mm)</string>
     <string name="worktime_work_end">End (HH:mm)</string>
     <string name="worktime_target_hours">Target hours (optional)</string>
@@ -162,4 +164,8 @@
     <string name="worktime_status_pending">Pending</string>
     <string name="worktime_status_failed">Failed</string>
     <string name="worktime_empty">No work-time entries yet.</string>
+    <string name="worktime_edit">Edit</string>
+    <string name="worktime_delete">Delete</string>
+    <string name="worktime_delete_confirm_title">Delete this entry?</string>
+    <string name="worktime_delete_confirm_body">This can\'t be undone.</string>
 </resources>

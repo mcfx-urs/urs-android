@@ -35,6 +35,9 @@ private val breakDraftIds = AtomicLong()
 data class BreakDraft(val id: Long = breakDraftIds.incrementAndGet(), val startTime: String = "", val endTime: String = "")
 
 data class WorkTimeFormState(
+    // null = creating a new entry; set = editing this local row (its date
+    // isn't editable — see EntryForm — but is still carried through PUT).
+    val editingEntryId: Long? = null,
     val date: String = LocalDate.now().toString(),
     val workStart: String = "",
     val workEnd: String = "",
@@ -61,6 +64,12 @@ class WorkTimeViewModel(
 
     private val _showForm = MutableStateFlow(false)
     val showForm: StateFlow<Boolean> = _showForm.asStateFlow()
+
+    private val _actionSheetEntry = MutableStateFlow<WorkTimeEntryWithBreaks?>(null)
+    val actionSheetEntry: StateFlow<WorkTimeEntryWithBreaks?> = _actionSheetEntry.asStateFlow()
+
+    private val _pendingDeleteEntry = MutableStateFlow<WorkTimeEntryWithBreaks?>(null)
+    val pendingDeleteEntry: StateFlow<WorkTimeEntryWithBreaks?> = _pendingDeleteEntry.asStateFlow()
 
     init {
         // Entries are a Room-backed Flow so the history screen has something
@@ -99,8 +108,57 @@ class WorkTimeViewModel(
         _showForm.value = true
     }
 
+    /**
+     * Loads the entry fresh from Room (not from [uiState], which may not
+     * have emitted yet on a cold navigation into this screen) and pre-fills
+     * the same form the create flow uses — [showForm] flips to `true` only
+     * once that load completes, so the screen shows its loading indicator
+     * until then rather than a flash of an empty form.
+     */
+    fun openFormForEdit(entryId: Long) {
+        viewModelScope.launch {
+            val entry = repository.getEntry(entryId) ?: return@launch
+            _formState.value = WorkTimeFormState(
+                editingEntryId = entry.entry.id,
+                date = entry.entry.date,
+                workStart = entry.entry.workStart.take(5),
+                workEnd = entry.entry.workEnd.take(5),
+                targetDailyHours = entry.entry.targetDailyHours,
+                breaks = entry.breaks.map { BreakDraft(startTime = it.startTime.take(5), endTime = it.endTime.take(5)) },
+            )
+            _showForm.value = true
+        }
+    }
+
     fun closeForm() {
         _showForm.value = false
+    }
+
+    fun openActionSheet(entry: WorkTimeEntryWithBreaks) {
+        _actionSheetEntry.value = entry
+    }
+
+    fun closeActionSheet() {
+        _actionSheetEntry.value = null
+    }
+
+    fun requestDelete() {
+        val entry = _actionSheetEntry.value ?: return
+        _actionSheetEntry.value = null
+        _pendingDeleteEntry.value = entry
+    }
+
+    fun cancelDelete() {
+        _pendingDeleteEntry.value = null
+    }
+
+    fun confirmDelete() {
+        val entry = _pendingDeleteEntry.value ?: return
+        _pendingDeleteEntry.value = null
+        // Local delete inside repository.deleteEntry is immediate and
+        // effectively can't fail — no submitting/failure UI state needed
+        // here, unlike the form's submit().
+        viewModelScope.launch { repository.deleteEntry(entry.entry.id) }
     }
 
     fun setDate(value: String) = _formState.update { it.copy(date = value) }
@@ -135,14 +193,27 @@ class WorkTimeViewModel(
         viewModelScope.launch {
             _formState.update { it.copy(submitting = true, submitFailed = false) }
             try {
-                repository.createEntry(
-                    date = form.date,
-                    workStart = form.workStart.withSeconds(),
-                    workEnd = form.workEnd.withSeconds(),
-                    targetDailyHours = form.targetDailyHours,
-                    breaks = form.breaks.map { it.startTime.withSeconds() to it.endTime.withSeconds() },
-                )
-                // createEntry is a local-only write and returns instantly —
+                val breaksArg = form.breaks.map { it.startTime.withSeconds() to it.endTime.withSeconds() }
+                val editingEntryId = form.editingEntryId
+                if (editingEntryId != null) {
+                    repository.updateEntry(
+                        localId = editingEntryId,
+                        date = form.date,
+                        workStart = form.workStart.withSeconds(),
+                        workEnd = form.workEnd.withSeconds(),
+                        targetDailyHours = form.targetDailyHours,
+                        breaks = breaksArg,
+                    )
+                } else {
+                    repository.createEntry(
+                        date = form.date,
+                        workStart = form.workStart.withSeconds(),
+                        workEnd = form.workEnd.withSeconds(),
+                        targetDailyHours = form.targetDailyHours,
+                        breaks = breaksArg,
+                    )
+                }
+                // Both paths above are local-only writes that return instantly —
                 // no network round-trip to wait on, so the form can close
                 // right away. A later sync failure surfaces via the entry's
                 // own pending/failed badge (see WorkTimeScreen), not here.

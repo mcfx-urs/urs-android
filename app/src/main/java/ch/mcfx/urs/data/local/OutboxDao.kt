@@ -20,6 +20,12 @@ interface OutboxDao {
     @Insert
     suspend fun insert(mutation: OutboxMutationEntity): Long
 
+    // Rewrites a still-pending mutation's payload in place — used when a
+    // not-yet-synced entry is edited again before its original mutation has
+    // replayed, so the edit doesn't need its own separate round-trip.
+    @Query("UPDATE outbox_mutation SET payloadJson = :payloadJson WHERE id = :id")
+    suspend fun updatePayload(id: Long, payloadJson: String)
+
     @Query("UPDATE outbox_mutation SET status = 'SYNCING' WHERE id = :id")
     suspend fun markSyncing(id: Long)
 

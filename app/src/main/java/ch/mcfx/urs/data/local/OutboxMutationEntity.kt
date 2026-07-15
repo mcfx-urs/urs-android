@@ -28,5 +28,7 @@ data class OutboxMutationEntity(
     companion object {
         const val TYPE_CREATE_FILL = "CREATE_FILL"
         const val TYPE_CREATE_WORK_TIME_ENTRY = "CREATE_WORK_TIME_ENTRY"
+        const val TYPE_UPDATE_WORK_TIME_ENTRY = "UPDATE_WORK_TIME_ENTRY"
+        const val TYPE_DELETE_WORK_TIME_ENTRY = "DELETE_WORK_TIME_ENTRY"
     }
 }

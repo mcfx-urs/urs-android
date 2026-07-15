@@ -216,10 +216,20 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                     }
                     composable(Destination.BEER.route) { BeerScreen() }
                     composable(Destination.WORK_TIME.route) {
-                        WorkTimeScreen(onAddEntry = { navController.navigate(WorkTimeRoutes.ADD) })
+                        WorkTimeScreen(
+                            onAddEntry = { navController.navigate(WorkTimeRoutes.ADD) },
+                            onEditEntry = { entryId -> navController.navigate(WorkTimeRoutes.edit(entryId)) },
+                        )
                     }
                     composable(WorkTimeRoutes.ADD) {
                         WorkTimeAddScreen(onDone = { navController.popBackStack() })
+                    }
+                    composable(
+                        route = WorkTimeRoutes.EDIT,
+                        arguments = listOf(navArgument("entryId") { type = NavType.LongType }),
+                    ) { backStackEntry ->
+                        val entryId = backStackEntry.arguments?.getLong("entryId") ?: return@composable
+                        WorkTimeAddScreen(entryId = entryId, onDone = { navController.popBackStack() })
                     }
                     composable(Destination.SETTINGS.route) {
                         SettingsScreen(onNavigate = { route -> navController.navigate(route) })

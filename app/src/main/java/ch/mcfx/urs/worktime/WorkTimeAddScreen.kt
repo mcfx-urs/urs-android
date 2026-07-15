@@ -48,12 +48,14 @@ private val FormErrorColor = Color(0xFFD64545)
 @Composable
 fun WorkTimeAddScreen(
     onDone: () -> Unit,
+    /** Null creates a new entry; set edits that existing local row (see [WorkTimeViewModel.openFormForEdit]). */
+    entryId: Long? = null,
     viewModel: WorkTimeViewModel = viewModel(factory = WorkTimeViewModel.Factory),
 ) {
     val formState by viewModel.formState.collectAsStateWithLifecycle()
     val showForm by viewModel.showForm.collectAsStateWithLifecycle()
 
-    LaunchedEffect(Unit) { viewModel.openForm() }
+    LaunchedEffect(Unit) { if (entryId != null) viewModel.openFormForEdit(entryId) else viewModel.openForm() }
 
     var hasOpened by remember { mutableStateOf(false) }
     LaunchedEffect(showForm) {
@@ -95,13 +97,22 @@ private fun EntryForm(form: WorkTimeFormState, viewModel: WorkTimeViewModel) {
         modifier = Modifier.padding(horizontal = Spacing.xl).padding(vertical = Spacing.xl),
         verticalArrangement = Arrangement.spacedBy(Spacing.m),
     ) {
+        val isEditing = form.editingEntryId != null
         UrsTextField(
             value = form.date,
-            onValueChange = viewModel::setDate,
+            // The backend's update endpoint doesn't support moving an entry
+            // to a different day — read-only once editing an existing entry
+            // rather than silently discarding a date change on save.
+            onValueChange = if (isEditing) {
+                {}
+            } else {
+                viewModel::setDate
+            },
             label = stringResource(R.string.worktime_date),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
             keyboardActions = nextFieldAction,
             singleLine = true,
+            supportingText = if (isEditing) stringResource(R.string.worktime_date_locked) else null,
             modifier = Modifier.fillMaxWidth(),
         )
 

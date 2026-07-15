@@ -3,7 +3,9 @@ package ch.mcfx.urs.data
 import ch.mcfx.urs.data.local.OutboxDao
 import ch.mcfx.urs.data.local.OutboxMutationEntity
 import ch.mcfx.urs.data.local.OutboxWorkTimeBreakPayload
+import ch.mcfx.urs.data.local.OutboxWorkTimeEntryDeletePayload
 import ch.mcfx.urs.data.local.OutboxWorkTimeEntryPayload
+import ch.mcfx.urs.data.local.OutboxWorkTimeEntryUpdatePayload
 import ch.mcfx.urs.data.local.SyncStatus
 import ch.mcfx.urs.data.local.WorkTimeBreakEntity
 import ch.mcfx.urs.data.local.WorkTimeDao
@@ -74,6 +76,93 @@ class WorkTimeRepository(
             breaks.map { (start, end) -> WorkTimeBreakEntity(entryId = entryId, startTime = start, endTime = end) },
         )
 
+        applicationScope.launch { syncManager.syncNow() }
+    }
+
+    suspend fun getEntry(id: Long): WorkTimeEntryWithBreaks? = workTimeDao.getWithBreaksById(id)
+
+    /**
+     * Offline-first edit path. An entry that hasn't reached the server yet
+     * (no [WorkTimeEntryEntity.serverId]) has no business getting its own
+     * `PUT` round-trip — its still-pending create mutation's payload is
+     * rewritten in place instead, so it creates with the latest values
+     * whenever it eventually syncs. An already-synced entry cancels
+     * whatever mutation is still pending for it (e.g. an earlier edit that
+     * hasn't replayed yet — only the latest edit should ever apply) and
+     * queues a fresh update.
+     */
+    suspend fun updateEntry(
+        localId: Long,
+        date: String,
+        workStart: String,
+        workEnd: String,
+        targetDailyHours: String,
+        breaks: List<Pair<String, String>>,
+    ) {
+        val current = workTimeDao.getById(localId) ?: return
+        val breakPayloads = breaks.map { (start, end) -> OutboxWorkTimeBreakPayload(startTime = start, endTime = end) }
+
+        val outboxId = if (current.serverId == null) {
+            val payload = OutboxWorkTimeEntryPayload(
+                userId = UserDefaults.DEFAULT_USER_ID,
+                date = date,
+                workStart = workStart,
+                workEnd = workEnd,
+                targetDailyHours = targetDailyHours,
+                breaks = breakPayloads,
+            )
+            current.outboxId?.let { outboxDao.updatePayload(it, json.encodeToString(payload)) }
+            current.outboxId
+        } else {
+            current.outboxId?.let { outboxDao.delete(it) }
+            val payload = OutboxWorkTimeEntryUpdatePayload(
+                serverId = current.serverId.toString(),
+                userId = UserDefaults.DEFAULT_USER_ID,
+                date = date,
+                workStart = workStart,
+                workEnd = workEnd,
+                targetDailyHours = targetDailyHours,
+                breaks = breakPayloads,
+            )
+            outboxDao.insert(
+                OutboxMutationEntity(
+                    type = OutboxMutationEntity.TYPE_UPDATE_WORK_TIME_ENTRY,
+                    payloadJson = json.encodeToString(payload),
+                    createdAt = System.currentTimeMillis(),
+                ),
+            )
+        }
+
+        workTimeDao.updateFields(localId, date, workStart, workEnd, targetDailyHours, SyncStatus.PENDING, outboxId)
+        workTimeDao.replaceBreaks(
+            localId,
+            breaks.map { (start, end) -> WorkTimeBreakEntity(entryId = localId, startTime = start, endTime = end) },
+        )
+
+        applicationScope.launch { syncManager.syncNow() }
+    }
+
+    /**
+     * Offline-first delete path. The local row is always removed
+     * immediately; a server-side delete is only queued if the server ever
+     * actually learned about this entry ([WorkTimeEntryEntity.serverId] set)
+     * — otherwise there's nothing to reconcile remotely. Any mutation still
+     * pending for this entry (a queued create or edit) is cancelled first,
+     * since it would otherwise resurrect or edit a row the user just deleted.
+     */
+    suspend fun deleteEntry(localId: Long) {
+        val current = workTimeDao.getById(localId) ?: return
+        current.outboxId?.let { outboxDao.delete(it) }
+        workTimeDao.deleteEntry(localId)
+
+        val serverId = current.serverId ?: return
+        outboxDao.insert(
+            OutboxMutationEntity(
+                type = OutboxMutationEntity.TYPE_DELETE_WORK_TIME_ENTRY,
+                payloadJson = json.encodeToString(OutboxWorkTimeEntryDeletePayload(serverId = serverId.toString())),
+                createdAt = System.currentTimeMillis(),
+            ),
+        )
         applicationScope.launch { syncManager.syncNow() }
     }
 

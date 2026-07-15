@@ -6,7 +6,9 @@ import ch.mcfx.urs.data.local.FillingStationEntity
 import ch.mcfx.urs.data.local.OutboxDao
 import ch.mcfx.urs.data.local.OutboxFillPayload
 import ch.mcfx.urs.data.local.OutboxMutationEntity
+import ch.mcfx.urs.data.local.OutboxWorkTimeEntryDeletePayload
 import ch.mcfx.urs.data.local.OutboxWorkTimeEntryPayload
+import ch.mcfx.urs.data.local.OutboxWorkTimeEntryUpdatePayload
 import ch.mcfx.urs.data.local.WorkTimeBreakEntity
 import ch.mcfx.urs.data.local.WorkTimeDao
 import ch.mcfx.urs.data.remote.FillPayload
@@ -64,6 +66,8 @@ class SyncManager(
             when (mutation.type) {
                 OutboxMutationEntity.TYPE_CREATE_FILL -> replayCreateFill(mutation)
                 OutboxMutationEntity.TYPE_CREATE_WORK_TIME_ENTRY -> replayCreateWorkTimeEntry(mutation)
+                OutboxMutationEntity.TYPE_UPDATE_WORK_TIME_ENTRY -> replayUpdateWorkTimeEntry(mutation)
+                OutboxMutationEntity.TYPE_DELETE_WORK_TIME_ENTRY -> replayDeleteWorkTimeEntry(mutation)
                 else -> {
                     // Forward-compat placeholder — nothing else is queued today.
                     outboxDao.markFailed(mutation.id, "unknown outbox mutation type: ${mutation.type}")
@@ -184,6 +188,46 @@ class SyncManager(
             response.breaks.map { WorkTimeBreakEntity(entryId = localEntry.id, startTime = it.startTime, endTime = it.endTime) },
         )
 
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    private suspend fun replayUpdateWorkTimeEntry(mutation: OutboxMutationEntity): Boolean {
+        val localEntry = workTimeDao.getByOutboxId(mutation.id) ?: run {
+            // Local row no longer references this mutation (e.g. deleted
+            // since it was queued) — nothing left to reconcile, drop it.
+            outboxDao.delete(mutation.id)
+            return true
+        }
+        val payload = json.decodeFromString(OutboxWorkTimeEntryUpdatePayload.serializer(), mutation.payloadJson)
+
+        val response = api.updateWorkTimeEntry(
+            payload.serverId,
+            WorkTimeEntryPayload(
+                userId = payload.userId,
+                date = payload.date,
+                workStart = payload.workStart,
+                workEnd = payload.workEnd,
+                targetDailyHours = payload.targetDailyHours,
+                breaks = payload.breaks.map { WorkTimeBreakPayload(startTime = it.startTime, endTime = it.endTime) },
+            ),
+        )
+
+        workTimeDao.markSynced(localEntry.id, response.id.toLongOrNull() ?: payload.serverId.toLongOrNull() ?: 0L)
+        workTimeDao.replaceBreaks(
+            localEntry.id,
+            response.breaks.map { WorkTimeBreakEntity(entryId = localEntry.id, startTime = it.startTime, endTime = it.endTime) },
+        )
+
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    private suspend fun replayDeleteWorkTimeEntry(mutation: OutboxMutationEntity): Boolean {
+        val payload = json.decodeFromString(OutboxWorkTimeEntryDeletePayload.serializer(), mutation.payloadJson)
+        // No local row to look up — deleteEntry() already removed it
+        // immediately, offline-first, before this mutation was ever queued.
+        api.deleteWorkTimeEntry(payload.serverId)
         outboxDao.delete(mutation.id)
         return true
     }

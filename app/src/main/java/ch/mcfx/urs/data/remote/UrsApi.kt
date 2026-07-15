@@ -70,6 +70,12 @@ interface UrsApi {
         @Path("order") order: String,
     ): List<WorkTimeEntryDto>
 
+    @PUT("api/v1/work-time-entry/{id}")
+    suspend fun updateWorkTimeEntry(@Path("id") id: String, @Body payload: WorkTimeEntryPayload): WorkTimeEntryDto
+
+    @DELETE("api/v1/work-time-entry/{id}")
+    suspend fun deleteWorkTimeEntry(@Path("id") id: String)
+
     @GET("api/v1/beer-log")
     suspend fun getBeerLog(): List<BeerLogDto>
 
