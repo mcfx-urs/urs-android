@@ -11,8 +11,10 @@ import androidx.room.TypeConverters
         OutboxMutationEntity::class,
         CurrencyEntity::class,
         CarEntity::class,
+        WorkTimeEntryEntity::class,
+        WorkTimeBreakEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -22,4 +24,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun outboxDao(): OutboxDao
     abstract fun currencyDao(): CurrencyDao
     abstract fun carDao(): CarDao
+    abstract fun workTimeDao(): WorkTimeDao
 }

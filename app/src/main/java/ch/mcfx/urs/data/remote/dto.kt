@@ -135,6 +135,60 @@ data class InventoryProductSettingsPayload(
 )
 
 @Serializable
+data class WorkTimeBreakDto(
+    @SerialName("work_time_break_id") val id: String = "",
+    @SerialName("work_time_break_start_time") val startTime: String,
+    @SerialName("work_time_break_end_time") val endTime: String,
+)
+
+@Serializable
+data class WorkTimeEntryDto(
+    @SerialName("work_time_entry_id") val id: String,
+    @SerialName("work_time_entry_user_id") val userId: String,
+    @SerialName("work_time_entry_date") val date: String,
+    @SerialName("work_time_entry_work_start") val workStart: String,
+    @SerialName("work_time_entry_work_end") val workEnd: String,
+    // Empty string = no per-day override — mirrors the backend's
+    // nullable-column-as-empty-string convention.
+    @SerialName("work_time_entry_target_daily_hours") val targetDailyHours: String = "",
+    @SerialName("breaks") val breaks: List<WorkTimeBreakDto> = emptyList(),
+    // Computed server-side (see urs-backend's computeDailyTotals) — the
+    // client never reimplements this formula.
+    @SerialName("daily_total_hours") val dailyTotalHours: String = "",
+    @SerialName("over_undertime_hours") val overUndertimeHours: String = "",
+)
+
+@Serializable
+data class WorkTimeBreakPayload(
+    @SerialName("work_time_break_start_time") val startTime: String,
+    @SerialName("work_time_break_end_time") val endTime: String,
+)
+
+@Serializable
+data class WorkTimeEntryPayload(
+    @SerialName("work_time_entry_user_id") val userId: String,
+    @SerialName("work_time_entry_date") val date: String,
+    @SerialName("work_time_entry_work_start") val workStart: String,
+    @SerialName("work_time_entry_work_end") val workEnd: String,
+    @SerialName("work_time_entry_target_daily_hours") val targetDailyHours: String = "",
+    @SerialName("breaks") val breaks: List<WorkTimeBreakPayload> = emptyList(),
+)
+
+// Only the fields the settings screen's default-daily-target-hours field
+// needs — GET /api/v1/getuser returns the full user row, but nothing else in
+// this app reads a user profile yet.
+@Serializable
+data class UserDto(
+    @SerialName("user_id") val id: String,
+    @SerialName("user_default_daily_target_hours") val defaultDailyTargetHours: String = "",
+)
+
+@Serializable
+data class UserDefaultDailyTargetHoursPayload(
+    @SerialName("user_default_daily_target_hours") val defaultDailyTargetHours: String,
+)
+
+@Serializable
 data class BeerLogDto(
     @SerialName("beer_log_id") val id: String,
     @SerialName("beer_log_amount_ml") val amountMl: String,

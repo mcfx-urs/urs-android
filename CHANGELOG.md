@@ -5,6 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Work-time tracking: new Work Time section with an offline-capable entry
+  form (start/end time, add/remove breaks) and a history list showing the
+  computed daily total and over-/undertime per day; new settings field for
+  the default daily target hours.
+
 ## [0.3.0] - 2026-07-11
 
 ### Added

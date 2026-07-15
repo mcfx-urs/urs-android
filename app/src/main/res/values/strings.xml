@@ -16,13 +16,18 @@
     <string name="nav_gokart">Gokart</string>
     <string name="nav_price_monitor">Price Monitor</string>
     <string name="nav_users">Users</string>
+    <string name="nav_work_time">Work Time</string>
     <string name="nav_settings">Settings</string>
 
     <string name="settings_title">Settings</string>
     <string name="settings_tile_users">Users</string>
     <string name="settings_tile_vpn">VPN</string>
     <string name="settings_tile_notifications">Notifications</string>
+    <string name="settings_tile_work_time">Work Time</string>
     <string name="settings_users_description">Login and multi-user management will live here once that feature is built.</string>
+
+    <string name="worktime_settings_target_hours_label">Default daily target hours</string>
+    <string name="worktime_settings_saved">Saved</string>
 
     <string name="notifications_title">Notifications</string>
     <string name="notifications_description">Reminders and other alerts need both permissions below. Notification access shows the alert itself; exact-alarm access makes sure a scheduled reminder fires at the exact time you set, not sometime nearby.</string>
@@ -142,4 +147,19 @@
     <string name="beer_history_title">History</string>
     <string name="beer_history_empty">No beers logged yet.</string>
     <string name="beer_entry_remove">Remove entry</string>
+
+    <string name="worktime_date">Date (YYYY-MM-DD)</string>
+    <string name="worktime_work_start">Start (HH:mm)</string>
+    <string name="worktime_work_end">End (HH:mm)</string>
+    <string name="worktime_target_hours">Target hours (optional)</string>
+    <string name="worktime_breaks_title">Breaks</string>
+    <string name="worktime_break_start">Break start (HH:mm)</string>
+    <string name="worktime_break_end">Break end (HH:mm)</string>
+    <string name="worktime_add_break">Add break</string>
+    <string name="worktime_remove_break">Remove break</string>
+    <string name="worktime_daily_total">%1$s h</string>
+    <string name="worktime_break_count">%1$d break(s)</string>
+    <string name="worktime_status_pending">Pending</string>
+    <string name="worktime_status_failed">Failed</string>
+    <string name="worktime_empty">No work-time entries yet.</string>
 </resources>

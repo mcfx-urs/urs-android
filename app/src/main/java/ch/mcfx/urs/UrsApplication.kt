@@ -6,6 +6,8 @@ import androidx.room.Room
 import ch.mcfx.urs.data.BeerRepository
 import ch.mcfx.urs.data.FuelRepository
 import ch.mcfx.urs.data.InventoryRepository
+import ch.mcfx.urs.data.UserRepository
+import ch.mcfx.urs.data.WorkTimeRepository
 import ch.mcfx.urs.data.local.AppDatabase
 import ch.mcfx.urs.data.remote.UrsApi
 import ch.mcfx.urs.data.sync.ReachabilityChecker
@@ -111,6 +113,7 @@ class AppContainer(context: Context) {
         api = ursApi,
         fillDao = database.fillDao(),
         fillingStationDao = database.fillingStationDao(),
+        workTimeDao = database.workTimeDao(),
         outboxDao = database.outboxDao(),
         reachabilityChecker = reachabilityChecker,
         json = json,
@@ -130,6 +133,15 @@ class AppContainer(context: Context) {
     )
     val inventoryRepository = InventoryRepository(retrofit.create(UrsApi::class.java))
     val beerRepository = BeerRepository(retrofit.create(UrsApi::class.java))
+    val workTimeRepository = WorkTimeRepository(
+        api = ursApi,
+        workTimeDao = database.workTimeDao(),
+        outboxDao = database.outboxDao(),
+        syncManager = syncManager,
+        applicationScope = applicationScope,
+        json = json,
+    )
+    val userRepository = UserRepository(retrofit.create(UrsApi::class.java))
 
     val reminderStore = ReminderStore(context)
     val notificationSender = NotificationSender(context)

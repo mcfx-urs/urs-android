@@ -54,6 +54,22 @@ interface UrsApi {
     @DELETE("api/v1/inventory-product/{id}")
     suspend fun deleteInventoryProduct(@Path("id") id: String)
 
+    @GET("api/v1/getuser")
+    suspend fun getUsers(): List<UserDto>
+
+    @PUT("api/v1/user/{id}/default-daily-target-hours")
+    suspend fun updateUserDefaultDailyTargetHours(@Path("id") id: String, @Body payload: UserDefaultDailyTargetHoursPayload)
+
+    @POST("api/v1/work-time-entry")
+    suspend fun createWorkTimeEntry(@Body payload: WorkTimeEntryPayload): WorkTimeEntryDto
+
+    @GET("api/v1/work-time-entry/{userId}/{limit}/{order}")
+    suspend fun getWorkTimeEntries(
+        @Path("userId") userId: String,
+        @Path("limit") limit: String,
+        @Path("order") order: String,
+    ): List<WorkTimeEntryDto>
+
     @GET("api/v1/beer-log")
     suspend fun getBeerLog(): List<BeerLogDto>
 

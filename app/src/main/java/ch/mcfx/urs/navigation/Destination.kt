@@ -10,11 +10,13 @@ import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SportsBar
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.ui.graphics.vector.ImageVector
 import ch.mcfx.urs.R
 import ch.mcfx.urs.fuel.FuelRoutes
 import ch.mcfx.urs.inventory.InventoryRoutes
 import ch.mcfx.urs.settings.SettingsRoutes
+import ch.mcfx.urs.worktime.WorkTimeRoutes
 
 // Mirrors the web app's sidebar (urs-frontend App.vue). Destinations with
 // isAvailable = false have no route or screen yet — they exist here only so
@@ -30,6 +32,7 @@ enum class Destination(
     FUEL(FuelRoutes.HUB, R.string.nav_fuel, Icons.Filled.LocalGasStation, isAvailable = true),
     INVENTORY(InventoryRoutes.CATEGORIES, R.string.nav_inventory, Icons.Filled.Inventory2, isAvailable = true),
     BEER("beer", R.string.nav_beer, Icons.Filled.SportsBar, isAvailable = true),
+    WORK_TIME(WorkTimeRoutes.HISTORY, R.string.nav_work_time, Icons.Filled.Schedule, isAvailable = true),
     HEALTH("health", R.string.nav_health, Icons.Filled.MonitorHeart, isAvailable = false),
     GOKART("gokart", R.string.nav_gokart, Icons.Filled.Flag, isAvailable = false),
     PRICE_MONITOR("price_monitor", R.string.nav_price_monitor, Icons.Filled.QrCodeScanner, isAvailable = false),

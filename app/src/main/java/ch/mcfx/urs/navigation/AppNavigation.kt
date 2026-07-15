@@ -47,6 +47,7 @@ import ch.mcfx.urs.settings.NotificationSettingsScreen
 import ch.mcfx.urs.settings.SettingsRoutes
 import ch.mcfx.urs.settings.SettingsScreen
 import ch.mcfx.urs.settings.VpnSettingsScreen
+import ch.mcfx.urs.settings.WorkTimeSettingsScreen
 import ch.mcfx.urs.ui.components.UrsDrawerValue
 import ch.mcfx.urs.ui.components.UrsIconButton
 import ch.mcfx.urs.ui.components.UrsNavigationDrawer
@@ -57,6 +58,9 @@ import ch.mcfx.urs.ui.components.UrsTopBar
 import ch.mcfx.urs.ui.components.rememberUrsDrawerState
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Spacing
+import ch.mcfx.urs.worktime.WorkTimeAddScreen
+import ch.mcfx.urs.worktime.WorkTimeRoutes
+import ch.mcfx.urs.worktime.WorkTimeScreen
 import kotlinx.coroutines.launch
 
 @Composable
@@ -211,11 +215,18 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                         ProductListScreen(categoryId = categoryId, categoryName = categoryName)
                     }
                     composable(Destination.BEER.route) { BeerScreen() }
+                    composable(Destination.WORK_TIME.route) {
+                        WorkTimeScreen(onAddEntry = { navController.navigate(WorkTimeRoutes.ADD) })
+                    }
+                    composable(WorkTimeRoutes.ADD) {
+                        WorkTimeAddScreen(onDone = { navController.popBackStack() })
+                    }
                     composable(Destination.SETTINGS.route) {
                         SettingsScreen(onNavigate = { route -> navController.navigate(route) })
                     }
                     composable(SettingsRoutes.VPN) { VpnSettingsScreen() }
                     composable(SettingsRoutes.NOTIFICATIONS) { NotificationSettingsScreen() }
+                    composable(SettingsRoutes.WORK_TIME) { WorkTimeSettingsScreen() }
                 }
             }
         }
@@ -240,6 +251,7 @@ private val FUEL_ROUTE_LABELS = mapOf(
 private val SETTINGS_ROUTE_LABELS = mapOf(
     SettingsRoutes.VPN to R.string.settings_tile_vpn,
     SettingsRoutes.NOTIFICATIONS to R.string.settings_tile_notifications,
+    SettingsRoutes.WORK_TIME to R.string.settings_tile_work_time,
 )
 
 private val INVENTORY_ROUTE_LABELS = mapOf(

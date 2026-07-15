@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -38,6 +39,7 @@ private val SETTINGS_TILES = listOf(
     SettingsTile(null, R.string.settings_tile_users, Icons.Filled.People, isAvailable = false),
     SettingsTile(SettingsRoutes.VPN, R.string.settings_tile_vpn, Icons.Filled.VpnKey, isAvailable = true),
     SettingsTile(SettingsRoutes.NOTIFICATIONS, R.string.settings_tile_notifications, Icons.Filled.Notifications, isAvailable = true),
+    SettingsTile(SettingsRoutes.WORK_TIME, R.string.settings_tile_work_time, Icons.Filled.Schedule, isAvailable = true),
 )
 
 // List-style rows, not a tile grid — the established Begleiter direction

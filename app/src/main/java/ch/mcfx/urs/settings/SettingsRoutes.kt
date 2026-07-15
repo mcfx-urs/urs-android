@@ -8,4 +8,5 @@ object SettingsRoutes {
     const val HUB = "settings/hub"
     const val VPN = "settings/vpn"
     const val NOTIFICATIONS = "settings/notifications"
+    const val WORK_TIME = "settings/work-time"
 }
