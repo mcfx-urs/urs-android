@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- `ARCHITECTURE.md` documenting the system architecture and
+  offline-sync design.
 - Work-time tracking: new Work Time section with an offline-capable entry
   form (start/end time, add/remove breaks) and a history list showing the
   computed daily total and over-/undertime per day; new settings field for
