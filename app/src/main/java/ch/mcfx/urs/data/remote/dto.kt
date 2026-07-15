@@ -134,6 +134,19 @@ data class InventoryProductSettingsPayload(
     @SerialName("inventory_product_reminder_minute") val reminderMinute: String,
 )
 
+// Empty string = not set, same convention as InventoryProductDto's threshold
+// fields (mirrors the backend's COALESCE(..., '') for these columns).
+@Serializable
+data class CatalogProductDto(
+    @SerialName("catalog_product_id") val id: String,
+    @SerialName("catalog_product_category_name") val categoryName: String,
+    @SerialName("catalog_product_name") val name: String,
+    @SerialName("catalog_product_search_terms") val searchTerms: String = "",
+    @SerialName("catalog_product_brands") val brands: String = "",
+    @SerialName("catalog_product_popularity_index") val popularityIndex: String = "",
+    @SerialName("catalog_product_catalog_image_id") val catalogImageId: String = "",
+)
+
 @Serializable
 data class WorkTimeBreakDto(
     @SerialName("work_time_break_id") val id: String = "",

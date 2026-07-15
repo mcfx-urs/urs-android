@@ -54,6 +54,9 @@ interface UrsApi {
     @DELETE("api/v1/inventory-product/{id}")
     suspend fun deleteInventoryProduct(@Path("id") id: String)
 
+    @GET("api/v1/catalog-product")
+    suspend fun getCatalogProducts(): List<CatalogProductDto>
+
     @GET("api/v1/getuser")
     suspend fun getUsers(): List<UserDto>
 

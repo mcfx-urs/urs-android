@@ -16,8 +16,9 @@ import androidx.room.TypeConverters
         WorkTimeMonthOverrideEntity::class,
         InventoryCategoryEntity::class,
         InventoryProductEntity::class,
+        CatalogProductEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -31,4 +32,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun workTimeMonthOverrideDao(): WorkTimeMonthOverrideDao
     abstract fun inventoryCategoryDao(): InventoryCategoryDao
     abstract fun inventoryProductDao(): InventoryProductDao
+    abstract fun catalogProductDao(): CatalogProductDao
 }

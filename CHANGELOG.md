@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Read-only Room cache for the predefined product catalog, refreshed
+  from the backend on demand (not yet wired into any screen).
+
 ### Changed
 
 - Inventory categories and products are now offline-first: cached locally

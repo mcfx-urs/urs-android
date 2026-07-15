@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import androidx.room.Room
 import ch.mcfx.urs.data.BeerRepository
+import ch.mcfx.urs.data.CatalogRepository
 import ch.mcfx.urs.data.FuelRepository
 import ch.mcfx.urs.data.InventoryRepository
 import ch.mcfx.urs.data.UserRepository
@@ -141,6 +142,10 @@ class AppContainer(context: Context) {
         syncManager = syncManager,
         applicationScope = applicationScope,
         json = json,
+    )
+    val catalogRepository = CatalogRepository(
+        api = ursApi,
+        catalogProductDao = database.catalogProductDao(),
     )
     val beerRepository = BeerRepository(retrofit.create(UrsApi::class.java))
     val workTimeRepository = WorkTimeRepository(
