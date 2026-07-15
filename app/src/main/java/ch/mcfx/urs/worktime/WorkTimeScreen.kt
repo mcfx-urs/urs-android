@@ -15,36 +15,48 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
+import ch.mcfx.urs.data.MonthlySummary
+import ch.mcfx.urs.data.computeMonthlySummary
 import ch.mcfx.urs.data.computeTotals
 import ch.mcfx.urs.data.local.SyncStatus
 import ch.mcfx.urs.data.local.WorkTimeEntryWithBreaks
 import ch.mcfx.urs.ui.components.UrsBottomSheet
 import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsCard
+import ch.mcfx.urs.ui.components.UrsDropdownField
 import ch.mcfx.urs.ui.components.UrsFab
 import ch.mcfx.urs.ui.components.UrsIcon
 import ch.mcfx.urs.ui.components.UrsOutlinedButton
 import ch.mcfx.urs.ui.components.UrsPill
 import ch.mcfx.urs.ui.components.UrsProgressIndicator
 import ch.mcfx.urs.ui.components.UrsText
+import ch.mcfx.urs.ui.components.UrsTextField
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Radius
 import ch.mcfx.urs.ui.tokens.Spacing
+import java.time.LocalDate
+import java.time.Month
+import java.time.format.TextStyle as JavaTimeTextStyle
 import java.util.Locale
 
 // Same reasoning as FuelScreen's own local text-style/color constants — the
@@ -62,11 +74,22 @@ fun WorkTimeScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val actionSheetEntry by viewModel.actionSheetEntry.collectAsStateWithLifecycle()
     val pendingDeleteEntry by viewModel.pendingDeleteEntry.collectAsStateWithLifecycle()
+    val selectedYear by viewModel.selectedYear.collectAsStateWithLifecycle()
+    val selectedMonth by viewModel.selectedMonth.collectAsStateWithLifecycle()
+
+    var overrideSheetOpen by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         when (val state = uiState) {
             WorkTimeUiState.Loading -> UrsProgressIndicator(Modifier.align(Alignment.Center))
-            is WorkTimeUiState.Data -> EntryList(state, onLongPress = viewModel::openActionSheet)
+            is WorkTimeUiState.Data -> MonthContent(
+                state = state,
+                selectedYear = selectedYear,
+                selectedMonth = selectedMonth,
+                onSelectMonth = viewModel::selectMonth,
+                onEditOverride = { overrideSheetOpen = true },
+                onLongPress = viewModel::openActionSheet,
+            )
         }
 
         if (uiState is WorkTimeUiState.Data) {
@@ -80,7 +103,8 @@ fun WorkTimeScreen(
     }
 
     // Long-press → Edit/Delete: reuses the same UrsBottomSheet mechanic as
-    // the delete-confirmation sheet below it, just with different content.
+    // the delete-confirmation and override sheets below it, just with
+    // different content.
     actionSheetEntry?.let { entry ->
         UrsBottomSheet(onDismissRequest = viewModel::closeActionSheet) {
             EntryActionSheet(
@@ -98,29 +122,193 @@ fun WorkTimeScreen(
             DeleteConfirmSheet(onConfirm = viewModel::confirmDelete, onCancel = viewModel::cancelDelete)
         }
     }
+
+    if (overrideSheetOpen) {
+        val currentOverride = (uiState as? WorkTimeUiState.Data)?.monthOverrides
+            ?.find { it.year == selectedYear && it.month == selectedMonth }
+        UrsBottomSheet(onDismissRequest = { overrideSheetOpen = false }) {
+            MonthOverrideSheet(
+                year = selectedYear,
+                month = selectedMonth,
+                initialValue = currentOverride?.targetHours ?: "",
+                hasOverride = currentOverride != null,
+                onSave = { hours ->
+                    viewModel.setMonthOverride(hours)
+                    overrideSheetOpen = false
+                },
+                onClear = {
+                    viewModel.clearMonthOverride()
+                    overrideSheetOpen = false
+                },
+                onCancel = { overrideSheetOpen = false },
+            )
+        }
+    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun EntryList(state: WorkTimeUiState.Data, onLongPress: (WorkTimeEntryWithBreaks) -> Unit) {
-    if (state.entries.isEmpty()) {
-        Box(Modifier.fillMaxSize()) {
-            UrsText(
-                stringResource(R.string.worktime_empty),
-                modifier = Modifier.align(Alignment.Center),
-                color = UrsTheme.colors.onSurfaceMuted,
-            )
-        }
-        return
-    }
+private fun MonthContent(
+    state: WorkTimeUiState.Data,
+    selectedYear: Int,
+    selectedMonth: Int,
+    onSelectMonth: (year: Int, month: Int) -> Unit,
+    onEditOverride: () -> Unit,
+    onLongPress: (WorkTimeEntryWithBreaks) -> Unit,
+) {
+    val monthPrefix = "%04d-%02d".format(selectedYear, selectedMonth)
+    val monthEntries = state.entries.filter { it.entry.date.startsWith(monthPrefix) }
+    val override = state.monthOverrides.find { it.year == selectedYear && it.month == selectedMonth }?.targetHours
+    val summary = computeMonthlySummary(
+        entries = state.entries,
+        year = selectedYear,
+        month = selectedMonth,
+        employmentPercent = state.employmentPercent,
+        targetHoursPerDay = state.userDefaultTargetHours,
+        hourlyWage = state.hourlyWage,
+        overrideTargetHours = override,
+    )
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(Spacing.l),
         verticalArrangement = Arrangement.spacedBy(Spacing.s),
     ) {
-        items(state.entries, key = { it.entry.id }) { entryWithBreaks ->
-            EntryCard(entryWithBreaks, state.userDefaultTargetHours, onLongPress = { onLongPress(entryWithBreaks) })
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
+                MonthYearPicker(selectedYear, selectedMonth, onSelectMonth)
+                MonthSummaryTiles(summary, onEditOverride)
+            }
+            Spacer(Modifier.height(Spacing.s))
+        }
+
+        if (monthEntries.isEmpty()) {
+            item {
+                UrsText(
+                    stringResource(R.string.worktime_empty),
+                    color = UrsTheme.colors.onSurfaceMuted,
+                    modifier = Modifier.padding(top = Spacing.l),
+                )
+            }
+        } else {
+            items(monthEntries, key = { it.entry.id }) { entryWithBreaks ->
+                EntryCard(entryWithBreaks, state.userDefaultTargetHours, onLongPress = { onLongPress(entryWithBreaks) })
+            }
+        }
+    }
+}
+
+@Composable
+private fun MonthYearPicker(selectedYear: Int, selectedMonth: Int, onSelect: (year: Int, month: Int) -> Unit) {
+    val currentYear = LocalDate.now().year
+    val yearOptions = remember(currentYear) { (currentYear downTo currentYear - 3).toList() }
+    val monthOptions = remember { (1..12).toList() }
+
+    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
+        UrsDropdownField(
+            label = stringResource(R.string.worktime_month),
+            options = monthOptions,
+            selectedLabel = monthName(selectedMonth),
+            optionLabel = { monthName(it) },
+            onSelect = { onSelect(selectedYear, it) },
+            modifier = Modifier.weight(1f),
+        )
+        UrsDropdownField(
+            label = stringResource(R.string.worktime_year),
+            options = yearOptions,
+            selectedLabel = selectedYear.toString(),
+            optionLabel = { it.toString() },
+            onSelect = { onSelect(it, selectedMonth) },
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+private fun monthName(month: Int): String =
+    Month.of(month).getDisplayName(JavaTimeTextStyle.FULL, Locale.getDefault())
+
+@Composable
+private fun MonthSummaryTiles(summary: MonthlySummary, onEditOverride: () -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
+        MonthStatTile(
+            label = stringResource(R.string.worktime_stat_hours),
+            value = formatHours(summary.actualHours),
+            modifier = Modifier.weight(1f),
+        )
+        MonthStatTile(
+            label = stringResource(R.string.worktime_stat_plus_minus),
+            value = summary.overUndertimeHours?.let { formatSignedHours(it) } ?: "–",
+            valueColor = summary.overUndertimeHours?.let { if (it < 0) FormErrorColor else null },
+            onClick = onEditOverride,
+            modifier = Modifier.weight(1f),
+        )
+        MonthStatTile(
+            label = stringResource(R.string.worktime_stat_earnings),
+            value = summary.earnings?.let { formatHours(it) } ?: "–",
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun MonthStatTile(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    valueColor: Color? = null,
+    onClick: (() -> Unit)? = null,
+) {
+    UrsCard(
+        radius = Radius.row,
+        modifier = modifier.let { if (onClick != null) it.clickable(onClick = onClick) else it },
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+            UrsText(label, style = UrsTheme.typography.caption, color = UrsTheme.colors.onSurfaceMuted)
+            UrsText(value, style = UrsTheme.typography.cardTitle, color = valueColor ?: UrsTheme.colors.onSurface)
+        }
+    }
+}
+
+@Composable
+private fun MonthOverrideSheet(
+    year: Int,
+    month: Int,
+    initialValue: String,
+    hasOverride: Boolean,
+    onSave: (String) -> Unit,
+    onClear: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    var value by remember(year, month, initialValue) { mutableStateOf(initialValue) }
+
+    Column(
+        modifier = Modifier.padding(horizontal = Spacing.l).padding(bottom = Spacing.l),
+        verticalArrangement = Arrangement.spacedBy(Spacing.m),
+    ) {
+        UrsText(
+            stringResource(R.string.worktime_override_title, monthName(month), year.toString()),
+            style = UrsTheme.typography.cardTitle,
+        )
+        UrsTextField(
+            value = value,
+            onValueChange = { value = it },
+            label = stringResource(R.string.worktime_override_label),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.m)) {
+            UrsOutlinedButton(
+                text = stringResource(if (hasOverride) R.string.worktime_override_clear else R.string.cancel),
+                onClick = if (hasOverride) onClear else onCancel,
+                modifier = Modifier.weight(1f),
+            )
+            UrsButton(
+                text = stringResource(R.string.save),
+                onClick = { onSave(value) },
+                enabled = value.toFloatOrNull() != null,
+                modifier = Modifier.weight(1f),
+            )
         }
     }
 }

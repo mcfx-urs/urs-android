@@ -8,14 +8,17 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.data.UserRepository
+import ch.mcfx.urs.data.WorkSettings
 import ch.mcfx.urs.data.WorkTimeRepository
 import ch.mcfx.urs.data.local.WorkTimeEntryWithBreaks
+import ch.mcfx.urs.data.local.WorkTimeMonthOverrideEntity
 import java.time.LocalDate
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -24,6 +27,9 @@ sealed interface WorkTimeUiState {
     data class Data(
         val entries: List<WorkTimeEntryWithBreaks>,
         val userDefaultTargetHours: String,
+        val employmentPercent: String,
+        val hourlyWage: String,
+        val monthOverrides: List<WorkTimeMonthOverrideEntity>,
     ) : WorkTimeUiState
 }
 
@@ -71,17 +77,36 @@ class WorkTimeViewModel(
     private val _pendingDeleteEntry = MutableStateFlow<WorkTimeEntryWithBreaks?>(null)
     val pendingDeleteEntry: StateFlow<WorkTimeEntryWithBreaks?> = _pendingDeleteEntry.asStateFlow()
 
+    private val today = LocalDate.now()
+    private val _selectedYear = MutableStateFlow(today.year)
+    val selectedYear: StateFlow<Int> = _selectedYear.asStateFlow()
+
+    private val _selectedMonth = MutableStateFlow(today.monthValue)
+    val selectedMonth: StateFlow<Int> = _selectedMonth.asStateFlow()
+
+    // Not Room-backed like entries/overrides — a one-shot REST fetch (see
+    // UserRepository.getWorkSettings), so held as plain state here and
+    // merged into uiState via combine() below, same as those two Flows.
+    private val _workSettings = MutableStateFlow<WorkSettings?>(null)
+
     init {
-        // Entries are a Room-backed Flow so the history screen has something
-        // to show on a cold start with no connectivity — load() below only
-        // refreshes the cache opportunistically.
+        // Entries/overrides are Room-backed Flows so the history screen has
+        // something to show on a cold start with no connectivity — load()
+        // below only refreshes the caches (and work settings) opportunistically.
         viewModelScope.launch {
-            repository.observeEntries().collect { entries ->
-                _uiState.update { state ->
-                    val targetHours = (state as? WorkTimeUiState.Data)?.userDefaultTargetHours ?: ""
-                    WorkTimeUiState.Data(entries, targetHours)
-                }
-            }
+            combine(
+                repository.observeEntries(),
+                repository.observeMonthOverrides(),
+                _workSettings,
+            ) { entries, overrides, settings ->
+                WorkTimeUiState.Data(
+                    entries = entries,
+                    userDefaultTargetHours = settings?.defaultDailyTargetHours ?: "",
+                    employmentPercent = settings?.employmentPercent ?: "",
+                    hourlyWage = settings?.hourlyWage ?: "",
+                    monthOverrides = overrides,
+                )
+            }.collect { _uiState.value = it }
         }
         load()
     }
@@ -89,16 +114,41 @@ class WorkTimeViewModel(
     fun load() {
         viewModelScope.launch { repository.refreshFromBackend() }
         viewModelScope.launch {
-            val targetHours = try {
-                userRepository.getDefaultDailyTargetHours()
+            _workSettings.value = try {
+                userRepository.getWorkSettings()
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
-                "" // best-effort hint, not critical
+                WorkSettings("", "", "") // best-effort hint, not critical
             }
-            _uiState.update { state ->
-                val entries = (state as? WorkTimeUiState.Data)?.entries ?: emptyList()
-                WorkTimeUiState.Data(entries, targetHours)
+        }
+    }
+
+    fun selectMonth(year: Int, month: Int) {
+        _selectedYear.value = year
+        _selectedMonth.value = month
+    }
+
+    fun setMonthOverride(targetHours: String) {
+        viewModelScope.launch {
+            try {
+                repository.setMonthOverride(_selectedYear.value, _selectedMonth.value, targetHours)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // Best-effort only — this simple field has no dedicated error UI yet.
+            }
+        }
+    }
+
+    fun clearMonthOverride() {
+        viewModelScope.launch {
+            try {
+                repository.clearMonthOverride(_selectedYear.value, _selectedMonth.value)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // Best-effort only — see setMonthOverride.
             }
         }
     }

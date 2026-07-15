@@ -181,11 +181,37 @@ data class WorkTimeEntryPayload(
 data class UserDto(
     @SerialName("user_id") val id: String,
     @SerialName("user_default_daily_target_hours") val defaultDailyTargetHours: String = "",
+    @SerialName("user_employment_percent") val employmentPercent: String = "",
+    @SerialName("user_hourly_wage") val hourlyWage: String = "",
 )
 
 @Serializable
 data class UserDefaultDailyTargetHoursPayload(
     @SerialName("user_default_daily_target_hours") val defaultDailyTargetHours: String,
+)
+
+@Serializable
+data class UserEmploymentPercentPayload(
+    @SerialName("user_employment_percent") val employmentPercent: String,
+)
+
+@Serializable
+data class UserHourlyWagePayload(
+    @SerialName("user_hourly_wage") val hourlyWage: String,
+)
+
+@Serializable
+data class WorkTimeMonthOverrideDto(
+    @SerialName("work_time_month_override_id") val id: String,
+    @SerialName("work_time_month_override_user_id") val userId: String,
+    @SerialName("work_time_month_override_year") val year: String,
+    @SerialName("work_time_month_override_month") val month: String,
+    @SerialName("work_time_month_override_target_hours") val targetHours: String,
+)
+
+@Serializable
+data class WorkTimeMonthOverridePayload(
+    @SerialName("work_time_month_override_target_hours") val targetHours: String,
 )
 
 @Serializable

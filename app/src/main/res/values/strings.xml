@@ -23,10 +23,13 @@
     <string name="settings_tile_users">Users</string>
     <string name="settings_tile_vpn">VPN</string>
     <string name="settings_tile_notifications">Notifications</string>
-    <string name="settings_tile_work_time">Work Time</string>
+    <string name="settings_tile_work_time">Work Settings</string>
     <string name="settings_users_description">Login and multi-user management will live here once that feature is built.</string>
 
+    <string name="worktime_settings_employment_percent_label">Employment percentage</string>
+    <string name="worktime_settings_employment_percent_hint">% of a full-time week (e.g. 40 = 2 days/week)</string>
     <string name="worktime_settings_target_hours_label">Default daily target hours</string>
+    <string name="worktime_settings_hourly_wage_label">Hourly wage</string>
     <string name="worktime_settings_saved">Saved</string>
 
     <string name="notifications_title">Notifications</string>
@@ -164,6 +167,14 @@
     <string name="worktime_status_pending">Pending</string>
     <string name="worktime_status_failed">Failed</string>
     <string name="worktime_empty">No work-time entries yet.</string>
+    <string name="worktime_month">Month</string>
+    <string name="worktime_year">Year</string>
+    <string name="worktime_stat_hours">Hours</string>
+    <string name="worktime_stat_plus_minus">Plus/Minus</string>
+    <string name="worktime_stat_earnings">Earnings</string>
+    <string name="worktime_override_title">Override target hours — %1$s %2$s</string>
+    <string name="worktime_override_label">Target hours for this month</string>
+    <string name="worktime_override_clear">Clear override</string>
     <string name="worktime_edit">Edit</string>
     <string name="worktime_delete">Delete</string>
     <string name="worktime_delete_confirm_title">Delete this entry?</string>

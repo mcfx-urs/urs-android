@@ -11,9 +11,12 @@ import ch.mcfx.urs.data.local.WorkTimeBreakEntity
 import ch.mcfx.urs.data.local.WorkTimeDao
 import ch.mcfx.urs.data.local.WorkTimeEntryEntity
 import ch.mcfx.urs.data.local.WorkTimeEntryWithBreaks
+import ch.mcfx.urs.data.local.WorkTimeMonthOverrideDao
+import ch.mcfx.urs.data.local.WorkTimeMonthOverrideEntity
 import ch.mcfx.urs.data.remote.UrsApi
 import ch.mcfx.urs.data.remote.WorkTimeBreakDto
 import ch.mcfx.urs.data.remote.WorkTimeEntryDto
+import ch.mcfx.urs.data.remote.WorkTimeMonthOverridePayload
 import ch.mcfx.urs.data.sync.SyncManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -25,6 +28,7 @@ import kotlinx.serialization.json.Json
 class WorkTimeRepository(
     private val api: UrsApi,
     private val workTimeDao: WorkTimeDao,
+    private val workTimeMonthOverrideDao: WorkTimeMonthOverrideDao,
     private val outboxDao: OutboxDao,
     private val syncManager: SyncManager,
     private val applicationScope: CoroutineScope,
@@ -32,6 +36,8 @@ class WorkTimeRepository(
 ) {
 
     fun observeEntries(): Flow<List<WorkTimeEntryWithBreaks>> = workTimeDao.observeAll()
+
+    fun observeMonthOverrides(): Flow<List<WorkTimeMonthOverrideEntity>> = workTimeMonthOverrideDao.observeAll()
 
     /**
      * Offline-first write path, same shape as [FuelRepository.createFill]:
@@ -184,6 +190,40 @@ class WorkTimeRepository(
         } catch (_: Exception) {
             // Best-effort only — see doc comment above.
         }
+        try {
+            val overrides = api.getWorkTimeMonthOverrides(UserDefaults.DEFAULT_USER_ID)
+            workTimeMonthOverrideDao.replaceAll(
+                overrides.mapNotNull { dto ->
+                    val year = dto.year.toIntOrNull() ?: return@mapNotNull null
+                    val month = dto.month.toIntOrNull() ?: return@mapNotNull null
+                    WorkTimeMonthOverrideEntity(year = year, month = month, targetHours = dto.targetHours)
+                },
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // Best-effort only — see doc comment above.
+        }
+    }
+
+    /**
+     * Direct REST write, no outbox — a manual monthly-target override is a
+     * low-frequency, settings-adjacent edit, not offline-first write data
+     * like a work-time entry itself (see [WorkTimeMonthOverrideEntity]).
+     */
+    suspend fun setMonthOverride(year: Int, month: Int, targetHours: String) {
+        api.updateWorkTimeMonthOverride(
+            UserDefaults.DEFAULT_USER_ID,
+            year.toString(),
+            month.toString(),
+            WorkTimeMonthOverridePayload(targetHours = targetHours),
+        )
+        workTimeMonthOverrideDao.upsert(WorkTimeMonthOverrideEntity(year = year, month = month, targetHours = targetHours))
+    }
+
+    suspend fun clearMonthOverride(year: Int, month: Int) {
+        api.deleteWorkTimeMonthOverride(UserDefaults.DEFAULT_USER_ID, year.toString(), month.toString())
+        workTimeMonthOverrideDao.delete(year, month)
     }
 }
 

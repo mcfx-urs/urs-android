@@ -136,6 +136,7 @@ class AppContainer(context: Context) {
     val workTimeRepository = WorkTimeRepository(
         api = ursApi,
         workTimeDao = database.workTimeDao(),
+        workTimeMonthOverrideDao = database.workTimeMonthOverrideDao(),
         outboxDao = database.outboxDao(),
         syncManager = syncManager,
         applicationScope = applicationScope,

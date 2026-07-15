@@ -60,6 +60,30 @@ interface UrsApi {
     @PUT("api/v1/user/{id}/default-daily-target-hours")
     suspend fun updateUserDefaultDailyTargetHours(@Path("id") id: String, @Body payload: UserDefaultDailyTargetHoursPayload)
 
+    @PUT("api/v1/user/{id}/employment-percent")
+    suspend fun updateUserEmploymentPercent(@Path("id") id: String, @Body payload: UserEmploymentPercentPayload)
+
+    @PUT("api/v1/user/{id}/hourly-wage")
+    suspend fun updateUserHourlyWage(@Path("id") id: String, @Body payload: UserHourlyWagePayload)
+
+    @GET("api/v1/work-time-month-override/{userId}")
+    suspend fun getWorkTimeMonthOverrides(@Path("userId") userId: String): List<WorkTimeMonthOverrideDto>
+
+    @PUT("api/v1/work-time-month-override/{userId}/{year}/{month}")
+    suspend fun updateWorkTimeMonthOverride(
+        @Path("userId") userId: String,
+        @Path("year") year: String,
+        @Path("month") month: String,
+        @Body payload: WorkTimeMonthOverridePayload,
+    )
+
+    @DELETE("api/v1/work-time-month-override/{userId}/{year}/{month}")
+    suspend fun deleteWorkTimeMonthOverride(
+        @Path("userId") userId: String,
+        @Path("year") year: String,
+        @Path("month") month: String,
+    )
+
     @POST("api/v1/work-time-entry")
     suspend fun createWorkTimeEntry(@Body payload: WorkTimeEntryPayload): WorkTimeEntryDto
 
