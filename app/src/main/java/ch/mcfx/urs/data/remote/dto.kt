@@ -206,12 +206,12 @@ data class WorkTimeMonthOverrideDto(
     @SerialName("work_time_month_override_user_id") val userId: String,
     @SerialName("work_time_month_override_year") val year: String,
     @SerialName("work_time_month_override_month") val month: String,
-    @SerialName("work_time_month_override_target_hours") val targetHours: String,
+    @SerialName("work_time_month_override_days_worked") val daysWorked: String,
 )
 
 @Serializable
 data class WorkTimeMonthOverridePayload(
-    @SerialName("work_time_month_override_target_hours") val targetHours: String,
+    @SerialName("work_time_month_override_days_worked") val daysWorked: String,
 )
 
 @Serializable

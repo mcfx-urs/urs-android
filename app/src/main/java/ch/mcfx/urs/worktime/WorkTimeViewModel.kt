@@ -129,10 +129,10 @@ class WorkTimeViewModel(
         _selectedMonth.value = month
     }
 
-    fun setMonthOverride(targetHours: String) {
+    fun setMonthOverride(daysWorked: String) {
         viewModelScope.launch {
             try {
-                repository.setMonthOverride(_selectedYear.value, _selectedMonth.value, targetHours)
+                repository.setMonthOverride(_selectedYear.value, _selectedMonth.value, daysWorked)
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {

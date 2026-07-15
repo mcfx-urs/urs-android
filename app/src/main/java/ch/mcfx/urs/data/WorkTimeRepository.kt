@@ -196,7 +196,7 @@ class WorkTimeRepository(
                 overrides.mapNotNull { dto ->
                     val year = dto.year.toIntOrNull() ?: return@mapNotNull null
                     val month = dto.month.toIntOrNull() ?: return@mapNotNull null
-                    WorkTimeMonthOverrideEntity(year = year, month = month, targetHours = dto.targetHours)
+                    WorkTimeMonthOverrideEntity(year = year, month = month, daysWorked = dto.daysWorked)
                 },
             )
         } catch (e: CancellationException) {
@@ -207,18 +207,18 @@ class WorkTimeRepository(
     }
 
     /**
-     * Direct REST write, no outbox — a manual monthly-target override is a
+     * Direct REST write, no outbox — a manual days-worked override is a
      * low-frequency, settings-adjacent edit, not offline-first write data
      * like a work-time entry itself (see [WorkTimeMonthOverrideEntity]).
      */
-    suspend fun setMonthOverride(year: Int, month: Int, targetHours: String) {
+    suspend fun setMonthOverride(year: Int, month: Int, daysWorked: String) {
         api.updateWorkTimeMonthOverride(
             UserDefaults.DEFAULT_USER_ID,
             year.toString(),
             month.toString(),
-            WorkTimeMonthOverridePayload(targetHours = targetHours),
+            WorkTimeMonthOverridePayload(daysWorked = daysWorked),
         )
-        workTimeMonthOverrideDao.upsert(WorkTimeMonthOverrideEntity(year = year, month = month, targetHours = targetHours))
+        workTimeMonthOverrideDao.upsert(WorkTimeMonthOverrideEntity(year = year, month = month, daysWorked = daysWorked))
     }
 
     suspend fun clearMonthOverride(year: Int, month: Int) {

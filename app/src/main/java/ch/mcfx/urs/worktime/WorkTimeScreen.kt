@@ -130,7 +130,7 @@ fun WorkTimeScreen(
             MonthOverrideSheet(
                 year = selectedYear,
                 month = selectedMonth,
-                initialValue = currentOverride?.targetHours ?: "",
+                initialValue = currentOverride?.daysWorked ?: "",
                 hasOverride = currentOverride != null,
                 onSave = { hours ->
                     viewModel.setMonthOverride(hours)
@@ -158,7 +158,9 @@ private fun MonthContent(
 ) {
     val monthPrefix = "%04d-%02d".format(selectedYear, selectedMonth)
     val monthEntries = state.entries.filter { it.entry.date.startsWith(monthPrefix) }
-    val override = state.monthOverrides.find { it.year == selectedYear && it.month == selectedMonth }?.targetHours
+    val override = state.monthOverrides.find { it.year == selectedYear && it.month == selectedMonth }?.daysWorked
+    val today = LocalDate.now()
+    val isCurrentMonth = selectedYear == today.year && selectedMonth == today.monthValue
     val summary = computeMonthlySummary(
         entries = state.entries,
         year = selectedYear,
@@ -166,7 +168,8 @@ private fun MonthContent(
         employmentPercent = state.employmentPercent,
         targetHoursPerDay = state.userDefaultTargetHours,
         hourlyWage = state.hourlyWage,
-        overrideTargetHours = override,
+        overrideDaysWorked = override,
+        isCurrentMonth = isCurrentMonth,
     )
 
     LazyColumn(
@@ -229,24 +232,34 @@ private fun monthName(month: Int): String =
 
 @Composable
 private fun MonthSummaryTiles(summary: MonthlySummary, onEditOverride: () -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
-        MonthStatTile(
-            label = stringResource(R.string.worktime_stat_hours),
-            value = formatHours(summary.actualHours),
-            modifier = Modifier.weight(1f),
-        )
-        MonthStatTile(
-            label = stringResource(R.string.worktime_stat_plus_minus),
-            value = summary.overUndertimeHours?.let { formatSignedHours(it) } ?: "–",
-            valueColor = summary.overUndertimeHours?.let { if (it < 0) FormErrorColor else null },
-            onClick = onEditOverride,
-            modifier = Modifier.weight(1f),
-        )
-        MonthStatTile(
-            label = stringResource(R.string.worktime_stat_earnings),
-            value = summary.earnings?.let { formatHours(it) } ?: "–",
-            modifier = Modifier.weight(1f),
-        )
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.s)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
+            MonthStatTile(
+                label = stringResource(R.string.worktime_stat_hours),
+                value = formatHours(summary.actualHours),
+                modifier = Modifier.weight(1f),
+            )
+            MonthStatTile(
+                label = stringResource(R.string.worktime_stat_plus_minus),
+                value = summary.overUndertimeHours?.let { formatSignedHours(it) } ?: "–",
+                valueColor = summary.overUndertimeHours?.let { if (it < 0) FormErrorColor else null },
+                onClick = onEditOverride,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
+            MonthStatTile(
+                label = stringResource(R.string.worktime_stat_earnings),
+                value = summary.earnings?.let { formatHours(it) } ?: "–",
+                modifier = Modifier.weight(1f),
+            )
+            MonthStatTile(
+                label = stringResource(R.string.worktime_stat_percent_of_soll),
+                value = summary.percentOfContractSoll?.let { "${formatHours(it)}%" } ?: "–",
+                valueColor = summary.percentOfContractSoll?.let { if (it < 100f) FormErrorColor else null },
+                modifier = Modifier.weight(1f),
+            )
+        }
     }
 }
 

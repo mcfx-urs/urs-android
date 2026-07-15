@@ -172,8 +172,9 @@
     <string name="worktime_stat_hours">Hours</string>
     <string name="worktime_stat_plus_minus">Plus/Minus</string>
     <string name="worktime_stat_earnings">Earnings</string>
-    <string name="worktime_override_title">Override target hours — %1$s %2$s</string>
-    <string name="worktime_override_label">Target hours for this month</string>
+    <string name="worktime_stat_percent_of_soll">% of monthly Soll</string>
+    <string name="worktime_override_title">Override days worked — %1$s %2$s</string>
+    <string name="worktime_override_label">Days worked this month</string>
     <string name="worktime_override_clear">Clear override</string>
     <string name="worktime_edit">Edit</string>
     <string name="worktime_delete">Delete</string>

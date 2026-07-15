@@ -16,11 +16,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   tile on the home screen; new settings field for the default daily
   target hours. Long-pressing an entry opens Edit (pre-filled, offline-
   capable) or Delete (with confirmation), both syncing in the background.
-- Work-time earnings: month/year picker on the Work Time screen with hours
-  worked, plus/minus, and earnings tiles for the selected month; monthly
-  target is derived from a new employment-percentage setting (renamed
-  "Work Settings", now also holding hourly wage) and can be manually
-  overridden per month for vacation/holidays/sick leave.
+- Work-time earnings: month/year picker on the Work Time screen with four
+  tiles for the selected month — hours worked, plus/minus (days worked
+  that month × daily target, so the running month is never shown
+  artificially behind), earnings, and % of the monthly contract Soll
+  (employment percentage × possible weekdays that month, shown only for
+  completed months). Days worked can be manually overridden per month for
+  vacation/holidays/sick leave. New "Work Settings" screen (renamed from
+  "Work Time") holds the employment percentage and hourly wage alongside
+  the existing daily target.
 
 ## [0.3.0] - 2026-07-11
 

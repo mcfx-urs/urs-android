@@ -1,6 +1,7 @@
 package ch.mcfx.urs.data
 
 import ch.mcfx.urs.data.local.WorkTimeEntryWithBreaks
+import java.time.DayOfWeek
 import java.time.LocalTime
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -33,25 +34,43 @@ fun WorkTimeEntryWithBreaks.computeTotals(userDefaultTargetHours: String?): Work
     return WorkTimeTotals(total, overUndertime)
 }
 
+/** Number of Monday–Friday calendar days in a given month — the exact "how many days could theoretically be worked" count. */
+fun possibleWeekdaysInMonth(year: Int, month: Int): Int {
+    val yearMonth = YearMonth.of(year, month)
+    return (1..yearMonth.lengthOfMonth()).count { day ->
+        val dayOfWeek = yearMonth.atDay(day).dayOfWeek
+        dayOfWeek != DayOfWeek.SATURDAY && dayOfWeek != DayOfWeek.SUNDAY
+    }
+}
+
 data class MonthlySummary(
     val actualHours: Float,
-    val targetHours: Float?,
     val overUndertimeHours: Float?,
     val earnings: Float?,
+    /** Null while [year]/[month] (see [computeMonthlySummary]) is the current, still-active month. */
+    val percentOfContractSoll: Float?,
 )
 
 /**
- * Aggregates a calendar month's entries into hours worked, the expected
- * target for that month, the resulting over-/undertime, and earnings.
+ * Aggregates a calendar month's entries into two deliberately independent
+ * measures:
  *
- * [overrideTargetHours] (a manually-set value correcting for vacation,
- * holidays, or sick leave — none of which this app tracks as data) always
- * wins when present. Otherwise the target is derived from the employment
- * percentage: a full-time week is 5 days, so `employmentPercent/100 * 5 *
- * targetHoursPerDay` gives the weekly target, scaled to the month via
- * `daysInMonth / 7`. This is an average approximation (independent of
- * which specific weekdays are actually worked), not a literal weekday
- * count — matches urs-backend's own lack of a "which days" concept.
+ * - **Plus/Minus** (`overUndertimeHours`) is self-referential: its Soll is
+ *   `daysWorked * targetHoursPerDay`, where `daysWorked` is either the
+ *   manual [overrideDaysWorked] or a raw count of entries that month.
+ *   Answers "on the days I logged, did I hit my daily target?" — always
+ *   meaningful, including for the currently active month, since it never
+ *   expects hours for days that haven't happened yet (no "always behind
+ *   mid-month" distortion).
+ * - **percentOfContractSoll** answers a different question — "of my full
+ *   month's contractual hour obligation, what fraction did I actually
+ *   work?" — using the employment percentage against every weekday in the
+ *   month (`possibleWeekdaysInMonth(year, month) * employmentPercent/100 *
+ *   targetHoursPerDay`), entirely independent of daysWorked/the override.
+ *   Only meaningful once a month has fully ended (its weekday count is
+ *   otherwise the full month's, so it would always read as "behind" for
+ *   the active month purely because the month isn't over yet) — callers
+ *   pass [isCurrentMonth] and get `null` back for the active month.
  */
 fun computeMonthlySummary(
     entries: List<WorkTimeEntryWithBreaks>,
@@ -60,25 +79,33 @@ fun computeMonthlySummary(
     employmentPercent: String?,
     targetHoursPerDay: String?,
     hourlyWage: String?,
-    overrideTargetHours: String?,
+    overrideDaysWorked: String?,
+    isCurrentMonth: Boolean,
 ): MonthlySummary {
     val monthPrefix = "%04d-%02d".format(year, month)
-    val actualHours = entries
-        .filter { it.entry.date.startsWith(monthPrefix) }
-        .sumOf { (it.dailyHoursWorked() ?: 0f).toDouble() }
-        .toFloat()
+    val monthEntries = entries.filter { it.entry.date.startsWith(monthPrefix) }
+    val actualHours = monthEntries.sumOf { (it.dailyHoursWorked() ?: 0f).toDouble() }.toFloat()
 
-    val targetHours = overrideTargetHours?.toFloatOrNull() ?: run {
-        val percent = employmentPercent?.toFloatOrNull() ?: return@run null
-        val dailyTarget = targetHoursPerDay?.toFloatOrNull() ?: return@run null
-        val daysInMonth = YearMonth.of(year, month).lengthOfMonth()
-        (percent / 100f) * 5f * dailyTarget * (daysInMonth / 7f)
+    val dailyTarget = targetHoursPerDay?.toFloatOrNull()
+    val daysWorked = overrideDaysWorked?.toFloatOrNull() ?: monthEntries.size.toFloat()
+    val plusMinusSoll = dailyTarget?.let { daysWorked * it }
+
+    val percentOfContractSoll = if (isCurrentMonth) {
+        null
+    } else {
+        val percent = employmentPercent?.toFloatOrNull()
+        val contractSollHours = if (percent != null && dailyTarget != null) {
+            possibleWeekdaysInMonth(year, month) * (percent / 100f) * dailyTarget
+        } else {
+            null
+        }
+        contractSollHours?.takeIf { it != 0f }?.let { actualHours / it * 100f }
     }
 
     return MonthlySummary(
         actualHours = actualHours,
-        targetHours = targetHours,
-        overUndertimeHours = targetHours?.let { actualHours - it },
+        overUndertimeHours = plusMinusSoll?.let { actualHours - it },
         earnings = hourlyWage?.toFloatOrNull()?.let { actualHours * it },
+        percentOfContractSoll = percentOfContractSoll,
     )
 }
