@@ -57,8 +57,11 @@ interface InventoryProductDao {
      * Backend-refresh write path — see [InventoryCategoryDao.upsertFromServer].
      * [InventoryProductEntity.catalogProductId] is carried over from
      * whatever local row already exists rather than taken from [products]
-     * (always `null` there — see that field's doc comment), so a refresh
-     * never erases what a local create already knows.
+     * (effectively always empty there — see that field's doc comment), so a
+     * refresh never erases what a local create already knows. Every other
+     * field, including the recent-note trio, is taken as-is from [products]
+     * — those have no local write path, so the server value is always
+     * authoritative for them.
      */
     @Transaction
     suspend fun upsertFromServer(products: List<InventoryProductEntity>) {

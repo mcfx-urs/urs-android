@@ -103,6 +103,14 @@ data class InventoryProductDto(
     @SerialName("inventory_product_quantity") val quantity: String,
     // Empty string = not set for every field below (mirrors the backend's
     // nullable-column-as-empty-string convention, e.g. user_height).
+    @SerialName("inventory_product_catalog_product_id") val catalogProductId: String = "",
+    // Most-recently-used notes for this product's list items, newest first
+    // (1 = most recent) — populated once a list item with a note has been
+    // added for this product, shifted 1→2→3 on each subsequent distinct
+    // note. Surfaced as tap-to-fill chips in AddProductScreen's note step.
+    @SerialName("inventory_product_recent_note_1") val recentNote1: String = "",
+    @SerialName("inventory_product_recent_note_2") val recentNote2: String = "",
+    @SerialName("inventory_product_recent_note_3") val recentNote3: String = "",
     @SerialName("inventory_product_first_threshold") val firstThreshold: String = "",
     @SerialName("inventory_product_second_threshold") val secondThreshold: String = "",
     @SerialName("inventory_product_reminder_threshold") val reminderThreshold: String = "",

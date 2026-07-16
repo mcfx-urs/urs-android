@@ -14,10 +14,12 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -164,7 +166,12 @@ fun UrsBottomSheet(
                 // Edge-to-edge (see MainActivity's enableEdgeToEdge()) means nothing
                 // paints behind the navigation bar automatically — pad the sheet's
                 // own content below it explicitly, same reasoning as UrsTopBar.
-                .windowInsetsPadding(WindowInsets.navigationBars)
+                // Unioned with the IME inset (rather than a separate imePadding())
+                // so the two never stack additively while the keyboard covers the
+                // navigation bar — without this, a focused text field's sheet
+                // content (results list, form fields, buttons) ends up rendered
+                // behind the on-screen keyboard instead of shrinking to fit above it.
+                .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime))
                 .padding(bottom = Spacing.l),
         ) {
             DragHandle()

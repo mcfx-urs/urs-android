@@ -3,6 +3,7 @@ package ch.mcfx.urs.shoppinglist
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -26,6 +27,7 @@ import ch.mcfx.urs.data.local.InventoryCategoryEntity
 import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsDropdownField
+import ch.mcfx.urs.ui.components.UrsFilterChip
 import ch.mcfx.urs.ui.components.UrsIcon
 import ch.mcfx.urs.ui.components.UrsOutlinedButton
 import ch.mcfx.urs.ui.components.UrsText
@@ -138,6 +140,14 @@ private fun ResultRow(result: ProductSearchResult, onClick: () -> Unit) {
 private fun NoteInputMode(state: NoteInputState?, viewModel: AddProductViewModel) {
     if (state == null) return
 
+    // Only a household product (not a not-yet-added catalog entry) can have
+    // note history — see InventoryProductEntity.recentNote1's doc comment.
+    val recentNotes = (state.result as? ProductSearchResult.Household)
+        ?.product
+        ?.let { listOfNotNull(it.recentNote1, it.recentNote2, it.recentNote3) }
+        ?.filter { it.isNotBlank() }
+        .orEmpty()
+
     Column(
         modifier = Modifier.padding(horizontal = Spacing.xl).padding(bottom = Spacing.xxl),
         verticalArrangement = Arrangement.spacedBy(Spacing.m),
@@ -151,6 +161,21 @@ private fun NoteInputMode(state: NoteInputState?, viewModel: AddProductViewModel
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
+
+        // Tapping a chip only fills the text field above, it never submits
+        // by itself — the user can still edit the note before confirming,
+        // and picking one doesn't reorder the history unless it's actually
+        // resubmitted (the normal add-with-note flow below does that).
+        if (recentNotes.isNotEmpty()) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+                verticalArrangement = Arrangement.spacedBy(Spacing.s),
+            ) {
+                recentNotes.forEach { note ->
+                    UrsFilterChip(label = note, selected = false, onClick = { viewModel.setNote(note) })
+                }
+            }
+        }
 
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.m)) {
             UrsOutlinedButton(

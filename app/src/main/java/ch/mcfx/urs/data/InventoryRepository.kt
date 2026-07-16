@@ -235,7 +235,13 @@ private fun InventoryProductDto.toEntity() = InventoryProductEntity(
     reminderThreshold = reminderThreshold.toIntOrNull(),
     reminderHour = reminderHour.toIntOrNull(),
     reminderMinute = reminderMinute.toIntOrNull(),
-    catalogProductId = null,
+    // Overridden by InventoryProductDao.upsertFromServer's local
+    // preservation logic regardless of what's mapped here — see that
+    // field's doc comment on InventoryProductEntity for why.
+    catalogProductId = catalogProductId.ifEmpty { null },
+    recentNote1 = recentNote1.ifEmpty { null },
+    recentNote2 = recentNote2.ifEmpty { null },
+    recentNote3 = recentNote3.ifEmpty { null },
     syncStatus = SyncStatus.SYNCED,
 )
 

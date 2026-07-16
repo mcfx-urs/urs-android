@@ -33,12 +33,23 @@ data class InventoryProductEntity(
     val reminderHour: Int? = null,
     val reminderMinute: Int? = null,
     // Set when this product was created from a catalog entry (see
-    // ShoppingListRepository.addCatalogProduct) — the backend accepts this
-    // on create (inventory_product_catalog_product_id) but never echoes it
-    // back on any GET, so [InventoryProductDao.upsertFromServer] preserves
-    // whatever value a local row already has across a backend refresh
-    // rather than trusting the (always-absent) server value.
+    // ShoppingListRepository.addCatalogProduct). The backend now does echo
+    // this back on GET /inventory-product/{categoryId}, but the app's own
+    // offline-first create path never actually forwards it in the first
+    // place — OutboxInventoryProductPayload/SyncManager.replayCreateInventoryProduct
+    // omit it from the create request entirely, so the server-side value is
+    // always empty regardless of what was set locally. Until that write-path
+    // gap is closed, [InventoryProductDao.upsertFromServer] keeps preserving
+    // whatever value a local row already has across a backend refresh rather
+    // than trusting the (still effectively always-empty) server value.
     val catalogProductId: String? = null,
+    // Most-recently-used notes for this product's list items (1 = most
+    // recent), surfaced as tap-to-fill chips by AddProductScreen. Purely
+    // server-derived read data — no local write path, so unlike
+    // [catalogProductId] these are always safe to trust from the server.
+    val recentNote1: String? = null,
+    val recentNote2: String? = null,
+    val recentNote3: String? = null,
     val syncStatus: SyncStatus,
 )
 
