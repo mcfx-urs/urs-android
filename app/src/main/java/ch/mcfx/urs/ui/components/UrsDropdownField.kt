@@ -9,12 +9,15 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -29,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
@@ -150,6 +154,11 @@ fun <T> UrsDropdownField(
  * directly rather than via [UrsCard], since [UrsCard] takes a fixed
  * [androidx.compose.foundation.layout.PaddingValues] rather than the
  * per-row padding each option here needs for its own tap target.
+ *
+ * Capped to a fraction of the screen height and made vertically scrollable —
+ * without this, an option list longer than the available space (e.g. the
+ * bundled currency list) would overflow past the screen edge with no way to
+ * reach the remaining entries.
  */
 @Composable
 private fun DropdownOptionsPopup(
@@ -160,6 +169,7 @@ private fun DropdownOptionsPopup(
     val colors = UrsTheme.colors
     val darkTheme = colors.border.alpha > 0f
     val shape = RoundedCornerShape(Radius.row)
+    val maxHeight = (LocalConfiguration.current.screenHeightDp * 0.4f).dp
 
     Popup(
         popupPositionProvider = rememberDropdownPositionProvider(),
@@ -168,6 +178,7 @@ private fun DropdownOptionsPopup(
         Column(
             modifier = Modifier
                 .width(width)
+                .heightIn(max = maxHeight)
                 .shadow(
                     elevation = 10.dp,
                     shape = shape,
@@ -177,6 +188,7 @@ private fun DropdownOptionsPopup(
                 .clip(shape)
                 .background(colors.surface)
                 .then(if (darkTheme) Modifier.border(1.dp, colors.border, shape) else Modifier)
+                .verticalScroll(rememberScrollState())
                 .padding(vertical = Spacing.xs),
             content = content,
         )
