@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -32,6 +33,7 @@ import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
 import ch.mcfx.urs.R
 import ch.mcfx.urs.UrsApplication
+import ch.mcfx.urs.auth.LoginScreen
 import ch.mcfx.urs.beer.BeerScreen
 import ch.mcfx.urs.fuel.FuelAddScreen
 import ch.mcfx.urs.fuel.FuelHubScreen
@@ -44,6 +46,7 @@ import ch.mcfx.urs.data.local.publicId
 import ch.mcfx.urs.inventory.CategoryListScreen
 import ch.mcfx.urs.inventory.InventoryRoutes
 import ch.mcfx.urs.inventory.ProductListScreen
+import ch.mcfx.urs.settings.AccountSettingsScreen
 import ch.mcfx.urs.settings.NotificationSettingsScreen
 import ch.mcfx.urs.settings.SettingsRoutes
 import ch.mcfx.urs.settings.SettingsScreen
@@ -69,10 +72,27 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
+    val context = LocalContext.current
+    val app = context.applicationContext as UrsApplication
+
+    // Gates the whole app behind login — swaps out the entire
+    // drawer+NavHost UI below for LoginScreen whenever there's no valid
+    // session, rather than trying to model "logged out" as just another
+    // NavHost route. AuthTokenStore.isLoggedIn is driven off the refresh
+    // token's presence, not the access token, and AuthAuthenticator clears
+    // it automatically the moment a refresh attempt itself fails (expired/
+    // revoked refresh token) — so this recomposes back to LoginScreen from
+    // anywhere in the app the instant that happens, with no back-stack
+    // entry left behind to accidentally return to.
+    val isLoggedIn by app.container.authTokenStore.isLoggedIn.collectAsStateWithLifecycle()
+    if (!isLoggedIn) {
+        LoginScreen()
+        return
+    }
+
     val navController = rememberNavController()
     val drawerState = rememberUrsDrawerState(initialValue = UrsDrawerValue.Closed)
     val coroutineScope = rememberCoroutineScope()
-    val context = LocalContext.current
 
     // Silent, best-effort only: the app is fully usable without any VPN set
     // up at all. If a tunnel is already configured and permissions are
@@ -80,7 +100,6 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
     // nothing here — no prompts, no banner. Screens that actually need the
     // backend show their own existing error/retry state if it's unreachable.
     LaunchedEffect(Unit) {
-        val app = context.applicationContext as UrsApplication
         app.container.networkGate.ensureReachable()
     }
 
@@ -253,6 +272,7 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                     composable(SettingsRoutes.VPN) { VpnSettingsScreen() }
                     composable(SettingsRoutes.NOTIFICATIONS) { NotificationSettingsScreen() }
                     composable(SettingsRoutes.WORK_TIME) { WorkTimeSettingsScreen() }
+                    composable(SettingsRoutes.ACCOUNT) { AccountSettingsScreen() }
                 }
             }
         }
@@ -278,6 +298,7 @@ private val SETTINGS_ROUTE_LABELS = mapOf(
     SettingsRoutes.VPN to R.string.settings_tile_vpn,
     SettingsRoutes.NOTIFICATIONS to R.string.settings_tile_notifications,
     SettingsRoutes.WORK_TIME to R.string.settings_tile_work_time,
+    SettingsRoutes.ACCOUNT to R.string.settings_tile_account,
 )
 
 private val INVENTORY_ROUTE_LABELS = mapOf(

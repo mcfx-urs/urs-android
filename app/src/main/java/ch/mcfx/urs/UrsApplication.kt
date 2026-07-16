@@ -3,6 +3,10 @@ package ch.mcfx.urs
 import android.app.Application
 import android.content.Context
 import androidx.room.Room
+import ch.mcfx.urs.auth.AuthAuthenticator
+import ch.mcfx.urs.auth.AuthInterceptor
+import ch.mcfx.urs.auth.AuthRepository
+import ch.mcfx.urs.auth.AuthTokenStore
 import ch.mcfx.urs.data.BeerRepository
 import ch.mcfx.urs.data.CatalogRepository
 import ch.mcfx.urs.data.FuelRepository
@@ -92,14 +96,31 @@ class AppContainer(context: Context) {
         onConnectivityAvailable = { SyncWorker.enqueueOneTime(appContext) },
     )
 
-    private val httpClient = OkHttpClient.Builder()
+    val authTokenStore = AuthTokenStore(context)
+
+    private fun baseHttpClientBuilder() = OkHttpClient.Builder()
         .apply {
             if (BuildConfig.DEBUG) {
                 addInterceptor(
-                    HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
+                    HttpLoggingInterceptor().apply {
+                        level = HttpLoggingInterceptor.Level.BODY
+                        // The access token is otherwise printed in full on every
+                        // logged request — this app has no auth at all before
+                        // , so this redaction didn't exist/matter until now.
+                        redactHeader("Authorization")
+                    }
                 )
             }
         }
+
+    // Deliberately carries neither AuthInterceptor nor the authenticator
+    // below — AuthAuthenticator uses this to make its own refresh call, and
+    // a failing refresh call must not recurse back into authentication.
+    private val refreshClient = baseHttpClientBuilder().build()
+
+    private val httpClient = baseHttpClientBuilder()
+        .addInterceptor(AuthInterceptor(authTokenStore))
+        .authenticator(AuthAuthenticator(authTokenStore, refreshClient, BuildConfig.BASE_URL))
         .build()
 
     private val retrofit = Retrofit.Builder()
@@ -109,6 +130,8 @@ class AppContainer(context: Context) {
         .build()
 
     private val ursApi = retrofit.create(UrsApi::class.java)
+
+    val authRepository = AuthRepository(ursApi, authTokenStore)
 
     val reachabilityChecker = ReachabilityChecker()
     val syncManager = SyncManager(
@@ -171,8 +194,9 @@ class AppContainer(context: Context) {
         syncManager = syncManager,
         applicationScope = applicationScope,
         json = json,
+        tokenStore = authTokenStore,
     )
-    val userRepository = UserRepository(retrofit.create(UrsApi::class.java))
+    val userRepository = UserRepository(retrofit.create(UrsApi::class.java), authTokenStore)
 
     val reminderStore = ReminderStore(context)
     val notificationSender = NotificationSender(context)

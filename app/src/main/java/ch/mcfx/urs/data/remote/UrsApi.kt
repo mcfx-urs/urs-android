@@ -9,6 +9,12 @@ import retrofit2.http.Path
 
 interface UrsApi {
 
+    @POST("api/v1/login")
+    suspend fun login(@Body payload: LoginPayload): TokenResponseDto
+
+    @POST("api/v1/refresh")
+    suspend fun refresh(@Body payload: RefreshPayload): TokenResponseDto
+
     @GET("api/v1/car")
     suspend fun getCars(): List<CarDto>
 

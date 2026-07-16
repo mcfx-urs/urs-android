@@ -19,6 +19,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import ch.mcfx.urs.ui.theme.UrsColors
 import ch.mcfx.urs.ui.theme.UrsTheme
@@ -49,6 +50,8 @@ fun UrsTextField(
     focusRequester: FocusRequester? = null,
     /** Small caption rendered below the field, e.g. a "last known value" hint. */
     supportingText: String? = null,
+    /** E.g. [androidx.compose.ui.text.input.PasswordVisualTransformation] to mask a password field's input. */
+    visualTransformation: VisualTransformation = VisualTransformation.None,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     UrsTextFieldChrome(
@@ -69,6 +72,7 @@ fun UrsTextField(
             textStyle = UrsTheme.typography.body.copy(color = colors.onSurface),
             cursorBrush = SolidColor(colors.accent),
             interactionSource = interactionSource,
+            visualTransformation = visualTransformation,
         )
     }
 }

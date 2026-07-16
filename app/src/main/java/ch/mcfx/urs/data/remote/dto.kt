@@ -297,3 +297,24 @@ data class BeerLogPayload(
     @SerialName("beer_log_amount_ml") val amountMl: String,
     @SerialName("beer_log_date") val date: String,
 )
+
+@Serializable
+data class LoginPayload(
+    @SerialName("user_name") val userName: String,
+    @SerialName("password") val password: String,
+)
+
+@Serializable
+data class RefreshPayload(
+    @SerialName("refresh_token") val refreshToken: String,
+)
+
+// expires_in is a genuine JSON number on the backend (computed seconds, not
+// a DB column) — unlike every other DTO in this file, which is a string
+// because it mirrors a DB column the backend always serializes as one.
+@Serializable
+data class TokenResponseDto(
+    @SerialName("access_token") val accessToken: String,
+    @SerialName("refresh_token") val refreshToken: String,
+    @SerialName("expires_in") val expiresIn: Int,
+)

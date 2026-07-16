@@ -1,4 +1,4 @@
-package ch.mcfx.urs.vpn
+package ch.mcfx.urs.security
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
@@ -10,26 +10,32 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
 private const val ANDROID_KEYSTORE = "AndroidKeyStore"
-private const val KEY_ALIAS = "urs_vpn_config_key"
 private const val TRANSFORMATION = "AES/GCM/NoPadding"
 private const val GCM_TAG_LENGTH_BITS = 128
 
-// Encrypts secrets (the WireGuard config text) at rest using a hardware-backed
-// AES-256-GCM key that never leaves the Android Keystore — the app only ever
-// handles ciphertext. Deliberately not androidx.security:security-crypto: as
-// of security-crypto 1.1.0, Google deprecated the whole library "in favour of
-// existing platform APIs and direct use of Android Keystore", which is
-// exactly what this does instead.
-object KeystoreCipher {
+/**
+ * Encrypts secrets at rest using a hardware-backed AES-256-GCM key that
+ * never leaves the Android Keystore — the app only ever handles ciphertext.
+ * Deliberately not androidx.security:security-crypto: as of security-crypto
+ * 1.1.0, Google deprecated the whole library "in favour of existing
+ * platform APIs and direct use of Android Keystore", which is exactly what
+ * this does instead.
+ *
+ * One instance per secret category, each with its own Keystore key alias
+ * (originally written for the WireGuard config text, now shared with the
+ * auth token store — every caller gets its own key, never a shared one, so
+ * one secret's key can't decrypt another's ciphertext).
+ */
+class KeystoreCipher(private val keyAlias: String) {
 
     private val keyStore: KeyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
 
     private fun getOrCreateKey(): SecretKey {
-        (keyStore.getKey(KEY_ALIAS, null) as? SecretKey)?.let { return it }
+        (keyStore.getKey(keyAlias, null) as? SecretKey)?.let { return it }
 
         val keyGenerator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEYSTORE)
         val spec = KeyGenParameterSpec.Builder(
-            KEY_ALIAS,
+            keyAlias,
             KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
         )
             .setBlockModes(KeyProperties.BLOCK_MODE_GCM)

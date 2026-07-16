@@ -1,10 +1,12 @@
 package ch.mcfx.urs.vpn
 
 import android.content.Context
+import ch.mcfx.urs.security.KeystoreCipher
 
 private const val PREFS_NAME = "vpn_prefs"
 private const val KEY_WG_CONFIG_ENCRYPTED = "wireguard_config_text_enc"
 private const val KEY_HOME_SSIDS = "home_wifi_ssids"
+private const val KEYSTORE_ALIAS = "urs_vpn_config_key"
 
 // Holds the WireGuard client config (a real private key granting home-network
 // access) and the set of home Wi-Fi SSIDs the user switches between. The
@@ -15,12 +17,13 @@ private const val KEY_HOME_SSIDS = "home_wifi_ssids"
 class VpnConfigRepository(context: Context) {
 
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val cipher = KeystoreCipher(KEYSTORE_ALIAS)
 
     fun getConfigText(): String? =
-        prefs.getString(KEY_WG_CONFIG_ENCRYPTED, null)?.let { KeystoreCipher.decrypt(it) }
+        prefs.getString(KEY_WG_CONFIG_ENCRYPTED, null)?.let { cipher.decrypt(it) }
 
     fun setConfigText(config: String) {
-        prefs.edit().putString(KEY_WG_CONFIG_ENCRYPTED, KeystoreCipher.encrypt(config)).apply()
+        prefs.edit().putString(KEY_WG_CONFIG_ENCRYPTED, cipher.encrypt(config)).apply()
     }
 
     fun clearConfig() {

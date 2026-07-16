@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Schedule
@@ -36,6 +37,7 @@ private data class SettingsTile(
 )
 
 private val SETTINGS_TILES = listOf(
+    SettingsTile(SettingsRoutes.ACCOUNT, R.string.settings_tile_account, Icons.Filled.AccountCircle, isAvailable = true),
     SettingsTile(null, R.string.settings_tile_users, Icons.Filled.People, isAvailable = false),
     SettingsTile(SettingsRoutes.VPN, R.string.settings_tile_vpn, Icons.Filled.VpnKey, isAvailable = true),
     SettingsTile(SettingsRoutes.NOTIFICATIONS, R.string.settings_tile_notifications, Icons.Filled.Notifications, isAvailable = true),

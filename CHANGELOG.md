@@ -17,6 +17,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Adding a household product to a shopping list now shows its up to
   three most recently used notes as tap-to-fill chips.
 - A Shopping List tile on the home screen, next to Fuel.
+- Login: the app now requires signing in (backend auth landed in ),
+  gating the whole app behind a new login screen. Access/refresh tokens
+  are stored encrypted at rest (Android Keystore-backed AES-256-GCM,
+  same mechanism as the existing WireGuard config storage) and attached
+  to every backend request automatically; an expired access token is
+  silently refreshed and the request retried once, and a fully expired
+  session routes back to the login screen from anywhere in the app. New
+  Account row in Settings shows who's logged in and offers Log out. (#3)
 
 ### Changed
 

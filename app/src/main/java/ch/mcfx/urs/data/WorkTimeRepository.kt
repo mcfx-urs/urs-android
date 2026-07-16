@@ -1,5 +1,6 @@
 package ch.mcfx.urs.data
 
+import ch.mcfx.urs.auth.AuthTokenStore
 import ch.mcfx.urs.data.local.OutboxDao
 import ch.mcfx.urs.data.local.OutboxMutationEntity
 import ch.mcfx.urs.data.local.OutboxWorkTimeBreakPayload
@@ -25,6 +26,10 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
+// The work-time endpoints below still take an explicit user_id path segment
+// on the backend — see the same note in UserRepository. The id comes from
+// the logged-in session (AuthTokenStore.currentUserId) instead of the old
+// hardcoded UserDefaults.DEFAULT_USER_ID placeholder.
 class WorkTimeRepository(
     private val api: UrsApi,
     private val workTimeDao: WorkTimeDao,
@@ -33,6 +38,7 @@ class WorkTimeRepository(
     private val syncManager: SyncManager,
     private val applicationScope: CoroutineScope,
     private val json: Json,
+    private val tokenStore: AuthTokenStore,
 ) {
 
     fun observeEntries(): Flow<List<WorkTimeEntryWithBreaks>> = workTimeDao.observeAll()
@@ -51,8 +57,9 @@ class WorkTimeRepository(
         targetDailyHours: String,
         breaks: List<Pair<String, String>>,
     ) {
+        val userId = tokenStore.currentUserId ?: return
         val payload = OutboxWorkTimeEntryPayload(
-            userId = UserDefaults.DEFAULT_USER_ID,
+            userId = userId,
             date = date,
             workStart = workStart,
             workEnd = workEnd,
@@ -106,11 +113,12 @@ class WorkTimeRepository(
         breaks: List<Pair<String, String>>,
     ) {
         val current = workTimeDao.getById(localId) ?: return
+        val userId = tokenStore.currentUserId ?: return
         val breakPayloads = breaks.map { (start, end) -> OutboxWorkTimeBreakPayload(startTime = start, endTime = end) }
 
         val outboxId = if (current.serverId == null) {
             val payload = OutboxWorkTimeEntryPayload(
-                userId = UserDefaults.DEFAULT_USER_ID,
+                userId = userId,
                 date = date,
                 workStart = workStart,
                 workEnd = workEnd,
@@ -123,7 +131,7 @@ class WorkTimeRepository(
             current.outboxId?.let { outboxDao.delete(it) }
             val payload = OutboxWorkTimeEntryUpdatePayload(
                 serverId = current.serverId.toString(),
-                userId = UserDefaults.DEFAULT_USER_ID,
+                userId = userId,
                 date = date,
                 workStart = workStart,
                 workEnd = workEnd,
@@ -180,8 +188,9 @@ class WorkTimeRepository(
      * path above.
      */
     suspend fun refreshFromBackend() {
+        val userId = tokenStore.currentUserId ?: return
         try {
-            api.getWorkTimeEntries(UserDefaults.DEFAULT_USER_ID, "100", "DESC")
+            api.getWorkTimeEntries(userId, "100", "DESC")
                 .forEach { dto ->
                     workTimeDao.upsertFromServer(dto.toEntity(), dto.breaks.map { it.toEntity() })
                 }
@@ -191,7 +200,7 @@ class WorkTimeRepository(
             // Best-effort only — see doc comment above.
         }
         try {
-            val overrides = api.getWorkTimeMonthOverrides(UserDefaults.DEFAULT_USER_ID)
+            val overrides = api.getWorkTimeMonthOverrides(userId)
             workTimeMonthOverrideDao.replaceAll(
                 overrides.mapNotNull { dto ->
                     val year = dto.year.toIntOrNull() ?: return@mapNotNull null
@@ -212,8 +221,9 @@ class WorkTimeRepository(
      * like a work-time entry itself (see [WorkTimeMonthOverrideEntity]).
      */
     suspend fun setMonthOverride(year: Int, month: Int, daysWorked: String) {
+        val userId = tokenStore.currentUserId ?: return
         api.updateWorkTimeMonthOverride(
-            UserDefaults.DEFAULT_USER_ID,
+            userId,
             year.toString(),
             month.toString(),
             WorkTimeMonthOverridePayload(daysWorked = daysWorked),
@@ -222,7 +232,8 @@ class WorkTimeRepository(
     }
 
     suspend fun clearMonthOverride(year: Int, month: Int) {
-        api.deleteWorkTimeMonthOverride(UserDefaults.DEFAULT_USER_ID, year.toString(), month.toString())
+        val userId = tokenStore.currentUserId ?: return
+        api.deleteWorkTimeMonthOverride(userId, year.toString(), month.toString())
         workTimeMonthOverrideDao.delete(year, month)
     }
 }

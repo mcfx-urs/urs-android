@@ -1,5 +1,6 @@
 package ch.mcfx.urs.data
 
+import ch.mcfx.urs.auth.AuthTokenStore
 import ch.mcfx.urs.data.remote.UrsApi
 import ch.mcfx.urs.data.remote.UserDefaultDailyTargetHoursPayload
 import ch.mcfx.urs.data.remote.UserEmploymentPercentPayload
@@ -12,11 +13,22 @@ data class WorkSettings(
     val hourlyWage: String,
 )
 
-class UserRepository(private val api: UrsApi) {
+// The work-time endpoints below still take an explicit user_id path segment
+// on the backend per-user scoping covered cars/fuel_fill/odometer/
+// inventory_category/inventory_product/beer_log — work-time wasn't in that
+// list, it already had its own user_id column from an earlier ticket). The
+// id itself now comes from the logged-in session (AuthTokenStore.currentUserId,
+// decoded from the access token) instead of the old hardcoded
+// UserDefaults.DEFAULT_USER_ID placeholder.
+class UserRepository(
+    private val api: UrsApi,
+    private val tokenStore: AuthTokenStore,
+) {
 
     suspend fun getWorkSettings(): WorkSettings {
+        val userId = tokenStore.currentUserId
         val user = try {
-            api.getUsers().firstOrNull { it.id == UserDefaults.DEFAULT_USER_ID }
+            api.getUsers().firstOrNull { it.id == userId }
         } catch (_: SerializationException) {
             // The backend encodes an empty result set as JSON `null` instead of `[]`.
             null
@@ -29,23 +41,17 @@ class UserRepository(private val api: UrsApi) {
     }
 
     suspend fun setDefaultDailyTargetHours(hours: String) {
-        api.updateUserDefaultDailyTargetHours(
-            UserDefaults.DEFAULT_USER_ID,
-            UserDefaultDailyTargetHoursPayload(defaultDailyTargetHours = hours),
-        )
+        val userId = tokenStore.currentUserId ?: return
+        api.updateUserDefaultDailyTargetHours(userId, UserDefaultDailyTargetHoursPayload(defaultDailyTargetHours = hours))
     }
 
     suspend fun setEmploymentPercent(percent: String) {
-        api.updateUserEmploymentPercent(
-            UserDefaults.DEFAULT_USER_ID,
-            UserEmploymentPercentPayload(employmentPercent = percent),
-        )
+        val userId = tokenStore.currentUserId ?: return
+        api.updateUserEmploymentPercent(userId, UserEmploymentPercentPayload(employmentPercent = percent))
     }
 
     suspend fun setHourlyWage(wage: String) {
-        api.updateUserHourlyWage(
-            UserDefaults.DEFAULT_USER_ID,
-            UserHourlyWagePayload(hourlyWage = wage),
-        )
+        val userId = tokenStore.currentUserId ?: return
+        api.updateUserHourlyWage(userId, UserHourlyWagePayload(hourlyWage = wage))
     }
 }
