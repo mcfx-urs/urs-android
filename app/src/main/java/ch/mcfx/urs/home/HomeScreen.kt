@@ -41,6 +41,7 @@ import ch.mcfx.urs.ui.tokens.Spacing
 // which always renders whichever destination is first here.
 private val FEATURE_TILES = listOf(
     Destination.WORK_TIME,
+    Destination.SHOPPING_LIST,
     Destination.FUEL,
     Destination.INVENTORY,
     Destination.BEER,
@@ -64,6 +65,7 @@ private val TileIconStyle = TextStyle(fontSize = 32.sp)
 
 private val TILE_EMOJI = mapOf(
     Destination.WORK_TIME to "🕒",
+    Destination.SHOPPING_LIST to "🛒",
     Destination.FUEL to "⛽",
     Destination.INVENTORY to "📦",
     Destination.BEER to "🍺",

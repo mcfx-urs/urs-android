@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   more than once with different notes.
 - Adding a household product to a shopping list now shows its up to
   three most recently used notes as tap-to-fill chips.
+- A Shopping List tile on the home screen, next to Fuel.
 
 ### Changed
 
