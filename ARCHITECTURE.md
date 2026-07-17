@@ -44,9 +44,12 @@ otherwise it establishes the tunnel on demand before syncing.
 
 ## Offline-first data flow
 
-Some features (currently: fuel fill-ups, work-time entries, inventory
-categories/products) are built offline-first: a write is never blocked
-on live network reachability.
+Some features (currently: fuel fill-ups, work-time entries, inventories/
+inventory products, shopping lists/list items) are built offline-first: a
+write is never blocked on live network reachability. The shared product
+catalog (`catalog_product`/`catalog_category`) and "recently used
+products" are the exception — read-only, server-authoritative reference
+data cached locally but never written to offline.
 
 ```mermaid
 sequenceDiagram
