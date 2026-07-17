@@ -30,6 +30,12 @@
 
     <string name="account_logged_in_as">Logged in as %1$s</string>
     <string name="account_log_out">Log out</string>
+    <string name="account_biometric_unlock">Unlock with fingerprint/face</string>
+
+    <string name="biometric_prompt_title">Unlock urs</string>
+    <string name="biometric_prompt_use_password">Use password</string>
+    <string name="biometric_unlock_title">Unlock urs</string>
+    <string name="biometric_unlock_retry">Try again</string>
 
     <string name="login_username">Username</string>
     <string name="login_password">Password</string>

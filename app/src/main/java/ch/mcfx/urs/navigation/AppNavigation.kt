@@ -33,6 +33,7 @@ import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
 import ch.mcfx.urs.R
 import ch.mcfx.urs.UrsApplication
+import ch.mcfx.urs.auth.BiometricUnlockScreen
 import ch.mcfx.urs.auth.LoginScreen
 import ch.mcfx.urs.beer.BeerScreen
 import ch.mcfx.urs.fuel.FuelAddScreen
@@ -87,6 +88,19 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
     val isLoggedIn by app.container.authTokenStore.isLoggedIn.collectAsStateWithLifecycle()
     if (!isLoggedIn) {
         LoginScreen()
+        return
+    }
+
+    // Local re-entry gate on top of the real session above (opt-in, see
+    // Settings → Account) — re-evaluated on every app-level foreground by
+    // UrsApplication's ProcessLifecycleOwner observer, not just here, so
+    // the 24h window (the user's own requirement, 2026-07-17) is checked
+    // even if this composable never leaves composition across a
+    // background/foreground cycle.
+    val biometricGate = app.container.biometricGate
+    val isBiometricUnlocked by biometricGate.isUnlocked.collectAsStateWithLifecycle()
+    if (biometricGate.isEnabled && !isBiometricUnlocked && biometricGate.needsUnlock()) {
+        BiometricUnlockScreen(gate = biometricGate, onUsePasswordInstead = app.container.authRepository::logout)
         return
     }
 

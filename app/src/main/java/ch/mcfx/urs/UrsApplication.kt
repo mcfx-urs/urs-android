@@ -2,11 +2,15 @@ package ch.mcfx.urs
 
 import android.app.Application
 import android.content.Context
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.room.Room
 import ch.mcfx.urs.auth.AuthAuthenticator
 import ch.mcfx.urs.auth.AuthInterceptor
 import ch.mcfx.urs.auth.AuthRepository
 import ch.mcfx.urs.auth.AuthTokenStore
+import ch.mcfx.urs.auth.BiometricGate
 import ch.mcfx.urs.data.BeerRepository
 import ch.mcfx.urs.data.CatalogRepository
 import ch.mcfx.urs.data.FuelRepository
@@ -68,6 +72,16 @@ class UrsApplication : Application() {
         // a much faster connectivity-triggered path also exists via
         // NetworkGate's own callback, see AppContainer.networkGate below.
         SyncWorker.enqueuePeriodic(this)
+        // Re-checks BiometricGate's 24h window on every app-level foreground,
+        // not just a true cold start (ProcessLifecycleOwner fires once for
+        // the whole process, unlike an individual Activity's onStart) — the
+        // user's own requirement (2026-07-17): the 24h clock is wall-clock
+        // time since the last successful unlock, not "once per process".
+        ProcessLifecycleOwner.get().lifecycle.addObserver(
+            LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_START) container.biometricGate.reevaluate()
+            },
+        )
     }
 }
 
@@ -97,6 +111,7 @@ class AppContainer(context: Context) {
     )
 
     val authTokenStore = AuthTokenStore(context)
+    val biometricGate = BiometricGate(context)
 
     private fun baseHttpClientBuilder() = OkHttpClient.Builder()
         .apply {

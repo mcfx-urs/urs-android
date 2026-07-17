@@ -25,6 +25,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   silently refreshed and the request retried once, and a fully expired
   session routes back to the login screen from anywhere in the app. New
   Account row in Settings shows who's logged in and offers Log out. (#3)
+- Biometric unlock: an opt-in toggle in Settings → Account (only shown if
+  the device has strong biometric hardware enrolled) lets fingerprint/face
+  replace re-entering the password. Once enabled, a successful biometric
+  check unlocks the app for 24h before the next one is required; the
+  password itself is never needed again unless the device's biometric
+  enrollment changes (a new fingerprint added, all of them removed, etc.),
+  which the OS itself permanently invalidates the unlock key over — that's
+  the one case a real password login is required again. (#3)
 
 ### Changed
 
