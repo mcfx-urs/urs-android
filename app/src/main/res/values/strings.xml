@@ -134,17 +134,22 @@
     <string name="error_load">Could not reach the backend.</string>
     <string name="error_save">Saving failed. Please try again.</string>
 
-    <string name="inventory_categories_empty">No categories yet — add one to start tracking stock.</string>
-    <string name="inventory_category_add">New category</string>
-    <string name="inventory_category_name">Category name</string>
-    <string name="inventory_category_remove">Remove %1$s</string>
+    <string name="inventory_inventories_empty">No inventories yet — add one to start tracking stock.</string>
+    <string name="inventory_add">New inventory</string>
+    <string name="inventory_rename">Rename</string>
+    <string name="inventory_delete">Delete</string>
+    <string name="inventory_share">Share</string>
+    <string name="inventory_share_title">Share \"%1$s\"</string>
+    <string name="inventory_name">Inventory name</string>
+    <string name="inventory_delete_confirm_title">Delete this inventory?</string>
+    <string name="inventory_delete_confirm_body">This can\'t be undone.</string>
+    <string name="inventory_categories_title">Categories</string>
+    <string name="inventory_categories_empty">Nothing tracked in this inventory yet.</string>
+    <string name="inventory_uncategorized">Uncategorized</string>
     <string name="inventory_products_title">Products</string>
     <string name="inventory_products_empty">No products in this category yet.</string>
-    <string name="inventory_product_add">New product</string>
+    <string name="inventory_product_add">Add product</string>
     <string name="inventory_product_name">Product name</string>
-    <string name="inventory_product_increment">Increase quantity</string>
-    <string name="inventory_product_decrement">Decrease quantity</string>
-    <string name="inventory_product_remove">Remove %1$s</string>
     <string name="inventory_product_not_tracked">–</string>
     <string name="inventory_settings_title">%1$s settings</string>
     <string name="inventory_settings_quantity">Quantity</string>
@@ -163,17 +168,25 @@
     <string name="shoppinglist_list_add">New list</string>
     <string name="shoppinglist_list_rename">Rename</string>
     <string name="shoppinglist_list_delete">Delete</string>
+    <string name="shoppinglist_list_share">Share</string>
+    <string name="shoppinglist_list_share_title">Share \"%1$s\"</string>
     <string name="shoppinglist_list_name">List name</string>
     <string name="shoppinglist_list_delete_confirm_title">Delete this list?</string>
     <string name="shoppinglist_list_delete_confirm_body">This can\'t be undone.</string>
     <string name="shoppinglist_list_detail_title">Shopping List</string>
     <string name="shoppinglist_items_empty">No products on this list yet.</string>
+    <string name="shoppinglist_recently_used">Recently used</string>
     <string name="shoppinglist_item_note">Note (optional)</string>
     <string name="shoppinglist_add_product_title">Add a product</string>
     <string name="shoppinglist_add_product_search">Search products</string>
     <string name="shoppinglist_add_product_no_results">No matching products.</string>
     <string name="shoppinglist_add_product_add">Add</string>
     <string name="shoppinglist_add_custom_product">Add custom product</string>
+    <string name="shoppinglist_tab_popular">POPULAR</string>
+    <string name="shoppinglist_tab_recent">RECENT</string>
+    <string name="shoppinglist_tab_categories">CATEGORIES</string>
+
+    <string name="share_sheet_no_members">No other household members to share with yet.</string>
 
     <string name="beer_add_5dl">+1 · 5dl</string>
     <string name="beer_add_33cl">+1 · 33cl</string>

@@ -1,9 +1,8 @@
 package ch.mcfx.urs.data
 
+import ch.mcfx.urs.data.local.CatalogCategoryDao
+import ch.mcfx.urs.data.local.CatalogProductDao
 import ch.mcfx.urs.data.local.CatalogProductEntity
-import ch.mcfx.urs.data.local.InventoryCategoryDao
-import ch.mcfx.urs.data.local.InventoryProductDao
-import ch.mcfx.urs.data.local.InventoryProductEntity
 import ch.mcfx.urs.data.local.ListDao
 import ch.mcfx.urs.data.local.ListEntity
 import ch.mcfx.urs.data.local.ListItemDao
@@ -16,12 +15,13 @@ import ch.mcfx.urs.data.local.OutboxListItemUpdatePayload
 import ch.mcfx.urs.data.local.OutboxListPayload
 import ch.mcfx.urs.data.local.OutboxListUpdatePayload
 import ch.mcfx.urs.data.local.OutboxMutationEntity
+import ch.mcfx.urs.data.local.RecentlyUsedProductDao
+import ch.mcfx.urs.data.local.RecentlyUsedProductEntity
 import ch.mcfx.urs.data.local.SyncStatus
-import ch.mcfx.urs.data.local.localIdStandIn
-import ch.mcfx.urs.data.local.localInventoryProductId
 import ch.mcfx.urs.data.local.publicId
 import ch.mcfx.urs.data.remote.ListDto
 import ch.mcfx.urs.data.remote.ListItemDto
+import ch.mcfx.urs.data.remote.ListSharePayload
 import ch.mcfx.urs.data.remote.UrsApi
 import ch.mcfx.urs.data.sync.SyncManager
 import kotlinx.coroutines.CancellationException
@@ -40,26 +40,26 @@ data class ShoppingListItemDetail(
     val item: ListItemEntity,
     val productName: String,
     val categoryName: String,
+    val catalogImageId: Int?,
 )
 
 /**
  * Offline-first write path for shopping lists and their items — same shape
- * as [InventoryRepository], but with full create/update/delete outbox
- * coverage (see [ListEntity]'s doc comment for why lists/items need that
- * where inventory categories/products didn't in that earlier phase).
- * Depends on [InventoryRepository]/[InventoryCategoryDao] directly rather
- * than through another layer of indirection — the only two repositories in
- * this app with a real cross-repository dependency, since adding a catalog
- * product to a list is genuinely also an inventory-product create (see
- * [addCatalogProduct]).
+ * as [InventoryRepository], with full create/update/delete outbox coverage
+ * (see [ListEntity]'s doc comment). Unlike before , this repository
+ * has no dependency on [InventoryRepository]/inventory data at all: a list
+ * item now points directly at a shared `catalog_product` (see
+ * [CatalogRepository]), and adding something to a list never creates or
+ * touches an inventory product — core rule ("Inventar-Management
+ * ist ein manueller Prozess").
  */
 class ShoppingListRepository(
     private val api: UrsApi,
     private val listDao: ListDao,
     private val listItemDao: ListItemDao,
-    private val inventoryProductDao: InventoryProductDao,
-    private val inventoryCategoryDao: InventoryCategoryDao,
-    private val inventoryRepository: InventoryRepository,
+    private val catalogProductDao: CatalogProductDao,
+    private val catalogCategoryDao: CatalogCategoryDao,
+    private val recentlyUsedProductDao: RecentlyUsedProductDao,
     private val outboxDao: OutboxDao,
     private val syncManager: SyncManager,
     private val applicationScope: CoroutineScope,
@@ -72,53 +72,46 @@ class ShoppingListRepository(
 
     /**
      * Joined item view for one list's detail screen: [ListItemEntity] plus
-     * the product/category names it's rendered with. Built by combining
-     * this app's existing per-entity Flows in Kotlin rather than a
-     * cross-table SQL join — [ListItemEntity.productId] is a [publicId]
-     * string (a real backend id, or a not-yet-synced local stand-in), the
-     * same string-based indirection [InventoryProductEntity.categoryId]
-     * already uses and resolves at the Kotlin/DAO level (not via SQL) — see
-     * `SyncManager`'s `resolveProductId`/`localInventoryCategoryId`. This
-     * follows that existing precedent instead of introducing a first
-     * raw-SQL join for a relationship the rest of the app already resolves
-     * the other way.
-     *
-     * Matching is keyed by [InventoryProductEntity.publicId] with a fallback
-     * to the product's stable local row id, not [InventoryProductEntity
-     * .publicId] alone: [ListItemEntity.productId] is only corrected to a
-     * product's real server id once *this specific list item's own* create
-     * mutation has replayed (see `SyncManager.replayCreateListItem`) — but
-     * the referenced product can independently sync (and so have its own
-     * `publicId` change from a local stand-in to a real server id) first,
-     * e.g. while this item's create is still blocked on its *parent list*
-     * not having synced yet. Without the local-id fallback, such an item
-     * would silently disappear from this list the moment its product synced
-     * ahead of it, even though nothing about the item itself changed.
+     * the product/category names it's rendered with, resolved against the
+     * cached [CatalogProductEntity]/[ch.mcfx.urs.data.local.CatalogCategoryEntity]
+     * by [ListItemEntity.catalogProductId] — always a real id (see that
+     * field's own doc comment), so unlike the pre- shape this
+     * replaces, no local-id fallback/stand-in resolution is needed here: an
+     * item whose catalog product isn't cached locally yet (a cold start
+     * before [ch.mcfx.urs.data.CatalogRepository.refreshFromBackend] has run
+     * once) simply doesn't show until that cache warms up, the same
+     * "product must already be cached" precondition catalog search already
+     * has everywhere else.
      */
     fun observeItems(listId: String): Flow<List<ShoppingListItemDetail>> =
         combine(
             listItemDao.observeByList(listId),
-            inventoryProductDao.observeAll(),
-            inventoryCategoryDao.observeAll(),
+            catalogProductDao.observeAll(),
+            catalogCategoryDao.observeAll(),
         ) { items, products, categories ->
-            val productsByPublicId = products.associateBy { it.publicId }
-            val productsByLocalId = products.associateBy { it.id }
-            val categoriesById = categories.associateBy { it.publicId }
+            val productsById = products.associateBy { it.id }
+            val categoriesById = categories.associateBy { it.id }
             items.mapNotNull { item ->
-                val product = productsByPublicId[item.productId]
-                    ?: localInventoryProductId(item.productId)?.let { productsByLocalId[it] }
-                    ?: return@mapNotNull null
+                val product = productsById[item.catalogProductId] ?: return@mapNotNull null
                 ShoppingListItemDetail(
                     item = item,
                     productName = product.name,
-                    categoryName = categoriesById[product.categoryId]?.name.orEmpty(),
+                    categoryName = product.catalogCategoryId?.let { categoriesById[it]?.name }.orEmpty(),
+                    catalogImageId = product.catalogImageId,
                 )
             }
         }
 
+    /** Same catalog-joined shape as [observeItems], for the "recently used" tail section / AddProductScreen's "Zuletzt" tab. */
+    fun observeRecentlyUsed(): Flow<List<CatalogProductEntity>> =
+        combine(recentlyUsedProductDao.observeAll(), catalogProductDao.observeAll()) { recents, products ->
+            val productsById = products.associateBy { it.id }
+            recents.mapNotNull { productsById[it.catalogProductId] }
+        }
+
     /**
      * Offline-first write path — same shape as [InventoryRepository
-     * .createCategory]: both writes below are local-only and instant, a
+     * .createInventory]: both writes below are local-only and instant, a
      * background sync attempt is fired immediately afterwards but never
      * awaited here.
      */
@@ -192,19 +185,34 @@ class ShoppingListRepository(
         applicationScope.launch { syncManager.syncNow() }
     }
 
+    // Sharing management is a direct network call, no outbox — same shape
+    // as InventoryRepository's share methods.
+    suspend fun shareList(listId: String, userId: String) {
+        api.shareList(listId, ListSharePayload(userId = userId))
+    }
+
+    suspend fun getListShares(listId: String): List<ShareEntry> =
+        emptyAsNull { api.getListShares(listId) }.map { ShareEntry(userId = it.userId) }
+
+    suspend fun removeListShare(listId: String, userId: String) {
+        api.deleteListShare(listId, userId)
+    }
+
     /**
      * Offline-first write path — queues a [OutboxMutationEntity
      * .TYPE_CREATE_LIST_ITEM] mutation plus the local mirror row, same shape
-     * as [createList]. [listId]/[productId] are the parent rows' `publicId`s
-     * (real backend ids, or not-yet-synced stand-ins — see `SyncManager`).
-     * No dedup against an existing row for the same product on this list —
-     * the backend itself allows the same product to appear multiple times,
-     * distinguished only by note (see `urs-backend`'s `00014_add_list_tables
-     * .sql`), so adding the same product twice with two different notes is
-     * expected to create two separate rows, not merge them.
+     * as [createList]. [listId] is the parent list's `publicId` (a real
+     * backend id, or a not-yet-synced stand-in — see `SyncManager`).
+     * [catalogProductId] is always a real `catalog_product` id ( —
+     * see [ListItemEntity]'s doc comment). No dedup against an existing row
+     * for the same product on this list — the backend itself allows the
+     * same product to appear multiple times, distinguished only by note
+     * (see `urs-backend`'s `00014_add_list_tables.sql`), so adding the same
+     * product twice with two different notes is expected to create two
+     * separate rows, not merge them.
      */
-    suspend fun addExistingProduct(listId: String, productId: String, note: String?) {
-        val payload = OutboxListItemPayload(listId = listId, productId = productId, note = note)
+    suspend fun addExistingProduct(listId: String, catalogProductId: String, note: String?) {
+        val payload = OutboxListItemPayload(listId = listId, catalogProductId = catalogProductId, note = note)
         val outboxId = outboxDao.insert(
             OutboxMutationEntity(
                 type = OutboxMutationEntity.TYPE_CREATE_LIST_ITEM,
@@ -213,60 +221,43 @@ class ShoppingListRepository(
             ),
         )
         listItemDao.upsert(
-            ListItemEntity(outboxId = outboxId, listId = listId, productId = productId, note = note, syncStatus = SyncStatus.PENDING),
+            ListItemEntity(
+                outboxId = outboxId, listId = listId, catalogProductId = catalogProductId, note = note,
+                syncStatus = SyncStatus.PENDING,
+            ),
         )
         applicationScope.launch { syncManager.syncNow() }
     }
 
     /**
-     * Adds a predefined catalog product to a list, reusing (rather than
-     * duplicating) an existing household [InventoryProductEntity] for the
-     * same [CatalogProductEntity.id] if one already exists — see
-     * [InventoryProductDao.findByCatalogProductId]. Otherwise creates one
-     * first (in the catalog product's own category, resolved-or-created via
-     * [resolveOrCreateCategory]), then adds *that* to the list.
+     * Adds a predefined catalog product to a list — just forwards
+     * to [addExistingProduct], nothing more: unlike the pre- shape
+     * this replaces, this never creates or reuses an inventory product.
+     * "Recently used" bumps itself server-side (the backend's
+     * `InsertListItem` logs `list_item_usage` in the same transaction as
+     * creating the list item) — no separate client-side call needed beyond
+     * re-fetching [refreshRecentlyUsed] on next load.
      */
     suspend fun addCatalogProduct(listId: String, catalogProduct: CatalogProductEntity, note: String?) {
-        val existing = inventoryProductDao.findByCatalogProductId(catalogProduct.id)
-        val productId = if (existing != null) {
-            existing.publicId
-        } else {
-            val categoryId = resolveOrCreateCategory(catalogProduct.categoryName)
-            val localProductId = inventoryRepository.createProduct(
-                categoryId = categoryId,
-                name = catalogProduct.name,
-                quantity = null,
-                catalogProductId = catalogProduct.id,
-            )
-            localIdStandIn(localProductId)
-        }
-        addExistingProduct(listId, productId, note)
-    }
-
-    /** @return the resolved category's `publicId` — an existing category matched by exact name, or a freshly created one. */
-    private suspend fun resolveOrCreateCategory(categoryName: String): String {
-        val existing = inventoryCategoryDao.observeAll().first().find { it.name == categoryName }
-        if (existing != null) return existing.publicId
-        return localIdStandIn(inventoryRepository.createCategory(categoryName))
+        addExistingProduct(listId, catalogProduct.id, note)
     }
 
     /**
      * Offline-first update — same "rewrite the pending create in place if
      * not yet synced, otherwise cancel-and-requeue an update" shape as
-     * [renameList]/[WorkTimeRepository.updateEntry]. [note]/[checked] are
-     * always edited together, mirroring the backend's own combined
-     * `PUT /list-item/{id}` route (see `urs-backend`'s `UpdateListItem`).
+     * [renameList]/[WorkTimeRepository.updateEntry]. `checked` is gone
+     * entirely — this now only ever edits the note.
      */
-    suspend fun updateItem(localId: Long, note: String?, checked: Boolean) {
+    suspend fun updateItem(localId: Long, note: String?) {
         val current = listItemDao.getById(localId) ?: return
 
         val outboxId = if (current.serverId == null) {
-            val payload = OutboxListItemPayload(listId = current.listId, productId = current.productId, note = note)
+            val payload = OutboxListItemPayload(listId = current.listId, catalogProductId = current.catalogProductId, note = note)
             current.outboxId?.let { outboxDao.updatePayload(it, json.encodeToString(payload)) }
             current.outboxId
         } else {
             current.outboxId?.let { outboxDao.delete(it) }
-            val payload = OutboxListItemUpdatePayload(serverId = current.serverId, note = note, checked = checked)
+            val payload = OutboxListItemUpdatePayload(serverId = current.serverId, note = note)
             outboxDao.insert(
                 OutboxMutationEntity(
                     type = OutboxMutationEntity.TYPE_UPDATE_LIST_ITEM,
@@ -276,7 +267,7 @@ class ShoppingListRepository(
             )
         }
 
-        listItemDao.updateFields(localId, note, checked, SyncStatus.PENDING, outboxId)
+        listItemDao.updateFields(localId, note, SyncStatus.PENDING, outboxId)
         applicationScope.launch { syncManager.syncNow() }
     }
 
@@ -318,6 +309,22 @@ class ShoppingListRepository(
         }
     }
 
+    /**
+     * Opportunistic backend refresh for the "recently used" cache — full
+     * replace on every call (see [RecentlyUsedProductEntity]'s doc comment),
+     * same best-effort shape as [refreshFromBackend].
+     */
+    suspend fun refreshRecentlyUsed() {
+        refreshQuietly {
+            val products = emptyAsNull { api.getRecentlyUsedProducts() }
+            recentlyUsedProductDao.replaceAll(
+                products.mapIndexed { index, dto ->
+                    RecentlyUsedProductEntity(catalogProductId = dto.catalogProductId, lastUsedAt = dto.lastUsedAt, rank = index)
+                },
+            )
+        }
+    }
+
     private suspend fun refreshQuietly(block: suspend () -> Unit) {
         try {
             block()
@@ -348,8 +355,7 @@ private fun ListItemDto.toEntity() = ListItemEntity(
     serverId = id,
     outboxId = null,
     listId = listId,
-    productId = productId,
+    catalogProductId = catalogProductId,
     note = note.ifEmpty { null },
-    checked = checked,
     syncStatus = SyncStatus.SYNCED,
 )

@@ -1,4 +1,4 @@
-package ch.mcfx.urs.shoppinglist
+package ch.mcfx.urs.inventory
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
-import ch.mcfx.urs.data.local.ListEntity
+import ch.mcfx.urs.data.local.InventoryEntity
 import ch.mcfx.urs.data.local.SyncStatus
 import ch.mcfx.urs.ui.components.UrsBottomSheet
 import ch.mcfx.urs.ui.components.UrsButton
@@ -46,35 +46,34 @@ import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Radius
 import ch.mcfx.urs.ui.tokens.Spacing
 
-// Same reasoning as CategoryListScreen's own local constants — the type
-// scale has no "big FAB glyph" size, and no "error" role in the palette yet.
 private val FabIconStyle = TextStyle(fontSize = 28.sp)
 private val FormErrorColor = Color(0xFFD64545)
 
+/** Mirrors [ch.mcfx.urs.shoppinglist.ShoppingListsScreen] exactly — see [InventoriesViewModel]'s own doc comment. */
 @Composable
-fun ShoppingListsScreen(
-    onOpenList: (ListEntity) -> Unit,
-    viewModel: ShoppingListsViewModel = viewModel(factory = ShoppingListsViewModel.Factory),
+fun InventoriesScreen(
+    onOpenInventory: (InventoryEntity) -> Unit,
+    viewModel: InventoriesViewModel = viewModel(factory = InventoriesViewModel.Factory),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val formState by viewModel.formState.collectAsStateWithLifecycle()
     val showForm by viewModel.showForm.collectAsStateWithLifecycle()
-    val actionSheetList by viewModel.actionSheetList.collectAsStateWithLifecycle()
-    val pendingDeleteList by viewModel.pendingDeleteList.collectAsStateWithLifecycle()
+    val actionSheetInventory by viewModel.actionSheetInventory.collectAsStateWithLifecycle()
+    val pendingDeleteInventory by viewModel.pendingDeleteInventory.collectAsStateWithLifecycle()
     val shareState by viewModel.shareState.collectAsStateWithLifecycle()
 
     Box(modifier = Modifier.fillMaxSize()) {
         when (val state = uiState) {
-            ShoppingListsUiState.Loading -> UrsProgressIndicator(Modifier.align(Alignment.Center))
+            InventoriesUiState.Loading -> UrsProgressIndicator(Modifier.align(Alignment.Center))
 
-            is ShoppingListsUiState.Data -> ListsList(
-                lists = state.lists,
-                onOpenList = onOpenList,
+            is InventoriesUiState.Data -> InventoriesList(
+                inventories = state.inventories,
+                onOpenInventory = onOpenInventory,
                 onLongPress = viewModel::openActionSheet,
             )
         }
 
-        if (uiState is ShoppingListsUiState.Data) {
+        if (uiState is InventoriesUiState.Data) {
             UrsFab(
                 onClick = viewModel::openCreateForm,
                 modifier = Modifier.align(Alignment.BottomEnd).padding(Spacing.l),
@@ -86,30 +85,30 @@ fun ShoppingListsScreen(
 
     if (showForm) {
         UrsBottomSheet(onDismissRequest = viewModel::closeForm) {
-            ListForm(form = formState, viewModel = viewModel)
+            InventoryForm(form = formState, viewModel = viewModel)
         }
     }
 
-    actionSheetList?.let { list ->
+    actionSheetInventory?.let { inventory ->
         UrsBottomSheet(onDismissRequest = viewModel::closeActionSheet) {
-            ListActionSheet(
-                onRename = { viewModel.openRenameForm(list) },
-                onShare = { viewModel.openShareSheet(list) },
+            InventoryActionSheet(
+                onRename = { viewModel.openRenameForm(inventory) },
+                onShare = { viewModel.openShareSheet(inventory) },
                 onDelete = viewModel::requestDelete,
             )
         }
     }
 
-    if (pendingDeleteList != null) {
+    if (pendingDeleteInventory != null) {
         UrsBottomSheet(onDismissRequest = viewModel::cancelDelete) {
             DeleteConfirmSheet(onConfirm = viewModel::confirmDelete, onCancel = viewModel::cancelDelete)
         }
     }
 
-    if (shareState.list != null) {
+    if (shareState.inventory != null) {
         UrsBottomSheet(onDismissRequest = viewModel::closeShareSheet) {
             UrsShareSheet(
-                title = stringResource(R.string.shoppinglist_list_share_title, shareState.list?.name.orEmpty()),
+                title = stringResource(R.string.inventory_share_title, shareState.inventory?.name.orEmpty()),
                 members = shareState.members,
                 sharedUserIds = shareState.sharedUserIds,
                 onToggleShare = viewModel::toggleShare,
@@ -119,15 +118,15 @@ fun ShoppingListsScreen(
 }
 
 @Composable
-private fun ListsList(
-    lists: List<ListEntity>,
-    onOpenList: (ListEntity) -> Unit,
-    onLongPress: (ListEntity) -> Unit,
+private fun InventoriesList(
+    inventories: List<InventoryEntity>,
+    onOpenInventory: (InventoryEntity) -> Unit,
+    onLongPress: (InventoryEntity) -> Unit,
 ) {
-    if (lists.isEmpty()) {
+    if (inventories.isEmpty()) {
         Box(Modifier.fillMaxSize()) {
             UrsText(
-                stringResource(R.string.shoppinglist_lists_empty),
+                stringResource(R.string.inventory_inventories_empty),
                 modifier = Modifier.align(Alignment.Center),
                 color = UrsTheme.colors.onSurfaceMuted,
             )
@@ -140,35 +139,35 @@ private fun ListsList(
         contentPadding = PaddingValues(Spacing.l),
         verticalArrangement = Arrangement.spacedBy(Spacing.s),
     ) {
-        items(lists, key = { it.id }) { list ->
-            ListRow(list = list, onOpenList = onOpenList, onLongPress = onLongPress)
+        items(inventories, key = { it.id }) { inventory ->
+            InventoryRow(inventory = inventory, onOpenInventory = onOpenInventory, onLongPress = onLongPress)
         }
     }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ListRow(list: ListEntity, onOpenList: (ListEntity) -> Unit, onLongPress: (ListEntity) -> Unit) {
+private fun InventoryRow(inventory: InventoryEntity, onOpenInventory: (InventoryEntity) -> Unit, onLongPress: (InventoryEntity) -> Unit) {
     UrsCard(
         radius = Radius.row,
         contentPadding = PaddingValues(horizontal = Spacing.l, vertical = Spacing.s),
         modifier = Modifier
             .fillMaxWidth()
-            .combinedClickable(onClick = { onOpenList(list) }, onLongClick = { onLongPress(list) }),
+            .combinedClickable(onClick = { onOpenInventory(inventory) }, onLongClick = { onLongPress(inventory) }),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            UrsText(list.name, style = UrsTheme.typography.cardTitle, modifier = Modifier.weight(1f))
-            ListSyncStatusPill(list.syncStatus)
+            UrsText(inventory.name, style = UrsTheme.typography.cardTitle, modifier = Modifier.weight(1f))
+            InventorySyncStatusPill(inventory.syncStatus)
         }
     }
 }
 
 @Composable
-private fun ListSyncStatusPill(status: SyncStatus) {
+private fun InventorySyncStatusPill(status: SyncStatus) {
     when (status) {
         SyncStatus.PENDING -> UrsPill(text = stringResource(R.string.fill_status_pending))
         SyncStatus.FAILED -> UrsPill(
@@ -181,22 +180,20 @@ private fun ListSyncStatusPill(status: SyncStatus) {
 }
 
 @Composable
-private fun ListForm(form: ListFormState, viewModel: ShoppingListsViewModel) {
+private fun InventoryForm(form: InventoryFormState, viewModel: InventoriesViewModel) {
     Column(
         modifier = Modifier.padding(horizontal = Spacing.xl).padding(bottom = Spacing.xxl),
         verticalArrangement = Arrangement.spacedBy(Spacing.m),
     ) {
         UrsText(
-            stringResource(
-                if (form.editingListId != null) R.string.shoppinglist_list_rename else R.string.shoppinglist_list_add,
-            ),
+            stringResource(if (form.editingInventoryId != null) R.string.inventory_rename else R.string.inventory_add),
             style = UrsTheme.typography.screenTitle,
         )
 
         UrsTextField(
             value = form.name,
             onValueChange = viewModel::setName,
-            label = stringResource(R.string.shoppinglist_list_name),
+            label = stringResource(R.string.inventory_name),
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -215,12 +212,12 @@ private fun ListForm(form: ListFormState, viewModel: ShoppingListsViewModel) {
 }
 
 @Composable
-private fun ListActionSheet(onRename: () -> Unit, onShare: () -> Unit, onDelete: () -> Unit) {
+private fun InventoryActionSheet(onRename: () -> Unit, onShare: () -> Unit, onDelete: () -> Unit) {
     Column(modifier = Modifier.padding(horizontal = Spacing.l).padding(bottom = Spacing.l)) {
-        ActionSheetRow(label = stringResource(R.string.shoppinglist_list_rename), icon = Icons.Filled.Edit, onClick = onRename)
-        ActionSheetRow(label = stringResource(R.string.shoppinglist_list_share), icon = Icons.Filled.Share, onClick = onShare)
+        ActionSheetRow(label = stringResource(R.string.inventory_rename), icon = Icons.Filled.Edit, onClick = onRename)
+        ActionSheetRow(label = stringResource(R.string.inventory_share), icon = Icons.Filled.Share, onClick = onShare)
         ActionSheetRow(
-            label = stringResource(R.string.shoppinglist_list_delete),
+            label = stringResource(R.string.inventory_delete),
             icon = Icons.Filled.Delete,
             onClick = onDelete,
             tint = FormErrorColor,
@@ -249,15 +246,15 @@ private fun DeleteConfirmSheet(onConfirm: () -> Unit, onCancel: () -> Unit) {
         modifier = Modifier.padding(horizontal = Spacing.l).padding(bottom = Spacing.l),
         verticalArrangement = Arrangement.spacedBy(Spacing.m),
     ) {
-        UrsText(stringResource(R.string.shoppinglist_list_delete_confirm_title), style = UrsTheme.typography.cardTitle)
+        UrsText(stringResource(R.string.inventory_delete_confirm_title), style = UrsTheme.typography.cardTitle)
         UrsText(
-            stringResource(R.string.shoppinglist_list_delete_confirm_body),
+            stringResource(R.string.inventory_delete_confirm_body),
             style = UrsTheme.typography.body,
             color = UrsTheme.colors.onSurfaceMuted,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.m)) {
             UrsOutlinedButton(text = stringResource(R.string.cancel), onClick = onCancel, modifier = Modifier.weight(1f))
-            UrsButton(text = stringResource(R.string.shoppinglist_list_delete), onClick = onConfirm, modifier = Modifier.weight(1f))
+            UrsButton(text = stringResource(R.string.inventory_delete), onClick = onConfirm, modifier = Modifier.weight(1f))
         }
     }
 }

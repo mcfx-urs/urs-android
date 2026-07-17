@@ -22,14 +22,14 @@ interface ListDao {
     @Query("SELECT id FROM list WHERE serverId = :serverId LIMIT 1")
     suspend fun findLocalIdByServerId(serverId: String): Long?
 
-    /** Local-only write — see [InventoryCategoryDao.upsert]'s doc comment. */
+    /** Local-only write — see [InventoryDao.upsert]'s doc comment. */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(list: ListEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun replace(list: ListEntity): Long
 
-    /** Backend-refresh write path — see [InventoryCategoryDao.upsertFromServer]. */
+    /** Backend-refresh write path — see [InventoryDao.upsertFromServer]. */
     @Transaction
     suspend fun upsertFromServer(lists: List<ListEntity>) {
         lists.forEach { list ->

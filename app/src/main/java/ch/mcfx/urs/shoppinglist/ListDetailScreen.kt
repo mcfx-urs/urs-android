@@ -1,19 +1,17 @@
 package ch.mcfx.urs.shoppinglist
 
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridScope
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -25,26 +23,25 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
 import ch.mcfx.urs.data.ShoppingListItemDetail
+import ch.mcfx.urs.data.local.CatalogProductEntity
 import ch.mcfx.urs.ui.components.UrsBottomSheet
 import ch.mcfx.urs.ui.components.UrsButton
-import ch.mcfx.urs.ui.components.UrsCard
-import ch.mcfx.urs.ui.components.UrsCheckbox
 import ch.mcfx.urs.ui.components.UrsFab
 import ch.mcfx.urs.ui.components.UrsProgressIndicator
+import ch.mcfx.urs.ui.components.UrsSquareTile
 import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.components.UrsTextField
 import ch.mcfx.urs.ui.theme.UrsTheme
-import ch.mcfx.urs.ui.tokens.Radius
 import ch.mcfx.urs.ui.tokens.Spacing
 
-// Same reasoning as ProductListScreen's own local constant — the type scale
-// has no "big FAB glyph" size of its own.
 private val FabIconStyle = TextStyle(fontSize = 28.sp)
 
 @Composable
 fun ListDetailScreen(
     listId: String,
-    viewModel: ListDetailViewModel = viewModel(factory = ListDetailViewModel.factory(listId)),
+    viewModel: ListDetailViewModel = viewModel(
+        factory = ListDetailViewModel.factory(listId, stringResource(R.string.inventory_uncategorized)),
+    ),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val showAddProduct by viewModel.showAddProduct.collectAsStateWithLifecycle()
@@ -60,10 +57,12 @@ fun ListDetailScreen(
                     style = UrsTheme.typography.screenTitle,
                     modifier = Modifier.padding(horizontal = Spacing.l, vertical = Spacing.m),
                 )
-                ItemGroups(
+                ItemGrid(
                     groups = state.groups,
-                    onToggleChecked = viewModel::toggleChecked,
+                    recentlyUsed = state.recentlyUsed,
+                    onRemove = viewModel::removeItem,
                     onLongPress = viewModel::openNoteForm,
+                    onAddRecentlyUsed = viewModel::addRecentlyUsed,
                 )
             }
         }
@@ -92,12 +91,14 @@ fun ListDetailScreen(
 }
 
 @Composable
-private fun ItemGroups(
+private fun ItemGrid(
     groups: List<ShoppingListCategoryGroup>,
-    onToggleChecked: (ShoppingListItemDetail) -> Unit,
+    recentlyUsed: List<CatalogProductEntity>,
+    onRemove: (ShoppingListItemDetail) -> Unit,
     onLongPress: (ShoppingListItemDetail) -> Unit,
+    onAddRecentlyUsed: (CatalogProductEntity) -> Unit,
 ) {
-    if (groups.isEmpty()) {
+    if (groups.isEmpty() && recentlyUsed.isEmpty()) {
         Box(Modifier.fillMaxSize()) {
             UrsText(
                 stringResource(R.string.shoppinglist_items_empty),
@@ -108,13 +109,15 @@ private fun ItemGroups(
         return
     }
 
-    LazyColumn(
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(3),
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(Spacing.l),
         verticalArrangement = Arrangement.spacedBy(Spacing.s),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.s),
     ) {
         groups.forEach { group ->
-            item(key = "header-${group.categoryName}") {
+            fullWidthItem(key = "header-${group.categoryName}") {
                 UrsText(
                     group.categoryName,
                     style = UrsTheme.typography.caption,
@@ -123,41 +126,48 @@ private fun ItemGroups(
                 )
             }
             items(group.items, key = { it.item.id }) { detail ->
-                ItemRow(detail = detail, onToggleChecked = onToggleChecked, onLongPress = onLongPress)
+                ItemTile(detail = detail, onRemove = onRemove, onLongPress = onLongPress)
+            }
+        }
+
+        if (recentlyUsed.isNotEmpty()) {
+            fullWidthItem(key = "recently-used-header") {
+                UrsText(
+                    stringResource(R.string.shoppinglist_recently_used),
+                    style = UrsTheme.typography.caption,
+                    color = UrsTheme.colors.onSurfaceMuted,
+                    modifier = Modifier.padding(top = Spacing.l, bottom = Spacing.xs),
+                )
+            }
+            items(recentlyUsed, key = { "recent-${it.id}" }) { product ->
+                UrsSquareTile(
+                    title = product.name,
+                    catalogImageId = product.catalogImageId,
+                    showAddAffordance = true,
+                    onClick = { onAddRecentlyUsed(product) },
+                )
             }
         }
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+private fun LazyGridScope.fullWidthItem(key: String, content: @Composable () -> Unit) {
+    item(key = key, span = { GridItemSpan(maxLineSpan) }) { content() }
+}
+
 @Composable
-private fun ItemRow(
+private fun ItemTile(
     detail: ShoppingListItemDetail,
-    onToggleChecked: (ShoppingListItemDetail) -> Unit,
+    onRemove: (ShoppingListItemDetail) -> Unit,
     onLongPress: (ShoppingListItemDetail) -> Unit,
 ) {
-    val checked = detail.item.checked
-    val contentColor = if (checked) UrsTheme.colors.onSurfaceMuted else UrsTheme.colors.onSurface
-
-    UrsCard(
-        radius = Radius.row,
-        contentPadding = PaddingValues(horizontal = Spacing.l, vertical = Spacing.s),
-        modifier = Modifier
-            .fillMaxWidth()
-            .combinedClickable(onClick = { onToggleChecked(detail) }, onLongClick = { onLongPress(detail) }),
-    ) {
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            UrsCheckbox(checked = checked, onCheckedChange = { onToggleChecked(detail) })
-            Spacer(Modifier.width(Spacing.m))
-            Column(modifier = Modifier.weight(1f)) {
-                UrsText(detail.productName, style = UrsTheme.typography.cardTitle, color = contentColor)
-                val note = detail.item.note
-                if (!note.isNullOrBlank()) {
-                    UrsText(note, style = UrsTheme.typography.caption, color = UrsTheme.colors.onSurfaceMuted)
-                }
-            }
-        }
-    }
+    UrsSquareTile(
+        title = detail.productName,
+        catalogImageId = detail.catalogImageId,
+        showRemoveAffordance = true,
+        onClick = { onRemove(detail) },
+        onLongClick = { onLongPress(detail) },
+    )
 }
 
 @Composable

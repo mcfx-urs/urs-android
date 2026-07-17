@@ -1,5 +1,6 @@
 package ch.mcfx.urs.data.remote
 
+import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -36,23 +37,35 @@ interface UrsApi {
     @GET("api/v1/currency")
     suspend fun getCurrencies(): List<CurrencyDto>
 
-    @GET("api/v1/inventory-category")
-    suspend fun getInventoryCategories(): List<InventoryCategoryDto>
+    @GET("api/v1/inventory")
+    suspend fun getInventories(): List<InventoryDto>
 
-    @POST("api/v1/inventory-category")
-    suspend fun createInventoryCategory(@Body payload: InventoryCategoryPayload)
+    @POST("api/v1/inventory")
+    suspend fun createInventory(@Body payload: InventoryPayload): InventoryCreateResponseDto
 
-    @DELETE("api/v1/inventory-category/{id}")
-    suspend fun deleteInventoryCategory(@Path("id") id: String)
+    @PUT("api/v1/inventory/{id}")
+    suspend fun updateInventory(@Path("id") id: String, @Body payload: InventoryPayload)
 
-    @GET("api/v1/inventory-product/{categoryId}")
-    suspend fun getInventoryProducts(@Path("categoryId") categoryId: String): List<InventoryProductDto>
+    @DELETE("api/v1/inventory/{id}")
+    suspend fun deleteInventory(@Path("id") id: String)
+
+    @POST("api/v1/inventory/{id}/share")
+    suspend fun shareInventory(@Path("id") id: String, @Body payload: InventorySharePayload)
+
+    @GET("api/v1/inventory/{id}/share")
+    suspend fun getInventoryShares(@Path("id") id: String): List<InventoryShareDto>
+
+    @DELETE("api/v1/inventory/{id}/share/{userId}")
+    suspend fun deleteInventoryShare(@Path("id") id: String, @Path("userId") userId: String)
 
     @POST("api/v1/inventory-product")
-    suspend fun createInventoryProduct(@Body payload: InventoryProductPayload)
+    suspend fun createInventoryProduct(@Body payload: InventoryProductCreatePayload): InventoryProductCreateResponseDto
+
+    @GET("api/v1/inventory-product/{inventoryId}")
+    suspend fun getInventoryProducts(@Path("inventoryId") inventoryId: String): List<InventoryProductDto>
 
     @PUT("api/v1/inventory-product/{id}")
-    suspend fun updateInventoryProduct(@Path("id") id: String, @Body payload: InventoryProductPayload)
+    suspend fun updateInventoryProduct(@Path("id") id: String, @Body payload: InventoryProductQuantityPayload)
 
     @PUT("api/v1/inventory-product/{id}/settings")
     suspend fun updateInventoryProductSettings(@Path("id") id: String, @Body payload: InventoryProductSettingsPayload)
@@ -62,6 +75,22 @@ interface UrsApi {
 
     @GET("api/v1/catalog-product")
     suspend fun getCatalogProducts(): List<CatalogProductDto>
+
+    @POST("api/v1/catalog-product")
+    suspend fun createCatalogProduct(@Body payload: NewCatalogProductPayload): NewCatalogProductResponseDto
+
+    // 204 (untracked in any inventory the caller can access) vs 200 needs to
+    // be told apart explicitly — wrapped in Response<...> rather than a bare
+    // suspend return, since a bare return would otherwise fail trying to
+    // decode an empty 204 body as JSON. See CatalogRepository.quantityOnHand.
+    @GET("api/v1/catalog-product/{catalogProductId}/quantity-on-hand")
+    suspend fun getQuantityOnHand(@Path("catalogProductId") catalogProductId: String): Response<QuantityOnHandDto>
+
+    @GET("api/v1/catalog-category")
+    suspend fun getCatalogCategories(): List<CatalogCategoryDto>
+
+    @POST("api/v1/catalog-category")
+    suspend fun createCatalogCategory(@Body payload: NewCatalogCategoryPayload): NewCatalogCategoryResponseDto
 
     @POST("api/v1/list")
     suspend fun createList(@Body payload: ListPayload): ListDto
@@ -75,6 +104,15 @@ interface UrsApi {
     @DELETE("api/v1/list/{id}")
     suspend fun deleteList(@Path("id") id: String)
 
+    @POST("api/v1/list/{id}/share")
+    suspend fun shareList(@Path("id") id: String, @Body payload: ListSharePayload)
+
+    @GET("api/v1/list/{id}/share")
+    suspend fun getListShares(@Path("id") id: String): List<ListShareDto>
+
+    @DELETE("api/v1/list/{id}/share/{userId}")
+    suspend fun deleteListShare(@Path("id") id: String, @Path("userId") userId: String)
+
     @POST("api/v1/list-item")
     suspend fun createListItem(@Body payload: ListItemPayload): ListItemDto
 
@@ -86,6 +124,9 @@ interface UrsApi {
 
     @DELETE("api/v1/list-item/{id}")
     suspend fun deleteListItem(@Path("id") id: String)
+
+    @GET("api/v1/recently-used-product")
+    suspend fun getRecentlyUsedProducts(): List<RecentlyUsedProductDto>
 
     @GET("api/v1/getuser")
     suspend fun getUsers(): List<UserDto>

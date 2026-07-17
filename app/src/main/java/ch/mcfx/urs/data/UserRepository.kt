@@ -3,6 +3,7 @@ package ch.mcfx.urs.data
 import ch.mcfx.urs.auth.AuthTokenStore
 import ch.mcfx.urs.data.remote.UrsApi
 import ch.mcfx.urs.data.remote.UserDefaultDailyTargetHoursPayload
+import ch.mcfx.urs.data.remote.UserDto
 import ch.mcfx.urs.data.remote.UserEmploymentPercentPayload
 import ch.mcfx.urs.data.remote.UserHourlyWagePayload
 import kotlinx.serialization.SerializationException
@@ -24,6 +25,16 @@ class UserRepository(
     private val api: UrsApi,
     private val tokenStore: AuthTokenStore,
 ) {
+
+    // Household member picker for UrsShareSheet — every other user
+    // this account could share an inventory/list with. Same
+    // empty-list-as-null backend quirk as everywhere else in this app.
+    suspend fun getAllUsers(): List<UserDto> =
+        try {
+            api.getUsers()
+        } catch (_: SerializationException) {
+            emptyList()
+        }
 
     suspend fun getWorkSettings(): WorkSettings {
         val userId = tokenStore.currentUserId

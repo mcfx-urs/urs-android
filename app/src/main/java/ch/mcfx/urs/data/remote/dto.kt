@@ -89,28 +89,115 @@ data class CurrencyDto(
     @SerialName("currency_name") val name: String,
 )
 
+// catalog_product/catalog_category are the shared/public reference
+// pool; inventory/list are independent, ownable, shareable containers built
+// on top of it. Replaces the old InventoryCategoryDto/InventoryCategoryPayload
+// (inventory_category is gone entirely) and the old InventoryProductDto/
+// InventoryProductPayload shape (categoryId/name/recent-notes moved to or
+// derived from catalog_product).
+
 @Serializable
-data class InventoryCategoryDto(
-    @SerialName("inventory_category_id") val id: String,
-    @SerialName("inventory_category_name") val name: String,
+data class CatalogCategoryDto(
+    @SerialName("catalog_category_id") val id: String,
+    @SerialName("catalog_category_source") val source: String = "",
+    @SerialName("catalog_category_source_category_id") val sourceCategoryId: String = "",
+    @SerialName("catalog_category_name") val name: String,
+    @SerialName("catalog_category_catalog_image_id") val catalogImageId: String = "",
+)
+
+@Serializable
+data class NewCatalogCategoryPayload(
+    @SerialName("catalog_category_name") val name: String,
+)
+
+@Serializable
+data class NewCatalogCategoryResponseDto(
+    @SerialName("catalog_category_id") val id: String,
+    @SerialName("catalog_category_name") val name: String,
+)
+
+// Empty string = not set, mirrors the backend's COALESCE(..., '') for these
+// columns.
+@Serializable
+data class CatalogProductDto(
+    @SerialName("catalog_product_id") val id: String,
+    @SerialName("catalog_product_source") val source: String = "",
+    @SerialName("catalog_product_source_product_id") val sourceProductId: String = "",
+    @SerialName("catalog_product_category_name") val categoryName: String,
+    @SerialName("catalog_product_catalog_category_id") val catalogCategoryId: String = "",
+    @SerialName("catalog_product_name") val name: String,
+    @SerialName("catalog_product_search_terms") val searchTerms: String = "",
+    @SerialName("catalog_product_brands") val brands: String = "",
+    @SerialName("catalog_product_popularity_index") val popularityIndex: String = "",
+    @SerialName("catalog_product_catalog_image_id") val catalogImageId: String = "",
+    // Most-recently-used notes for this product's list items, newest first
+    // (1 = most recent) — global per catalog product (, moved off the
+    // old per-household inventory_product), shifted 1→2→3 server-side each
+    // time a distinct note is used again. Surfaced as tap-to-fill chips in
+    // AddProductScreen's note step.
+    @SerialName("catalog_product_recent_note_1") val recentNote1: String = "",
+    @SerialName("catalog_product_recent_note_2") val recentNote2: String = "",
+    @SerialName("catalog_product_recent_note_3") val recentNote3: String = "",
+)
+
+@Serializable
+data class NewCatalogProductPayload(
+    @SerialName("catalog_product_name") val name: String,
+    // "" = uncategorized, same nullable-column-as-empty-string convention as CatalogProductDto.
+    @SerialName("catalog_product_catalog_category_id") val catalogCategoryId: String = "",
+)
+
+@Serializable
+data class NewCatalogProductResponseDto(
+    @SerialName("catalog_product_id") val id: String,
+    @SerialName("catalog_product_name") val name: String,
+    @SerialName("catalog_product_catalog_category_id") val catalogCategoryId: String = "",
+)
+
+// 204 No Content (untracked anywhere the caller can access) maps to this
+// simply not being decoded at all — see UrsApi.getQuantityOnHand's own
+// Response<...> wrapping.
+@Serializable
+data class QuantityOnHandDto(
+    @SerialName("quantity_on_hand") val quantity: String,
+)
+
+@Serializable
+data class InventoryDto(
+    @SerialName("inventory_id") val id: String,
+    @SerialName("inventory_name") val name: String,
+    @SerialName("inventory_owner_user_id") val ownerUserId: String = "",
+)
+
+@Serializable
+data class InventoryPayload(
+    @SerialName("inventory_name") val name: String,
+)
+
+@Serializable
+data class InventoryCreateResponseDto(
+    @SerialName("inventory_id") val id: String,
+    @SerialName("inventory_name") val name: String,
+)
+
+@Serializable
+data class InventoryShareDto(
+    @SerialName("inventory_share_id") val id: String,
+    @SerialName("inventory_share_inventory_id") val inventoryId: String,
+    @SerialName("inventory_share_user_id") val userId: String,
+)
+
+@Serializable
+data class InventorySharePayload(
+    @SerialName("inventory_share_user_id") val userId: String,
 )
 
 @Serializable
 data class InventoryProductDto(
     @SerialName("inventory_product_id") val id: String,
-    @SerialName("inventory_product_category_id") val categoryId: String,
-    @SerialName("inventory_product_name") val name: String,
-    @SerialName("inventory_product_quantity") val quantity: String,
-    // Empty string = not set for every field below (mirrors the backend's
-    // nullable-column-as-empty-string convention, e.g. user_height).
-    @SerialName("inventory_product_catalog_product_id") val catalogProductId: String = "",
-    // Most-recently-used notes for this product's list items, newest first
-    // (1 = most recent) — populated once a list item with a note has been
-    // added for this product, shifted 1→2→3 on each subsequent distinct
-    // note. Surfaced as tap-to-fill chips in AddProductScreen's note step.
-    @SerialName("inventory_product_recent_note_1") val recentNote1: String = "",
-    @SerialName("inventory_product_recent_note_2") val recentNote2: String = "",
-    @SerialName("inventory_product_recent_note_3") val recentNote3: String = "",
+    @SerialName("inventory_product_inventory_id") val inventoryId: String,
+    @SerialName("inventory_product_catalog_product_id") val catalogProductId: String,
+    @SerialName("inventory_product_quantity") val quantity: String = "",
     @SerialName("inventory_product_first_threshold") val firstThreshold: String = "",
     @SerialName("inventory_product_second_threshold") val secondThreshold: String = "",
     @SerialName("inventory_product_reminder_threshold") val reminderThreshold: String = "",
@@ -118,25 +205,37 @@ data class InventoryProductDto(
     @SerialName("inventory_product_reminder_minute") val reminderMinute: String = "",
 )
 
+// The create route's response echoes only the fields the backend's own
+// InventoryProduct request struct carries (id, inventoryId, catalogProductId,
+// quantity — no threshold/reminder fields, those are only ever set via the
+// dedicated settings route below) — kept as its own type rather than reusing
+// InventoryProductDto so a missing threshold field here is never mistaken
+// for "explicitly cleared".
 @Serializable
-data class InventoryCategoryPayload(
-    @SerialName("inventory_category_name") val name: String,
+data class InventoryProductCreateResponseDto(
+    @SerialName("inventory_product_id") val id: String,
+    @SerialName("inventory_product_inventory_id") val inventoryId: String,
+    @SerialName("inventory_product_catalog_product_id") val catalogProductId: String,
+    @SerialName("inventory_product_quantity") val quantity: String = "",
 )
 
 @Serializable
-data class InventoryProductPayload(
-    @SerialName("inventory_product_category_id") val categoryId: String,
-    @SerialName("inventory_product_name") val name: String,
+data class InventoryProductCreatePayload(
+    @SerialName("inventory_product_inventory_id") val inventoryId: String,
+    @SerialName("inventory_product_catalog_product_id") val catalogProductId: String,
+    @SerialName("inventory_product_quantity") val quantity: String = "",
+)
+
+// PUT /inventory-product/{id} — quantity is the only field that can change
+// post-creation (the catalog product link and inventory are both
+// fixed at creation time, no more re-categorization).
+@Serializable
+data class InventoryProductQuantityPayload(
     @SerialName("inventory_product_quantity") val quantity: String,
-    // Only meaningful on create — the backend's own update route ignores
-    // this field entirely, so updateProductQuantity leaves it at its
-    // default. Empty string = "not created from a catalog entry", same
-    // nullable-column-as-empty-string convention as the threshold fields.
-    @SerialName("inventory_product_catalog_product_id") val catalogProductId: String = "",
 )
 
-// Separate from InventoryProductPayload so updating thresholds/reminder can
-// never accidentally touch category/name/quantity — mirrors the backend's
+// Separate from InventoryProductQuantityPayload so updating thresholds/
+// reminder can never accidentally touch quantity — mirrors the backend's
 // dedicated PUT /api/v1/inventory-product/{id}/settings route.
 @Serializable
 data class InventoryProductSettingsPayload(
@@ -147,23 +246,11 @@ data class InventoryProductSettingsPayload(
     @SerialName("inventory_product_reminder_minute") val reminderMinute: String,
 )
 
-// Empty string = not set, same convention as InventoryProductDto's threshold
-// fields (mirrors the backend's COALESCE(..., '') for these columns).
-@Serializable
-data class CatalogProductDto(
-    @SerialName("catalog_product_id") val id: String,
-    @SerialName("catalog_product_category_name") val categoryName: String,
-    @SerialName("catalog_product_name") val name: String,
-    @SerialName("catalog_product_search_terms") val searchTerms: String = "",
-    @SerialName("catalog_product_brands") val brands: String = "",
-    @SerialName("catalog_product_popularity_index") val popularityIndex: String = "",
-    @SerialName("catalog_product_catalog_image_id") val catalogImageId: String = "",
-)
-
 @Serializable
 data class ListDto(
     @SerialName("list_id") val id: String,
     @SerialName("list_name") val name: String,
+    @SerialName("list_owner_user_id") val ownerUserId: String = "",
 )
 
 @Serializable
@@ -171,38 +258,56 @@ data class ListPayload(
     @SerialName("list_name") val name: String,
 )
 
+@Serializable
+data class ListShareDto(
+    @SerialName("list_share_id") val id: String,
+    @SerialName("list_share_list_id") val listId: String,
+    @SerialName("list_share_user_id") val userId: String,
+)
+
+@Serializable
+data class ListSharePayload(
+    @SerialName("list_share_user_id") val userId: String,
+)
+
 // Covers both the plain create-response shape (list_item_id/list_item_list_id/
-// list_item_product_id/list_item_note/list_item_checked only — see
-// web.ListItem in urs-backend) and the denormalized GET-list shape (adds the
-// joined product/category names — see data.ListItem) with one type: the
-// three joined fields simply stay at their default on a create response.
+// list_item_catalog_product_id/list_item_note only — see web.ListItem in
+// urs-backend) and the denormalized GET-list shape (adds the joined
+// catalog_product/catalog_category names — see data.ListItem) with one type:
+// the joined fields simply stay at their default on a create response.
+// `list_item_checked` is gone entirely — adding/removing an item
+// from a list is the only state transition now.
 @Serializable
 data class ListItemDto(
     @SerialName("list_item_id") val id: String,
     @SerialName("list_item_list_id") val listId: String,
-    @SerialName("list_item_product_id") val productId: String,
-    @SerialName("inventory_product_name") val productName: String = "",
-    @SerialName("inventory_product_category_id") val productCategoryId: String = "",
-    @SerialName("inventory_category_name") val categoryName: String = "",
+    @SerialName("list_item_catalog_product_id") val catalogProductId: String,
+    @SerialName("catalog_product_name") val productName: String = "",
+    @SerialName("catalog_product_catalog_category_id") val categoryId: String = "",
+    @SerialName("catalog_category_name") val categoryName: String = "",
     @SerialName("list_item_note") val note: String = "",
-    @SerialName("list_item_checked") val checked: Boolean = false,
 )
 
 @Serializable
 data class ListItemPayload(
     @SerialName("list_item_list_id") val listId: String,
-    @SerialName("list_item_product_id") val productId: String,
+    @SerialName("list_item_catalog_product_id") val catalogProductId: String,
     @SerialName("list_item_note") val note: String = "",
 )
 
 // Separate from ListItemPayload so an update can never accidentally touch
-// listId/productId — mirrors InventoryProductSettingsPayload's split from
-// InventoryProductPayload, and matches the backend's own PUT route, which
-// only ever reads list_item_note/list_item_checked from the body.
+// listId/catalogProductId — mirrors InventoryProductSettingsPayload's split
+// from InventoryProductQuantityPayload, and matches the backend's own PUT
+// route, which only ever reads list_item_note from the body.
 @Serializable
 data class ListItemUpdatePayload(
     @SerialName("list_item_note") val note: String = "",
-    @SerialName("list_item_checked") val checked: Boolean = false,
+)
+
+@Serializable
+data class RecentlyUsedProductDto(
+    @SerialName("catalog_product_id") val catalogProductId: String,
+    @SerialName("last_used_at") val lastUsedAt: String,
 )
 
 @Serializable
@@ -251,6 +356,10 @@ data class WorkTimeEntryPayload(
 @Serializable
 data class UserDto(
     @SerialName("user_id") val id: String,
+    // Only used for display so far (UrsShareSheet's member picker, ) —
+    // every other field below predates that and is read straight off the
+    // full GET /getuser response, which also always includes this.
+    @SerialName("user_name") val userName: String = "",
     @SerialName("user_default_daily_target_hours") val defaultDailyTargetHours: String = "",
     @SerialName("user_employment_percent") val employmentPercent: String = "",
     @SerialName("user_hourly_wage") val hourlyWage: String = "",

@@ -45,6 +45,7 @@ import ch.mcfx.urs.fuel.FuelStatsScreen
 import ch.mcfx.urs.home.HomeScreen
 import ch.mcfx.urs.data.local.publicId
 import ch.mcfx.urs.inventory.CategoryListScreen
+import ch.mcfx.urs.inventory.InventoriesScreen
 import ch.mcfx.urs.inventory.InventoryRoutes
 import ch.mcfx.urs.inventory.ProductListScreen
 import ch.mcfx.urs.settings.AccountSettingsScreen
@@ -225,31 +226,60 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                         route = Destination.INVENTORY.route,
                         // First deep-link target in the app (Issue #1) — a
                         // grouped/summary low-stock notification opens the
-                        // category list, since a summary covers several
-                        // products at once rather than one specific item.
+                        // inventories list (Inventory gained its own
+                        // top-level, multi-instance list-of-containers screen,
+                        // same shape Shopping List always had).
                         deepLinks = listOf(navDeepLink { uriPattern = "urs://${Destination.INVENTORY.route}" }),
                     ) {
+                        InventoriesScreen(
+                            onOpenInventory = { inventory ->
+                                navController.navigate(InventoryRoutes.categories(inventory.publicId, inventory.name))
+                            },
+                        )
+                    }
+                    composable(
+                        route = InventoryRoutes.CATEGORIES,
+                        arguments = listOf(
+                            navArgument("inventoryId") { type = NavType.StringType },
+                            navArgument("inventoryName") { type = NavType.StringType },
+                        ),
+                    ) { backStackEntry ->
+                        val inventoryId = backStackEntry.arguments?.getString("inventoryId") ?: return@composable
+                        val inventoryName = backStackEntry.arguments?.getString("inventoryName") ?: ""
                         CategoryListScreen(
-                            onOpenCategory = { category ->
-                                navController.navigate(InventoryRoutes.products(category.publicId, category.name))
+                            inventoryId = inventoryId,
+                            onOpenCategory = { group ->
+                                navController.navigate(
+                                    InventoryRoutes.products(inventoryId, inventoryName, group.categoryId, group.categoryName),
+                                )
                             },
                         )
                     }
                     composable(
                         route = InventoryRoutes.PRODUCTS,
                         arguments = listOf(
+                            navArgument("inventoryId") { type = NavType.StringType },
+                            navArgument("inventoryName") { type = NavType.StringType },
                             navArgument("categoryId") { type = NavType.StringType },
                             navArgument("categoryName") { type = NavType.StringType },
                         ),
                         // Per-product low-stock reminder target — more
-                        // specific than the categories-list summary deep link
+                        // specific than the inventories-list summary deep link
                         // above, since a single-product reminder can point
-                        // straight at the product's own list.
+                        // straight at the product's own category/inventory.
                         deepLinks = listOf(navDeepLink { uriPattern = "urs://${InventoryRoutes.PRODUCTS}" }),
                     ) { backStackEntry ->
-                        val categoryId = backStackEntry.arguments?.getString("categoryId") ?: return@composable
+                        val inventoryId = backStackEntry.arguments?.getString("inventoryId") ?: return@composable
+                        val inventoryName = backStackEntry.arguments?.getString("inventoryName") ?: ""
+                        val rawCategoryId = backStackEntry.arguments?.getString("categoryId") ?: InventoryRoutes.NO_CATEGORY
+                        val categoryId = rawCategoryId.takeUnless { it == InventoryRoutes.NO_CATEGORY }
                         val categoryName = backStackEntry.arguments?.getString("categoryName") ?: ""
-                        ProductListScreen(categoryId = categoryId, categoryName = categoryName)
+                        ProductListScreen(
+                            inventoryId = inventoryId,
+                            inventoryName = inventoryName,
+                            categoryId = categoryId,
+                            categoryName = categoryName,
+                        )
                     }
                     composable(Destination.SHOPPING_LIST.route) {
                         ShoppingListsScreen(
@@ -316,6 +346,7 @@ private val SETTINGS_ROUTE_LABELS = mapOf(
 )
 
 private val INVENTORY_ROUTE_LABELS = mapOf(
+    InventoryRoutes.CATEGORIES to R.string.inventory_categories_title,
     InventoryRoutes.PRODUCTS to R.string.inventory_products_title,
 )
 

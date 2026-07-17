@@ -25,14 +25,14 @@ interface ListItemDao {
     @Query("SELECT id FROM list_item WHERE serverId = :serverId LIMIT 1")
     suspend fun findLocalIdByServerId(serverId: String): Long?
 
-    /** Local-only write — see [InventoryCategoryDao.upsert]'s doc comment. */
+    /** Local-only write — see [ListDao.upsert]'s doc comment. */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(item: ListItemEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun replace(item: ListItemEntity): Long
 
-    /** Backend-refresh write path — see [InventoryCategoryDao.upsertFromServer]. */
+    /** Backend-refresh write path — see [ListDao.upsertFromServer]. */
     @Transaction
     suspend fun upsertFromServer(items: List<ListItemEntity>) {
         items.forEach { item ->
@@ -42,21 +42,21 @@ interface ListItemDao {
         }
     }
 
-    // listId/productId are corrected here too (not just carried over from
-    // the queued payload) — see ListItemEntity's doc comment: an item
-    // queued while its parent list/product was still offline holds their
-    // stand-in ids until this point.
+    // listId is corrected here too (not just carried over from the queued
+    // payload) — see ListItemEntity's doc comment: an item queued while its
+    // parent list was still offline holds its stand-in id until this point.
+    // catalogProductId never needs the same correction (see ListItemEntity's
+    // doc comment), so it's untouched here.
     @Query(
         "UPDATE list_item SET syncStatus = 'SYNCED', serverId = :serverId, listId = :listId, " +
-            "productId = :productId, outboxId = NULL WHERE id = :id",
+            "outboxId = NULL WHERE id = :id",
     )
-    suspend fun markSynced(id: Long, serverId: String, listId: String, productId: String)
+    suspend fun markSynced(id: Long, serverId: String, listId: String)
 
     @Query(
-        "UPDATE list_item SET note = :note, checked = :checked, syncStatus = :syncStatus, outboxId = :outboxId " +
-            "WHERE id = :id",
+        "UPDATE list_item SET note = :note, syncStatus = :syncStatus, outboxId = :outboxId WHERE id = :id",
     )
-    suspend fun updateFields(id: Long, note: String?, checked: Boolean, syncStatus: SyncStatus, outboxId: Long?)
+    suspend fun updateFields(id: Long, note: String?, syncStatus: SyncStatus, outboxId: Long?)
 
     @Query("DELETE FROM list_item WHERE id = :id")
     suspend fun delete(id: Long)

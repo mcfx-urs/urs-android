@@ -9,7 +9,10 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.data.CatalogRepository
 import ch.mcfx.urs.data.ShoppingListRepository
+import ch.mcfx.urs.data.UserRepository
 import ch.mcfx.urs.data.local.ListEntity
+import ch.mcfx.urs.data.local.publicId
+import ch.mcfx.urs.data.remote.UserDto
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,9 +35,17 @@ data class ListFormState(
     val isValid: Boolean get() = name.isNotBlank()
 }
 
+/** Share-sheet state for one list — see [ch.mcfx.urs.ui.components.UrsShareSheet]. */
+data class ListShareState(
+    val list: ListEntity? = null,
+    val members: List<UserDto> = emptyList(),
+    val sharedUserIds: Set<String> = emptySet(),
+)
+
 class ShoppingListsViewModel(
     private val repository: ShoppingListRepository,
     private val catalogRepository: CatalogRepository,
+    private val userRepository: UserRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ShoppingListsUiState>(ShoppingListsUiState.Loading)
@@ -46,12 +57,15 @@ class ShoppingListsViewModel(
     private val _showForm = MutableStateFlow(false)
     val showForm: StateFlow<Boolean> = _showForm.asStateFlow()
 
-    // Long-press → Rename/Delete, same shape as WorkTimeViewModel's entry action sheet.
+    // Long-press → Rename/Delete/Share, same shape as WorkTimeViewModel's entry action sheet.
     private val _actionSheetList = MutableStateFlow<ListEntity?>(null)
     val actionSheetList: StateFlow<ListEntity?> = _actionSheetList.asStateFlow()
 
     private val _pendingDeleteList = MutableStateFlow<ListEntity?>(null)
     val pendingDeleteList: StateFlow<ListEntity?> = _pendingDeleteList.asStateFlow()
+
+    private val _shareState = MutableStateFlow(ListShareState())
+    val shareState: StateFlow<ListShareState> = _shareState.asStateFlow()
 
     init {
         // Room-backed Flow, same shape as CategoriesViewModel — load() below
@@ -140,11 +154,47 @@ class ShoppingListsViewModel(
         viewModelScope.launch { repository.deleteList(list.id) }
     }
 
+    /** New in  — lists gained ownership+sharing, same shape as [ch.mcfx.urs.inventory.InventoriesViewModel.openShareSheet]. */
+    fun openShareSheet(list: ListEntity) {
+        _actionSheetList.value = null
+        val serverId = list.serverId ?: return
+        viewModelScope.launch {
+            val members = userRepository.getAllUsers()
+            val shares = repository.getListShares(serverId)
+            _shareState.value = ListShareState(list = list, members = members, sharedUserIds = shares.map { it.userId }.toSet())
+        }
+    }
+
+    fun closeShareSheet() {
+        _shareState.value = ListShareState()
+    }
+
+    fun toggleShare(userId: String, currentlyShared: Boolean) {
+        val list = _shareState.value.list ?: return
+        val listId = list.publicId
+        viewModelScope.launch {
+            try {
+                if (currentlyShared) {
+                    repository.removeListShare(listId, userId)
+                } else {
+                    repository.shareList(listId, userId)
+                }
+                _shareState.update {
+                    it.copy(sharedUserIds = if (currentlyShared) it.sharedUserIds - userId else it.sharedUserIds + userId)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // Best-effort: the checkbox simply keeps its last-known state if the request failed.
+            }
+        }
+    }
+
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as UrsApplication
-                ShoppingListsViewModel(app.container.shoppingListRepository, app.container.catalogRepository)
+                ShoppingListsViewModel(app.container.shoppingListRepository, app.container.catalogRepository, app.container.userRepository)
             }
         }
     }

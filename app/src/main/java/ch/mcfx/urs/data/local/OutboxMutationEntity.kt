@@ -12,7 +12,9 @@ enum class OutboxStatus { PENDING, SYNCING, FAILED }
  * [TYPE_CREATE_WORK_TIME_ENTRY] (the backend resolves ad-hoc station
  * creation / daily-total computation server-side as part of that same
  * request in both cases, so one row per submission is enough),
- * [OutboxInventoryCategoryPayload] for [TYPE_CREATE_INVENTORY_CATEGORY],
+ * [OutboxInventoryPayload]/[OutboxInventoryUpdatePayload]/
+ * [OutboxInventoryDeletePayload] for [TYPE_CREATE_INVENTORY]/
+ * [TYPE_UPDATE_INVENTORY]/[TYPE_DELETE_INVENTORY],
  * [OutboxInventoryProductPayload] for [TYPE_CREATE_INVENTORY_PRODUCT],
  * [OutboxListPayload]/[OutboxListUpdatePayload]/[OutboxListDeletePayload]
  * for [TYPE_CREATE_LIST]/[TYPE_UPDATE_LIST]/[TYPE_DELETE_LIST],
@@ -37,7 +39,9 @@ data class OutboxMutationEntity(
         const val TYPE_CREATE_WORK_TIME_ENTRY = "CREATE_WORK_TIME_ENTRY"
         const val TYPE_UPDATE_WORK_TIME_ENTRY = "UPDATE_WORK_TIME_ENTRY"
         const val TYPE_DELETE_WORK_TIME_ENTRY = "DELETE_WORK_TIME_ENTRY"
-        const val TYPE_CREATE_INVENTORY_CATEGORY = "CREATE_INVENTORY_CATEGORY"
+        const val TYPE_CREATE_INVENTORY = "CREATE_INVENTORY"
+        const val TYPE_UPDATE_INVENTORY = "UPDATE_INVENTORY"
+        const val TYPE_DELETE_INVENTORY = "DELETE_INVENTORY"
         const val TYPE_CREATE_INVENTORY_PRODUCT = "CREATE_INVENTORY_PRODUCT"
         const val TYPE_CREATE_LIST = "CREATE_LIST"
         const val TYPE_UPDATE_LIST = "UPDATE_LIST"

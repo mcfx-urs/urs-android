@@ -1,0 +1,169 @@
+package ch.mcfx.urs.ui.components
+
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.ShoppingBasket
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.dp
+import ch.mcfx.urs.BuildConfig
+import ch.mcfx.urs.UrsApplication
+import ch.mcfx.urs.ui.theme.UrsTheme
+import ch.mcfx.urs.ui.tokens.Radius
+import ch.mcfx.urs.ui.tokens.Spacing
+import coil3.compose.SubcomposeAsyncImage
+
+/** `${BuildConfig.BASE_URL}api/v1/catalog-image/{catalogImageId}` — the one place this URL shape is built. */
+fun catalogImageUrl(catalogImageId: Int?): String? = catalogImageId?.let { "${BuildConfig.BASE_URL}api/v1/catalog-image/$it" }
+
+/**
+ * `LazyVerticalGrid(GridCells.Fixed(3))`-friendly product tile, replacing
+ * the row-based product/list-item layout across Inventory and Shopping List
+ * grid redesign). Built on [UrsCard] for the same elevated-surface
+ * treatment every other card in this app already has. [AsyncImage]-backed
+ * (Coil, via [ch.mcfx.urs.UrsApplication.container]'s authenticated
+ * `imageLoader` — `/api/v1/catalog-image/{id}` sits on the protected route
+ * subrouter server-side, so an unauthenticated request would 401), falling
+ * back to [Icons.Filled.ShoppingBasket] both while there's no
+ * [catalogImageId] at all and on an actual load error.
+ *
+ * [dimmed] renders the title strikethrough and the whole tile at reduced
+ * opacity — the add-product picker's "already on this list" visual state.
+ * [quantityBadge] is an optional small overlay for inventory screens
+ * (tracked quantity) or the shopping-list add-picker (quantity-on-hand hint).
+ * [showAddAffordance]/[showRemoveAffordance] render a small circular +/-
+ * overlay in the corner — purely decorative, [onClick] is always the single
+ * tap target for the whole tile regardless of which affordance is shown.
+ * [onLongClick], when non-null, wires the tile as a combined click target
+ * (e.g. ListDetailScreen's tap-to-remove/long-press-to-edit-note) rather
+ * than a plain one — kept internal to this component so a call site never
+ * has to layer its own gesture detector on top of [onClick]'s.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun UrsSquareTile(
+    title: String,
+    catalogImageId: Int?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
+    dimmed: Boolean = false,
+    quantityBadge: String? = null,
+    showAddAffordance: Boolean = false,
+    showRemoveAffordance: Boolean = false,
+) {
+    val alpha = if (dimmed) UrsTheme.colors.disabledAlpha else 1f
+
+    UrsCard(
+        radius = Radius.row,
+        contentPadding = PaddingValues(0.dp),
+        modifier = modifier
+            .aspectRatio(1f)
+            .then(
+                if (onLongClick != null) {
+                    Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
+                } else {
+                    Modifier.clickable(onClick = onClick)
+                },
+            ),
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                    TileImage(catalogImageId = catalogImageId, contentDescription = title, alpha = alpha)
+                }
+                UrsText(
+                    text = title,
+                    style = UrsTheme.typography.caption.copy(
+                        textDecoration = if (dimmed) TextDecoration.LineThrough else TextDecoration.None,
+                    ),
+                    color = UrsTheme.colors.onSurface.copy(alpha = alpha),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.s, vertical = Spacing.xs),
+                )
+            }
+
+            if (quantityBadge != null) {
+                UrsPill(
+                    text = quantityBadge,
+                    modifier = Modifier.align(Alignment.TopStart).padding(Spacing.xs),
+                )
+            }
+
+            if (showAddAffordance || showRemoveAffordance) {
+                TileAffordance(
+                    remove = showRemoveAffordance,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(Spacing.xs),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TileImage(catalogImageId: Int?, contentDescription: String?, alpha: Float) {
+    val imageUrl = catalogImageUrl(catalogImageId)
+    if (imageUrl == null) {
+        PlaceholderIcon(alpha = alpha)
+        return
+    }
+
+    val app = LocalContext.current.applicationContext as UrsApplication
+    SubcomposeAsyncImage(
+        model = imageUrl,
+        imageLoader = app.container.imageLoader,
+        contentDescription = contentDescription,
+        contentScale = ContentScale.Crop,
+        modifier = Modifier.fillMaxSize(),
+        loading = { PlaceholderIcon(alpha = alpha) },
+        error = { PlaceholderIcon(alpha = alpha) },
+    )
+}
+
+@Composable
+private fun PlaceholderIcon(alpha: Float = 1f) {
+    Box(modifier = Modifier.fillMaxSize().background(UrsTheme.colors.background.copy(alpha = alpha)), contentAlignment = Alignment.Center) {
+        UrsIcon(
+            imageVector = Icons.Filled.ShoppingBasket,
+            contentDescription = null,
+            tint = UrsTheme.colors.onSurfaceMuted.copy(alpha = alpha),
+            modifier = Modifier.size(32.dp),
+        )
+    }
+}
+
+@Composable
+private fun TileAffordance(remove: Boolean, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .size(24.dp)
+            .clip(CircleShape)
+            .background(UrsTheme.colors.accent),
+        contentAlignment = Alignment.Center,
+    ) {
+        UrsIcon(
+            imageVector = if (remove) Icons.Filled.Remove else Icons.Filled.Add,
+            contentDescription = null,
+            tint = UrsTheme.colors.onAccent,
+            modifier = Modifier.size(16.dp),
+        )
+    }
+}

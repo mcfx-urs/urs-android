@@ -7,7 +7,10 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import ch.mcfx.urs.UrsApplication
+import ch.mcfx.urs.data.CatalogRepository
 import ch.mcfx.urs.data.InventoryRepository
+import ch.mcfx.urs.data.alphabeticSortKey
+import ch.mcfx.urs.data.local.CatalogProductEntity
 import ch.mcfx.urs.data.local.InventoryProductEntity
 import ch.mcfx.urs.notifications.NotificationChannels
 import ch.mcfx.urs.notifications.ReminderScheduler
@@ -15,26 +18,32 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/** One tracked product tile — [InventoryProductEntity] joined with the catalog product it links to. */
+data class InventoryProductTile(
+    val product: InventoryProductEntity,
+    val name: String,
+    val catalogImageId: Int?,
+)
+
 sealed interface ProductsUiState {
     data object Loading : ProductsUiState
-    data class Data(val products: List<InventoryProductEntity>) : ProductsUiState
+    data class Data(val products: List<InventoryProductTile>) : ProductsUiState
 }
 
-data class ProductFormState(
-    val name: String = "",
+data class AddProductFormState(
     val submitting: Boolean = false,
     val submitFailed: Boolean = false,
-) {
-    val isValid: Boolean get() = name.isNotBlank()
-}
+)
 
 // Long-press popup state: quantity + the two warning-color thresholds +
 // an optional daily low-stock reminder, all for one specific product.
 data class ProductSettingsFormState(
-    val product: InventoryProductEntity? = null,
+    val product: InventoryProductTile? = null,
     val quantity: String = "",
     val firstThreshold: String = "",
     val secondThreshold: String = "",
@@ -47,8 +56,11 @@ data class ProductSettingsFormState(
 )
 
 class ProductsViewModel(
-    private val repository: InventoryRepository,
-    private val categoryId: String,
+    private val inventoryRepository: InventoryRepository,
+    private val catalogRepository: CatalogRepository,
+    private val inventoryId: String,
+    private val inventoryName: String,
+    private val categoryId: String?,
     private val categoryName: String,
     private val reminderScheduler: ReminderScheduler,
 ) : ViewModel() {
@@ -56,11 +68,22 @@ class ProductsViewModel(
     private val _uiState = MutableStateFlow<ProductsUiState>(ProductsUiState.Loading)
     val uiState: StateFlow<ProductsUiState> = _uiState.asStateFlow()
 
-    private val _formState = MutableStateFlow(ProductFormState())
-    val formState: StateFlow<ProductFormState> = _formState.asStateFlow()
+    private val _formState = MutableStateFlow(AddProductFormState())
+    val formState: StateFlow<AddProductFormState> = _formState.asStateFlow()
 
     private val _showForm = MutableStateFlow(false)
     val showForm: StateFlow<Boolean> = _showForm.asStateFlow()
+
+    // Deliberately independent of _formState (see AddProductViewModel's own
+    // query/results split, the same shape this mirrors) — the search itself
+    // writes to _results, so collecting it as part of the same state this
+    // search loop keys off of would re-trigger the search on every one of
+    // its own results, an easy but real feedback-loop bug.
+    private val _query = MutableStateFlow("")
+    val query: StateFlow<String> = _query.asStateFlow()
+
+    private val _results = MutableStateFlow<List<CatalogProductEntity>>(emptyList())
+    val results: StateFlow<List<CatalogProductEntity>> = _results.asStateFlow()
 
     private val _settingsForm = MutableStateFlow(ProductSettingsFormState())
     val settingsForm: StateFlow<ProductSettingsFormState> = _settingsForm.asStateFlow()
@@ -69,20 +92,41 @@ class ProductsViewModel(
     val showSettings: StateFlow<Boolean> = _showSettings.asStateFlow()
 
     init {
-        // Room-backed Flow, same shape as CategoriesViewModel/FuelViewModel —
-        // load() below only refreshes the cache opportunistically.
         viewModelScope.launch {
-            repository.observeProducts(categoryId).collect { _uiState.value = ProductsUiState.Data(it) }
+            combine(inventoryRepository.observeProducts(inventoryId), catalogRepository.observeAll()) { products, catalogProducts ->
+                val catalogById = catalogProducts.associateBy { it.id }
+                products
+                    .mapNotNull { product ->
+                        val catalog = catalogById[product.catalogProductId] ?: return@mapNotNull null
+                        if (catalog.catalogCategoryId != categoryId) return@mapNotNull null
+                        InventoryProductTile(product = product, name = catalog.name, catalogImageId = catalog.catalogImageId)
+                    }
+                    .sortedBy { it.name.alphabeticSortKey() }
+            }.collect { _uiState.value = ProductsUiState.Data(it) }
+        }
+        // collectLatest (not flatMapLatest) — same reasoning as
+        // AddProductViewModel's own search collector.
+        viewModelScope.launch {
+            _query.collectLatest { q ->
+                if (q.isBlank()) {
+                    _results.value = emptyList()
+                    return@collectLatest
+                }
+                catalogRepository.search(q).collect { _results.value = it }
+            }
         }
         load()
     }
 
     fun load() {
-        viewModelScope.launch { repository.refreshFromBackend() }
+        viewModelScope.launch { inventoryRepository.refreshFromBackend() }
+        viewModelScope.launch { catalogRepository.refreshFromBackend() }
     }
 
     fun openForm() {
-        _formState.value = ProductFormState()
+        _formState.value = AddProductFormState()
+        _query.value = ""
+        _results.value = emptyList()
         _showForm.value = true
     }
 
@@ -90,19 +134,34 @@ class ProductsViewModel(
         _showForm.value = false
     }
 
-    fun setName(value: String) = _formState.update { it.copy(name = value) }
+    fun setQuery(value: String) {
+        _query.value = value
+    }
 
-    fun submit() {
+    /** Track an existing catalog product in this inventory — see [InventoryRepository.createProduct]'s dedup doc comment. */
+    fun trackExistingProduct(product: CatalogProductEntity) {
+        viewModelScope.launch {
+            inventoryRepository.createProduct(inventoryId = inventoryId, catalogProductId = product.id, quantity = 0)
+            _showForm.value = false
+        }
+    }
+
+    /**
+     * "Type a new product name" path — creates a genuinely new shared
+     * catalog product first (direct, synchronous REST call, see
+     * [CatalogRepository.createProduct]'s doc comment), then tracks it in
+     * this inventory.
+     */
+    fun createAndTrackProduct() {
         val form = _formState.value
-        if (!form.isValid || form.submitting) return
+        val name = _query.value.trim()
+        if (name.isBlank() || form.submitting) return
 
         viewModelScope.launch {
             _formState.update { it.copy(submitting = true, submitFailed = false) }
             try {
-                repository.createProduct(categoryId = categoryId, name = form.name.trim(), quantity = 0)
-                // createProduct is a local-only write and returns instantly —
-                // no network round-trip to wait on, so the form can close
-                // right away (see FuelViewModel.submit).
+                val catalogProduct = catalogRepository.createProduct(name = name, catalogCategoryId = categoryId)
+                inventoryRepository.createProduct(inventoryId = inventoryId, catalogProductId = catalogProduct.id, quantity = 0)
                 _showForm.value = false
             } catch (e: CancellationException) {
                 throw e
@@ -112,60 +171,16 @@ class ProductsViewModel(
         }
     }
 
-    fun increment(product: InventoryProductEntity) = adjustQuantity(product, +1)
-
-    fun decrement(product: InventoryProductEntity) = adjustQuantity(product, -1)
-
-    // Direct network call, no outbox — see InventoryRepository
-    // .updateProductQuantity's doc comment. Nothing to update server-side
-    // for a product that hasn't synced yet, so the stepper is a no-op for
-    // one until then.
-    //
-    // null quantity means "not currently tracked" (paused) — a state below
-    // 0, not the same as it. Decrementing past 0 lands there; incrementing
-    // from there lands back on 0, not 1, so the stepper always moves by
-    // exactly one step in either direction (jumping straight to a specific
-    // number is what the long-press settings popup is for).
-    private fun adjustQuantity(product: InventoryProductEntity, delta: Int) {
-        val serverId = product.serverId ?: return
-        val currentQuantity = product.quantity
-        val newQuantity = when {
-            delta > 0 && currentQuantity == null -> 0
-            delta < 0 && currentQuantity == null -> return
-            delta < 0 && currentQuantity == 0 -> null
-            else -> (currentQuantity!! + delta).coerceAtLeast(0)
-        }
-        if (newQuantity == currentQuantity) return
-
+    fun deleteProduct(tile: InventoryProductTile) {
+        // Same "nothing to delete server-side yet" guard as before .
+        val serverId = tile.product.serverId ?: return
         viewModelScope.launch {
             try {
-                repository.updateProductQuantity(
-                    categoryId = categoryId,
-                    productId = serverId,
-                    name = product.name,
-                    newQuantity = newQuantity,
-                )
+                inventoryRepository.deleteProduct(serverId)
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
-                // Best-effort: the row simply keeps showing the last-known
-                // quantity if the update failed server-side.
-            }
-        }
-    }
-
-    fun deleteProduct(product: InventoryProductEntity) {
-        // Same "nothing to delete server-side yet" guard as
-        // CategoriesViewModel.deleteCategory.
-        val serverId = product.serverId ?: return
-        viewModelScope.launch {
-            try {
-                repository.deleteProduct(serverId)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                // Best-effort: the list simply keeps showing the product if the
-                // delete failed server-side; the user can just retry the tap.
+                // Best-effort: the tile grid simply keeps showing the product if the delete failed server-side.
             }
         }
     }
@@ -174,9 +189,10 @@ class ProductsViewModel(
     // product. Prefilled from whatever's already persisted on the backend —
     // reminderEnabled is derived from those fields being non-empty rather
     // than tracked separately, so a fresh load() always reflects reality.
-    fun openSettings(product: InventoryProductEntity) {
+    fun openSettings(tile: InventoryProductTile) {
+        val product = tile.product
         _settingsForm.value = ProductSettingsFormState(
-            product = product,
+            product = tile,
             quantity = product.quantity?.toString().orEmpty(),
             firstThreshold = product.firstThreshold?.toString().orEmpty(),
             secondThreshold = product.secondThreshold?.toString().orEmpty(),
@@ -219,8 +235,8 @@ class ProductsViewModel(
         reminderBody: String,
     ) {
         val form = _settingsForm.value
-        val product = form.product ?: return
-        val serverId = product.serverId ?: return
+        val tile = form.product ?: return
+        val serverId = tile.product.serverId ?: return
         if (form.submitting) return
 
         val first = form.firstThreshold.toIntOrNull()
@@ -240,20 +256,17 @@ class ProductsViewModel(
             return
         }
 
-        // Blank means "not tracked" here too, same as clearing it via the
-        // stepper — not defaulted to 0, so the popup can also be used to
-        // pause tracking a product.
+        // Blank means "not tracked" here too — not defaulted to 0, so the
+        // popup can also be used to pause tracking a product.
         val newQuantity = form.quantity.toIntOrNull()
 
         viewModelScope.launch {
             _settingsForm.update { it.copy(submitting = true, error = null) }
             try {
-                if (newQuantity != product.quantity) {
-                    repository.updateProductQuantity(
-                        categoryId = categoryId, productId = serverId, name = product.name, newQuantity = newQuantity,
-                    )
+                if (newQuantity != tile.product.quantity) {
+                    inventoryRepository.updateProductQuantity(productId = serverId, newQuantity = newQuantity)
                 }
-                repository.updateProductSettings(
+                inventoryRepository.updateProductSettings(
                     productId = serverId,
                     firstThreshold = first,
                     secondThreshold = second,
@@ -271,8 +284,8 @@ class ProductsViewModel(
                         minute = minute,
                         title = reminderTitle,
                         body = reminderBody,
-                        deepLinkRoute = InventoryRoutes.products(categoryId, categoryName),
-                        conditionInventoryCategoryId = categoryId,
+                        deepLinkRoute = InventoryRoutes.products(inventoryId, inventoryName, categoryId, categoryName),
+                        conditionInventoryId = inventoryId,
                         conditionInventoryProductId = serverId,
                         conditionBelowQuantity = reminderThreshold,
                     )
@@ -298,10 +311,23 @@ class ProductsViewModel(
         private fun reminderIdFor(productId: String): Int =
             INVENTORY_REMINDER_ID_BASE + (productId.toIntOrNull() ?: productId.hashCode().and(0xFFFF))
 
-        fun factory(categoryId: String, categoryName: String): ViewModelProvider.Factory = viewModelFactory {
+        fun factory(
+            inventoryId: String,
+            inventoryName: String,
+            categoryId: String?,
+            categoryName: String,
+        ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as UrsApplication
-                ProductsViewModel(app.container.inventoryRepository, categoryId, categoryName, app.container.reminderScheduler)
+                ProductsViewModel(
+                    app.container.inventoryRepository,
+                    app.container.catalogRepository,
+                    inventoryId,
+                    inventoryName,
+                    categoryId,
+                    categoryName,
+                    app.container.reminderScheduler,
+                )
             }
         }
     }

@@ -30,7 +30,7 @@ class ReminderScheduler(
     private val context: Context,
     private val store: ReminderStore,
     private val sender: NotificationSender,
-    private val quantityLookup: suspend (categoryId: String, productId: String) -> Int? = { _, _ -> null },
+    private val quantityLookup: suspend (inventoryId: String, productId: String) -> Int? = { _, _ -> null },
 ) {
 
     // canScheduleExactAlarms() itself requires API 31 — below that, exact
@@ -47,13 +47,13 @@ class ReminderScheduler(
         title: String,
         body: String,
         deepLinkRoute: String? = null,
-        conditionInventoryCategoryId: String? = null,
+        conditionInventoryId: String? = null,
         conditionInventoryProductId: String? = null,
         conditionBelowQuantity: Int? = null,
     ) {
         val reminder = ReminderConfig(
             id, channelId, hour, minute, title, body, deepLinkRoute, lastFiredDate = null,
-            conditionInventoryCategoryId = conditionInventoryCategoryId,
+            conditionInventoryId = conditionInventoryId,
             conditionInventoryProductId = conditionInventoryProductId,
             conditionBelowQuantity = conditionBelowQuantity,
         )
@@ -109,10 +109,10 @@ class ReminderScheduler(
     // quantity can't be determined (product deleted, network unreachable),
     // fails closed — skip rather than risk a false "still low" alert.
     private suspend fun conditionMet(reminder: ReminderConfig): Boolean {
-        val categoryId = reminder.conditionInventoryCategoryId ?: return true
+        val inventoryId = reminder.conditionInventoryId ?: return true
         val productId = reminder.conditionInventoryProductId ?: return true
         val threshold = reminder.conditionBelowQuantity ?: return true
-        val currentQuantity = quantityLookup(categoryId, productId) ?: return false
+        val currentQuantity = quantityLookup(inventoryId, productId) ?: return false
         return currentQuantity < threshold
     }
 

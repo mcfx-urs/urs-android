@@ -7,15 +7,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- Shopping lists: create, rename, and delete lists from a new Shopping
-  List section in the navigation drawer; each list's items are grouped
-  by inventory category, with checked-off items sinking to the bottom
-  of their group. Products can be added by searching the predefined
-  catalog or the household's own inventory, or by creating a brand-new
-  custom product on the spot; the same product can be added to a list
-  more than once with different notes.
-- Adding a household product to a shopping list now shows its up to
-  three most recently used notes as tap-to-fill chips.
+- Shopping lists: create, rename, delete, and share lists with specific
+  household members from a new Shopping List section in the navigation
+  drawer. Each list's items render as a tile grid grouped by catalog
+  category, tapping a tile adds/removes it. Products can be added from
+  a POPULAR/RECENT/CATEGORIES tabbed picker with search, or by creating
+  a brand-new custom product on the spot; the same product can be added
+  to a list more than once with different notes.
+- Inventory: named, ownable inventories (create/rename/delete/share)
+  each tracking a set of catalog products with quantities and
+  low-stock thresholds/reminders, rendered as the same tile grid as
+  the shopping list. Products show their tracked quantity as a badge;
+  tapping opens the quantity/settings sheet.
+- Adding a product to a shopping list shows its up to three most
+  recently used notes as tap-to-fill chips, and a shopping-list product
+  tile shows a quantity-on-hand badge when it's tracked in an
+  accessible inventory.
+- Product/category images render throughout Inventory and Shopping
+  List, backed by the shared product catalog's image store.
+- A "Recently used" section at the bottom of a shopping list, fed by
+  the same data as the add-product picker's RECENT tab.
 - A Shopping List tile on the home screen, next to Fuel.
 - Login: the app now requires signing in (backend auth landed in ),
   gating the whole app behind a new login screen. Access/refresh tokens
@@ -36,11 +47,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- Inventory categories and products are now offline-first: cached locally
-  in Room, created offline via the same outbox/sync pattern as fuel fills
-  and work-time entries, with a pending/failed sync badge on unsynced rows.
-- The predefined product catalog cache now refreshes automatically when
-  the Shopping List section is opened, rather than only on demand.
+- Inventories and their tracked products are now offline-first: cached
+  locally in Room, created offline via the same outbox/sync pattern as
+  fuel fills and work-time entries, with a pending/failed sync badge on
+  unsynced rows.
+- The predefined product catalog (now including categories) refreshes
+  automatically when the Shopping List or Inventory section is opened,
+  rather than only on demand.
 
 ### Fixed
 

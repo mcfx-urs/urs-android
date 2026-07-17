@@ -14,13 +14,18 @@ import androidx.room.TypeConverters
         WorkTimeEntryEntity::class,
         WorkTimeBreakEntity::class,
         WorkTimeMonthOverrideEntity::class,
-        InventoryCategoryEntity::class,
+        InventoryEntity::class,
         InventoryProductEntity::class,
+        CatalogCategoryEntity::class,
         CatalogProductEntity::class,
+        RecentlyUsedProductEntity::class,
         ListEntity::class,
         ListItemEntity::class,
     ],
-    version = 8,
+    // Bumped for catalog/inventory/list-item schema rework (see
+    // AppContainer.database's fallbackToDestructiveMigration doc comment —
+    // still no Migration objects needed at this pre-release stage).
+    version = 9,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -32,9 +37,11 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun carDao(): CarDao
     abstract fun workTimeDao(): WorkTimeDao
     abstract fun workTimeMonthOverrideDao(): WorkTimeMonthOverrideDao
-    abstract fun inventoryCategoryDao(): InventoryCategoryDao
+    abstract fun inventoryDao(): InventoryDao
     abstract fun inventoryProductDao(): InventoryProductDao
+    abstract fun catalogCategoryDao(): CatalogCategoryDao
     abstract fun catalogProductDao(): CatalogProductDao
+    abstract fun recentlyUsedProductDao(): RecentlyUsedProductDao
     abstract fun listDao(): ListDao
     abstract fun listItemDao(): ListItemDao
 }

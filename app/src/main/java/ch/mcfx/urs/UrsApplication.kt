@@ -32,6 +32,8 @@ import ch.mcfx.urs.vpn.NetworkGate
 import ch.mcfx.urs.vpn.VpnConfigRepository
 import ch.mcfx.urs.vpn.WifiSsidReader
 import ch.mcfx.urs.vpn.WireGuardManager
+import coil3.ImageLoader
+import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -154,7 +156,7 @@ class AppContainer(context: Context) {
         fillDao = database.fillDao(),
         fillingStationDao = database.fillingStationDao(),
         workTimeDao = database.workTimeDao(),
-        inventoryCategoryDao = database.inventoryCategoryDao(),
+        inventoryDao = database.inventoryDao(),
         inventoryProductDao = database.inventoryProductDao(),
         listDao = database.listDao(),
         listItemDao = database.listItemDao(),
@@ -163,6 +165,14 @@ class AppContainer(context: Context) {
         json = json,
     )
     val locationCapture = LocationCapture(context)
+
+    // Reuses the same authenticated httpClient Retrofit uses (AuthInterceptor
+    // + AuthAuthenticator already attached) — /api/v1/catalog-image/{id} sits
+    // on the protected route subrouter server-side, so an unauthenticated
+    // Coil request would otherwise get a 401.
+    val imageLoader: ImageLoader = ImageLoader.Builder(appContext)
+        .components { add(OkHttpNetworkFetcherFactory(callFactory = { httpClient })) }
+        .build()
 
     val fuelRepository = FuelRepository(
         api = ursApi,
@@ -177,7 +187,7 @@ class AppContainer(context: Context) {
     )
     val inventoryRepository = InventoryRepository(
         api = ursApi,
-        inventoryCategoryDao = database.inventoryCategoryDao(),
+        inventoryDao = database.inventoryDao(),
         inventoryProductDao = database.inventoryProductDao(),
         outboxDao = database.outboxDao(),
         syncManager = syncManager,
@@ -187,14 +197,15 @@ class AppContainer(context: Context) {
     val catalogRepository = CatalogRepository(
         api = ursApi,
         catalogProductDao = database.catalogProductDao(),
+        catalogCategoryDao = database.catalogCategoryDao(),
     )
     val shoppingListRepository = ShoppingListRepository(
         api = ursApi,
         listDao = database.listDao(),
         listItemDao = database.listItemDao(),
-        inventoryProductDao = database.inventoryProductDao(),
-        inventoryCategoryDao = database.inventoryCategoryDao(),
-        inventoryRepository = inventoryRepository,
+        catalogProductDao = database.catalogProductDao(),
+        catalogCategoryDao = database.catalogCategoryDao(),
+        recentlyUsedProductDao = database.recentlyUsedProductDao(),
         outboxDao = database.outboxDao(),
         syncManager = syncManager,
         applicationScope = applicationScope,
@@ -217,6 +228,6 @@ class AppContainer(context: Context) {
     val notificationSender = NotificationSender(context)
     val reminderScheduler = ReminderScheduler(
         context, reminderStore, notificationSender,
-        quantityLookup = { categoryId, productId -> inventoryRepository.getProductQuantity(categoryId, productId) },
+        quantityLookup = { inventoryId, productId -> inventoryRepository.getProductQuantity(inventoryId, productId) },
     )
 }

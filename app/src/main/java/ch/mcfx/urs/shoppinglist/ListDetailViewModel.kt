@@ -10,6 +10,7 @@ import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.data.ShoppingListItemDetail
 import ch.mcfx.urs.data.ShoppingListRepository
 import ch.mcfx.urs.data.alphabeticSortKey
+import ch.mcfx.urs.data.local.CatalogProductEntity
 import ch.mcfx.urs.data.local.publicId
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,12 +19,16 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** One category's items, already sorted — see [ListDetailViewModel]'s "recently used" doc comment. */
+/** One category's items, already sorted. */
 data class ShoppingListCategoryGroup(val categoryName: String, val items: List<ShoppingListItemDetail>)
 
 sealed interface ListDetailUiState {
     data object Loading : ListDetailUiState
-    data class Data(val listName: String, val groups: List<ShoppingListCategoryGroup>) : ListDetailUiState
+    data class Data(
+        val listName: String,
+        val groups: List<ShoppingListCategoryGroup>,
+        val recentlyUsed: List<CatalogProductEntity>,
+    ) : ListDetailUiState
 }
 
 data class AddNoteFormState(
@@ -32,16 +37,19 @@ data class AddNoteFormState(
 )
 
 /**
- * "Recently used" placement design call: a checked item sinks to the bottom
- * of its own category group rather than into one separate cross-category
- * section at the bottom of the whole list — a checked item stays visually
- * near the other items of the same kind (e.g. still under "Drinks"), just
- * de-prioritized within it, rather than losing that context in an
- * undifferentiated pile once several categories have checked items at once.
+ * Tile-grid list detail — groups by `catalog_category_name` (empty
+ * → an "Ohne Kategorie" fallback group), no more checked/purchased state at
+ * all (that concept is gone server-side too, see [ShoppingListItemDetail]'s
+ * doc comment): a tap on a tile removes it from the list — the tile grid
+ * *is* the list, there's no separate check action. A "recently used" tail
+ * section (same data source as [ch.mcfx.urs.shoppinglist.AddProductViewModel]'s
+ * ZULETZT tab, `GET /recently-used-product`) lets adding a recent product
+ * back onto this list happen without opening the full add-product sheet.
  */
 class ListDetailViewModel(
     private val repository: ShoppingListRepository,
     private val listId: String,
+    private val uncategorizedLabel: String,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ListDetailUiState>(ListDetailUiState.Loading)
@@ -55,31 +63,37 @@ class ListDetailViewModel(
 
     init {
         viewModelScope.launch {
-            combine(repository.observeLists(), repository.observeItems(listId)) { lists, items ->
+            combine(
+                repository.observeLists(),
+                repository.observeItems(listId),
+                repository.observeRecentlyUsed(),
+            ) { lists, items, recentlyUsed ->
                 val listName = lists.find { it.publicId == listId }?.name.orEmpty()
                 val groups = items
-                    .groupBy { it.categoryName }
+                    .groupBy { it.categoryName.ifBlank { uncategorizedLabel } }
                     .entries
                     .sortedBy { it.key.alphabeticSortKey() }
                     .map { (categoryName, groupItems) ->
                         ShoppingListCategoryGroup(
                             categoryName = categoryName,
-                            items = groupItems.sortedWith(
-                                compareBy({ it.item.checked }, { it.productName.alphabeticSortKey() }),
-                            ),
+                            items = groupItems.sortedBy { it.productName.alphabeticSortKey() },
                         )
                     }
-                ListDetailUiState.Data(listName = listName, groups = groups)
+                ListDetailUiState.Data(listName = listName, groups = groups, recentlyUsed = recentlyUsed)
             }.collect { _uiState.value = it }
         }
         viewModelScope.launch { repository.refreshFromBackend() }
+        viewModelScope.launch { repository.refreshRecentlyUsed() }
     }
 
-    /** Tap-to-toggle — the only per-item interaction this screen itself offers (editing a note happens via [openNoteForm]). */
-    fun toggleChecked(detail: ShoppingListItemDetail) {
-        viewModelScope.launch {
-            repository.updateItem(detail.item.id, note = detail.item.note, checked = !detail.item.checked)
-        }
+    /** Tap a tile = remove it from the list — no separate check action any more. */
+    fun removeItem(detail: ShoppingListItemDetail) {
+        viewModelScope.launch { repository.deleteItem(detail.item.id) }
+    }
+
+    /** Tap a "recently used" tile = add it back onto this list. */
+    fun addRecentlyUsed(product: CatalogProductEntity) {
+        viewModelScope.launch { repository.addExistingProduct(listId, product.id, note = null) }
     }
 
     fun openNoteForm(detail: ShoppingListItemDetail) {
@@ -96,7 +110,7 @@ class ListDetailViewModel(
         val form = _noteForm.value
         val detail = form.item ?: return
         viewModelScope.launch {
-            repository.updateItem(detail.item.id, note = form.note.trim().ifEmpty { null }, checked = detail.item.checked)
+            repository.updateItem(detail.item.id, note = form.note.trim().ifEmpty { null })
         }
         _noteForm.value = AddNoteFormState()
     }
@@ -110,10 +124,10 @@ class ListDetailViewModel(
     }
 
     companion object {
-        fun factory(listId: String): ViewModelProvider.Factory = viewModelFactory {
+        fun factory(listId: String, uncategorizedLabel: String): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as UrsApplication
-                ListDetailViewModel(app.container.shoppingListRepository, listId)
+                ListDetailViewModel(app.container.shoppingListRepository, listId, uncategorizedLabel)
             }
         }
     }

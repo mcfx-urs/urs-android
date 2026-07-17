@@ -5,12 +5,13 @@ import androidx.room.PrimaryKey
 
 /**
  * Local, always-available mirror of a shopping list — same offline-first
- * shape as [InventoryCategoryEntity] (stable local [id], nullable
- * [serverId]/[outboxId] until confirmed, [syncStatus]), and, unlike
- * inventory categories, also supports offline-first rename/delete via the
- * outbox (see `ShoppingListRepository.renameList`/`deleteList`), mirroring
- * [ch.mcfx.urs.data.local.WorkTimeEntryEntity]'s full create/update/delete
- * outbox shape rather than inventory's create-only one.
+ * shape as [InventoryEntity] (stable local [id], nullable [serverId]/
+ * [outboxId] until confirmed, [syncStatus]), including full create/rename/
+ * delete outbox coverage (see `ShoppingListRepository.renameList`/
+ * `deleteList`), mirroring [ch.mcfx.urs.data.local.WorkTimeEntryEntity]'s
+ * full create/update/delete outbox shape — this was true even before
+ *  gave inventory the identical shape (`InventoryEntity` replacing
+ * the old create-only `InventoryCategoryEntity`).
  */
 @Entity(tableName = "list")
 data class ListEntity(
@@ -33,5 +34,5 @@ data class ListEntity(
 val ListEntity.publicId: String
     get() = serverId ?: localIdStandIn(id)
 
-/** Reverses [publicId] — same shape as [localInventoryCategoryId]. */
+/** Reverses [publicId] — same shape as [localInventoryId]. */
 fun localListId(value: String): Long? = parseLocalIdStandIn(value)

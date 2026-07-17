@@ -1,18 +1,23 @@
 package ch.mcfx.urs.data
 
-import ch.mcfx.urs.data.local.InventoryCategoryDao
-import ch.mcfx.urs.data.local.InventoryCategoryEntity
+import ch.mcfx.urs.data.local.InventoryDao
+import ch.mcfx.urs.data.local.InventoryEntity
 import ch.mcfx.urs.data.local.InventoryProductDao
 import ch.mcfx.urs.data.local.InventoryProductEntity
 import ch.mcfx.urs.data.local.OutboxDao
-import ch.mcfx.urs.data.local.OutboxInventoryCategoryPayload
+import ch.mcfx.urs.data.local.OutboxInventoryDeletePayload
+import ch.mcfx.urs.data.local.OutboxInventoryPayload
 import ch.mcfx.urs.data.local.OutboxInventoryProductPayload
+import ch.mcfx.urs.data.local.OutboxInventoryUpdatePayload
 import ch.mcfx.urs.data.local.OutboxMutationEntity
 import ch.mcfx.urs.data.local.SyncStatus
-import ch.mcfx.urs.data.remote.InventoryCategoryDto
+import ch.mcfx.urs.data.local.publicId
+import ch.mcfx.urs.data.remote.InventoryDto
+import ch.mcfx.urs.data.remote.InventoryPayload
 import ch.mcfx.urs.data.remote.InventoryProductDto
-import ch.mcfx.urs.data.remote.InventoryProductPayload
+import ch.mcfx.urs.data.remote.InventoryProductQuantityPayload
 import ch.mcfx.urs.data.remote.InventoryProductSettingsPayload
+import ch.mcfx.urs.data.remote.InventorySharePayload
 import ch.mcfx.urs.data.remote.UrsApi
 import ch.mcfx.urs.data.sync.SyncManager
 import kotlinx.coroutines.CancellationException
@@ -25,9 +30,21 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
+/**
+ * Offline-first write path for inventories and their tracked products
+ * — same shape as [ShoppingListRepository], with full
+ * create/rename/delete outbox coverage for the inventory itself (mirrors
+ * [ch.mcfx.urs.data.local.ListEntity]'s doc comment: an inventory is now a
+ * named, ownable, shareable, multi-instance container just like a shopping
+ * list always was, replacing the old one-inventory-per-user model built on
+ * `inventory_category`). Product identity/grouping is resolved entirely
+ * through `catalog_product` (see [CatalogRepository]) — this class never
+ * touches the shopping list, and vice versa core rule: adding
+ * something to a list never touches inventory).
+ */
 class InventoryRepository(
     private val api: UrsApi,
-    private val inventoryCategoryDao: InventoryCategoryDao,
+    private val inventoryDao: InventoryDao,
     private val inventoryProductDao: InventoryProductDao,
     private val outboxDao: OutboxDao,
     private val syncManager: SyncManager,
@@ -35,56 +52,122 @@ class InventoryRepository(
     private val json: Json,
 ) {
 
-    fun observeCategories(): Flow<List<InventoryCategoryEntity>> =
-        inventoryCategoryDao.observeAll().map { it.sortedBy { c -> c.name.alphabeticSortKey() } }
+    fun observeInventories(): Flow<List<InventoryEntity>> =
+        inventoryDao.observeAll().map { it.sortedBy { i -> i.name.alphabeticSortKey() } }
 
-    fun observeProducts(categoryId: String): Flow<List<InventoryProductEntity>> =
-        inventoryProductDao.observeByCategory(categoryId).map { it.sortedBy { p -> p.name.alphabeticSortKey() } }
+    suspend fun getInventory(localId: Long): InventoryEntity? = inventoryDao.getById(localId)
 
-    /** Household-product half of AddProductScreen's search — see [InventoryProductDao.search]'s doc comment. */
-    fun searchProducts(query: String): Flow<List<InventoryProductEntity>> = inventoryProductDao.search(query)
+    fun observeProducts(inventoryId: String): Flow<List<InventoryProductEntity>> =
+        inventoryProductDao.observeByInventory(inventoryId)
 
     /**
-     * Offline-first write path — the *only* way a category gets created,
-     * online or offline. Same shape as [FuelRepository.createFill]: both
-     * writes below (the outbox row and the local [InventoryCategoryEntity],
+     * Offline-first write path — the *only* way an inventory gets created,
+     * online or offline. Same shape as [ShoppingListRepository.createList]:
+     * both writes below (the outbox row and the local [InventoryEntity],
      * status [SyncStatus.PENDING]) are local-only and instant, a background
      * sync attempt is fired immediately afterwards but never awaited here.
-     *
-     * @return the new row's local [InventoryCategoryEntity.id] — used by
-     * [ch.mcfx.urs.data.ShoppingListRepository.addCatalogProduct] to resolve
-     * this category's [ch.mcfx.urs.data.local.publicId] for the product
-     * create that follows it, without a second Room read.
      */
-    suspend fun createCategory(name: String): Long {
-        val payload = OutboxInventoryCategoryPayload(name = name)
+    suspend fun createInventory(name: String) {
+        val payload = OutboxInventoryPayload(name = name)
         val outboxId = outboxDao.insert(
             OutboxMutationEntity(
-                type = OutboxMutationEntity.TYPE_CREATE_INVENTORY_CATEGORY,
+                type = OutboxMutationEntity.TYPE_CREATE_INVENTORY,
                 payloadJson = json.encodeToString(payload),
                 createdAt = System.currentTimeMillis(),
             ),
         )
-        val localId = inventoryCategoryDao.upsert(
-            InventoryCategoryEntity(outboxId = outboxId, name = name, syncStatus = SyncStatus.PENDING),
-        )
+        inventoryDao.upsert(InventoryEntity(outboxId = outboxId, name = name, syncStatus = SyncStatus.PENDING))
         applicationScope.launch { syncManager.syncNow() }
-        return localId
     }
 
     /**
-     * Offline-first write path — same shape as [createCategory]. [categoryId]
-     * is whatever [InventoryCategoryEntity.publicId] the caller currently
-     * knows the parent category by (a real backend id, or a not-yet-synced
-     * stand-in) — `SyncManager` resolves it to the real id at replay time.
-     * [catalogProductId] links this product back to the predefined catalog
-     * entry it was created from (see [ShoppingListRepository.addCatalogProduct])
-     * — `null` for a manually added product.
-     *
-     * @return the new row's local [InventoryProductEntity.id], same reason as [createCategory]'s.
+     * Offline-first rename — same "rewrite the pending create in place if
+     * not yet synced, otherwise cancel-and-requeue an update" shape as
+     * [ShoppingListRepository.renameList].
      */
-    suspend fun createProduct(categoryId: String, name: String, quantity: Int?, catalogProductId: String? = null): Long {
-        val payload = OutboxInventoryProductPayload(categoryId = categoryId, name = name, quantity = quantity)
+    suspend fun renameInventory(localId: Long, name: String) {
+        val current = inventoryDao.getById(localId) ?: return
+
+        val outboxId = if (current.serverId == null) {
+            val payload = OutboxInventoryPayload(name = name)
+            current.outboxId?.let { outboxDao.updatePayload(it, json.encodeToString(payload)) }
+            current.outboxId
+        } else {
+            current.outboxId?.let { outboxDao.delete(it) }
+            val payload = OutboxInventoryUpdatePayload(serverId = current.serverId, name = name)
+            outboxDao.insert(
+                OutboxMutationEntity(
+                    type = OutboxMutationEntity.TYPE_UPDATE_INVENTORY,
+                    payloadJson = json.encodeToString(payload),
+                    createdAt = System.currentTimeMillis(),
+                ),
+            )
+        }
+
+        inventoryDao.updateFields(localId, name, SyncStatus.PENDING, outboxId)
+        applicationScope.launch { syncManager.syncNow() }
+    }
+
+    /**
+     * Offline-first delete — same shape as [ShoppingListRepository
+     * .deleteList]. The inventory's own tracked products are removed
+     * locally too (Room has no cross-entity cascade), and any of their own
+     * still-pending mutations cancelled first, since they'd otherwise try to
+     * create/update a product against an inventory that's about to stop
+     * existing server-side.
+     */
+    suspend fun deleteInventory(localId: Long) {
+        val current = inventoryDao.getById(localId) ?: return
+        val publicId = current.publicId
+
+        inventoryProductDao.getByInventoryId(publicId).forEach { product -> product.outboxId?.let { outboxDao.delete(it) } }
+        inventoryProductDao.deleteByInventoryId(publicId)
+
+        current.outboxId?.let { outboxDao.delete(it) }
+        inventoryDao.delete(localId)
+
+        val serverId = current.serverId ?: return
+        outboxDao.insert(
+            OutboxMutationEntity(
+                type = OutboxMutationEntity.TYPE_DELETE_INVENTORY,
+                payloadJson = json.encodeToString(OutboxInventoryDeletePayload(serverId = serverId)),
+                createdAt = System.currentTimeMillis(),
+            ),
+        )
+        applicationScope.launch { syncManager.syncNow() }
+    }
+
+    // Sharing management is a direct network call, no outbox — simple,
+    // infrequent management actions rather than core offline-first data
+    // (same shape as deleteProduct/deleteCategory used to have).
+    suspend fun shareInventory(inventoryId: String, userId: String) {
+        api.shareInventory(inventoryId, InventorySharePayload(userId = userId))
+    }
+
+    suspend fun getInventoryShares(inventoryId: String): List<ShareEntry> =
+        emptyAsNull { api.getInventoryShares(inventoryId) }.map { ShareEntry(userId = it.userId) }
+
+    suspend fun removeInventoryShare(inventoryId: String, userId: String) {
+        api.deleteInventoryShare(inventoryId, userId)
+    }
+
+    /**
+     * Offline-first write path — same shape as [createInventory]. [inventoryId]
+     * is whatever [InventoryEntity.publicId] the caller currently knows the
+     * parent inventory by (a real backend id, or a not-yet-synced stand-in)
+     * — `SyncManager` resolves it to the real id at replay time.
+     * [catalogProductId] is always a real `catalog_product` id (no
+     * more manually-typed name, the product identity comes entirely from the
+     * catalog). Deduplicates against an existing tracked row for the same
+     * catalog product *within this inventory* — a product can be tracked in
+     * some inventories and not others, so this dedup is per-inventory, not
+     * household-wide like the old shape this replaces.
+     */
+    suspend fun createProduct(inventoryId: String, catalogProductId: String, quantity: Int?) {
+        val existing = inventoryProductDao.findByCatalogProductId(catalogProductId, inventoryId)
+        if (existing != null) return
+
+        val payload = OutboxInventoryProductPayload(inventoryId = inventoryId, catalogProductId = catalogProductId, quantity = quantity)
         val outboxId = outboxDao.insert(
             OutboxMutationEntity(
                 type = OutboxMutationEntity.TYPE_CREATE_INVENTORY_PRODUCT,
@@ -92,32 +175,24 @@ class InventoryRepository(
                 createdAt = System.currentTimeMillis(),
             ),
         )
-        val localId = inventoryProductDao.upsert(
+        inventoryProductDao.upsert(
             InventoryProductEntity(
                 outboxId = outboxId,
-                categoryId = categoryId,
-                name = name,
-                quantity = quantity,
+                inventoryId = inventoryId,
                 catalogProductId = catalogProductId,
+                quantity = quantity,
                 syncStatus = SyncStatus.PENDING,
             ),
         )
         applicationScope.launch { syncManager.syncNow() }
-        return localId
     }
 
     // Direct REST write, no outbox — deliberately not offline-first in this
     // phase (see WorkTimeRepository.setMonthOverride for the same shape).
-    // The local mirror row is still removed on success, since observeCategories
-    // now drives the category list from Room rather than a fresh network
+    // The local mirror row is still removed on success, since observeProducts
+    // now drives the product list from Room rather than a fresh network
     // fetch each time — without this the deleted row would otherwise linger
     // until the next refreshFromBackend.
-    suspend fun deleteCategory(id: String) {
-        api.deleteInventoryCategory(id)
-        inventoryCategoryDao.deleteByServerId(id)
-    }
-
-    // Same shape as deleteCategory.
     suspend fun deleteProduct(id: String) {
         api.deleteInventoryProduct(id)
         inventoryProductDao.deleteByServerId(id)
@@ -125,14 +200,13 @@ class InventoryRepository(
 
     // null means "not currently tracked" — sent as an empty string, the
     // same not-set convention the backend uses for the threshold fields.
-    // Direct REST write, no outbox (see deleteCategory's doc comment); the
-    // local mirror is updated on success so the stepper's list still
-    // reflects it without waiting on the next refreshFromBackend.
-    suspend fun updateProductQuantity(categoryId: String, productId: String, name: String, newQuantity: Int?) {
-        api.updateInventoryProduct(
-            productId,
-            InventoryProductPayload(categoryId = categoryId, name = name, quantity = newQuantity?.toString().orEmpty()),
-        )
+    // Direct REST write, no outbox (see deleteProduct's doc comment); the
+    // local mirror is updated on success so the tile grid still reflects it
+    // without waiting on the next refreshFromBackend. Quantity is the only
+    // field this route can still change post-creation — no more
+    // name/category to carry along.
+    suspend fun updateProductQuantity(productId: String, newQuantity: Int?) {
+        api.updateInventoryProduct(productId, InventoryProductQuantityPayload(quantity = newQuantity?.toString().orEmpty()))
         inventoryProductDao.updateQuantityByServerId(productId, newQuantity)
     }
 
@@ -140,7 +214,7 @@ class InventoryRepository(
     // updateProductQuantity (different backend route entirely) so neither
     // ever risks clobbering the other's fields. Same direct-REST-write shape
     // as updateProductQuantity, including the local-mirror write-through
-    // (the product list's warning colors read these fields locally).
+    // (the product tile grid's warning colors read these fields locally).
     suspend fun updateProductSettings(
         productId: String,
         firstThreshold: Int?,
@@ -165,34 +239,34 @@ class InventoryRepository(
     }
 
     // Used by ReminderScheduler's conditional-fire check: looks up a single
-    // product's current quantity by re-fetching its category's product list
+    // product's current quantity by re-fetching its inventory's product list
     // (no dedicated "get product by id" backend route exists, and adding one
     // just for this would be solving a problem the existing endpoint already
     // covers). Always a fresh network read, not the Room cache — a
     // conditional reminder needs the backend's current truth, not
     // potentially-stale local data.
-    suspend fun getProductQuantity(categoryId: String, productId: String): Int? =
-        emptyAsNull { api.getInventoryProducts(categoryId) }.find { it.id == productId }?.quantity?.toIntOrNull()
+    suspend fun getProductQuantity(inventoryId: String, productId: String): Int? =
+        emptyAsNull { api.getInventoryProducts(inventoryId) }.find { it.id == productId }?.quantity?.toIntOrNull()
 
     /**
-     * Opportunistic backend refresh for the Room-cached categories/products —
-     * same best-effort shape as [FuelRepository.refreshFromBackend]: run
-     * when reachable, never blocking the UI or surfacing an error on
-     * failure. Products are only refreshed per category already known
-     * locally (matching the backend's own per-category endpoint
+     * Opportunistic backend refresh for the Room-cached inventories/products —
+     * same best-effort shape as [ShoppingListRepository.refreshFromBackend]:
+     * run when reachable, never blocking the UI or surfacing an error on
+     * failure. Products are only refreshed per inventory already known
+     * locally (matching the backend's own per-inventory endpoint
      * granularity — no "all products" route exists), so a cold start still
-     * shows something for whichever category screen the user opens next.
+     * shows something for whichever inventory screen the user opens next.
      * Never touches PENDING/FAILED rows, which exist solely via the outbox
      * replay path above.
      */
     suspend fun refreshFromBackend() {
         refreshQuietly {
-            val categories = emptyAsNull { api.getInventoryCategories() }
-            inventoryCategoryDao.upsertFromServer(categories.map { it.toEntity() })
+            val inventories = emptyAsNull { api.getInventories() }
+            inventoryDao.upsertFromServer(inventories.map { it.toEntity() })
         }
-        inventoryCategoryDao.observeAll().first().mapNotNull { it.serverId }.forEach { categoryId ->
+        inventoryDao.observeAll().first().mapNotNull { it.serverId }.forEach { inventoryId ->
             refreshQuietly {
-                val products = emptyAsNull { api.getInventoryProducts(categoryId) }
+                val products = emptyAsNull { api.getInventoryProducts(inventoryId) }
                 inventoryProductDao.upsertFromServer(products.map { it.toEntity() })
             }
         }
@@ -217,7 +291,7 @@ class InventoryRepository(
         }
 }
 
-private fun InventoryCategoryDto.toEntity() = InventoryCategoryEntity(
+private fun InventoryDto.toEntity() = InventoryEntity(
     serverId = id,
     outboxId = null,
     name = name,
@@ -227,33 +301,25 @@ private fun InventoryCategoryDto.toEntity() = InventoryCategoryEntity(
 private fun InventoryProductDto.toEntity() = InventoryProductEntity(
     serverId = id,
     outboxId = null,
-    categoryId = categoryId,
-    name = name,
+    inventoryId = inventoryId,
+    catalogProductId = catalogProductId,
     quantity = quantity.toIntOrNull(),
     firstThreshold = firstThreshold.toIntOrNull(),
     secondThreshold = secondThreshold.toIntOrNull(),
     reminderThreshold = reminderThreshold.toIntOrNull(),
     reminderHour = reminderHour.toIntOrNull(),
     reminderMinute = reminderMinute.toIntOrNull(),
-    // Overridden by InventoryProductDao.upsertFromServer's local
-    // preservation logic regardless of what's mapped here — see that
-    // field's doc comment on InventoryProductEntity for why.
-    catalogProductId = catalogProductId.ifEmpty { null },
-    recentNote1 = recentNote1.ifEmpty { null },
-    recentNote2 = recentNote2.ifEmpty { null },
-    recentNote3 = recentNote3.ifEmpty { null },
     syncStatus = SyncStatus.SYNCED,
 )
 
 // The backend sorts alphabetically on the raw name, which would clump any
 // emoji-prefixed name together by codepoint instead of alphabetizing by the
 // letter that follows it (e.g. "🍖Kitchen" next to other emoji, not next to
-// other K's) — some categories are expected to have an emoji prefix, some
-// not, so sorting needs to skip past any leading non-letter/non-digit
-// codepoints (emoji or otherwise) before comparing. Internal (not private):
-// ch.mcfx.urs.shoppinglist reuses this for the same category-name sort
-// order, so shopping-list category groups and the inventory category list
-// itself never disagree on ordering.
+// other K's) — some names are expected to have an emoji prefix, some not, so
+// sorting needs to skip past any leading non-letter/non-digit codepoints
+// (emoji or otherwise) before comparing. Internal (not private):
+// ch.mcfx.urs.shoppinglist reuses this for the same name sort order, so
+// shopping-list/inventory lists never disagree on ordering.
 internal fun String.alphabeticSortKey(): String {
     var charIndex = 0
     val codePoints = codePoints().toArray()
