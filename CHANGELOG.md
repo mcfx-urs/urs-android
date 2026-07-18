@@ -54,6 +54,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The predefined product catalog (now including categories) refreshes
   automatically when the Shopping List or Inventory section is opened,
   rather than only on demand.
+- Opening an inventory now goes straight to its tracked products,
+  without an intermediate category-tile step.
+- Product tiles, home screen feature tiles, and the inventory/shopping
+  list row heights now use consistent, equal sizing instead of
+  content-driven heights that varied from tile to tile.
 
 ### Fixed
 
@@ -61,6 +66,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   the screen edge with no way to scroll to the remaining entries.
 - The "add a product" sheet no longer hides its search results or the
   custom-product form behind the on-screen keyboard.
+- A brand-new, empty inventory now has a way to add its first product
+  (previously only reachable by tapping an already-populated category
+  tile, which a fresh inventory doesn't have yet).
 
 ## [0.4.0] - 2026-07-15
 
