@@ -143,7 +143,7 @@ private fun ItemGrid(
                 UrsSquareTile(
                     title = product.name,
                     catalogImageId = product.catalogImageId,
-                    showAddAffordance = true,
+                    mutedTitle = true,
                     onClick = { onAddRecentlyUsed(product) },
                 )
             }
@@ -164,7 +164,6 @@ private fun ItemTile(
     UrsSquareTile(
         title = detail.productName,
         catalogImageId = detail.catalogImageId,
-        showRemoveAffordance = true,
         onClick = { onRemove(detail) },
         onLongClick = { onLongPress(detail) },
     )

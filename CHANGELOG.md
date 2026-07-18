@@ -59,6 +59,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Product tiles, home screen feature tiles, and the inventory/shopping
   list row heights now use consistent, equal sizing instead of
   content-driven heights that varied from tile to tile.
+- Product tiles no longer show a small +/- circle in the corner; a
+  shopping list's "Recently used" tile titles are now shown muted and
+  struck through instead.
 
 ### Fixed
 

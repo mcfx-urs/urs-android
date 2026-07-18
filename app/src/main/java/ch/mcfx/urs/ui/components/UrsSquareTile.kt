@@ -1,7 +1,6 @@
 package ch.mcfx.urs.ui.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
@@ -12,15 +11,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.ShoppingBasket
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextDecoration
@@ -49,11 +44,11 @@ fun catalogImageUrl(catalogImageId: Int?): String? = catalogImageId?.let { "${Bu
  *
  * [dimmed] renders the title strikethrough and the whole tile at reduced
  * opacity — the add-product picker's "already on this list" visual state.
+ * [mutedTitle] only affects the title text (strikethrough, muted grey),
+ * leaving the rest of the tile at full opacity — the shopping list's
+ * "recently used" suggestions, which aren't dimmed/disabled, just marked.
  * [quantityBadge] is an optional small overlay for inventory screens
  * (tracked quantity) or the shopping-list add-picker (quantity-on-hand hint).
- * [showAddAffordance]/[showRemoveAffordance] render a small circular +/-
- * overlay in the corner — purely decorative, [onClick] is always the single
- * tap target for the whole tile regardless of which affordance is shown.
  * [onLongClick], when non-null, wires the tile as a combined click target
  * (e.g. ListDetailScreen's tap-to-remove/long-press-to-edit-note) rather
  * than a plain one — kept internal to this component so a call site never
@@ -68,11 +63,12 @@ fun UrsSquareTile(
     modifier: Modifier = Modifier,
     onLongClick: (() -> Unit)? = null,
     dimmed: Boolean = false,
+    mutedTitle: Boolean = false,
     quantityBadge: String? = null,
-    showAddAffordance: Boolean = false,
-    showRemoveAffordance: Boolean = false,
 ) {
     val alpha = if (dimmed) UrsTheme.colors.disabledAlpha else 1f
+    val titleStrikethrough = dimmed || mutedTitle
+    val titleColor = if (mutedTitle && !dimmed) LightUrsColors.onSurfaceMuted else LightUrsColors.onSurface.copy(alpha = alpha)
 
     UrsCard(
         radius = Radius.row,
@@ -103,10 +99,11 @@ fun UrsSquareTile(
                 UrsText(
                     text = title,
                     style = UrsTheme.typography.caption.copy(
-                        textDecoration = if (dimmed) TextDecoration.LineThrough else TextDecoration.None,
+                        textDecoration = if (titleStrikethrough) TextDecoration.LineThrough else TextDecoration.None,
                     ),
-                    // Dark, matching the tile's always-light background above.
-                    color = LightUrsColors.onSurface.copy(alpha = alpha),
+                    // Dark by default, matching the tile's always-light background above;
+                    // muted grey instead when only the title (not the whole tile) is marked.
+                    color = titleColor,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.s, vertical = Spacing.xs),
                 )
             }
@@ -115,13 +112,6 @@ fun UrsSquareTile(
                 UrsPill(
                     text = quantityBadge,
                     modifier = Modifier.align(Alignment.TopStart).padding(Spacing.xs),
-                )
-            }
-
-            if (showAddAffordance || showRemoveAffordance) {
-                TileAffordance(
-                    remove = showRemoveAffordance,
-                    modifier = Modifier.align(Alignment.TopEnd).padding(Spacing.xs),
                 )
             }
         }
@@ -164,22 +154,4 @@ private fun PlaceholderIcon(alpha: Float = 1f) {
         tint = LightUrsColors.onSurfaceMuted.copy(alpha = alpha),
         modifier = Modifier.size(32.dp),
     )
-}
-
-@Composable
-private fun TileAffordance(remove: Boolean, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .size(24.dp)
-            .clip(CircleShape)
-            .background(UrsTheme.colors.accent),
-        contentAlignment = Alignment.Center,
-    ) {
-        UrsIcon(
-            imageVector = if (remove) Icons.Filled.Remove else Icons.Filled.Add,
-            contentDescription = null,
-            tint = UrsTheme.colors.onAccent,
-            modifier = Modifier.size(16.dp),
-        )
-    }
 }
