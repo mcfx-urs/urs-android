@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import ch.mcfx.urs.BuildConfig
 import ch.mcfx.urs.UrsApplication
+import ch.mcfx.urs.ui.theme.LightUrsColors
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Radius
 import ch.mcfx.urs.ui.tokens.Spacing
@@ -76,6 +77,14 @@ fun UrsSquareTile(
     UrsCard(
         radius = Radius.row,
         contentPadding = PaddingValues(0.dp),
+        // Always the light palette's card color, regardless of the app's
+        // active theme — catalog product photos are studio shots on a
+        // white/cream backdrop (source data, not something this app
+        // controls), so the whole tile (photo *and* title) takes on that
+        // same light backdrop instead of only the image area. That's what
+        // makes the photo's own background read as intentional rather than
+        // a stray white patch dropped onto an otherwise dark tile.
+        backgroundColor = LightUrsColors.background,
         modifier = modifier
             .aspectRatio(1f)
             .then(
@@ -96,7 +105,8 @@ fun UrsSquareTile(
                     style = UrsTheme.typography.caption.copy(
                         textDecoration = if (dimmed) TextDecoration.LineThrough else TextDecoration.None,
                     ),
-                    color = UrsTheme.colors.onSurface.copy(alpha = alpha),
+                    // Dark, matching the tile's always-light background above.
+                    color = LightUrsColors.onSurface.copy(alpha = alpha),
                     modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.s, vertical = Spacing.xs),
                 )
             }
@@ -118,36 +128,42 @@ fun UrsSquareTile(
     }
 }
 
+// Fit (not Crop) so a non-square product photo is never cut off, shrunk a
+// bit further via the padding below so it sits clearly inside the tile
+// rather than touching its edges.
 @Composable
 private fun TileImage(catalogImageId: Int?, contentDescription: String?, alpha: Float) {
     val imageUrl = catalogImageUrl(catalogImageId)
-    if (imageUrl == null) {
-        PlaceholderIcon(alpha = alpha)
-        return
-    }
+    Box(
+        modifier = Modifier.fillMaxSize().padding(Spacing.m),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (imageUrl == null) {
+            PlaceholderIcon(alpha = alpha)
+            return@Box
+        }
 
-    val app = LocalContext.current.applicationContext as UrsApplication
-    SubcomposeAsyncImage(
-        model = imageUrl,
-        imageLoader = app.container.imageLoader,
-        contentDescription = contentDescription,
-        contentScale = ContentScale.Crop,
-        modifier = Modifier.fillMaxSize(),
-        loading = { PlaceholderIcon(alpha = alpha) },
-        error = { PlaceholderIcon(alpha = alpha) },
-    )
+        val app = LocalContext.current.applicationContext as UrsApplication
+        SubcomposeAsyncImage(
+            model = imageUrl,
+            imageLoader = app.container.imageLoader,
+            contentDescription = contentDescription,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier.fillMaxSize(),
+            loading = { PlaceholderIcon(alpha = alpha) },
+            error = { PlaceholderIcon(alpha = alpha) },
+        )
+    }
 }
 
 @Composable
 private fun PlaceholderIcon(alpha: Float = 1f) {
-    Box(modifier = Modifier.fillMaxSize().background(UrsTheme.colors.background.copy(alpha = alpha)), contentAlignment = Alignment.Center) {
-        UrsIcon(
-            imageVector = Icons.Filled.ShoppingBasket,
-            contentDescription = null,
-            tint = UrsTheme.colors.onSurfaceMuted.copy(alpha = alpha),
-            modifier = Modifier.size(32.dp),
-        )
-    }
+    UrsIcon(
+        imageVector = Icons.Filled.ShoppingBasket,
+        contentDescription = null,
+        tint = LightUrsColors.onSurfaceMuted.copy(alpha = alpha),
+        modifier = Modifier.size(32.dp),
+    )
 }
 
 @Composable
