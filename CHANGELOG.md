@@ -62,6 +62,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Product tiles no longer show a small +/- circle in the corner; a
   shopping list's "Recently used" tile titles are now shown muted and
   struck through instead.
+- The add-a-product panel is now docked to the top of the screen instead
+  of a bottom sheet, with a fixed size across every tab and the note
+  step, and hides the list's floating add button while open.
+- The add-a-product panel's Categories tab now shows an alphabetical
+  list of category names instead of image tiles.
 
 ### Fixed
 

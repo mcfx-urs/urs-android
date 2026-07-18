@@ -26,6 +26,7 @@ import ch.mcfx.urs.data.ShoppingListItemDetail
 import ch.mcfx.urs.data.local.CatalogProductEntity
 import ch.mcfx.urs.ui.components.UrsBottomSheet
 import ch.mcfx.urs.ui.components.UrsButton
+import ch.mcfx.urs.ui.components.UrsDockedPanel
 import ch.mcfx.urs.ui.components.UrsFab
 import ch.mcfx.urs.ui.components.UrsProgressIndicator
 import ch.mcfx.urs.ui.components.UrsSquareTile
@@ -67,7 +68,7 @@ fun ListDetailScreen(
             }
         }
 
-        if (uiState is ListDetailUiState.Data) {
+        if (uiState is ListDetailUiState.Data && !showAddProduct) {
             UrsFab(
                 onClick = viewModel::openAddProduct,
                 modifier = Modifier.align(Alignment.BottomEnd).padding(Spacing.l),
@@ -78,8 +79,8 @@ fun ListDetailScreen(
     }
 
     if (showAddProduct) {
-        UrsBottomSheet(onDismissRequest = viewModel::closeAddProduct) {
-            AddProductScreen(listId = listId)
+        UrsDockedPanel(onDismissRequest = viewModel::closeAddProduct) {
+            AddProductScreen(listId = listId, onClose = viewModel::closeAddProduct)
         }
     }
 

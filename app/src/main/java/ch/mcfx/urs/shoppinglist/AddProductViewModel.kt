@@ -9,6 +9,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.data.CatalogRepository
 import ch.mcfx.urs.data.ShoppingListRepository
+import ch.mcfx.urs.data.alphabeticSortKey
 import ch.mcfx.urs.data.local.CatalogCategoryEntity
 import ch.mcfx.urs.data.local.CatalogProductEntity
 import kotlinx.coroutines.CancellationException
@@ -81,7 +82,10 @@ class AddProductViewModel(
                 _listProductIds.value = items.map { it.item.catalogProductId }.toSet()
             }
         }
-        viewModelScope.launch { catalogRepository.observeCategories().collect { _categories.value = it } }
+        viewModelScope.launch {
+            catalogRepository.observeCategories()
+                .collect { _categories.value = it.sortedBy { category -> category.name.alphabeticSortKey() } }
+        }
 
         // collectLatest (not flatMapLatest) so a fast typist's/tab-switcher's
         // stale in-flight combine() is cancelled cleanly without an

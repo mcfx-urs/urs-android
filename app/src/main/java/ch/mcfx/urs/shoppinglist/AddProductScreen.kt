@@ -5,57 +5,86 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.items as gridItems
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
 import ch.mcfx.urs.data.local.CatalogCategoryEntity
 import ch.mcfx.urs.data.local.CatalogProductEntity
 import ch.mcfx.urs.ui.components.UrsButton
+import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsFilterChip
+import ch.mcfx.urs.ui.components.UrsIconButton
 import ch.mcfx.urs.ui.components.UrsOutlinedButton
 import ch.mcfx.urs.ui.components.UrsSquareTile
 import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.components.UrsTextField
 import ch.mcfx.urs.ui.theme.UrsTheme
+import ch.mcfx.urs.ui.tokens.Radius
 import ch.mcfx.urs.ui.tokens.Spacing
 
 /**
- * Content of the "add a product to this list" sheet, opened from
+ * Content of the "add a product to this list" panel, opened from
  * [ListDetailScreen]'s FAB — redesigned around three tabs (HÄUFIG/ZULETZT/
  * KATEGORIEN) plus a search box that overrides all three when non-blank
- *. A single sheet instance switches between "browse/search" and
- * "confirm-note" modes driven by [AddProductViewModel]'s state, same
- * "no nested UrsBottomSheet" reasoning as the pre- screen this
- * replaces.
+ *. A single [ch.mcfx.urs.ui.components.UrsDockedPanel] instance
+ * switches between "browse/search" and "confirm-note" modes driven by
+ * [AddProductViewModel]'s state, same "no nested overlay" reasoning as the
+ * pre- screen this replaces — the panel's own fixed height (set by its
+ * caller) is what keeps both modes, and every tab within browse mode, the
+ * exact same size; this composable only ever fills that given height, never
+ * measures its own.
  */
 @Composable
 fun AddProductScreen(
     listId: String,
+    onClose: () -> Unit,
     viewModel: AddProductViewModel = viewModel(factory = AddProductViewModel.factory(listId)),
 ) {
     val noteInput by viewModel.noteInput.collectAsStateWithLifecycle()
 
-    if (noteInput != null) {
-        NoteInputMode(state = noteInput, viewModel = viewModel)
-    } else {
-        BrowseMode(viewModel = viewModel)
+    Column(
+        modifier = Modifier.padding(horizontal = Spacing.xl).fillMaxHeight(),
+        verticalArrangement = Arrangement.spacedBy(Spacing.m),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            UrsText(
+                text = noteInput?.product?.name ?: stringResource(R.string.shoppinglist_add_product_title),
+                style = UrsTheme.typography.screenTitle,
+            )
+            UrsIconButton(onClick = onClose, contentDescription = stringResource(R.string.close), imageVector = Icons.Filled.Close)
+        }
+
+        if (noteInput != null) {
+            NoteInputMode(state = noteInput, viewModel = viewModel, modifier = Modifier.weight(1f))
+        } else {
+            BrowseMode(viewModel = viewModel, modifier = Modifier.weight(1f))
+        }
     }
 }
 
 @Composable
-private fun BrowseMode(viewModel: AddProductViewModel) {
+private fun BrowseMode(viewModel: AddProductViewModel, modifier: Modifier = Modifier) {
     val query by viewModel.query.collectAsStateWithLifecycle()
     val selectedTab by viewModel.selectedTab.collectAsStateWithLifecycle()
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
@@ -66,11 +95,9 @@ private fun BrowseMode(viewModel: AddProductViewModel) {
     val quickCreating by viewModel.quickCreating.collectAsStateWithLifecycle()
 
     Column(
-        modifier = Modifier.padding(horizontal = Spacing.xl).heightIn(max = 520.dp),
+        modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(Spacing.m),
     ) {
-        UrsText(stringResource(R.string.shoppinglist_add_product_title), style = UrsTheme.typography.screenTitle)
-
         UrsTextField(
             value = query,
             onValueChange = viewModel::setQuery,
@@ -101,7 +128,7 @@ private fun BrowseMode(viewModel: AddProductViewModel) {
 
         when {
             query.isBlank() && selectedTab == AddProductTab.CATEGORIES && selectedCategory == null ->
-                CategoryTileGrid(categories = categories, onSelect = viewModel::selectCategory)
+                CategoryList(categories = categories, onSelect = viewModel::selectCategory)
 
             else -> {
                 if (query.isBlank() && selectedTab == AddProductTab.CATEGORIES && selectedCategory != null) {
@@ -142,16 +169,27 @@ private fun BrowseMode(viewModel: AddProductViewModel) {
     }
 }
 
+// Alphabetical rows, not tiles — categories have no product photo, so an
+// image-shaped tile would only ever show the basket placeholder icon; a
+// plain list reads better for text-only entries (already alphabetically
+// sorted by AddProductViewModel).
 @Composable
-private fun CategoryTileGrid(categories: List<CatalogCategoryEntity>, onSelect: (CatalogCategoryEntity) -> Unit) {
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
-        verticalArrangement = Arrangement.spacedBy(Spacing.s),
-        horizontalArrangement = Arrangement.spacedBy(Spacing.s),
-    ) {
+private fun CategoryList(categories: List<CatalogCategoryEntity>, onSelect: (CatalogCategoryEntity) -> Unit) {
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(Spacing.s)) {
         items(categories, key = { it.id }) { category ->
-            UrsSquareTile(title = category.name, catalogImageId = null, onClick = { onSelect(category) })
+            CategoryRow(category = category, onSelect = onSelect)
         }
+    }
+}
+
+@Composable
+private fun CategoryRow(category: CatalogCategoryEntity, onSelect: (CatalogCategoryEntity) -> Unit) {
+    UrsCard(
+        radius = Radius.row,
+        contentPadding = PaddingValues(horizontal = Spacing.l, vertical = Spacing.m),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = { onSelect(category) }),
+    ) {
+        UrsText(category.name, style = UrsTheme.typography.cardTitle)
     }
 }
 
@@ -168,7 +206,7 @@ private fun ProductTileGrid(
         verticalArrangement = Arrangement.spacedBy(Spacing.s),
         horizontalArrangement = Arrangement.spacedBy(Spacing.s),
     ) {
-        items(products, key = { it.id }) { product ->
+        gridItems(products, key = { it.id }) { product ->
             LaunchedEffect(product.id) { onVisible(product.id) }
             val quantity = quantityOnHand[product.id]
             UrsSquareTile(
@@ -176,7 +214,6 @@ private fun ProductTileGrid(
                 catalogImageId = product.catalogImageId,
                 dimmed = product.id in listProductIds,
                 quantityBadge = quantity?.toString(),
-                showAddAffordance = true,
                 onClick = { onSelect(product) },
             )
         }
@@ -184,18 +221,16 @@ private fun ProductTileGrid(
 }
 
 @Composable
-private fun NoteInputMode(state: NoteInputState?, viewModel: AddProductViewModel) {
+private fun NoteInputMode(state: NoteInputState?, viewModel: AddProductViewModel, modifier: Modifier = Modifier) {
     if (state == null) return
 
     val recentNotes = listOfNotNull(state.product.recentNote1, state.product.recentNote2, state.product.recentNote3)
         .filter { it.isNotBlank() }
 
     Column(
-        modifier = Modifier.padding(horizontal = Spacing.xl).padding(bottom = Spacing.xxl),
+        modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(Spacing.m),
     ) {
-        UrsText(state.product.name, style = UrsTheme.typography.screenTitle)
-
         UrsTextField(
             value = state.note,
             onValueChange = viewModel::setNote,
