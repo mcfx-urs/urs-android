@@ -150,7 +150,7 @@ private fun InventoriesList(
 private fun InventoryRow(inventory: InventoryEntity, onOpenInventory: (InventoryEntity) -> Unit, onLongPress: (InventoryEntity) -> Unit) {
     UrsCard(
         radius = Radius.row,
-        contentPadding = PaddingValues(horizontal = Spacing.l, vertical = Spacing.m),
+        contentPadding = PaddingValues(horizontal = Spacing.l, vertical = Spacing.l),
         modifier = Modifier
             .fillMaxWidth()
             .combinedClickable(onClick = { onOpenInventory(inventory) }, onLongClick = { onLongPress(inventory) }),

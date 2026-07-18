@@ -151,7 +151,7 @@ private fun ListsList(
 private fun ListRow(list: ListEntity, onOpenList: (ListEntity) -> Unit, onLongPress: (ListEntity) -> Unit) {
     UrsCard(
         radius = Radius.row,
-        contentPadding = PaddingValues(horizontal = Spacing.l, vertical = Spacing.m),
+        contentPadding = PaddingValues(horizontal = Spacing.l, vertical = Spacing.l),
         modifier = Modifier
             .fillMaxWidth()
             .combinedClickable(onClick = { onOpenList(list) }, onLongClick = { onLongPress(list) }),
