@@ -46,8 +46,8 @@ import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Radius
 import ch.mcfx.urs.ui.tokens.Spacing
 
-// Same reasoning as CategoryListScreen's own local constants — the type
-// scale has no "big FAB glyph" size, and no "error" role in the palette yet.
+// The type scale has no "big FAB glyph" size, and no "error" role in the
+// palette yet.
 private val FabIconStyle = TextStyle(fontSize = 28.sp)
 private val FormErrorColor = Color(0xFFD64545)
 

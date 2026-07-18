@@ -109,7 +109,7 @@ class InventoriesViewModel(
                 }
                 // Both paths are local-only writes that return instantly —
                 // no network round-trip to wait on, so the form can close
-                // right away (see CategoriesViewModel.submit's pre- shape).
+                // right away.
                 _showForm.value = false
             } catch (e: CancellationException) {
                 throw e

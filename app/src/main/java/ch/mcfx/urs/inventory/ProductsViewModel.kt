@@ -60,8 +60,6 @@ class ProductsViewModel(
     private val catalogRepository: CatalogRepository,
     private val inventoryId: String,
     private val inventoryName: String,
-    private val categoryId: String?,
-    private val categoryName: String,
     private val reminderScheduler: ReminderScheduler,
 ) : ViewModel() {
 
@@ -98,7 +96,6 @@ class ProductsViewModel(
                 products
                     .mapNotNull { product ->
                         val catalog = catalogById[product.catalogProductId] ?: return@mapNotNull null
-                        if (catalog.catalogCategoryId != categoryId) return@mapNotNull null
                         InventoryProductTile(product = product, name = catalog.name, catalogImageId = catalog.catalogImageId)
                     }
                     .sortedBy { it.name.alphabeticSortKey() }
@@ -160,7 +157,7 @@ class ProductsViewModel(
         viewModelScope.launch {
             _formState.update { it.copy(submitting = true, submitFailed = false) }
             try {
-                val catalogProduct = catalogRepository.createProduct(name = name, catalogCategoryId = categoryId)
+                val catalogProduct = catalogRepository.createProduct(name = name, catalogCategoryId = null)
                 inventoryRepository.createProduct(inventoryId = inventoryId, catalogProductId = catalogProduct.id, quantity = 0)
                 _showForm.value = false
             } catch (e: CancellationException) {
@@ -284,7 +281,7 @@ class ProductsViewModel(
                         minute = minute,
                         title = reminderTitle,
                         body = reminderBody,
-                        deepLinkRoute = InventoryRoutes.products(inventoryId, inventoryName, categoryId, categoryName),
+                        deepLinkRoute = InventoryRoutes.products(inventoryId, inventoryName),
                         conditionInventoryId = inventoryId,
                         conditionInventoryProductId = serverId,
                         conditionBelowQuantity = reminderThreshold,
@@ -314,8 +311,6 @@ class ProductsViewModel(
         fun factory(
             inventoryId: String,
             inventoryName: String,
-            categoryId: String?,
-            categoryName: String,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as UrsApplication
@@ -324,8 +319,6 @@ class ProductsViewModel(
                     app.container.catalogRepository,
                     inventoryId,
                     inventoryName,
-                    categoryId,
-                    categoryName,
                     app.container.reminderScheduler,
                 )
             }

@@ -68,7 +68,7 @@ class ShoppingListsViewModel(
     val shareState: StateFlow<ListShareState> = _shareState.asStateFlow()
 
     init {
-        // Room-backed Flow, same shape as CategoriesViewModel — load() below
+        // Room-backed Flow, same shape as ProductsViewModel — load() below
         // only refreshes the caches opportunistically.
         viewModelScope.launch {
             repository.observeLists().collect { _uiState.value = ShoppingListsUiState.Data(it) }
@@ -117,7 +117,7 @@ class ShoppingListsViewModel(
                 }
                 // Both paths are local-only writes that return instantly —
                 // no network round-trip to wait on, so the form can close
-                // right away (see CategoriesViewModel.submit).
+                // right away.
                 _showForm.value = false
             } catch (e: CancellationException) {
                 throw e

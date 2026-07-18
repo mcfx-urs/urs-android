@@ -44,7 +44,6 @@ import ch.mcfx.urs.fuel.FuelStationsScreen
 import ch.mcfx.urs.fuel.FuelStatsScreen
 import ch.mcfx.urs.home.HomeScreen
 import ch.mcfx.urs.data.local.publicId
-import ch.mcfx.urs.inventory.CategoryListScreen
 import ch.mcfx.urs.inventory.InventoriesScreen
 import ch.mcfx.urs.inventory.InventoryRoutes
 import ch.mcfx.urs.inventory.ProductListScreen
@@ -233,25 +232,7 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                     ) {
                         InventoriesScreen(
                             onOpenInventory = { inventory ->
-                                navController.navigate(InventoryRoutes.categories(inventory.publicId, inventory.name))
-                            },
-                        )
-                    }
-                    composable(
-                        route = InventoryRoutes.CATEGORIES,
-                        arguments = listOf(
-                            navArgument("inventoryId") { type = NavType.StringType },
-                            navArgument("inventoryName") { type = NavType.StringType },
-                        ),
-                    ) { backStackEntry ->
-                        val inventoryId = backStackEntry.arguments?.getString("inventoryId") ?: return@composable
-                        val inventoryName = backStackEntry.arguments?.getString("inventoryName") ?: ""
-                        CategoryListScreen(
-                            inventoryId = inventoryId,
-                            onOpenCategory = { group ->
-                                navController.navigate(
-                                    InventoryRoutes.products(inventoryId, inventoryName, group.categoryId, group.categoryName),
-                                )
+                                navController.navigate(InventoryRoutes.products(inventory.publicId, inventory.name))
                             },
                         )
                     }
@@ -260,25 +241,18 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                         arguments = listOf(
                             navArgument("inventoryId") { type = NavType.StringType },
                             navArgument("inventoryName") { type = NavType.StringType },
-                            navArgument("categoryId") { type = NavType.StringType },
-                            navArgument("categoryName") { type = NavType.StringType },
                         ),
                         // Per-product low-stock reminder target — more
                         // specific than the inventories-list summary deep link
                         // above, since a single-product reminder can point
-                        // straight at the product's own category/inventory.
+                        // straight at the product's own inventory.
                         deepLinks = listOf(navDeepLink { uriPattern = "urs://${InventoryRoutes.PRODUCTS}" }),
                     ) { backStackEntry ->
                         val inventoryId = backStackEntry.arguments?.getString("inventoryId") ?: return@composable
                         val inventoryName = backStackEntry.arguments?.getString("inventoryName") ?: ""
-                        val rawCategoryId = backStackEntry.arguments?.getString("categoryId") ?: InventoryRoutes.NO_CATEGORY
-                        val categoryId = rawCategoryId.takeUnless { it == InventoryRoutes.NO_CATEGORY }
-                        val categoryName = backStackEntry.arguments?.getString("categoryName") ?: ""
                         ProductListScreen(
                             inventoryId = inventoryId,
                             inventoryName = inventoryName,
-                            categoryId = categoryId,
-                            categoryName = categoryName,
                         )
                     }
                     composable(Destination.SHOPPING_LIST.route) {
@@ -346,7 +320,6 @@ private val SETTINGS_ROUTE_LABELS = mapOf(
 )
 
 private val INVENTORY_ROUTE_LABELS = mapOf(
-    InventoryRoutes.CATEGORIES to R.string.inventory_categories_title,
     InventoryRoutes.PRODUCTS to R.string.inventory_products_title,
 )
 

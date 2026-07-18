@@ -143,11 +143,9 @@
     <string name="inventory_name">Inventory name</string>
     <string name="inventory_delete_confirm_title">Delete this inventory?</string>
     <string name="inventory_delete_confirm_body">This can\'t be undone.</string>
-    <string name="inventory_categories_title">Categories</string>
-    <string name="inventory_categories_empty">Nothing tracked in this inventory yet.</string>
     <string name="inventory_uncategorized">Uncategorized</string>
     <string name="inventory_products_title">Products</string>
-    <string name="inventory_products_empty">No products in this category yet.</string>
+    <string name="inventory_products_empty">Nothing tracked in this inventory yet.</string>
     <string name="inventory_product_add">Add product</string>
     <string name="inventory_product_name">Product name</string>
     <string name="inventory_product_not_tracked">–</string>

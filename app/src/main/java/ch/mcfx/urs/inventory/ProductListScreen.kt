@@ -51,10 +51,8 @@ private val FabIconStyle = TextStyle(fontSize = 28.sp)
 fun ProductListScreen(
     inventoryId: String,
     inventoryName: String,
-    categoryId: String?,
-    categoryName: String,
     viewModel: ProductsViewModel = viewModel(
-        factory = ProductsViewModel.factory(inventoryId, inventoryName, categoryId, categoryName),
+        factory = ProductsViewModel.factory(inventoryId, inventoryName),
     ),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -68,7 +66,7 @@ fun ProductListScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
             UrsText(
-                categoryName,
+                inventoryName,
                 style = UrsTheme.typography.screenTitle,
                 modifier = Modifier.padding(horizontal = Spacing.l, vertical = Spacing.m),
             )
