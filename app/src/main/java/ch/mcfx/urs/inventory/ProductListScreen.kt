@@ -1,6 +1,8 @@
 package ch.mcfx.urs.inventory
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,37 +15,45 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
 import ch.mcfx.urs.data.local.CatalogProductEntity
+import ch.mcfx.urs.data.local.SyncStatus
 import ch.mcfx.urs.ui.components.UrsBottomSheet
 import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsCheckbox
 import ch.mcfx.urs.ui.components.UrsFab
 import ch.mcfx.urs.ui.components.UrsIcon
+import ch.mcfx.urs.ui.components.UrsIconButton
+import ch.mcfx.urs.ui.components.UrsPill
 import ch.mcfx.urs.ui.components.UrsProgressIndicator
-import ch.mcfx.urs.ui.components.UrsSquareTile
 import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.components.UrsTextField
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Radius
 import ch.mcfx.urs.ui.tokens.Spacing
+
+// Fixed warning-color tones, independent of the light/dark theme palette —
+// same values as the pre- row list this restores.
+private val FirstWarningColor = Color(0xFFE0813F)
+private val SecondWarningColor = Color(0xFFD64545)
 
 private val FabIconStyle = TextStyle(fontSize = 28.sp)
 
@@ -75,7 +85,13 @@ fun ProductListScreen(
                     UrsProgressIndicator(Modifier.align(Alignment.Center))
                 }
 
-                is ProductsUiState.Data -> ProductGrid(products = state.products, onOpenSettings = viewModel::openSettings)
+                is ProductsUiState.Data -> ProductList(
+                    products = state.products,
+                    onIncrement = viewModel::increment,
+                    onDecrement = viewModel::decrement,
+                    onDeleteProduct = viewModel::deleteProduct,
+                    onLongPress = viewModel::openSettings,
+                )
             }
         }
 
@@ -102,8 +118,15 @@ fun ProductListScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ProductGrid(products: List<InventoryProductTile>, onOpenSettings: (InventoryProductTile) -> Unit) {
+private fun ProductList(
+    products: List<InventoryProductTile>,
+    onIncrement: (InventoryProductTile) -> Unit,
+    onDecrement: (InventoryProductTile) -> Unit,
+    onDeleteProduct: (InventoryProductTile) -> Unit,
+    onLongPress: (InventoryProductTile) -> Unit,
+) {
     if (products.isEmpty()) {
         Box(Modifier.fillMaxSize()) {
             UrsText(
@@ -115,23 +138,91 @@ private fun ProductGrid(products: List<InventoryProductTile>, onOpenSettings: (I
         return
     }
 
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
+    LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(Spacing.l),
         verticalArrangement = Arrangement.spacedBy(Spacing.s),
-        horizontalArrangement = Arrangement.spacedBy(Spacing.s),
     ) {
-        gridItems(products, key = { it.product.id }) { tile ->
-            UrsSquareTile(
-                title = tile.name,
-                catalogImageId = tile.catalogImageId,
-                // Current quantity as a small badge — no more inline
-                // +/- stepper: a tap opens the quantity/settings sheet.
-                quantityBadge = tile.product.quantity?.toString() ?: stringResource(R.string.inventory_product_not_tracked),
-                onClick = { onOpenSettings(tile) },
-            )
+        items(products, key = { it.product.id }) { tile ->
+            // null = "not currently tracked" (paused) — one step below 0,
+            // not the same as it. Suppresses warning colors regardless of
+            // thresholds, since there's no meaningful stock level to warn
+            // about while a product isn't being tracked.
+            val product = tile.product
+            val quantity = product.quantity
+            val warningColor = when {
+                quantity == null -> null
+                product.secondThreshold != null && quantity <= product.secondThreshold -> SecondWarningColor
+                product.firstThreshold != null && quantity <= product.firstThreshold -> FirstWarningColor
+                else -> null
+            }
+            val contentColor = if (warningColor != null) Color.White else UrsTheme.colors.onSurface
+            // The stepper/settings/delete actions all need a real backend id.
+            val synced = product.serverId != null
+
+            UrsCard(
+                radius = Radius.row,
+                contentPadding = PaddingValues(horizontal = Spacing.l, vertical = Spacing.s),
+                backgroundColor = warningColor ?: UrsTheme.colors.surface,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .combinedClickable(onClick = {}, onLongClick = { onLongPress(tile) }),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    UrsText(
+                        tile.name,
+                        style = UrsTheme.typography.cardTitle,
+                        color = contentColor,
+                        modifier = Modifier.weight(1f),
+                    )
+                    ProductSyncStatusPill(product.syncStatus)
+                    UrsIconButton(
+                        onClick = { onDecrement(tile) },
+                        enabled = synced && quantity != null,
+                        contentDescription = stringResource(R.string.inventory_product_decrement),
+                        imageVector = Icons.Filled.Remove,
+                        tint = contentColor,
+                    )
+                    UrsText(
+                        quantity?.toString() ?: stringResource(R.string.inventory_product_not_tracked),
+                        style = UrsTheme.typography.cardTitle.copy(textAlign = TextAlign.Center),
+                        color = contentColor,
+                        modifier = Modifier.width(32.dp),
+                    )
+                    UrsIconButton(
+                        onClick = { onIncrement(tile) },
+                        enabled = synced,
+                        contentDescription = stringResource(R.string.inventory_product_increment),
+                        imageVector = Icons.Filled.Add,
+                        tint = contentColor,
+                    )
+                    UrsIconButton(
+                        onClick = { onDeleteProduct(tile) },
+                        enabled = synced,
+                        contentDescription = stringResource(R.string.inventory_product_remove, tile.name),
+                        imageVector = Icons.Filled.Close,
+                        tint = contentColor,
+                    )
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun ProductSyncStatusPill(status: SyncStatus) {
+    when (status) {
+        SyncStatus.PENDING -> UrsPill(text = stringResource(R.string.fill_status_pending))
+        SyncStatus.FAILED -> UrsPill(
+            text = stringResource(R.string.fill_status_failed),
+            containerColor = SecondWarningColor.copy(alpha = 0.15f),
+            contentColor = SecondWarningColor,
+        )
+        SyncStatus.SYNCED -> Unit
     }
 }
 

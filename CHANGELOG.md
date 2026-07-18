@@ -16,15 +16,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   to a list more than once with different notes.
 - Inventory: named, ownable inventories (create/rename/delete/share)
   each tracking a set of catalog products with quantities and
-  low-stock thresholds/reminders, rendered as the same tile grid as
-  the shopping list. Products show their tracked quantity as a badge;
-  tapping opens the quantity/settings sheet.
+  low-stock thresholds/reminders, rendered as a row list with inline
+  +/- quantity buttons and a warning color once a threshold is
+  crossed; long-pressing a row opens the quantity/thresholds/reminder
+  settings sheet.
 - Adding a product to a shopping list shows its up to three most
   recently used notes as tap-to-fill chips, and a shopping-list product
   tile shows a quantity-on-hand badge when it's tracked in an
   accessible inventory.
-- Product/category images render throughout Inventory and Shopping
-  List, backed by the shared product catalog's image store.
+- Product/category images render in Shopping List, backed by the
+  shared product catalog's image store.
 - A "Recently used" section at the bottom of a shopping list, fed by
   the same data as the add-product picker's RECENT tab.
 - A Shopping List tile on the home screen, next to Fuel.

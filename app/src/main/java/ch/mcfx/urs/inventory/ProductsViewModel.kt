@@ -168,6 +168,27 @@ class ProductsViewModel(
         }
     }
 
+    /** Row +/- stepper — direct write, same shape as [submitSettings]'s quantity branch, just ±1 instead of a typed value. */
+    fun increment(tile: InventoryProductTile) = adjustQuantity(tile, (tile.product.quantity ?: 0) + 1)
+
+    fun decrement(tile: InventoryProductTile) {
+        val current = tile.product.quantity ?: return
+        adjustQuantity(tile, current - 1)
+    }
+
+    private fun adjustQuantity(tile: InventoryProductTile, newQuantity: Int) {
+        val serverId = tile.product.serverId ?: return
+        viewModelScope.launch {
+            try {
+                inventoryRepository.updateProductQuantity(productId = serverId, newQuantity = newQuantity)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // Best-effort: the row simply keeps showing the last-known quantity if this failed server-side.
+            }
+        }
+    }
+
     fun deleteProduct(tile: InventoryProductTile) {
         // Same "nothing to delete server-side yet" guard as before .
         val serverId = tile.product.serverId ?: return
