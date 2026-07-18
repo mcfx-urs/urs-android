@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -62,6 +63,15 @@ private val FEATURE_TILES = listOf(
 // match visually rather than numerically.
 private val FeaturedIconStyle = TextStyle(fontSize = 42.sp)
 private val TileIconStyle = TextStyle(fontSize = 32.sp)
+
+// LazyVerticalGrid doesn't stretch a row's shorter cells to match its
+// tallest one — each tile's card would otherwise size to only its own
+// content (a subtitle/"SOON" pill makes a tile taller than one with just a
+// title), so two tiles side by side in the same row could end up visibly
+// different heights. Fixing every FeatureTile to this height, regardless
+// of which of the three content shapes below it renders, keeps the whole
+// grid visually even.
+private val TileHeight = 116.dp
 
 private val TILE_EMOJI = mapOf(
     Destination.WORK_TIME to "🕒",
@@ -190,7 +200,7 @@ private fun FeatureTile(destination: Destination, subtitle: String?, onClick: ()
         UrsCard(
             elevated = false,
             backgroundColor = lerp(colors.background, colors.surface, 0.7f),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().height(TileHeight),
         ) {
             Column(
                 modifier = Modifier.alpha(colors.disabledAlpha),
@@ -214,6 +224,7 @@ private fun FeatureTile(destination: Destination, subtitle: String?, onClick: ()
     UrsCard(
         modifier = Modifier
             .fillMaxWidth()
+            .height(TileHeight)
             .clickable(onClick = onClick),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(Spacing.s)) {
