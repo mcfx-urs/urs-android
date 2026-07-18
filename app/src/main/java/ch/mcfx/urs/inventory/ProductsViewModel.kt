@@ -168,16 +168,26 @@ class ProductsViewModel(
         }
     }
 
-    /** Row +/- stepper — direct write, same shape as [submitSettings]'s quantity branch, just ±1 instead of a typed value. */
-    fun increment(tile: InventoryProductTile) = adjustQuantity(tile, (tile.product.quantity ?: 0) + 1)
+    fun increment(tile: InventoryProductTile) = adjustQuantity(tile, +1)
 
-    fun decrement(tile: InventoryProductTile) {
-        val current = tile.product.quantity ?: return
-        adjustQuantity(tile, current - 1)
-    }
+    fun decrement(tile: InventoryProductTile) = adjustQuantity(tile, -1)
 
-    private fun adjustQuantity(tile: InventoryProductTile, newQuantity: Int) {
+    // null quantity means "not currently tracked" (paused) — a state below
+    // 0, not the same as it. Decrementing past 0 lands there; incrementing
+    // from there lands back on 0, not 1, so the stepper always moves by
+    // exactly one step in either direction (jumping straight to a specific
+    // number is what the long-press settings popup is for).
+    private fun adjustQuantity(tile: InventoryProductTile, delta: Int) {
         val serverId = tile.product.serverId ?: return
+        val currentQuantity = tile.product.quantity
+        val newQuantity = when {
+            delta > 0 && currentQuantity == null -> 0
+            delta < 0 && currentQuantity == null -> return
+            delta < 0 && currentQuantity == 0 -> null
+            else -> (currentQuantity!! + delta).coerceAtLeast(0)
+        }
+        if (newQuantity == currentQuantity) return
+
         viewModelScope.launch {
             try {
                 inventoryRepository.updateProductQuantity(productId = serverId, newQuantity = newQuantity)

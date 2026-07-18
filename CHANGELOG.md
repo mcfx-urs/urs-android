@@ -78,6 +78,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - A brand-new, empty inventory now has a way to add its first product
   (previously only reachable by tapping an already-populated category
   tile, which a fresh inventory doesn't have yet).
+- The inventory row +/- stepper no longer goes negative; decrementing
+  from 0 now pauses tracking for that product instead, and incrementing
+  from paused resumes at 0.
 
 ## [0.4.0] - 2026-07-15
 
