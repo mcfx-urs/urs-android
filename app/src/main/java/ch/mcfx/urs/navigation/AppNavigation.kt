@@ -47,6 +47,7 @@ import ch.mcfx.urs.data.local.publicId
 import ch.mcfx.urs.inventory.InventoriesScreen
 import ch.mcfx.urs.inventory.InventoryRoutes
 import ch.mcfx.urs.inventory.ProductListScreen
+import ch.mcfx.urs.settings.AboutScreen
 import ch.mcfx.urs.settings.AccountSettingsScreen
 import ch.mcfx.urs.settings.NotificationSettingsScreen
 import ch.mcfx.urs.settings.SettingsRoutes
@@ -291,6 +292,7 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                     composable(SettingsRoutes.NOTIFICATIONS) { NotificationSettingsScreen() }
                     composable(SettingsRoutes.WORK_TIME) { WorkTimeSettingsScreen() }
                     composable(SettingsRoutes.ACCOUNT) { AccountSettingsScreen() }
+                    composable(SettingsRoutes.ABOUT) { AboutScreen() }
                 }
             }
         }
@@ -317,6 +319,7 @@ private val SETTINGS_ROUTE_LABELS = mapOf(
     SettingsRoutes.NOTIFICATIONS to R.string.settings_tile_notifications,
     SettingsRoutes.WORK_TIME to R.string.settings_tile_work_time,
     SettingsRoutes.ACCOUNT to R.string.settings_tile_account,
+    SettingsRoutes.ABOUT to R.string.settings_tile_about,
 )
 
 private val INVENTORY_ROUTE_LABELS = mapOf(

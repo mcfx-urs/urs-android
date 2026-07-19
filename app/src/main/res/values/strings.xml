@@ -26,7 +26,10 @@
     <string name="settings_tile_vpn">VPN</string>
     <string name="settings_tile_notifications">Notifications</string>
     <string name="settings_tile_work_time">Work Settings</string>
+    <string name="settings_tile_about">About</string>
     <string name="settings_users_description">Login and multi-user management will live here once that feature is built.</string>
+
+    <string name="about_version">Version %1$s</string>
 
     <string name="account_logged_in_as">Logged in as %1$s</string>
     <string name="account_log_out">Log out</string>
