@@ -106,6 +106,7 @@
     <string name="fill_last_odometer">Last: %1$s km</string>
     <string name="fill_price_per_liter">Price / L</string>
     <string name="fill_liters">Liters</string>
+    <string name="fill_is_full_tank">Filled to full</string>
     <string name="fill_date">Date (YYYY-MM-DD)</string>
     <string name="fill_total">Total: %1$s</string>
     <string name="fill_amount_at_price">%1$s L @ %2$s</string>

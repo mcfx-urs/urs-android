@@ -36,6 +36,7 @@ data class FillDto(
     @SerialName("fill_price") val pricePerLiter: String,
     @SerialName("fill_amount") val liters: String,
     @SerialName("fill_odometer") val odometer: String,
+    @SerialName("fill_is_full_tank") val isFullTank: String = "1",
     @SerialName("fill_currency_code") val currencyCode: String = "CHF",
     // Empty until the async FX-resolution job (backend-side) fills it in;
     // "" mirrors the backend's own nullable-column-as-empty-string convention.
@@ -79,6 +80,13 @@ data class FillPayload(
     // default, so relying on omission here would desync local state from
     // what the create response actually reports.
     @SerialName("fill_currency_code") val currencyCode: String = "CHF",
+    // Left at its default ("1", full) whenever the fill is a full tank —
+    // the app's Json config omits fields at their default value
+    // (encodeDefaults is unset), so "1" simply isn't sent, which the
+    // backend already treats identically to an explicit "1" (its own
+    // rollout-safety default). Only "0" (partial) is ever actually
+    // serialized onto the wire.
+    @SerialName("fill_is_full_tank") val isFullTank: String = "1",
     @SerialName("station_latitude") val stationLatitude: String? = null,
     @SerialName("station_longitude") val stationLongitude: String? = null,
 )

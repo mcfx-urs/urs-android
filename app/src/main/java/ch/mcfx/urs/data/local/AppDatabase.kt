@@ -22,10 +22,10 @@ import androidx.room.TypeConverters
         ListEntity::class,
         ListItemEntity::class,
     ],
-    // Bumped for catalog/inventory/list-item schema rework (see
+    // Bumped for isFullTank column on FillEntity (see
     // AppContainer.database's fallbackToDestructiveMigration doc comment —
     // still no Migration objects needed at this pre-release stage).
-    version = 9,
+    version = 10,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)

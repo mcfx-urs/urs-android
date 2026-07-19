@@ -222,6 +222,18 @@ private fun FillForm(
             )
         }
 
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            UrsText(stringResource(R.string.fill_is_full_tank), style = UrsTheme.typography.body)
+            UrsCheckbox(
+                checked = form.isFullTank,
+                onCheckedChange = viewModel::setIsFullTank,
+            )
+        }
+
         UrsDropdownField(
             label = stringResource(R.string.fill_currency),
             options = currencies,

@@ -159,6 +159,7 @@ class SyncManager(
                 odometer = payload.odometer,
                 driven = payload.driven,
                 stationCounter = stationCounter,
+                isFullTank = if (payload.isFullTank) "1" else "0",
                 currencyCode = payload.currencyCode,
                 stationLatitude = payload.stationLatitude,
                 stationLongitude = payload.stationLongitude,

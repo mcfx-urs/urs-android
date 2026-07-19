@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - Settings: new About screen showing the app's current version.
+- Fuel: "Filled to full" toggle on the add-fill-up form, so a partial
+  fill-up no longer distorts the average-consumption figures.
 
 ## [0.5.0] - 2026-07-19
 

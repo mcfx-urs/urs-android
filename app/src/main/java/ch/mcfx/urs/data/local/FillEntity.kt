@@ -29,6 +29,7 @@ data class FillEntity(
     val liters: String,
     val odometer: String,
     val driven: String,
+    val isFullTank: Boolean = true,
     val currencyCode: String,
     val syncStatus: SyncStatus,
 )
