@@ -4,6 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.LocalGasStation
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.QrCodeScanner
@@ -36,6 +37,7 @@ enum class Destination(
     SHOPPING_LIST(ShoppingListRoutes.LISTS, R.string.nav_shopping_list, Icons.Filled.ShoppingCart, isAvailable = true),
     BEER("beer", R.string.nav_beer, Icons.Filled.SportsBar, isAvailable = true),
     WORK_TIME(WorkTimeRoutes.HISTORY, R.string.nav_work_time, Icons.Filled.Schedule, isAvailable = true),
+    LIFE_MAP("life-map", R.string.nav_life_map, Icons.Filled.Map, isAvailable = true),
     HEALTH("health", R.string.nav_health, Icons.Filled.MonitorHeart, isAvailable = false),
     GOKART("gokart", R.string.nav_gokart, Icons.Filled.Flag, isAvailable = false),
     PRICE_MONITOR("price_monitor", R.string.nav_price_monitor, Icons.Filled.QrCodeScanner, isAvailable = false),

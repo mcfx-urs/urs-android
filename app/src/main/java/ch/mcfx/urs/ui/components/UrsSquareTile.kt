@@ -1,6 +1,7 @@
 package ch.mcfx.urs.ui.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
@@ -11,13 +12,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ShoppingBasket
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import ch.mcfx.urs.BuildConfig
@@ -27,6 +34,9 @@ import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Radius
 import ch.mcfx.urs.ui.tokens.Spacing
 import coil3.compose.SubcomposeAsyncImage
+
+private val HazardStripeYellow = Color(0xFFFFC400)
+private val HazardStripeBlack = Color(0xFF1A1A1A)
 
 /** `${BuildConfig.BASE_URL}api/v1/catalog-image/{catalogImageId}` — the one place this URL shape is built. */
 fun catalogImageUrl(catalogImageId: Int?): String? = catalogImageId?.let { "${BuildConfig.BASE_URL}api/v1/catalog-image/$it" }
@@ -49,6 +59,10 @@ fun catalogImageUrl(catalogImageId: Int?): String? = catalogImageId?.let { "${Bu
  * "recently used" suggestions, which aren't dimmed/disabled, just marked.
  * [quantityBadge] is an optional small overlay for inventory screens
  * (tracked quantity) or the shopping-list add-picker (quantity-on-hand hint).
+ * [topEndBadge] is a second, independent overlay in the opposite corner —
+ * the shopping list's "amount needed" ("Nx"), shown only when set. [hazardBorder]
+ * draws a yellow/black diagonal-stripe border around the whole tile — the
+ * shopping list's "only buy this on sale" marker.
  * [onLongClick], when non-null, wires the tile as a combined click target
  * (e.g. ListDetailScreen's tap-to-remove/long-press-to-edit-note) rather
  * than a plain one — kept internal to this component so a call site never
@@ -65,6 +79,8 @@ fun UrsSquareTile(
     dimmed: Boolean = false,
     mutedTitle: Boolean = false,
     quantityBadge: String? = null,
+    topEndBadge: String? = null,
+    hazardBorder: Boolean = false,
 ) {
     val alpha = if (dimmed) UrsTheme.colors.disabledAlpha else 1f
     val titleStrikethrough = dimmed || mutedTitle
@@ -83,6 +99,7 @@ fun UrsSquareTile(
         backgroundColor = LightUrsColors.background,
         modifier = modifier
             .aspectRatio(1f)
+            .then(if (hazardBorder) Modifier.border(HazardStripeWidth, hazardStripeBrush(), RoundedCornerShape(Radius.row)) else Modifier)
             .then(
                 if (onLongClick != null) {
                     Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
@@ -114,8 +131,33 @@ fun UrsSquareTile(
                     modifier = Modifier.align(Alignment.TopStart).padding(Spacing.xs),
                 )
             }
+
+            if (topEndBadge != null) {
+                UrsPill(
+                    text = topEndBadge,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(Spacing.xs),
+                )
+            }
         }
     }
+}
+
+private val HazardStripeWidth = 5.dp
+private val HazardStripePeriod = 12.dp
+
+// Diagonal repeating yellow/black gradient used as a border brush — reads as
+// hazard/caution tape. Uses absolute pixel offsets (not relative to the
+// tile's own size) so the stripe width/angle stays consistent across every
+// tile regardless of its measured size, tiling indefinitely via `Repeated`.
+@Composable
+private fun hazardStripeBrush(): Brush {
+    val stripePx = with(LocalDensity.current) { HazardStripePeriod.toPx() }
+    return Brush.linearGradient(
+        colors = listOf(HazardStripeYellow, HazardStripeYellow, HazardStripeBlack, HazardStripeBlack),
+        start = Offset.Zero,
+        end = Offset(stripePx, stripePx),
+        tileMode = TileMode.Repeated,
+    )
 }
 
 // Fit (not Crop) so a non-square product photo is never cut off, shrunk a

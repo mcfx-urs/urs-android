@@ -18,6 +18,7 @@
     <string name="nav_price_monitor">Price Monitor</string>
     <string name="nav_users">Users</string>
     <string name="nav_work_time">Work Time</string>
+    <string name="nav_life_map">Life Map</string>
     <string name="nav_settings">Settings</string>
 
     <string name="settings_title">Settings</string>
@@ -26,7 +27,14 @@
     <string name="settings_tile_vpn">VPN</string>
     <string name="settings_tile_notifications">Notifications</string>
     <string name="settings_tile_work_time">Work Settings</string>
+    <string name="settings_tile_about">About</string>
+    <string name="settings_tile_location_history">Location History</string>
     <string name="settings_users_description">Login and multi-user management will live here once that feature is built.</string>
+
+    <string name="about_org">mcfx</string>
+    <string name="about_version_build_type">%1$s %2$s</string>
+    <string name="about_build_time">Buildtime %1$s</string>
+    <string name="about_joke">“%1$s”</string>
 
     <string name="account_logged_in_as">Logged in as %1$s</string>
     <string name="account_log_out">Log out</string>
@@ -56,6 +64,34 @@
     <string name="notifications_granted">Granted</string>
     <string name="notifications_grant">Grant</string>
     <string name="notifications_send_test">Send test notification</string>
+
+    <string name="location_history_title">Location History</string>
+    <string name="location_history_description">Periodically records your location in the background so it can later be browsed as a life map. Off by default — background location access is only requested once you turn this on. Doze mode and aggressive battery managers on some phones can delay captures.</string>
+    <string name="location_history_enable">Track my location</string>
+    <string name="location_history_foreground_permission_label">Location access</string>
+    <string name="location_history_background_permission_label">Background location access</string>
+    <string name="location_history_granted">Granted</string>
+    <string name="location_history_grant">Grant</string>
+    <string name="location_history_interval_label">Capture interval</string>
+    <string name="location_history_interval_1">Every 1 min</string>
+    <string name="location_history_interval_2">Every 2 min</string>
+    <string name="location_history_interval_5">Every 5 min</string>
+    <string name="location_history_interval_10">Every 10 min</string>
+    <string name="location_history_interval_15">Every 15 min</string>
+    <string name="location_history_interval_30">Every 30 min</string>
+    <string name="location_history_interval_60">Every hour</string>
+    <string name="location_history_interval_120">Every 2 hours</string>
+    <string name="location_history_interval_240">Every 4 hours</string>
+
+    <string name="life_map_range_label">Time range</string>
+    <string name="life_map_range_last_month">Last month</string>
+    <string name="life_map_range_last_3_months">Last 3 months</string>
+    <string name="life_map_range_last_6_months">Last 6 months</string>
+    <string name="life_map_range_last_year">Last year</string>
+    <string name="life_map_range_all">All time</string>
+    <string name="life_map_empty">No location history yet.</string>
+    <string name="life_map_marker_start">Start</string>
+    <string name="life_map_marker_end">End</string>
 
     <string name="vpn_title">VPN</string>
     <string name="vpn_description">The backend is only reachable over WireGuard — paste your client config below (or scan its QR code) once. On a saved home Wi-Fi network, the app skips VPN entirely; anywhere else it brings the tunnel up automatically before reaching the backend.</string>
@@ -103,6 +139,7 @@
     <string name="fill_last_odometer">Last: %1$s km</string>
     <string name="fill_price_per_liter">Price / L</string>
     <string name="fill_liters">Liters</string>
+    <string name="fill_is_full_tank">Filled to full</string>
     <string name="fill_date">Date (YYYY-MM-DD)</string>
     <string name="fill_total">Total: %1$s</string>
     <string name="fill_amount_at_price">%1$s L @ %2$s</string>
@@ -179,6 +216,12 @@
     <string name="shoppinglist_items_empty">No products on this list yet.</string>
     <string name="shoppinglist_recently_used">Recently used</string>
     <string name="shoppinglist_item_note">Note (optional)</string>
+    <string name="shoppinglist_item_quantity">Quantity</string>
+    <string name="shoppinglist_item_quantity_unset">-</string>
+    <string name="shoppinglist_item_quantity_decrement">Decrease quantity</string>
+    <string name="shoppinglist_item_quantity_increment">Increase quantity</string>
+    <string name="shoppinglist_item_quantity_badge">%1$dx</string>
+    <string name="shoppinglist_item_on_sale">On sale only</string>
     <string name="shoppinglist_add_product_title">Add a product</string>
     <string name="shoppinglist_add_product_search">Search products</string>
     <string name="shoppinglist_add_product_no_results">No matching products.</string>
@@ -187,6 +230,28 @@
     <string name="shoppinglist_tab_popular">POPULAR</string>
     <string name="shoppinglist_tab_recent">RECENT</string>
     <string name="shoppinglist_tab_categories">CATEGORIES</string>
+
+    <string name="settings_tile_product_management">Product Management</string>
+    <string name="product_management_tab_products">PRODUCTS</string>
+    <string name="product_management_tab_categories">CATEGORIES</string>
+    <string name="product_management_empty_products">No manually-created products yet.</string>
+    <string name="product_management_empty_categories">No manually-created categories yet.</string>
+    <string name="product_management_add_product">New product</string>
+    <string name="product_management_edit_product">Edit product</string>
+    <string name="product_management_add_category">New category</string>
+    <string name="product_management_edit_category">Edit category</string>
+    <string name="product_management_name_label">Name</string>
+    <string name="product_management_category_label">Category</string>
+    <string name="product_management_no_category">No category</string>
+    <string name="product_management_image_label">Image</string>
+    <string name="product_management_image_none">No image selected</string>
+    <string name="product_management_image_picker_title">Choose an image</string>
+    <string name="product_management_image_picker_empty">No images available yet.</string>
+    <string name="product_management_edit">Edit</string>
+    <string name="product_management_delete">Delete</string>
+    <string name="product_management_delete_product_confirm_title">Delete this product?</string>
+    <string name="product_management_delete_category_confirm_title">Delete this category?</string>
+    <string name="product_management_delete_confirm_body">This can\'t be undone.</string>
 
     <string name="share_sheet_no_members">No other household members to share with yet.</string>
 

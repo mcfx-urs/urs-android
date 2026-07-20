@@ -36,6 +36,7 @@ data class FillDto(
     @SerialName("fill_price") val pricePerLiter: String,
     @SerialName("fill_amount") val liters: String,
     @SerialName("fill_odometer") val odometer: String,
+    @SerialName("fill_is_full_tank") val isFullTank: String = "1",
     @SerialName("fill_currency_code") val currencyCode: String = "CHF",
     // Empty until the async FX-resolution job (backend-side) fills it in;
     // "" mirrors the backend's own nullable-column-as-empty-string convention.
@@ -79,6 +80,13 @@ data class FillPayload(
     // default, so relying on omission here would desync local state from
     // what the create response actually reports.
     @SerialName("fill_currency_code") val currencyCode: String = "CHF",
+    // Left at its default ("1", full) whenever the fill is a full tank —
+    // the app's Json config omits fields at their default value
+    // (encodeDefaults is unset), so "1" simply isn't sent, which the
+    // backend already treats identically to an explicit "1" (its own
+    // rollout-safety default). Only "0" (partial) is ever actually
+    // serialized onto the wire.
+    @SerialName("fill_is_full_tank") val isFullTank: String = "1",
     @SerialName("station_latitude") val stationLatitude: String? = null,
     @SerialName("station_longitude") val stationLongitude: String? = null,
 )
@@ -114,6 +122,15 @@ data class NewCatalogCategoryPayload(
 data class NewCatalogCategoryResponseDto(
     @SerialName("catalog_category_id") val id: String,
     @SerialName("catalog_category_name") val name: String,
+)
+
+// rename/re-link a manually-created category (source='manual' only,
+// enforced server-side) — "" clears the image link, same nullable-as-empty
+// convention as the rest of this file.
+@Serializable
+data class CatalogCategoryUpdatePayload(
+    @SerialName("catalog_category_name") val name: String,
+    @SerialName("catalog_category_catalog_image_id") val catalogImageId: String = "",
 )
 
 // Empty string = not set, mirrors the backend's COALESCE(..., '') for these
@@ -152,6 +169,24 @@ data class NewCatalogProductResponseDto(
     @SerialName("catalog_product_id") val id: String,
     @SerialName("catalog_product_name") val name: String,
     @SerialName("catalog_product_catalog_category_id") val catalogCategoryId: String = "",
+)
+
+// rename/re-link a manually-created product (source='manual' only,
+// enforced server-side) — "" clears a link, same nullable-as-empty
+// convention as the rest of this file.
+@Serializable
+data class CatalogProductUpdatePayload(
+    @SerialName("catalog_product_name") val name: String,
+    @SerialName("catalog_product_catalog_category_id") val catalogCategoryId: String = "",
+    @SerialName("catalog_product_catalog_image_id") val catalogImageId: String = "",
+)
+
+// one entry from the reusable-image picker (GET /api/v1/catalog-image).
+@Serializable
+data class CatalogImageDto(
+    @SerialName("catalog_image_id") val id: String,
+    @SerialName("catalog_image_source_image_name") val sourceImageName: String = "",
+    @SerialName("catalog_image_extension") val extension: String = "",
 )
 
 // 204 No Content (untracked anywhere the caller can access) maps to this
@@ -286,6 +321,8 @@ data class ListItemDto(
     @SerialName("catalog_product_catalog_category_id") val categoryId: String = "",
     @SerialName("catalog_category_name") val categoryName: String = "",
     @SerialName("list_item_note") val note: String = "",
+    @SerialName("list_item_quantity") val quantity: Int? = null,
+    @SerialName("list_item_on_sale") val onSale: Boolean = false,
 )
 
 @Serializable
@@ -293,15 +330,20 @@ data class ListItemPayload(
     @SerialName("list_item_list_id") val listId: String,
     @SerialName("list_item_catalog_product_id") val catalogProductId: String,
     @SerialName("list_item_note") val note: String = "",
+    @SerialName("list_item_quantity") val quantity: Int? = null,
+    @SerialName("list_item_on_sale") val onSale: Boolean = false,
 )
 
 // Separate from ListItemPayload so an update can never accidentally touch
 // listId/catalogProductId — mirrors InventoryProductSettingsPayload's split
 // from InventoryProductQuantityPayload, and matches the backend's own PUT
-// route, which only ever reads list_item_note from the body.
+// route, which reads list_item_note/list_item_quantity/list_item_on_sale
+// from the body.
 @Serializable
 data class ListItemUpdatePayload(
     @SerialName("list_item_note") val note: String = "",
+    @SerialName("list_item_quantity") val quantity: Int? = null,
+    @SerialName("list_item_on_sale") val onSale: Boolean = false,
 )
 
 @Serializable
@@ -405,6 +447,27 @@ data class BeerLogDto(
 data class BeerLogPayload(
     @SerialName("beer_log_amount_ml") val amountMl: String,
     @SerialName("beer_log_date") val date: String,
+)
+
+// Matches urs-backend's LocationHistory struct (src/web/locationHistory.go):
+// every value is a string, same DB-column-as-a-string convention as every
+// other DTO in this file. capturedAt uses "yyyy-MM-dd HH:mm:ss" (device
+// local time, no timezone), matching BeerStats.DATE_FORMAT's convention for
+// a combined date+time value sent to this backend — the backend parses it
+// with Go's "2006-01-02 15:04:05" layout (see SelectLocationHistory).
+@Serializable
+data class LocationHistoryPayload(
+    @SerialName("location_history_latitude") val latitude: String,
+    @SerialName("location_history_longitude") val longitude: String,
+    @SerialName("location_history_accuracy_m") val accuracyMeters: String = "",
+    @SerialName("location_history_captured_at") val capturedAt: String,
+)
+
+// Kept to just the server-assigned id, the only field SyncManager actually
+// reconciles against locally (see SyncManager.replayCreateLocationHistory).
+@Serializable
+data class LocationHistoryResponse(
+    @SerialName("location_history_id") val id: String,
 )
 
 @Serializable

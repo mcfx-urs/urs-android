@@ -5,6 +5,60 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Fuel: "Filled to full" toggle on the add-fill-up form, so a partial
+  fill-up no longer distorts the average-consumption figures.
+- Life map: optional periodic background location capture, browsable
+  on a map (Settings → Location History) filtered by time range (last
+  month, 3/6/12 months, or all).
+- Life map: 1/2/5/10-minute capture interval options, alongside the
+  existing 15 min-4 h choices.
+- Shopping list items: a quantity stepper (+/-) and an "On sale only"
+  toggle, alongside the existing note field, in both the add-product
+  popup and the edit sheet. Quantity shows as "Nx" on the tile when
+  set; "On sale only" shows as a yellow/black striped tile border.
+- Shopping list: a centered accent-colored bar separating the item
+  grid from the "Recently used" section. List names, category headers,
+  and the top app bar (title and back/menu icon) now use the accent
+  color on shopping list screens.
+- Home, Fuel, and Inventory: the accent-color treatment from the
+  shopping list screens now also applies to the top app bar (title and
+  back/menu icon), tile titles, inventory list names, and inventory
+  product rows (name, quantity, +/-/remove icons). The navigation
+  drawer's header and item icons/labels are always accent-colored now,
+  not just the selected item.
+- Settings: About is now the first item in the list, and its screen
+  shows the bear logo, app name, "mcfx", version + build type, build
+  timestamp, and a joke fetched from the backend at build time —
+  centered, accent-colored.
+- Settings: a new Product Management screen for creating, editing, and
+  deleting manually-created catalog products and categories, with a
+  picker for reusing an existing catalog image.
+
+### Fixed
+
+- Life map: the map no longer grows over the time-range dropdown (or,
+  at full size, the top app bar) when zoomed.
+- Life map: zooming or panning no longer gets reset back to the
+  default view every time a new location point is captured.
+- Trigger an opportunistic outbox sync as soon as `NetworkGate` confirms
+  the backend is reachable (home Wi-Fi or a freshly connected VPN
+  tunnel), not only on a live Wi-Fi network change. A cold app start away
+  from home Wi-Fi previously had no such trigger at all, leaving sync
+  recovery solely to the 15-minute periodic worker and its exponential
+  backoff.
+- Shopping list add-product picker: the search field now clears after
+  adding a product, so the next search starts from empty instead of
+  the previous query.
+- The add-product panel no longer closes on a stray tap that misses
+  the search field/a product tile — it was falling through to a scrim
+  behind the (already opaque, full-screen) panel, contradicting the
+  panel's own no-tap-outside-dismiss design. The system back gesture
+  now closes it instead, as originally intended.
+- Shopping list: the "On sale only" tile border is thicker (3dp to
+  5dp) so it reads more clearly against the tile photo.
+
 ## [0.5.0] - 2026-07-19
 
 ### Added

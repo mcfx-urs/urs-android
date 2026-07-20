@@ -1,8 +1,8 @@
 package ch.mcfx.urs.ui.components
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -17,8 +17,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import ch.mcfx.urs.ui.theme.UrsTheme
 
@@ -36,8 +34,11 @@ import ch.mcfx.urs.ui.theme.UrsTheme
  *
  * Unlike [UrsBottomSheet] there's no drag-to-dismiss — a fully docked panel
  * has nothing to "throw away" toward, and no visible scrim area remains to
- * tap outside of. Dismiss is the close affordance [content] itself provides
- * (or the system back gesture).
+ * tap outside of (it's opaque and fills the screen, so a tap-outside-to-
+ * dismiss layer behind it would only ever catch stray taps that fall
+ * through gaps in [content] — not an intentional "outside" gesture). Dismiss
+ * is the close affordance [content] itself provides, or the system back
+ * gesture below.
  */
 @Composable
 fun UrsDockedPanel(
@@ -49,16 +50,9 @@ fun UrsDockedPanel(
     // Only the dark palette has a non-transparent border color (see Color.kt) — same check UrsCard uses.
     val darkTheme = colors.border.alpha > 0f
 
-    Box(modifier = modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.5f))
-                .pointerInput(onDismissRequest) {
-                    detectTapGestures(onTap = { onDismissRequest() })
-                },
-        )
+    BackHandler(onBack = onDismissRequest)
 
+    Box(modifier = modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)

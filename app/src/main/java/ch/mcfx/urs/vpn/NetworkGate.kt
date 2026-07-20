@@ -70,6 +70,7 @@ class NetworkGate(
                 // instance) can still be running. GoBackend.setState(DOWN)
                 // is a safe no-op if nothing is actually up.
                 wireGuardManager.disconnect()
+                onConnectivityAvailable()
                 return Result.OnHomeNetwork
             }
         }
@@ -80,7 +81,17 @@ class NetworkGate(
             return Result.NeedsVpnPermission(intent)
         }
 
-        return if (wireGuardManager.connect()) Result.Connected else Result.ConnectFailed
+        if (!wireGuardManager.connect()) return Result.ConnectFailed
+        // The Wi-Fi NetworkCallback below only fires onConnectivityAvailable()
+        // for live Wi-Fi transport changes — it never sees a cold app start
+        // away from home Wi-Fi, where this is the only place a freshly
+        // established VPN tunnel is observed. Without this, a periodic
+        // SyncWorker run that happens to race the tunnel coming up (or fails
+        // for any other transient reason) has no opportunistic retry to fall
+        // back on and is left waiting out WorkManager's exponential backoff,
+        // even after the tunnel is confirmed up and reachable.
+        onConnectivityAvailable()
+        return Result.Connected
     }
 
     // Registering a NetworkCallback is documented to immediately dispatch the

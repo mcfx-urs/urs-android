@@ -27,6 +27,13 @@ data class ListItemEntity(
     val catalogProductId: String,
     // Null = no note — mirrors the backend's nullable-column convention.
     val note: String? = null,
+    // Null = no amount specified. Distinct from `note`, which is free text
+    // (brand, color, ...); this is the structured "how many" value shown as
+    // a stepper in the add/edit UI and as an "Nx" badge on the tile.
+    val quantity: Int? = null,
+    // "Only buy this on sale" — flags stock-up items (e.g. toilet paper)
+    // that should stay on the list until a promo price comes along.
+    val onSale: Boolean = false,
     val syncStatus: SyncStatus,
 )
 

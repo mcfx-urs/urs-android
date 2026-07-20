@@ -7,6 +7,7 @@ import ch.mcfx.urs.data.local.InventoryDao
 import ch.mcfx.urs.data.local.InventoryProductDao
 import ch.mcfx.urs.data.local.ListDao
 import ch.mcfx.urs.data.local.ListItemDao
+import ch.mcfx.urs.data.local.LocationHistoryDao
 import ch.mcfx.urs.data.local.OutboxDao
 import ch.mcfx.urs.data.local.OutboxFillPayload
 import ch.mcfx.urs.data.local.OutboxInventoryDeletePayload
@@ -19,6 +20,7 @@ import ch.mcfx.urs.data.local.OutboxListItemPayload
 import ch.mcfx.urs.data.local.OutboxListItemUpdatePayload
 import ch.mcfx.urs.data.local.OutboxListPayload
 import ch.mcfx.urs.data.local.OutboxListUpdatePayload
+import ch.mcfx.urs.data.local.OutboxLocationHistoryPayload
 import ch.mcfx.urs.data.local.OutboxMutationEntity
 import ch.mcfx.urs.data.local.OutboxWorkTimeEntryDeletePayload
 import ch.mcfx.urs.data.local.OutboxWorkTimeEntryPayload
@@ -33,10 +35,14 @@ import ch.mcfx.urs.data.remote.InventoryProductCreatePayload
 import ch.mcfx.urs.data.remote.ListItemPayload
 import ch.mcfx.urs.data.remote.ListItemUpdatePayload
 import ch.mcfx.urs.data.remote.ListPayload
+import ch.mcfx.urs.data.remote.LocationHistoryPayload
 import ch.mcfx.urs.data.remote.UrsApi
 import ch.mcfx.urs.data.remote.WorkTimeBreakPayload
 import ch.mcfx.urs.data.remote.WorkTimeEntryPayload
 import java.io.IOException
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -63,11 +69,17 @@ class SyncManager(
     private val inventoryProductDao: InventoryProductDao,
     private val listDao: ListDao,
     private val listItemDao: ListItemDao,
+    private val locationHistoryDao: LocationHistoryDao,
     private val outboxDao: OutboxDao,
     private val reachabilityChecker: ReachabilityChecker,
     private val json: Json,
 ) {
     private val mutex = Mutex()
+
+    // Same "yyyy-MM-dd HH:mm:ss", device-local-time convention as
+    // BeerStats.DATE_FORMAT — the backend parses location_history_captured_at
+    // with Go's matching "2006-01-02 15:04:05" layout.
+    private val locationHistoryDateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
     /** @return `true` if the backend was reachable and every queued mutation replayed cleanly. */
     suspend fun syncNow(): Boolean = mutex.withLock { replayOutbox() }
@@ -103,6 +115,7 @@ class SyncManager(
                 OutboxMutationEntity.TYPE_CREATE_LIST_ITEM -> replayCreateListItem(mutation)
                 OutboxMutationEntity.TYPE_UPDATE_LIST_ITEM -> replayUpdateListItem(mutation)
                 OutboxMutationEntity.TYPE_DELETE_LIST_ITEM -> replayDeleteListItem(mutation)
+                OutboxMutationEntity.TYPE_CREATE_LOCATION_HISTORY -> replayCreateLocationHistory(mutation)
                 else -> {
                     // Forward-compat placeholder — nothing else is queued today.
                     outboxDao.markFailed(mutation.id, "unknown outbox mutation type: ${mutation.type}")
@@ -159,6 +172,7 @@ class SyncManager(
                 odometer = payload.odometer,
                 driven = payload.driven,
                 stationCounter = stationCounter,
+                isFullTank = if (payload.isFullTank) "1" else "0",
                 currencyCode = payload.currencyCode,
                 stationLatitude = payload.stationLatitude,
                 stationLongitude = payload.stationLongitude,
@@ -410,7 +424,10 @@ class SyncManager(
         }
 
         val response = api.createListItem(
-            ListItemPayload(listId = resolvedListId, catalogProductId = payload.catalogProductId, note = payload.note.orEmpty()),
+            ListItemPayload(
+                listId = resolvedListId, catalogProductId = payload.catalogProductId, note = payload.note.orEmpty(),
+                quantity = payload.quantity, onSale = payload.onSale,
+            ),
         )
 
         listItemDao.markSynced(localItem.id, response.id, resolvedListId)
@@ -421,7 +438,10 @@ class SyncManager(
     // Same "no local-row lookup needed" reasoning as replayUpdateList.
     private suspend fun replayUpdateListItem(mutation: OutboxMutationEntity): Boolean {
         val payload = json.decodeFromString(OutboxListItemUpdatePayload.serializer(), mutation.payloadJson)
-        api.updateListItem(payload.serverId, ListItemUpdatePayload(note = payload.note.orEmpty()))
+        api.updateListItem(
+            payload.serverId,
+            ListItemUpdatePayload(note = payload.note.orEmpty(), quantity = payload.quantity, onSale = payload.onSale),
+        )
         outboxDao.delete(mutation.id)
         return true
     }
@@ -430,6 +450,35 @@ class SyncManager(
     private suspend fun replayDeleteListItem(mutation: OutboxMutationEntity): Boolean {
         val payload = json.decodeFromString(OutboxListItemDeletePayload.serializer(), mutation.payloadJson)
         api.deleteListItem(payload.serverId)
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    /**
+     * No station-counter-style side effect to reconcile beyond the id
+     * (unlike [replayCreateFill]) — a location-history point has no other
+     * server state that depends on it, so this is closer in shape to
+     * [replayCreateInventory].
+     */
+    private suspend fun replayCreateLocationHistory(mutation: OutboxMutationEntity): Boolean {
+        val localPoint = locationHistoryDao.getByOutboxId(mutation.id) ?: run {
+            outboxDao.delete(mutation.id)
+            return true
+        }
+        val payload = json.decodeFromString(OutboxLocationHistoryPayload.serializer(), mutation.payloadJson)
+
+        val response = api.createLocationHistory(
+            LocationHistoryPayload(
+                latitude = payload.latitude.toString(),
+                longitude = payload.longitude.toString(),
+                accuracyMeters = payload.accuracyMeters?.toString().orEmpty(),
+                capturedAt = Instant.ofEpochMilli(payload.capturedAt)
+                    .atZone(ZoneId.systemDefault())
+                    .format(locationHistoryDateFormat),
+            ),
+        )
+
+        locationHistoryDao.markSynced(localPoint.id, response.id.toLongOrNull() ?: 0L)
         outboxDao.delete(mutation.id)
         return true
     }

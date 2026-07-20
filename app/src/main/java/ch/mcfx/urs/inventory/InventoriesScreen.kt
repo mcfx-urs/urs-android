@@ -160,7 +160,12 @@ private fun InventoryRow(inventory: InventoryEntity, onOpenInventory: (Inventory
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            UrsText(inventory.name, style = UrsTheme.typography.cardTitle, modifier = Modifier.weight(1f))
+            UrsText(
+                inventory.name,
+                style = UrsTheme.typography.cardTitle,
+                color = UrsTheme.colors.accent,
+                modifier = Modifier.weight(1f),
+            )
             InventorySyncStatusPill(inventory.syncStatus)
         }
     }

@@ -161,7 +161,12 @@ private fun ListRow(list: ListEntity, onOpenList: (ListEntity) -> Unit, onLongPr
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            UrsText(list.name, style = UrsTheme.typography.cardTitle, modifier = Modifier.weight(1f))
+            UrsText(
+                list.name,
+                style = UrsTheme.typography.cardTitle,
+                color = UrsTheme.colors.accent,
+                modifier = Modifier.weight(1f),
+            )
             ListSyncStatusPill(list.syncStatus)
         }
     }

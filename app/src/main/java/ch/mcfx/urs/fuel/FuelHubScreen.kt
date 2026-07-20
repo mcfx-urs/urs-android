@@ -87,7 +87,7 @@ private fun HubTile(emoji: String, label: String, onClick: () -> Unit) {
     UrsCard(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Column(verticalArrangement = Arrangement.spacedBy(Spacing.s)) {
             UrsText(text = emoji, style = TileIconStyle)
-            UrsText(text = label, style = UrsTheme.typography.cardTitle)
+            UrsText(text = label, style = UrsTheme.typography.cardTitle, color = UrsTheme.colors.accent)
         }
     }
 }

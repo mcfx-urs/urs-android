@@ -34,6 +34,8 @@ sealed interface ListDetailUiState {
 data class AddNoteFormState(
     val item: ShoppingListItemDetail? = null,
     val note: String = "",
+    val quantity: Int? = null,
+    val onSale: Boolean = false,
 )
 
 /**
@@ -97,10 +99,25 @@ class ListDetailViewModel(
     }
 
     fun openNoteForm(detail: ShoppingListItemDetail) {
-        _noteForm.value = AddNoteFormState(item = detail, note = detail.item.note.orEmpty())
+        _noteForm.value = AddNoteFormState(
+            item = detail,
+            note = detail.item.note.orEmpty(),
+            quantity = detail.item.quantity,
+            onSale = detail.item.onSale,
+        )
     }
 
     fun setNote(value: String) = _noteForm.update { it.copy(note = value) }
+
+    fun incrementQuantity() = _noteForm.update { it.copy(quantity = (it.quantity ?: 0) + 1) }
+
+    // Same "decrement below 1 clears to unset" rule as AddProductViewModel.
+    fun decrementQuantity() = _noteForm.update { form ->
+        val current = form.quantity ?: return@update form
+        form.copy(quantity = if (current <= 1) null else current - 1)
+    }
+
+    fun toggleOnSale() = _noteForm.update { it.copy(onSale = !it.onSale) }
 
     fun closeNoteForm() {
         _noteForm.value = AddNoteFormState()
@@ -110,7 +127,12 @@ class ListDetailViewModel(
         val form = _noteForm.value
         val detail = form.item ?: return
         viewModelScope.launch {
-            repository.updateItem(detail.item.id, note = form.note.trim().ifEmpty { null })
+            repository.updateItem(
+                detail.item.id,
+                note = form.note.trim().ifEmpty { null },
+                quantity = form.quantity,
+                onSale = form.onSale,
+            )
         }
         _noteForm.value = AddNoteFormState()
     }

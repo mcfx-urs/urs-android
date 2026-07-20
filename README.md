@@ -21,6 +21,9 @@ the system (client, backend, sync design).
   arbitrary number of breaks (offline-capable); the daily total and
   over-/undertime against a configurable target are computed
   automatically.
+- **Life map** — optional periodic background GPS capture at a
+  configurable interval, browsable afterward on a map filtered by time
+  range (last month, 3/6/12 months, or all).
 - **Settings** — WireGuard VPN setup (including QR-code scanning),
   notification permissions, and per-feature preferences.
 
@@ -34,8 +37,9 @@ navigation drawer marks each as "coming soon" until it lands.
 |---|---|
 | `INTERNET` | Talk to the backend API. |
 | `ACCESS_NETWORK_STATE` | Detect connectivity changes, e.g. to trigger a background sync once the device is reachable again. |
-| `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION` | Two independent uses: (1) reading the connected Wi-Fi SSID to detect the home network and skip the VPN tunnel when already on it — Android treats SSID access as location-sensitive, even though the app never derives physical location from it for this purpose; (2) capturing a GPS fix for a fuel fill-up at a station not already known to the app. |
+| `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION` | Three independent uses: (1) reading the connected Wi-Fi SSID to detect the home network and skip the VPN tunnel when already on it — Android treats SSID access as location-sensitive, even though the app never derives physical location from it for this purpose; (2) capturing a GPS fix for a fuel fill-up at a station not already known to the app; (3) the life map's periodic location capture, opt-in and off by default. |
 | `ACCESS_WIFI_STATE`, `NEARBY_WIFI_DEVICES` | Companion permissions for reading the Wi-Fi SSID (see above). `NEARBY_WIFI_DEVICES` is requested with `neverForLocation`, since it's only used to read the real SSID string, never to derive location from nearby devices. |
+| `ACCESS_BACKGROUND_LOCATION` | Lets the life map's periodic capture keep running while the app isn't in the foreground. A separate runtime grant from Android 10 on, requested only after foreground location is already granted, and only if the life map feature is turned on in Settings (opt-in, off by default). |
 | `CAMERA` | Scan a WireGuard config QR code when setting up the VPN. |
 | `POST_NOTIFICATIONS` | Show reminders and other notifications (a runtime prompt on Android 13+; a no-op below that). |
 | `SCHEDULE_EXACT_ALARM` | Fire scheduled reminders at an exact time rather than an approximate window. |
