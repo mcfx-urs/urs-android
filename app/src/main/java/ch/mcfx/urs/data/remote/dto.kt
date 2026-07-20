@@ -124,6 +124,15 @@ data class NewCatalogCategoryResponseDto(
     @SerialName("catalog_category_name") val name: String,
 )
 
+// rename/re-link a manually-created category (source='manual' only,
+// enforced server-side) — "" clears the image link, same nullable-as-empty
+// convention as the rest of this file.
+@Serializable
+data class CatalogCategoryUpdatePayload(
+    @SerialName("catalog_category_name") val name: String,
+    @SerialName("catalog_category_catalog_image_id") val catalogImageId: String = "",
+)
+
 // Empty string = not set, mirrors the backend's COALESCE(..., '') for these
 // columns.
 @Serializable
@@ -160,6 +169,24 @@ data class NewCatalogProductResponseDto(
     @SerialName("catalog_product_id") val id: String,
     @SerialName("catalog_product_name") val name: String,
     @SerialName("catalog_product_catalog_category_id") val catalogCategoryId: String = "",
+)
+
+// rename/re-link a manually-created product (source='manual' only,
+// enforced server-side) — "" clears a link, same nullable-as-empty
+// convention as the rest of this file.
+@Serializable
+data class CatalogProductUpdatePayload(
+    @SerialName("catalog_product_name") val name: String,
+    @SerialName("catalog_product_catalog_category_id") val catalogCategoryId: String = "",
+    @SerialName("catalog_product_catalog_image_id") val catalogImageId: String = "",
+)
+
+// one entry from the reusable-image picker (GET /api/v1/catalog-image).
+@Serializable
+data class CatalogImageDto(
+    @SerialName("catalog_image_id") val id: String,
+    @SerialName("catalog_image_source_image_name") val sourceImageName: String = "",
+    @SerialName("catalog_image_extension") val extension: String = "",
 )
 
 // 204 No Content (untracked anywhere the caller can access) maps to this

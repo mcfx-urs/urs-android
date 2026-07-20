@@ -43,6 +43,16 @@ interface CatalogProductDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertOne(entity: CatalogProductEntity)
 
+    //  edit form write path — targeted column update so unrelated
+    // cached fields (categoryName, searchTerms, brands, popularityIndex,
+    // recentNote*) survive an edit untouched, unlike upsertOne's full-row
+    // replace.
+    @Query("UPDATE catalog_product SET name = :name, catalogCategoryId = :catalogCategoryId, catalogImageId = :catalogImageId WHERE id = :id")
+    suspend fun updateFields(id: String, name: String, catalogCategoryId: String?, catalogImageId: Int?)
+
+    @Query("DELETE FROM catalog_product WHERE id = :id")
+    suspend fun deleteById(id: String)
+
     @Query("DELETE FROM catalog_product")
     suspend fun deleteAll()
 

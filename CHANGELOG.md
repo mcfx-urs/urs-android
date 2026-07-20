@@ -32,6 +32,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   shows the bear logo, app name, "mcfx", version + build type, build
   timestamp, and a joke fetched from the backend at build time —
   centered, accent-colored.
+- Settings: a new Product Management screen for creating, editing, and
+  deleting manually-created catalog products and categories, with a
+  picker for reusing an existing catalog image.
 
 ### Fixed
 

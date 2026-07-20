@@ -231,6 +231,28 @@
     <string name="shoppinglist_tab_recent">RECENT</string>
     <string name="shoppinglist_tab_categories">CATEGORIES</string>
 
+    <string name="settings_tile_product_management">Product Management</string>
+    <string name="product_management_tab_products">PRODUCTS</string>
+    <string name="product_management_tab_categories">CATEGORIES</string>
+    <string name="product_management_empty_products">No manually-created products yet.</string>
+    <string name="product_management_empty_categories">No manually-created categories yet.</string>
+    <string name="product_management_add_product">New product</string>
+    <string name="product_management_edit_product">Edit product</string>
+    <string name="product_management_add_category">New category</string>
+    <string name="product_management_edit_category">Edit category</string>
+    <string name="product_management_name_label">Name</string>
+    <string name="product_management_category_label">Category</string>
+    <string name="product_management_no_category">No category</string>
+    <string name="product_management_image_label">Image</string>
+    <string name="product_management_image_none">No image selected</string>
+    <string name="product_management_image_picker_title">Choose an image</string>
+    <string name="product_management_image_picker_empty">No images available yet.</string>
+    <string name="product_management_edit">Edit</string>
+    <string name="product_management_delete">Delete</string>
+    <string name="product_management_delete_product_confirm_title">Delete this product?</string>
+    <string name="product_management_delete_category_confirm_title">Delete this category?</string>
+    <string name="product_management_delete_confirm_body">This can\'t be undone.</string>
+
     <string name="share_sheet_no_members">No other household members to share with yet.</string>
 
     <string name="beer_add_5dl">+1 · 5dl</string>

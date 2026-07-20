@@ -52,6 +52,7 @@ import ch.mcfx.urs.settings.AboutScreen
 import ch.mcfx.urs.settings.AccountSettingsScreen
 import ch.mcfx.urs.settings.LocationHistorySettingsScreen
 import ch.mcfx.urs.settings.NotificationSettingsScreen
+import ch.mcfx.urs.settings.ProductManagementScreen
 import ch.mcfx.urs.settings.SettingsRoutes
 import ch.mcfx.urs.settings.SettingsScreen
 import ch.mcfx.urs.settings.VpnSettingsScreen
@@ -308,6 +309,7 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                     composable(SettingsRoutes.ACCOUNT) { AccountSettingsScreen() }
                     composable(SettingsRoutes.ABOUT) { AboutScreen() }
                     composable(SettingsRoutes.LOCATION_HISTORY) { LocationHistorySettingsScreen() }
+                    composable(SettingsRoutes.PRODUCT_MANAGEMENT) { ProductManagementScreen() }
                 }
             }
         }
@@ -336,6 +338,7 @@ private val SETTINGS_ROUTE_LABELS = mapOf(
     SettingsRoutes.ACCOUNT to R.string.settings_tile_account,
     SettingsRoutes.ABOUT to R.string.settings_tile_about,
     SettingsRoutes.LOCATION_HISTORY to R.string.settings_tile_location_history,
+    SettingsRoutes.PRODUCT_MANAGEMENT to R.string.settings_tile_product_management,
 )
 
 private val INVENTORY_ROUTE_LABELS = mapOf(

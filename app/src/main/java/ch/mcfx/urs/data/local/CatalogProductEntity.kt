@@ -19,7 +19,8 @@ import androidx.room.PrimaryKey
  * `inventory_product`-owned category link). [recentNote1]/[recentNote2]/
  * [recentNote3] moved here from the old `inventory_product` (they're
  * now global per catalog product, since `list_item` no longer references
- * `inventory_product` at all).
+ * `inventory_product` at all). [source] ("manual" vs "external_catalog", ) gates
+ * whether the Product Management screen offers edit/delete for this row.
  */
 @Entity(tableName = "catalog_product")
 data class CatalogProductEntity(
@@ -34,4 +35,5 @@ data class CatalogProductEntity(
     val recentNote1: String? = null,
     val recentNote2: String? = null,
     val recentNote3: String? = null,
+    val source: String = "",
 )

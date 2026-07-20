@@ -86,11 +86,26 @@ interface UrsApi {
     @GET("api/v1/catalog-product/{catalogProductId}/quantity-on-hand")
     suspend fun getQuantityOnHand(@Path("catalogProductId") catalogProductId: String): Response<QuantityOnHandDto>
 
+    @PUT("api/v1/catalog-product/{id}")
+    suspend fun updateCatalogProduct(@Path("id") id: String, @Body payload: CatalogProductUpdatePayload)
+
+    @DELETE("api/v1/catalog-product/{id}")
+    suspend fun deleteCatalogProduct(@Path("id") id: String)
+
     @GET("api/v1/catalog-category")
     suspend fun getCatalogCategories(): List<CatalogCategoryDto>
 
     @POST("api/v1/catalog-category")
     suspend fun createCatalogCategory(@Body payload: NewCatalogCategoryPayload): NewCatalogCategoryResponseDto
+
+    @PUT("api/v1/catalog-category/{id}")
+    suspend fun updateCatalogCategory(@Path("id") id: String, @Body payload: CatalogCategoryUpdatePayload)
+
+    @DELETE("api/v1/catalog-category/{id}")
+    suspend fun deleteCatalogCategory(@Path("id") id: String)
+
+    @GET("api/v1/catalog-image")
+    suspend fun getCatalogImages(): List<CatalogImageDto>
 
     @POST("api/v1/list")
     suspend fun createList(@Body payload: ListPayload): ListDto

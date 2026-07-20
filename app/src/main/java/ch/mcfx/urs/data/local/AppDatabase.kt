@@ -28,7 +28,9 @@ import androidx.room.TypeConverters
     // the quantity/onSale columns on ListItemEntity — still no Migration
     // objects needed at this pre-release stage, see
     // AppContainer.database's fallbackToDestructiveMigration doc comment.
-    version = 12,
+    // v13: source added to CatalogProductEntity/CatalogCategoryEntity,
+    // catalogImageId added to CatalogCategoryEntity.
+    version = 13,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
