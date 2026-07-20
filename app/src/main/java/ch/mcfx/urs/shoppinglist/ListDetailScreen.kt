@@ -167,6 +167,8 @@ private fun ItemTile(
         catalogImageId = detail.catalogImageId,
         onClick = { onRemove(detail) },
         onLongClick = { onLongPress(detail) },
+        topEndBadge = detail.item.quantity?.let { stringResource(R.string.shoppinglist_item_quantity_badge, it) },
+        hazardBorder = detail.item.onSale,
     )
 }
 
@@ -184,6 +186,13 @@ private fun NoteForm(form: AddNoteFormState, viewModel: ListDetailViewModel) {
             label = stringResource(R.string.shoppinglist_item_note),
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
+        )
+        QuantityAndOnSaleRow(
+            quantity = form.quantity,
+            onSale = form.onSale,
+            onIncrement = viewModel::incrementQuantity,
+            onDecrement = viewModel::decrementQuantity,
+            onToggleOnSale = viewModel::toggleOnSale,
         )
         UrsButton(
             text = stringResource(R.string.save),

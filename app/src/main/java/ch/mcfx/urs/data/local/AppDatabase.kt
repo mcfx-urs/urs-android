@@ -23,12 +23,12 @@ import androidx.room.TypeConverters
         ListItemEntity::class,
         LocationHistoryEntity::class,
     ],
-    // Bumped for isFullTank column on FillEntity, the life map
-    // feature's LocationHistoryEntity (Phase 1, local-only), and Phase 3's
-    // serverId/outboxId/syncStatus sync fields added to that same entity —
-    // still no Migration objects needed at this pre-release stage, see
+    // Bumped for the isFullTank column on FillEntity, the life map
+    // feature's LocationHistoryEntity (local capture + sync fields), and
+    // the quantity/onSale columns on ListItemEntity — still no Migration
+    // objects needed at this pre-release stage, see
     // AppContainer.database's fallbackToDestructiveMigration doc comment.
-    version = 11,
+    version = 12,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)

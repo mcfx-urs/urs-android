@@ -424,7 +424,10 @@ class SyncManager(
         }
 
         val response = api.createListItem(
-            ListItemPayload(listId = resolvedListId, catalogProductId = payload.catalogProductId, note = payload.note.orEmpty()),
+            ListItemPayload(
+                listId = resolvedListId, catalogProductId = payload.catalogProductId, note = payload.note.orEmpty(),
+                quantity = payload.quantity, onSale = payload.onSale,
+            ),
         )
 
         listItemDao.markSynced(localItem.id, response.id, resolvedListId)
@@ -435,7 +438,10 @@ class SyncManager(
     // Same "no local-row lookup needed" reasoning as replayUpdateList.
     private suspend fun replayUpdateListItem(mutation: OutboxMutationEntity): Boolean {
         val payload = json.decodeFromString(OutboxListItemUpdatePayload.serializer(), mutation.payloadJson)
-        api.updateListItem(payload.serverId, ListItemUpdatePayload(note = payload.note.orEmpty()))
+        api.updateListItem(
+            payload.serverId,
+            ListItemUpdatePayload(note = payload.note.orEmpty(), quantity = payload.quantity, onSale = payload.onSale),
+        )
         outboxDao.delete(mutation.id)
         return true
     }

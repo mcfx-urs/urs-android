@@ -294,6 +294,8 @@ data class ListItemDto(
     @SerialName("catalog_product_catalog_category_id") val categoryId: String = "",
     @SerialName("catalog_category_name") val categoryName: String = "",
     @SerialName("list_item_note") val note: String = "",
+    @SerialName("list_item_quantity") val quantity: Int? = null,
+    @SerialName("list_item_on_sale") val onSale: Boolean = false,
 )
 
 @Serializable
@@ -301,15 +303,20 @@ data class ListItemPayload(
     @SerialName("list_item_list_id") val listId: String,
     @SerialName("list_item_catalog_product_id") val catalogProductId: String,
     @SerialName("list_item_note") val note: String = "",
+    @SerialName("list_item_quantity") val quantity: Int? = null,
+    @SerialName("list_item_on_sale") val onSale: Boolean = false,
 )
 
 // Separate from ListItemPayload so an update can never accidentally touch
 // listId/catalogProductId — mirrors InventoryProductSettingsPayload's split
 // from InventoryProductQuantityPayload, and matches the backend's own PUT
-// route, which only ever reads list_item_note from the body.
+// route, which reads list_item_note/list_item_quantity/list_item_on_sale
+// from the body.
 @Serializable
 data class ListItemUpdatePayload(
     @SerialName("list_item_note") val note: String = "",
+    @SerialName("list_item_quantity") val quantity: Int? = null,
+    @SerialName("list_item_on_sale") val onSale: Boolean = false,
 )
 
 @Serializable

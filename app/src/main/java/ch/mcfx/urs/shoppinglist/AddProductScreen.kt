@@ -9,19 +9,24 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
@@ -29,6 +34,7 @@ import ch.mcfx.urs.data.local.CatalogCategoryEntity
 import ch.mcfx.urs.data.local.CatalogProductEntity
 import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsCard
+import ch.mcfx.urs.ui.components.UrsCheckbox
 import ch.mcfx.urs.ui.components.UrsFilterChip
 import ch.mcfx.urs.ui.components.UrsIconButton
 import ch.mcfx.urs.ui.components.UrsOutlinedButton
@@ -239,6 +245,14 @@ private fun NoteInputMode(state: NoteInputState?, viewModel: AddProductViewModel
             modifier = Modifier.fillMaxWidth(),
         )
 
+        QuantityAndOnSaleRow(
+            quantity = state.quantity,
+            onSale = state.onSale,
+            onIncrement = viewModel::incrementQuantity,
+            onDecrement = viewModel::decrementQuantity,
+            onToggleOnSale = viewModel::toggleOnSale,
+        )
+
         // Tapping a chip only fills the text field above, it never submits
         // by itself — the user can still edit the note before confirming,
         // and picking one doesn't reorder the history unless it's actually
@@ -264,6 +278,54 @@ private fun NoteInputMode(state: NoteInputState?, viewModel: AddProductViewModel
                 text = stringResource(R.string.shoppinglist_add_product_add),
                 onClick = { viewModel.confirmAdd() },
                 modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+// Amount-needed stepper (+/-, no keyboard entry — "-" while unset) next to
+// the "only buy on sale" toggle, both shown together since they're the two
+// structured fields distinct from the free-text note above. Not private —
+// reused by ListDetailScreen's NoteForm for editing an already-added item.
+@Composable
+fun QuantityAndOnSaleRow(
+    quantity: Int?,
+    onSale: Boolean,
+    onIncrement: () -> Unit,
+    onDecrement: () -> Unit,
+    onToggleOnSale: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            UrsText(stringResource(R.string.shoppinglist_item_quantity), style = UrsTheme.typography.body)
+            UrsIconButton(
+                onClick = onDecrement,
+                enabled = quantity != null,
+                contentDescription = stringResource(R.string.shoppinglist_item_quantity_decrement),
+                imageVector = Icons.Filled.Remove,
+            )
+            UrsText(
+                quantity?.toString() ?: stringResource(R.string.shoppinglist_item_quantity_unset),
+                style = UrsTheme.typography.cardTitle.copy(textAlign = TextAlign.Center),
+                modifier = Modifier.width(24.dp),
+            )
+            UrsIconButton(
+                onClick = onIncrement,
+                contentDescription = stringResource(R.string.shoppinglist_item_quantity_increment),
+                imageVector = Icons.Filled.Add,
+            )
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            UrsText(stringResource(R.string.shoppinglist_item_on_sale), style = UrsTheme.typography.body)
+            UrsCheckbox(
+                checked = onSale,
+                onCheckedChange = { onToggleOnSale() },
+                modifier = Modifier.padding(start = Spacing.s),
             )
         }
     }

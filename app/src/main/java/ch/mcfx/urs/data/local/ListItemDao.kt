@@ -54,9 +54,17 @@ interface ListItemDao {
     suspend fun markSynced(id: Long, serverId: String, listId: String)
 
     @Query(
-        "UPDATE list_item SET note = :note, syncStatus = :syncStatus, outboxId = :outboxId WHERE id = :id",
+        "UPDATE list_item SET note = :note, quantity = :quantity, onSale = :onSale, " +
+            "syncStatus = :syncStatus, outboxId = :outboxId WHERE id = :id",
     )
-    suspend fun updateFields(id: Long, note: String?, syncStatus: SyncStatus, outboxId: Long?)
+    suspend fun updateFields(
+        id: Long,
+        note: String?,
+        quantity: Int?,
+        onSale: Boolean,
+        syncStatus: SyncStatus,
+        outboxId: Long?,
+    )
 
     @Query("DELETE FROM list_item WHERE id = :id")
     suspend fun delete(id: Long)

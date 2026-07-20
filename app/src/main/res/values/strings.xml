@@ -209,6 +209,12 @@
     <string name="shoppinglist_items_empty">No products on this list yet.</string>
     <string name="shoppinglist_recently_used">Recently used</string>
     <string name="shoppinglist_item_note">Note (optional)</string>
+    <string name="shoppinglist_item_quantity">Quantity</string>
+    <string name="shoppinglist_item_quantity_unset">-</string>
+    <string name="shoppinglist_item_quantity_decrement">Decrease quantity</string>
+    <string name="shoppinglist_item_quantity_increment">Increase quantity</string>
+    <string name="shoppinglist_item_quantity_badge">%1$dx</string>
+    <string name="shoppinglist_item_on_sale">On sale only</string>
     <string name="shoppinglist_add_product_title">Add a product</string>
     <string name="shoppinglist_add_product_search">Search products</string>
     <string name="shoppinglist_add_product_no_results">No matching products.</string>
