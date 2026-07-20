@@ -415,6 +415,27 @@ data class BeerLogPayload(
     @SerialName("beer_log_date") val date: String,
 )
 
+// Matches urs-backend's LocationHistory struct (src/web/locationHistory.go):
+// every value is a string, same DB-column-as-a-string convention as every
+// other DTO in this file. capturedAt uses "yyyy-MM-dd HH:mm:ss" (device
+// local time, no timezone), matching BeerStats.DATE_FORMAT's convention for
+// a combined date+time value sent to this backend — the backend parses it
+// with Go's "2006-01-02 15:04:05" layout (see SelectLocationHistory).
+@Serializable
+data class LocationHistoryPayload(
+    @SerialName("location_history_latitude") val latitude: String,
+    @SerialName("location_history_longitude") val longitude: String,
+    @SerialName("location_history_accuracy_m") val accuracyMeters: String = "",
+    @SerialName("location_history_captured_at") val capturedAt: String,
+)
+
+// Kept to just the server-assigned id, the only field SyncManager actually
+// reconciles against locally (see SyncManager.replayCreateLocationHistory).
+@Serializable
+data class LocationHistoryResponse(
+    @SerialName("location_history_id") val id: String,
+)
+
 @Serializable
 data class LoginPayload(
     @SerialName("user_name") val userName: String,

@@ -5,13 +5,21 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.data.local.LocationHistoryEntity
+import ch.mcfx.urs.data.local.OutboxLocationHistoryPayload
+import ch.mcfx.urs.data.local.OutboxMutationEntity
+import ch.mcfx.urs.data.local.SyncStatus
+import kotlinx.serialization.encodeToString
 
 /**
- * Periodic background GPS fix for the life map feature (Phase 1,
- * local-only) — deliberately carries no [androidx.work.Constraints], unlike
+ * Periodic background GPS fix for the life map feature — deliberately
+ * carries no [androidx.work.Constraints], unlike
  * [ch.mcfx.urs.data.sync.SyncWorker], since capture must keep working
  * offline. Reuses the existing single-shot [LocationCapture] helper for the
- * actual fix rather than reimplementing it.
+ * actual fix rather than reimplementing it. Phase 1 wrote the
+ * [LocationHistoryEntity] straight to Room, local-only; Phase 3 added the
+ * outbox row alongside it (same offline-first, fire-and-forget shape as
+ * `FuelRepository.createFill` — see that function's doc comment), so a
+ * background sync eventually replays it to the backend.
  */
 class LocationCaptureWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
@@ -25,12 +33,29 @@ class LocationCaptureWorker(context: Context, params: WorkerParameters) : Corout
         // permission would otherwise retry forever.
         val location = app.container.locationCapture.captureLocation() ?: return Result.success()
 
+        val payload = OutboxLocationHistoryPayload(
+            latitude = location.latitude,
+            longitude = location.longitude,
+            accuracyMeters = if (location.hasAccuracy()) location.accuracy else null,
+            capturedAt = System.currentTimeMillis(),
+        )
+
+        val outboxId = app.container.database.outboxDao().insert(
+            OutboxMutationEntity(
+                type = OutboxMutationEntity.TYPE_CREATE_LOCATION_HISTORY,
+                payloadJson = app.container.json.encodeToString(payload),
+                createdAt = System.currentTimeMillis(),
+            ),
+        )
+
         app.container.database.locationHistoryDao().insert(
             LocationHistoryEntity(
-                latitude = location.latitude,
-                longitude = location.longitude,
-                accuracyMeters = if (location.hasAccuracy()) location.accuracy else null,
-                capturedAt = System.currentTimeMillis(),
+                outboxId = outboxId,
+                latitude = payload.latitude,
+                longitude = payload.longitude,
+                accuracyMeters = payload.accuracyMeters,
+                capturedAt = payload.capturedAt,
+                syncStatus = SyncStatus.PENDING,
             ),
         )
         return Result.success()

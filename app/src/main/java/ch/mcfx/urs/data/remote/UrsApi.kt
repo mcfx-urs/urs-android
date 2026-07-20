@@ -182,4 +182,7 @@ interface UrsApi {
 
     @DELETE("api/v1/beer-log/{id}")
     suspend fun deleteBeerLog(@Path("id") id: String)
+
+    @POST("api/v1/location-history")
+    suspend fun createLocationHistory(@Body payload: LocationHistoryPayload): LocationHistoryResponse
 }

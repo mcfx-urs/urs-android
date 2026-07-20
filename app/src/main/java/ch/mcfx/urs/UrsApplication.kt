@@ -106,7 +106,10 @@ class AppContainer(context: Context) {
 
     private val appContext = context.applicationContext
 
-    private val json = Json { ignoreUnknownKeys = true }
+    // Not private — LocationCaptureWorker also needs this to encode its own
+    // outbox payload directly (it has no repository of its own to hide that
+    // behind, unlike every other outbox producer in this app).
+    val json = Json { ignoreUnknownKeys = true }
 
     val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -173,6 +176,7 @@ class AppContainer(context: Context) {
         inventoryProductDao = database.inventoryProductDao(),
         listDao = database.listDao(),
         listItemDao = database.listItemDao(),
+        locationHistoryDao = database.locationHistoryDao(),
         outboxDao = database.outboxDao(),
         reachabilityChecker = reachabilityChecker,
         json = json,

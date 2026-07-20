@@ -20,7 +20,8 @@ enum class OutboxStatus { PENDING, SYNCING, FAILED }
  * for [TYPE_CREATE_LIST]/[TYPE_UPDATE_LIST]/[TYPE_DELETE_LIST],
  * [OutboxListItemPayload]/[OutboxListItemUpdatePayload]/
  * [OutboxListItemDeletePayload] for [TYPE_CREATE_LIST_ITEM]/
- * [TYPE_UPDATE_LIST_ITEM]/[TYPE_DELETE_LIST_ITEM].
+ * [TYPE_UPDATE_LIST_ITEM]/[TYPE_DELETE_LIST_ITEM],
+ * [OutboxLocationHistoryPayload] for [TYPE_CREATE_LOCATION_HISTORY].
  * [createdAt] drives strict FIFO replay order (see `SyncManager`), not
  * wall-clock display.
  */
@@ -49,5 +50,6 @@ data class OutboxMutationEntity(
         const val TYPE_CREATE_LIST_ITEM = "CREATE_LIST_ITEM"
         const val TYPE_UPDATE_LIST_ITEM = "UPDATE_LIST_ITEM"
         const val TYPE_DELETE_LIST_ITEM = "DELETE_LIST_ITEM"
+        const val TYPE_CREATE_LOCATION_HISTORY = "CREATE_LOCATION_HISTORY"
     }
 }
