@@ -26,6 +26,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   at full size, the top app bar) when zoomed.
 - Life map: zooming or panning no longer gets reset back to the
   default view every time a new location point is captured.
+- Trigger an opportunistic outbox sync as soon as `NetworkGate` confirms
+  the backend is reachable (home Wi-Fi or a freshly connected VPN
+  tunnel), not only on a live Wi-Fi network change. A cold app start away
+  from home Wi-Fi previously had no such trigger at all, leaving sync
+  recovery solely to the 15-minute periodic worker and its exponential
+  backoff.
 
 ## [0.5.0] - 2026-07-19
 
