@@ -21,10 +21,12 @@ import androidx.room.TypeConverters
         RecentlyUsedProductEntity::class,
         ListEntity::class,
         ListItemEntity::class,
+        LocationHistoryEntity::class,
     ],
-    // Bumped for isFullTank column on FillEntity (see
-    // AppContainer.database's fallbackToDestructiveMigration doc comment —
-    // still no Migration objects needed at this pre-release stage).
+    // Bumped for isFullTank column on FillEntity and the life
+    // map feature's LocationHistoryEntity (Phase 1, local-only) — still no
+    // Migration objects needed at this pre-release stage, see
+    // AppContainer.database's fallbackToDestructiveMigration doc comment.
     version = 10,
     exportSchema = false,
 )
@@ -44,4 +46,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun recentlyUsedProductDao(): RecentlyUsedProductDao
     abstract fun listDao(): ListDao
     abstract fun listItemDao(): ListItemDao
+    abstract fun locationHistoryDao(): LocationHistoryDao
 }

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Schedule
@@ -44,6 +45,12 @@ private val SETTINGS_TILES = listOf(
     SettingsTile(SettingsRoutes.NOTIFICATIONS, R.string.settings_tile_notifications, Icons.Filled.Notifications, isAvailable = true),
     SettingsTile(SettingsRoutes.WORK_TIME, R.string.settings_tile_work_time, Icons.Filled.Schedule, isAvailable = true),
     SettingsTile(SettingsRoutes.ABOUT, R.string.settings_tile_about, Icons.Filled.Info, isAvailable = true),
+    SettingsTile(
+        SettingsRoutes.LOCATION_HISTORY,
+        R.string.settings_tile_location_history,
+        Icons.Filled.LocationOn,
+        isAvailable = true,
+    ),
 )
 
 // List-style rows, not a tile grid — the established Begleiter direction

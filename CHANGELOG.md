@@ -10,6 +10,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Settings: new About screen showing the app's current version.
 - Fuel: "Filled to full" toggle on the add-fill-up form, so a partial
   fill-up no longer distorts the average-consumption figures.
+- Life map: optional periodic background location capture, browsable
+  on a map (Settings → Location History) filtered by time range (last
+  month, 3/6/12 months, or all).
 
 ## [0.5.0] - 2026-07-19
 

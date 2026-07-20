@@ -11,4 +11,5 @@ object SettingsRoutes {
     const val WORK_TIME = "settings/work-time"
     const val ACCOUNT = "settings/account"
     const val ABOUT = "settings/about"
+    const val LOCATION_HISTORY = "settings/location-history"
 }

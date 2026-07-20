@@ -47,8 +47,10 @@ import ch.mcfx.urs.data.local.publicId
 import ch.mcfx.urs.inventory.InventoriesScreen
 import ch.mcfx.urs.inventory.InventoryRoutes
 import ch.mcfx.urs.inventory.ProductListScreen
+import ch.mcfx.urs.lifemap.LifeMapScreen
 import ch.mcfx.urs.settings.AboutScreen
 import ch.mcfx.urs.settings.AccountSettingsScreen
+import ch.mcfx.urs.settings.LocationHistorySettingsScreen
 import ch.mcfx.urs.settings.NotificationSettingsScreen
 import ch.mcfx.urs.settings.SettingsRoutes
 import ch.mcfx.urs.settings.SettingsScreen
@@ -285,6 +287,7 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                         val entryId = backStackEntry.arguments?.getLong("entryId") ?: return@composable
                         WorkTimeAddScreen(entryId = entryId, onDone = { navController.popBackStack() })
                     }
+                    composable(Destination.LIFE_MAP.route) { LifeMapScreen() }
                     composable(Destination.SETTINGS.route) {
                         SettingsScreen(onNavigate = { route -> navController.navigate(route) })
                     }
@@ -293,6 +296,7 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                     composable(SettingsRoutes.WORK_TIME) { WorkTimeSettingsScreen() }
                     composable(SettingsRoutes.ACCOUNT) { AccountSettingsScreen() }
                     composable(SettingsRoutes.ABOUT) { AboutScreen() }
+                    composable(SettingsRoutes.LOCATION_HISTORY) { LocationHistorySettingsScreen() }
                 }
             }
         }
@@ -320,6 +324,7 @@ private val SETTINGS_ROUTE_LABELS = mapOf(
     SettingsRoutes.WORK_TIME to R.string.settings_tile_work_time,
     SettingsRoutes.ACCOUNT to R.string.settings_tile_account,
     SettingsRoutes.ABOUT to R.string.settings_tile_about,
+    SettingsRoutes.LOCATION_HISTORY to R.string.settings_tile_location_history,
 )
 
 private val INVENTORY_ROUTE_LABELS = mapOf(

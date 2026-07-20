@@ -24,6 +24,8 @@ import ch.mcfx.urs.data.sync.ReachabilityChecker
 import ch.mcfx.urs.data.sync.SyncManager
 import ch.mcfx.urs.data.sync.SyncWorker
 import ch.mcfx.urs.location.LocationCapture
+import ch.mcfx.urs.location.LocationCaptureScheduler
+import ch.mcfx.urs.location.LocationHistorySettingsStore
 import ch.mcfx.urs.notifications.NotificationChannels
 import ch.mcfx.urs.notifications.NotificationSender
 import ch.mcfx.urs.notifications.ReminderScheduler
@@ -42,6 +44,7 @@ import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
+import org.osmdroid.config.Configuration as OsmConfiguration
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 
@@ -50,6 +53,9 @@ class UrsApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // Required by osmdroid's tile usage policy — an unset/default user
+        // agent gets tile requests blocked by some providers.
+        OsmConfiguration.getInstance().userAgentValue = packageName
         // Process-lifetime Wi-Fi listener so a live network change (e.g.
         // arriving home while the app is already open) is reacted to
         // immediately, not just at the next cold start.
@@ -74,6 +80,13 @@ class UrsApplication : Application() {
         // a much faster connectivity-triggered path also exists via
         // NetworkGate's own callback, see AppContainer.networkGate below.
         SyncWorker.enqueuePeriodic(this)
+        // Re-arms the life map's periodic capture across process restarts —
+        // WorkManager itself persists periodic work across reboot, but this
+        // covers the case where it was never enqueued in this process at
+        // all (e.g. right after an app update).
+        if (container.locationHistorySettingsStore.isEnabled()) {
+            LocationCaptureScheduler.reschedule(this, container.locationHistorySettingsStore.intervalMinutes())
+        }
         // Re-checks BiometricGate's 24h window on every app-level foreground,
         // not just a true cold start (ProcessLifecycleOwner fires once for
         // the whole process, unlike an individual Activity's onStart) — the
@@ -165,6 +178,7 @@ class AppContainer(context: Context) {
         json = json,
     )
     val locationCapture = LocationCapture(context)
+    val locationHistorySettingsStore = LocationHistorySettingsStore(context)
 
     // Reuses the same authenticated httpClient Retrofit uses (AuthInterceptor
     // + AuthAuthenticator already attached) — /api/v1/catalog-image/{id} sits
