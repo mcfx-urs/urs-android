@@ -53,13 +53,13 @@ fun UrsNavigationDrawerItem(
         UrsIcon(
             imageVector = icon,
             contentDescription = null,
-            tint = if (selected) colors.accent else colors.onSurface,
+            tint = colors.accent,
             modifier = Modifier.size(24.dp),
         )
         UrsText(
             text = label,
             style = UrsTheme.typography.cardTitle,
-            color = if (selected) colors.accent else colors.onSurface,
+            color = colors.accent,
             modifier = Modifier.weight(1f),
         )
         trailing?.invoke()

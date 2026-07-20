@@ -46,6 +46,7 @@ data class FillFormState(
     val pricePerLiter: String = "",
     val liters: String = "",
     val date: String = LocalDate.now().toString(),
+    val isFullTank: Boolean = true,
     val currencyCode: String = "CHF",
     val lastOdometer: String? = null,
     val submitting: Boolean = false,
@@ -165,6 +166,8 @@ class FuelViewModel(
 
     fun setDate(value: String) = _formState.update { it.copy(date = value) }
 
+    fun setIsFullTank(value: Boolean) = _formState.update { it.copy(isFullTank = value) }
+
     fun submit() {
         val form = _formState.value
         val car = form.car ?: return
@@ -184,6 +187,7 @@ class FuelViewModel(
                     currencyCode = form.currencyCode,
                     gpsLatitude = form.gpsLatitude,
                     gpsLongitude = form.gpsLongitude,
+                    isFullTank = form.isFullTank,
                 )
                 // createFill is a local-only write and returns instantly —
                 // no network round-trip to wait on, so the form can close

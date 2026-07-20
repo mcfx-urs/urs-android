@@ -14,6 +14,12 @@
          was granted). -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Life map's periodic background capture (Settings → Location
+         History): a distinct runtime permission from API 29 on, only
+         requestable after foreground location is already granted, and only
+         via a deep link to the app's own system Settings page (not a normal
+         permission dialog) — see LocationHistorySettingsScreen. -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <!-- On newer Android versions, unredacted Wi-Fi info (real SSID, not
          "<unknown ssid>") also requires this even with location granted.
          neverForLocation: this app only ever compares the SSID string

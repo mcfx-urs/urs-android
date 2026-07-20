@@ -47,8 +47,12 @@ import ch.mcfx.urs.data.local.publicId
 import ch.mcfx.urs.inventory.InventoriesScreen
 import ch.mcfx.urs.inventory.InventoryRoutes
 import ch.mcfx.urs.inventory.ProductListScreen
+import ch.mcfx.urs.lifemap.LifeMapScreen
+import ch.mcfx.urs.settings.AboutScreen
 import ch.mcfx.urs.settings.AccountSettingsScreen
+import ch.mcfx.urs.settings.LocationHistorySettingsScreen
 import ch.mcfx.urs.settings.NotificationSettingsScreen
+import ch.mcfx.urs.settings.ProductManagementScreen
 import ch.mcfx.urs.settings.SettingsRoutes
 import ch.mcfx.urs.settings.SettingsScreen
 import ch.mcfx.urs.settings.VpnSettingsScreen
@@ -139,7 +143,11 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                     contentDescription = null,
                     modifier = Modifier.size(28.dp),
                 )
-                UrsText(stringResource(R.string.app_name), style = UrsTheme.typography.brand)
+                UrsText(
+                    stringResource(R.string.app_name),
+                    style = UrsTheme.typography.brand,
+                    color = UrsTheme.colors.accent,
+                )
             }
             Destination.entries.forEach { destination ->
                 UrsNavigationDrawerItem(
@@ -168,6 +176,7 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
         },
     ) {
         Column(modifier = Modifier.fillMaxSize().background(UrsTheme.colors.background)) {
+            val topBarTint = if (isAccentTopBarRoute(currentRoute)) UrsTheme.colors.accent else UrsTheme.colors.onSurface
             UrsTopBar(
                 navigationIcon = {
                     if (isTopLevel) {
@@ -175,12 +184,14 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                             onClick = { coroutineScope.launch { drawerState.open() } },
                             contentDescription = stringResource(R.string.open_menu),
                             imageVector = Icons.Filled.Menu,
+                            tint = topBarTint,
                         )
                     } else {
                         UrsIconButton(
                             onClick = { navController.popBackStack() },
                             contentDescription = stringResource(R.string.back),
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            tint = topBarTint,
                         )
                     }
                 },
@@ -195,10 +206,14 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                                 contentDescription = null,
                                 modifier = Modifier.size(28.dp),
                             )
-                            UrsText(stringResource(R.string.app_name), style = UrsTheme.typography.brand)
+                            UrsText(stringResource(R.string.app_name), style = UrsTheme.typography.brand, color = topBarTint)
                         }
                     } else {
-                        UrsText(stringResource(currentScreenLabel(currentRoute)), style = UrsTheme.typography.screenTitle)
+                        UrsText(
+                            stringResource(currentScreenLabel(currentRoute)),
+                            style = UrsTheme.typography.screenTitle,
+                            color = topBarTint,
+                        )
                     }
                 },
             )
@@ -284,6 +299,7 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                         val entryId = backStackEntry.arguments?.getLong("entryId") ?: return@composable
                         WorkTimeAddScreen(entryId = entryId, onDone = { navController.popBackStack() })
                     }
+                    composable(Destination.LIFE_MAP.route) { LifeMapScreen() }
                     composable(Destination.SETTINGS.route) {
                         SettingsScreen(onNavigate = { route -> navController.navigate(route) })
                     }
@@ -291,6 +307,9 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                     composable(SettingsRoutes.NOTIFICATIONS) { NotificationSettingsScreen() }
                     composable(SettingsRoutes.WORK_TIME) { WorkTimeSettingsScreen() }
                     composable(SettingsRoutes.ACCOUNT) { AccountSettingsScreen() }
+                    composable(SettingsRoutes.ABOUT) { AboutScreen() }
+                    composable(SettingsRoutes.LOCATION_HISTORY) { LocationHistorySettingsScreen() }
+                    composable(SettingsRoutes.PRODUCT_MANAGEMENT) { ProductManagementScreen() }
                 }
             }
         }
@@ -317,6 +336,9 @@ private val SETTINGS_ROUTE_LABELS = mapOf(
     SettingsRoutes.NOTIFICATIONS to R.string.settings_tile_notifications,
     SettingsRoutes.WORK_TIME to R.string.settings_tile_work_time,
     SettingsRoutes.ACCOUNT to R.string.settings_tile_account,
+    SettingsRoutes.ABOUT to R.string.settings_tile_about,
+    SettingsRoutes.LOCATION_HISTORY to R.string.settings_tile_location_history,
+    SettingsRoutes.PRODUCT_MANAGEMENT to R.string.settings_tile_product_management,
 )
 
 private val INVENTORY_ROUTE_LABELS = mapOf(
@@ -326,6 +348,16 @@ private val INVENTORY_ROUTE_LABELS = mapOf(
 private val SHOPPING_LIST_ROUTE_LABELS = mapOf(
     ShoppingListRoutes.LIST_DETAIL to R.string.shoppinglist_list_detail_title,
 )
+
+// Home, Fuel, Inventory and Shopping List currently get the accent-colored
+// top-bar/drawer-icon treatment; every Fuel/Inventory/Shopping List subpage
+// route is prefixed accordingly, so a prefix check covers those too without
+// listing each one.
+private fun isAccentTopBarRoute(route: String): Boolean =
+    route == Destination.HOME.route ||
+        route.startsWith("fuel/") ||
+        route.startsWith("inventory/") ||
+        route.startsWith("shoppinglist/")
 
 private fun currentScreenLabel(route: String): Int =
     Destination.entries.find { it.route == route }?.labelRes

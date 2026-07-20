@@ -78,6 +78,7 @@ fun ProductListScreen(
             UrsText(
                 inventoryName,
                 style = UrsTheme.typography.screenTitle,
+                color = UrsTheme.colors.accent,
                 modifier = Modifier.padding(horizontal = Spacing.l, vertical = Spacing.m),
             )
             when (val state = uiState) {
@@ -156,7 +157,7 @@ private fun ProductList(
                 product.firstThreshold != null && quantity <= product.firstThreshold -> FirstWarningColor
                 else -> null
             }
-            val contentColor = if (warningColor != null) Color.White else UrsTheme.colors.onSurface
+            val contentColor = if (warningColor != null) Color.White else UrsTheme.colors.accent
             // The stepper/settings/delete actions all need a real backend id.
             val synced = product.serverId != null
 

@@ -23,6 +23,7 @@ data class OutboxFillPayload(
     val pricePerLiter: String,
     val liters: String,
     val driven: String,
+    val isFullTank: Boolean = true,
     val currencyCode: String,
     val stationId: String? = null,
     val stationLatitude: String? = null,

@@ -20,6 +20,8 @@ data class OutboxListItemPayload(
     val listId: String,
     val catalogProductId: String,
     val note: String? = null,
+    val quantity: Int? = null,
+    val onSale: Boolean = false,
 )
 
 /**
@@ -27,12 +29,15 @@ data class OutboxListItemPayload(
  * confirmed by the backend — [serverId] identifies it directly, same shape
  * as [OutboxWorkTimeEntryUpdatePayload]. `list_item_checked` is gone
  * entirely — adding/removing an item from a list is the only state
- * transition now, so there's nothing left to carry here besides the note.
+ * transition now, so there's nothing left to carry here besides the note,
+ * quantity, and on-sale-only flag.
  */
 @Serializable
 data class OutboxListItemUpdatePayload(
     val serverId: String,
     val note: String? = null,
+    val quantity: Int? = null,
+    val onSale: Boolean = false,
 )
 
 /** Same shape as [OutboxWorkTimeEntryDeletePayload]. */

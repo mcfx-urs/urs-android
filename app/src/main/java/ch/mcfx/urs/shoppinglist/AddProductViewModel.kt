@@ -26,7 +26,16 @@ import kotlinx.coroutines.launch
 /** The three browse tabs — HÄUFIG/ZULETZT/KATEGORIEN, overridden by [AddProductViewModel.query] whenever it's non-blank. */
 enum class AddProductTab { POPULAR, RECENT, CATEGORIES }
 
-data class NoteInputState(val product: CatalogProductEntity, val note: String = "")
+data class NoteInputState(
+    val product: CatalogProductEntity,
+    val note: String = "",
+    // Null = unset ("-" in the popup, no badge on the tile). Distinct from
+    // `note`, which stays free text (brand, color, ...).
+    val quantity: Int? = null,
+    // "Only buy this on sale" — stock-up items that should stay on the list
+    // until a promo price comes along.
+    val onSale: Boolean = false,
+)
 
 /**
  * Add-product picker, redesigned around three tabs plus a search box that
@@ -144,6 +153,18 @@ class AddProductViewModel(
 
     fun setNote(value: String) = _noteInput.update { it?.copy(note = value) }
 
+    fun incrementQuantity() = _noteInput.update { it?.copy(quantity = (it.quantity ?: 0) + 1) }
+
+    // Decrementing below 1 clears back to unset, rather than floor-stopping
+    // at 1 — matches the popup's "-" default and the tile's "no badge when
+    // unset" display.
+    fun decrementQuantity() = _noteInput.update { state ->
+        val current = state?.quantity ?: return@update state
+        state.copy(quantity = if (current <= 1) null else current - 1)
+    }
+
+    fun toggleOnSale() = _noteInput.update { it?.copy(onSale = !it.onSale) }
+
     fun closeNoteInput() {
         _noteInput.value = null
     }
@@ -157,7 +178,10 @@ class AddProductViewModel(
         val state = _noteInput.value ?: return
         val note = state.note.trim().ifEmpty { null }
         _noteInput.value = null
-        viewModelScope.launch { shoppingListRepository.addCatalogProduct(listId, state.product, note) }
+        _query.value = ""
+        viewModelScope.launch {
+            shoppingListRepository.addCatalogProduct(listId, state.product, note, state.quantity, state.onSale)
+        }
     }
 
     /**

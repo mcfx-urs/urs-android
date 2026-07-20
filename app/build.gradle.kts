@@ -1,3 +1,7 @@
+import java.net.HttpURLConnection
+import java.net.URI
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Properties
 
 plugins {
@@ -19,6 +23,34 @@ val keystoreProperties = Properties().apply {
     }
 }
 
+// A fresh joke per build, shown on the About screen — fetched from the
+// backend's public GET /api/v1/joke at Gradle configuration time, not at
+// app runtime, so it needs no network permission/error-state handling in
+// the app itself. Falls back to a fixed joke if the backend isn't
+// reachable (e.g. an offline build), rather than failing the build.
+fun fetchDadJoke(baseUrl: String): String {
+    val fallback = "Why don't scientists trust atoms? Because they make up everything."
+    return try {
+        val connection = URI("${baseUrl}api/v1/joke").toURL().openConnection() as HttpURLConnection
+        connection.requestMethod = "GET"
+        connection.connectTimeout = 3000
+        connection.readTimeout = 3000
+        connection.setRequestProperty("Accept", "application/json")
+        val body = connection.inputStream.bufferedReader().use { it.readText() }
+        connection.disconnect()
+        Regex("\"joke\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"").find(body)
+            ?.groupValues?.get(1)
+            ?.replace("\\\"", "\"")
+            ?.replace("\\\\", "\\")
+            ?: fallback
+    } catch (e: Exception) {
+        fallback
+    }
+}
+
+fun String.toJavaStringLiteral(): String =
+    "\"${replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", " ").replace("\r", "")}\""
+
 android {
     namespace = "ch.mcfx.urs"
     compileSdk = 37
@@ -29,6 +61,11 @@ android {
         targetSdk = 37
         versionCode = 5
         versionName = "0.5.0"
+        buildConfigField(
+            "String",
+            "BUILD_TIME",
+            "\"${SimpleDateFormat("yyyyMMdd-HHmmss").format(Date())}\"",
+        )
     }
 
     signingConfigs {
@@ -49,10 +86,14 @@ android {
             // of conflicting with it over the same package name/signature.
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
-            buildConfigField("String", "BASE_URL", "\"https://urs-backend-stg.mcfx.ch/\"")
+            val baseUrl = "https://urs-backend-stg.mcfx.ch/"
+            buildConfigField("String", "BASE_URL", "\"$baseUrl\"")
+            buildConfigField("String", "JOKE_OF_THE_DAY", fetchDadJoke(baseUrl).toJavaStringLiteral())
         }
         release {
-            buildConfigField("String", "BASE_URL", "\"https://urs-backend.mcfx.ch/\"")
+            val baseUrl = "https://urs-backend.mcfx.ch/"
+            buildConfigField("String", "BASE_URL", "\"$baseUrl\"")
+            buildConfigField("String", "JOKE_OF_THE_DAY", fetchDadJoke(baseUrl).toJavaStringLiteral())
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             if (keystorePropertiesFile.exists()) {
@@ -98,4 +139,5 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
+    implementation(libs.osmdroid.android)
 }

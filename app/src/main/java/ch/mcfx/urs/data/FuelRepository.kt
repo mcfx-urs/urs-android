@@ -101,6 +101,7 @@ class FuelRepository(
         currencyCode: String,
         gpsLatitude: String?,
         gpsLongitude: String?,
+        isFullTank: Boolean,
     ) {
         val driven = lastOdometer
             ?.let { formatKm((odometer.toFloatOrNull() ?: 0f) - (it.toFloatOrNull() ?: 0f)) }
@@ -115,6 +116,7 @@ class FuelRepository(
             pricePerLiter = pricePerLiter,
             liters = liters,
             driven = driven,
+            isFullTank = isFullTank,
             currencyCode = currencyCode,
             stationId = station?.id,
             stationLatitude = gpsLatitude,
@@ -140,6 +142,7 @@ class FuelRepository(
                 liters = liters,
                 odometer = odometer,
                 driven = driven,
+                isFullTank = isFullTank,
                 currencyCode = currencyCode,
                 syncStatus = SyncStatus.PENDING,
             ),
@@ -208,6 +211,7 @@ private fun FillDto.toEntity() = FillEntity(
     // Not returned by GET /fill (only relevant at creation time) — already
     // synced rows don't need it for anything the UI shows today.
     driven = "",
+    isFullTank = isFullTank == "1",
     currencyCode = currencyCode,
     syncStatus = SyncStatus.SYNCED,
 )

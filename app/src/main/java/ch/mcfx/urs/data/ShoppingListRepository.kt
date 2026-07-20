@@ -211,8 +211,17 @@ class ShoppingListRepository(
      * product twice with two different notes is expected to create two
      * separate rows, not merge them.
      */
-    suspend fun addExistingProduct(listId: String, catalogProductId: String, note: String?) {
-        val payload = OutboxListItemPayload(listId = listId, catalogProductId = catalogProductId, note = note)
+    suspend fun addExistingProduct(
+        listId: String,
+        catalogProductId: String,
+        note: String?,
+        quantity: Int? = null,
+        onSale: Boolean = false,
+    ) {
+        val payload = OutboxListItemPayload(
+            listId = listId, catalogProductId = catalogProductId, note = note,
+            quantity = quantity, onSale = onSale,
+        )
         val outboxId = outboxDao.insert(
             OutboxMutationEntity(
                 type = OutboxMutationEntity.TYPE_CREATE_LIST_ITEM,
@@ -223,6 +232,7 @@ class ShoppingListRepository(
         listItemDao.upsert(
             ListItemEntity(
                 outboxId = outboxId, listId = listId, catalogProductId = catalogProductId, note = note,
+                quantity = quantity, onSale = onSale,
                 syncStatus = SyncStatus.PENDING,
             ),
         )
@@ -238,8 +248,14 @@ class ShoppingListRepository(
      * creating the list item) — no separate client-side call needed beyond
      * re-fetching [refreshRecentlyUsed] on next load.
      */
-    suspend fun addCatalogProduct(listId: String, catalogProduct: CatalogProductEntity, note: String?) {
-        addExistingProduct(listId, catalogProduct.id, note)
+    suspend fun addCatalogProduct(
+        listId: String,
+        catalogProduct: CatalogProductEntity,
+        note: String?,
+        quantity: Int? = null,
+        onSale: Boolean = false,
+    ) {
+        addExistingProduct(listId, catalogProduct.id, note, quantity, onSale)
     }
 
     /**
@@ -248,16 +264,21 @@ class ShoppingListRepository(
      * [renameList]/[WorkTimeRepository.updateEntry]. `checked` is gone
      * entirely — this now only ever edits the note.
      */
-    suspend fun updateItem(localId: Long, note: String?) {
+    suspend fun updateItem(localId: Long, note: String?, quantity: Int? = null, onSale: Boolean = false) {
         val current = listItemDao.getById(localId) ?: return
 
         val outboxId = if (current.serverId == null) {
-            val payload = OutboxListItemPayload(listId = current.listId, catalogProductId = current.catalogProductId, note = note)
+            val payload = OutboxListItemPayload(
+                listId = current.listId, catalogProductId = current.catalogProductId, note = note,
+                quantity = quantity, onSale = onSale,
+            )
             current.outboxId?.let { outboxDao.updatePayload(it, json.encodeToString(payload)) }
             current.outboxId
         } else {
             current.outboxId?.let { outboxDao.delete(it) }
-            val payload = OutboxListItemUpdatePayload(serverId = current.serverId, note = note)
+            val payload = OutboxListItemUpdatePayload(
+                serverId = current.serverId, note = note, quantity = quantity, onSale = onSale,
+            )
             outboxDao.insert(
                 OutboxMutationEntity(
                     type = OutboxMutationEntity.TYPE_UPDATE_LIST_ITEM,
@@ -267,7 +288,7 @@ class ShoppingListRepository(
             )
         }
 
-        listItemDao.updateFields(localId, note, SyncStatus.PENDING, outboxId)
+        listItemDao.updateFields(localId, note, quantity, onSale, SyncStatus.PENDING, outboxId)
         applicationScope.launch { syncManager.syncNow() }
     }
 
@@ -357,5 +378,7 @@ private fun ListItemDto.toEntity() = ListItemEntity(
     listId = listId,
     catalogProductId = catalogProductId,
     note = note.ifEmpty { null },
+    quantity = quantity,
+    onSale = onSale,
     syncStatus = SyncStatus.SYNCED,
 )

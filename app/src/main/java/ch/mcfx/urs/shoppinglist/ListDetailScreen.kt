@@ -29,6 +29,7 @@ import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsDockedPanel
 import ch.mcfx.urs.ui.components.UrsFab
 import ch.mcfx.urs.ui.components.UrsProgressIndicator
+import ch.mcfx.urs.ui.components.UrsSectionDivider
 import ch.mcfx.urs.ui.components.UrsSquareTile
 import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.components.UrsTextField
@@ -56,6 +57,7 @@ fun ListDetailScreen(
                 UrsText(
                     state.listName,
                     style = UrsTheme.typography.screenTitle,
+                    color = UrsTheme.colors.accent,
                     modifier = Modifier.padding(horizontal = Spacing.l, vertical = Spacing.m),
                 )
                 ItemGrid(
@@ -122,7 +124,7 @@ private fun ItemGrid(
                 UrsText(
                     group.categoryName,
                     style = UrsTheme.typography.caption,
-                    color = UrsTheme.colors.onSurfaceMuted,
+                    color = UrsTheme.colors.accent,
                     modifier = Modifier.padding(top = Spacing.s, bottom = Spacing.xs),
                 )
             }
@@ -132,11 +134,16 @@ private fun ItemGrid(
         }
 
         if (recentlyUsed.isNotEmpty()) {
+            if (groups.isNotEmpty()) {
+                fullWidthItem(key = "divider-recently-used") {
+                    UrsSectionDivider(modifier = Modifier.padding(top = Spacing.s))
+                }
+            }
             fullWidthItem(key = "recently-used-header") {
                 UrsText(
                     stringResource(R.string.shoppinglist_recently_used),
                     style = UrsTheme.typography.caption,
-                    color = UrsTheme.colors.onSurfaceMuted,
+                    color = UrsTheme.colors.accent,
                     modifier = Modifier.padding(top = Spacing.l, bottom = Spacing.xs),
                 )
             }
@@ -167,6 +174,8 @@ private fun ItemTile(
         catalogImageId = detail.catalogImageId,
         onClick = { onRemove(detail) },
         onLongClick = { onLongPress(detail) },
+        topEndBadge = detail.item.quantity?.let { stringResource(R.string.shoppinglist_item_quantity_badge, it) },
+        hazardBorder = detail.item.onSale,
     )
 }
 
@@ -184,6 +193,13 @@ private fun NoteForm(form: AddNoteFormState, viewModel: ListDetailViewModel) {
             label = stringResource(R.string.shoppinglist_item_note),
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
+        )
+        QuantityAndOnSaleRow(
+            quantity = form.quantity,
+            onSale = form.onSale,
+            onIncrement = viewModel::incrementQuantity,
+            onDecrement = viewModel::decrementQuantity,
+            onToggleOnSale = viewModel::toggleOnSale,
         )
         UrsButton(
             text = stringResource(R.string.save),
