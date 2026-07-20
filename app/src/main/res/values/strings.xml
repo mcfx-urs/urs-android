@@ -70,6 +70,10 @@
     <string name="location_history_granted">Granted</string>
     <string name="location_history_grant">Grant</string>
     <string name="location_history_interval_label">Capture interval</string>
+    <string name="location_history_interval_1">Every 1 min</string>
+    <string name="location_history_interval_2">Every 2 min</string>
+    <string name="location_history_interval_5">Every 5 min</string>
+    <string name="location_history_interval_10">Every 10 min</string>
     <string name="location_history_interval_15">Every 15 min</string>
     <string name="location_history_interval_30">Every 30 min</string>
     <string name="location_history_interval_60">Every hour</string>

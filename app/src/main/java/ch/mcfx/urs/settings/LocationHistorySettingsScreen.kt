@@ -59,7 +59,7 @@ private fun hasBackgroundLocationPermission(context: Context) =
         ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION) ==
         PackageManager.PERMISSION_GRANTED
 
-private val INTERVAL_OPTIONS_MINUTES = listOf(15L, 30L, 60L, 120L, 240L)
+private val INTERVAL_OPTIONS_MINUTES = listOf(1L, 2L, 5L, 10L, 15L, 30L, 60L, 120L, 240L)
 
 @Composable
 fun LocationHistorySettingsScreen(
@@ -95,6 +95,10 @@ fun LocationHistorySettingsScreen(
     }
 
     val intervalLabels = mapOf(
+        1L to stringResource(R.string.location_history_interval_1),
+        2L to stringResource(R.string.location_history_interval_2),
+        5L to stringResource(R.string.location_history_interval_5),
+        10L to stringResource(R.string.location_history_interval_10),
         15L to stringResource(R.string.location_history_interval_15),
         30L to stringResource(R.string.location_history_interval_30),
         60L to stringResource(R.string.location_history_interval_60),

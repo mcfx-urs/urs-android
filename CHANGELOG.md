@@ -13,10 +13,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Life map: optional periodic background location capture, browsable
   on a map (Settings → Location History) filtered by time range (last
   month, 3/6/12 months, or all).
+- Life map: 1/2/5/10-minute capture interval options, alongside the
+  existing 15 min-4 h choices.
 - Shopping list items: a quantity stepper (+/-) and an "On sale only"
   toggle, alongside the existing note field, in both the add-product
   popup and the edit sheet. Quantity shows as "Nx" on the tile when
   set; "On sale only" shows as a yellow/black striped tile border.
+
+### Fixed
+
+- Life map: the map no longer grows over the time-range dropdown (or,
+  at full size, the top app bar) when zoomed.
+- Life map: zooming or panning no longer gets reset back to the
+  default view every time a new location point is captured.
 
 ## [0.5.0] - 2026-07-19
 

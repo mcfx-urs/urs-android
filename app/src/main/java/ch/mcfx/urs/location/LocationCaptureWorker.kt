@@ -25,7 +25,17 @@ class LocationCaptureWorker(context: Context, params: WorkerParameters) : Corout
 
     override suspend fun doWork(): Result {
         val app = applicationContext as UrsApplication
-        if (!app.container.locationHistorySettingsStore.isEnabled()) return Result.success()
+        val store = app.container.locationHistorySettingsStore
+        if (!store.isEnabled()) return Result.success()
+
+        // Below WorkManager's 15-minute periodic-work floor, this worker
+        // drives its own repeat schedule — arm the next run unconditionally
+        // (even if the capture below fails) so a single missed/timed-out fix
+        // doesn't break the chain.
+        val intervalMinutes = store.intervalMinutes()
+        if (intervalMinutes < LocationCaptureScheduler.PERIODIC_FLOOR_MINUTES) {
+            LocationCaptureScheduler.scheduleNext(applicationContext, intervalMinutes)
+        }
 
         // A missing permission or a timed-out fix (see LocationCapture's own
         // doc comment) just leaves a gap in the track for this run — not
