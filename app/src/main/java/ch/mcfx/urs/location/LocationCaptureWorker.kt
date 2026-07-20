@@ -2,6 +2,7 @@ package ch.mcfx.urs.location
 
 import android.content.Context
 import androidx.work.CoroutineWorker
+import androidx.work.ExistingWorkPolicy
 import androidx.work.WorkerParameters
 import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.data.local.LocationHistoryEntity
@@ -31,10 +32,18 @@ class LocationCaptureWorker(context: Context, params: WorkerParameters) : Corout
         // Below WorkManager's 15-minute periodic-work floor, this worker
         // drives its own repeat schedule — arm the next run unconditionally
         // (even if the capture below fails) so a single missed/timed-out fix
-        // doesn't break the chain.
+        // doesn't break the chain. Must use APPEND_OR_REPLACE, not REPLACE:
+        // this call runs under the same WORK_NAME as the run currently in
+        // progress (this one), and REPLACE cancels whatever currently holds
+        // that name — including this still-running invocation — the moment
+        // WorkManager processes the enqueue. That raced against the GPS fix
+        // below and always lost on a real device (a fix takes seconds; the
+        // cancellation lands in milliseconds), silently killing every
+        // capture. APPEND_OR_REPLACE instead queues the next run to start
+        // once this one finishes, without touching it.
         val intervalMinutes = store.intervalMinutes()
         if (intervalMinutes < LocationCaptureScheduler.PERIODIC_FLOOR_MINUTES) {
-            LocationCaptureScheduler.scheduleNext(applicationContext, intervalMinutes)
+            LocationCaptureScheduler.scheduleNext(applicationContext, intervalMinutes, ExistingWorkPolicy.APPEND_OR_REPLACE)
         }
 
         // A missing permission or a timed-out fix (see LocationCapture's own

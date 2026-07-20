@@ -17,10 +17,15 @@ import java.util.concurrent.TimeUnit
  * shorter is silently clamped up to 15 minutes), which is too coarse for
  * testing this feature. Intervals below [PERIODIC_FLOOR_MINUTES] are instead
  * driven by a self-rescheduling one-time work chain: [LocationCaptureWorker]
- * calls [scheduleNext] itself at the end of `doWork()` to arm its own next
- * run. Both mechanisms enqueue under the same [WORK_NAME], so switching
- * between them (a settings change crossing the 15-minute line) replaces
- * whichever chain was previously running.
+ * calls [scheduleNext] itself to arm its own next run. Both mechanisms
+ * enqueue under the same [WORK_NAME], so switching between them (a settings
+ * change crossing the 15-minute line) replaces whichever chain was
+ * previously running — [reschedule] uses [ExistingWorkPolicy.REPLACE] for
+ * that external-trigger case. [LocationCaptureWorker]'s own self-chaining
+ * call must use [ExistingWorkPolicy.APPEND_OR_REPLACE] instead: it enqueues
+ * under [WORK_NAME] while its own run under that same name is still in
+ * progress, and REPLACE would cancel whatever currently holds the name —
+ * including itself.
  */
 object LocationCaptureScheduler {
     const val WORK_NAME = "life-map-capture"
