@@ -19,6 +19,13 @@ interface CatalogCategoryDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertOne(entity: CatalogCategoryEntity)
 
+    //  edit form write path — see CatalogProductDao.updateFields.
+    @Query("UPDATE catalog_category SET name = :name, catalogImageId = :catalogImageId WHERE id = :id")
+    suspend fun updateFields(id: String, name: String, catalogImageId: Int?)
+
+    @Query("DELETE FROM catalog_category WHERE id = :id")
+    suspend fun deleteById(id: String)
+
     @Query("DELETE FROM catalog_category")
     suspend fun deleteAll()
 

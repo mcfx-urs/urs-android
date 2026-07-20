@@ -5,7 +5,10 @@ import ch.mcfx.urs.data.local.CatalogCategoryEntity
 import ch.mcfx.urs.data.local.CatalogProductDao
 import ch.mcfx.urs.data.local.CatalogProductEntity
 import ch.mcfx.urs.data.remote.CatalogCategoryDto
+import ch.mcfx.urs.data.remote.CatalogCategoryUpdatePayload
+import ch.mcfx.urs.data.remote.CatalogImageDto
 import ch.mcfx.urs.data.remote.CatalogProductDto
+import ch.mcfx.urs.data.remote.CatalogProductUpdatePayload
 import ch.mcfx.urs.data.remote.NewCatalogCategoryPayload
 import ch.mcfx.urs.data.remote.NewCatalogProductPayload
 import ch.mcfx.urs.data.remote.UrsApi
@@ -74,7 +77,10 @@ class CatalogRepository(
      */
     suspend fun createCategory(name: String): CatalogCategoryEntity {
         val response = api.createCatalogCategory(NewCatalogCategoryPayload(name = name))
-        val entity = CatalogCategoryEntity(id = response.id, name = response.name)
+        // Always "manual" — postCatalogCategory only ever inserts manual rows
+        // (urs-backend's GetOrCreateCatalogCategory), so no need to round-trip
+        // through the DTO's source field just to learn what we already know.
+        val entity = CatalogCategoryEntity(id = response.id, name = response.name, source = "manual")
         catalogCategoryDao.upsertOne(entity)
         return entity
     }
@@ -89,10 +95,55 @@ class CatalogRepository(
             categoryName = "",
             catalogCategoryId = response.catalogCategoryId.ifEmpty { null },
             name = response.name,
+            source = "manual",
         )
         catalogProductDao.upsertOne(entity)
         return entity
     }
+
+    /**
+     * rename/re-link a manually-created product (name/category/
+     * image) — Product Management's edit form. Same direct-REST shape as
+     * [createProduct]; the local cache is updated from the request's own
+     * inputs rather than re-fetching, mirroring how create already works.
+     */
+    suspend fun updateProduct(id: String, name: String, catalogCategoryId: String?, catalogImageId: String?) {
+        api.updateCatalogProduct(
+            id,
+            CatalogProductUpdatePayload(
+                name = name,
+                catalogCategoryId = catalogCategoryId.orEmpty(),
+                catalogImageId = catalogImageId.orEmpty(),
+            ),
+        )
+        catalogProductDao.updateFields(id, name, catalogCategoryId, catalogImageId?.toIntOrNull())
+    }
+
+    /** delete a manually-created product — Product Management's delete action. */
+    suspend fun deleteProduct(id: String) {
+        api.deleteCatalogProduct(id)
+        catalogProductDao.deleteById(id)
+    }
+
+    /** rename/re-link a manually-created category — Product Management's edit form. */
+    suspend fun updateCategory(id: String, name: String, catalogImageId: String?) {
+        api.updateCatalogCategory(id, CatalogCategoryUpdatePayload(name = name, catalogImageId = catalogImageId.orEmpty()))
+        catalogCategoryDao.updateFields(id, name, catalogImageId?.toIntOrNull())
+    }
+
+    /** delete a manually-created category — Product Management's delete action. */
+    suspend fun deleteCategory(id: String) {
+        api.deleteCatalogCategory(id)
+        catalogCategoryDao.deleteById(id)
+    }
+
+    /**
+     * every catalog image available for reuse — no local cache (a
+     * fresh network read every time the picker opens), same reasoning as
+     * [quantityOnHand]: this list only matters while the picker is open, not
+     * worth an offline-first shape.
+     */
+    suspend fun getImages(): List<CatalogImageDto> = emptyAsNull { api.getCatalogImages() }
 
     /**
      * Read-only display hint — the caller's total on-hand quantity
@@ -147,9 +198,12 @@ private fun CatalogProductDto.toEntity() = CatalogProductEntity(
     recentNote1 = recentNote1.ifEmpty { null },
     recentNote2 = recentNote2.ifEmpty { null },
     recentNote3 = recentNote3.ifEmpty { null },
+    source = source,
 )
 
 private fun CatalogCategoryDto.toEntity() = CatalogCategoryEntity(
     id = id,
     name = name,
+    source = source,
+    catalogImageId = catalogImageId.toIntOrNull(),
 )

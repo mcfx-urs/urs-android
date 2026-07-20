@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
@@ -49,6 +50,12 @@ private val SETTINGS_TILES = listOf(
         SettingsRoutes.LOCATION_HISTORY,
         R.string.settings_tile_location_history,
         Icons.Filled.LocationOn,
+        isAvailable = true,
+    ),
+    SettingsTile(
+        SettingsRoutes.PRODUCT_MANAGEMENT,
+        R.string.settings_tile_product_management,
+        Icons.Filled.Inventory,
         isAvailable = true,
     ),
 )
