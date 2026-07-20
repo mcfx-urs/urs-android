@@ -171,6 +171,7 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
         },
     ) {
         Column(modifier = Modifier.fillMaxSize().background(UrsTheme.colors.background)) {
+            val topBarTint = if (isShoppingListRoute(currentRoute)) UrsTheme.colors.accent else UrsTheme.colors.onSurface
             UrsTopBar(
                 navigationIcon = {
                     if (isTopLevel) {
@@ -178,12 +179,14 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                             onClick = { coroutineScope.launch { drawerState.open() } },
                             contentDescription = stringResource(R.string.open_menu),
                             imageVector = Icons.Filled.Menu,
+                            tint = topBarTint,
                         )
                     } else {
                         UrsIconButton(
                             onClick = { navController.popBackStack() },
                             contentDescription = stringResource(R.string.back),
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            tint = topBarTint,
                         )
                     }
                 },
@@ -201,7 +204,11 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                             UrsText(stringResource(R.string.app_name), style = UrsTheme.typography.brand)
                         }
                     } else {
-                        UrsText(stringResource(currentScreenLabel(currentRoute)), style = UrsTheme.typography.screenTitle)
+                        UrsText(
+                            stringResource(currentScreenLabel(currentRoute)),
+                            style = UrsTheme.typography.screenTitle,
+                            color = topBarTint,
+                        )
                     }
                 },
             )
@@ -334,6 +341,9 @@ private val INVENTORY_ROUTE_LABELS = mapOf(
 private val SHOPPING_LIST_ROUTE_LABELS = mapOf(
     ShoppingListRoutes.LIST_DETAIL to R.string.shoppinglist_list_detail_title,
 )
+
+private fun isShoppingListRoute(route: String): Boolean =
+    route == Destination.SHOPPING_LIST.route || route == ShoppingListRoutes.LIST_DETAIL
 
 private fun currentScreenLabel(route: String): Int =
     Destination.entries.find { it.route == route }?.labelRes

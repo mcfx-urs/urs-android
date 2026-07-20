@@ -19,6 +19,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   toggle, alongside the existing note field, in both the add-product
   popup and the edit sheet. Quantity shows as "Nx" on the tile when
   set; "On sale only" shows as a yellow/black striped tile border.
+- Shopping list: a centered accent-colored bar separating the item
+  grid from the "Recently used" section. List names, category headers,
+  and the top app bar (title and back/menu icon) now use the accent
+  color on shopping list screens.
 
 ### Fixed
 
