@@ -39,12 +39,12 @@ private data class SettingsTile(
 )
 
 private val SETTINGS_TILES = listOf(
+    SettingsTile(SettingsRoutes.ABOUT, R.string.settings_tile_about, Icons.Filled.Info, isAvailable = true),
     SettingsTile(SettingsRoutes.ACCOUNT, R.string.settings_tile_account, Icons.Filled.AccountCircle, isAvailable = true),
     SettingsTile(null, R.string.settings_tile_users, Icons.Filled.People, isAvailable = false),
     SettingsTile(SettingsRoutes.VPN, R.string.settings_tile_vpn, Icons.Filled.VpnKey, isAvailable = true),
     SettingsTile(SettingsRoutes.NOTIFICATIONS, R.string.settings_tile_notifications, Icons.Filled.Notifications, isAvailable = true),
     SettingsTile(SettingsRoutes.WORK_TIME, R.string.settings_tile_work_time, Icons.Filled.Schedule, isAvailable = true),
-    SettingsTile(SettingsRoutes.ABOUT, R.string.settings_tile_about, Icons.Filled.Info, isAvailable = true),
     SettingsTile(
         SettingsRoutes.LOCATION_HISTORY,
         R.string.settings_tile_location_history,

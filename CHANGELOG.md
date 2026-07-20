@@ -7,7 +7,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- Settings: new About screen showing the app's current version.
 - Fuel: "Filled to full" toggle on the add-fill-up form, so a partial
   fill-up no longer distorts the average-consumption figures.
 - Life map: optional periodic background location capture, browsable
@@ -29,6 +28,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   product rows (name, quantity, +/-/remove icons). The navigation
   drawer's header and item icons/labels are always accent-colored now,
   not just the selected item.
+- Settings: About is now the first item in the list, and its screen
+  shows the bear logo, app name, "mcfx", version + build type, build
+  timestamp, and a joke fetched from the backend at build time —
+  centered, accent-colored.
 
 ### Fixed
 
