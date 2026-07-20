@@ -142,8 +142,8 @@ fun UrsSquareTile(
     }
 }
 
-private val HazardStripeWidth = 3.dp
-private val HazardStripePeriod = 8.dp
+private val HazardStripeWidth = 5.dp
+private val HazardStripePeriod = 12.dp
 
 // Diagonal repeating yellow/black gradient used as a border brush — reads as
 // hazard/caution tape. Uses absolute pixel offsets (not relative to the

@@ -45,6 +45,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   from home Wi-Fi previously had no such trigger at all, leaving sync
   recovery solely to the 15-minute periodic worker and its exponential
   backoff.
+- Shopping list add-product picker: the search field now clears after
+  adding a product, so the next search starts from empty instead of
+  the previous query.
+- The add-product panel no longer closes on a stray tap that misses
+  the search field/a product tile — it was falling through to a scrim
+  behind the (already opaque, full-screen) panel, contradicting the
+  panel's own no-tap-outside-dismiss design. The system back gesture
+  now closes it instead, as originally intended.
+- Shopping list: the "On sale only" tile border is thicker (3dp to
+  5dp) so it reads more clearly against the tile photo.
 
 ## [0.5.0] - 2026-07-19
 

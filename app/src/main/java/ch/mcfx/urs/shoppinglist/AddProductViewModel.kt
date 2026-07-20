@@ -178,6 +178,7 @@ class AddProductViewModel(
         val state = _noteInput.value ?: return
         val note = state.note.trim().ifEmpty { null }
         _noteInput.value = null
+        _query.value = ""
         viewModelScope.launch {
             shoppingListRepository.addCatalogProduct(listId, state.product, note, state.quantity, state.onSale)
         }
