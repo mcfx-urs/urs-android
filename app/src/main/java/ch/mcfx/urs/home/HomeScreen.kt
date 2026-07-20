@@ -181,7 +181,7 @@ private fun FeaturedCard(destination: Destination, subtitle: String?, onClick: (
                 UrsText(
                     text = stringResource(destination.labelRes),
                     style = UrsTheme.typography.cardTitle,
-                    color = colors.onSurface,
+                    color = colors.accent,
                 )
                 if (subtitle != null) {
                     UrsText(text = subtitle, style = UrsTheme.typography.statAccent, color = colors.accent)
@@ -230,7 +230,7 @@ private fun FeatureTile(destination: Destination, subtitle: String?, onClick: ()
         Column(verticalArrangement = Arrangement.spacedBy(Spacing.s)) {
             UrsText(text = TILE_EMOJI.getValue(destination), style = TileIconStyle)
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                UrsText(text = stringResource(destination.labelRes), style = UrsTheme.typography.cardTitle)
+                UrsText(text = stringResource(destination.labelRes), style = UrsTheme.typography.cardTitle, color = colors.accent)
                 if (subtitle != null) {
                     UrsText(text = subtitle, style = UrsTheme.typography.statAccent, color = colors.accent)
                 }

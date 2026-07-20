@@ -23,6 +23,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   grid from the "Recently used" section. List names, category headers,
   and the top app bar (title and back/menu icon) now use the accent
   color on shopping list screens.
+- Home, Fuel, and Inventory: the accent-color treatment from the
+  shopping list screens now also applies to the top app bar (title and
+  back/menu icon), tile titles, inventory list names, and inventory
+  product rows (name, quantity, +/-/remove icons). The navigation
+  drawer's header and item icons/labels are always accent-colored now,
+  not just the selected item.
 
 ### Fixed
 

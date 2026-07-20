@@ -142,7 +142,11 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                     contentDescription = null,
                     modifier = Modifier.size(28.dp),
                 )
-                UrsText(stringResource(R.string.app_name), style = UrsTheme.typography.brand)
+                UrsText(
+                    stringResource(R.string.app_name),
+                    style = UrsTheme.typography.brand,
+                    color = UrsTheme.colors.accent,
+                )
             }
             Destination.entries.forEach { destination ->
                 UrsNavigationDrawerItem(
@@ -171,7 +175,7 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
         },
     ) {
         Column(modifier = Modifier.fillMaxSize().background(UrsTheme.colors.background)) {
-            val topBarTint = if (isShoppingListRoute(currentRoute)) UrsTheme.colors.accent else UrsTheme.colors.onSurface
+            val topBarTint = if (isAccentTopBarRoute(currentRoute)) UrsTheme.colors.accent else UrsTheme.colors.onSurface
             UrsTopBar(
                 navigationIcon = {
                     if (isTopLevel) {
@@ -201,7 +205,7 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                                 contentDescription = null,
                                 modifier = Modifier.size(28.dp),
                             )
-                            UrsText(stringResource(R.string.app_name), style = UrsTheme.typography.brand)
+                            UrsText(stringResource(R.string.app_name), style = UrsTheme.typography.brand, color = topBarTint)
                         }
                     } else {
                         UrsText(
@@ -342,8 +346,15 @@ private val SHOPPING_LIST_ROUTE_LABELS = mapOf(
     ShoppingListRoutes.LIST_DETAIL to R.string.shoppinglist_list_detail_title,
 )
 
-private fun isShoppingListRoute(route: String): Boolean =
-    route == Destination.SHOPPING_LIST.route || route == ShoppingListRoutes.LIST_DETAIL
+// Home, Fuel, Inventory and Shopping List currently get the accent-colored
+// top-bar/drawer-icon treatment; every Fuel/Inventory/Shopping List subpage
+// route is prefixed accordingly, so a prefix check covers those too without
+// listing each one.
+private fun isAccentTopBarRoute(route: String): Boolean =
+    route == Destination.HOME.route ||
+        route.startsWith("fuel/") ||
+        route.startsWith("inventory/") ||
+        route.startsWith("shoppinglist/")
 
 private fun currentScreenLabel(route: String): Int =
     Destination.entries.find { it.route == route }?.labelRes
