@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.AP
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import android.location.Location
 import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.data.FuelRepository
 import ch.mcfx.urs.data.local.CurrencyEntity
@@ -13,6 +14,8 @@ import ch.mcfx.urs.data.local.FillEntity
 import ch.mcfx.urs.data.local.FillingStationEntity
 import ch.mcfx.urs.data.local.CarEntity
 import ch.mcfx.urs.location.LocationCapture
+import ch.mcfx.urs.location.LocationProvider
+import ch.mcfx.urs.location.LocationUtils
 import java.time.LocalDate
 import java.util.Locale
 import kotlinx.coroutines.CancellationException
@@ -27,11 +30,20 @@ sealed interface FuelUiState {
     data object Loading : FuelUiState
     data class Data(
         val cars: List<CarEntity>,
+        // Unfiltered — still needed as-is so FuelScreen's fill-history can
+        // resolve a station name for a past ad-hoc (SOURCE_GPS_AUTO) fill.
         val stations: List<FillingStationEntity>,
+        // Picker-ready subset: gps_auto stations excluded hard
+        // requirement — they only ever existed to hold one past fill's GPS
+        // coordinates, never as a reusable choice) and proximity-sorted
+        // when a location is available, alphabetical otherwise.
+        val pickerStations: List<StationPickerOption>,
         val fills: List<FillEntity>,
         val currencies: List<CurrencyEntity>,
     ) : FuelUiState
 }
+
+data class StationPickerOption(val station: FillingStationEntity, val distanceKm: Double?)
 
 data class FillFormState(
     val car: CarEntity? = null,
@@ -70,6 +82,7 @@ data class FillFormState(
 class FuelViewModel(
     private val repository: FuelRepository,
     private val locationCapture: LocationCapture,
+    private val locationProvider: LocationProvider,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<FuelUiState>(FuelUiState.Loading)
@@ -92,8 +105,10 @@ class FuelViewModel(
                 repository.observeStations(),
                 repository.observeFills(),
                 repository.observeCurrencies(),
-            ) { cars, stations, fills, currencies -> FuelUiState.Data(cars, stations, fills, currencies) }
-                .collect { _uiState.value = it }
+                locationProvider.currentLocation,
+            ) { cars, stations, fills, currencies, location ->
+                FuelUiState.Data(cars, stations, buildPickerStations(stations, location), fills, currencies)
+            }.collect { _uiState.value = it }
         }
         load()
     }
@@ -206,8 +221,23 @@ class FuelViewModel(
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as UrsApplication
-                FuelViewModel(app.container.fuelRepository, app.container.locationCapture)
+                FuelViewModel(app.container.fuelRepository, app.container.locationCapture, app.container.locationProvider)
             }
+        }
+
+        private fun buildPickerStations(
+            stations: List<FillingStationEntity>,
+            location: Location?,
+        ): List<StationPickerOption> = stations
+            .filter { it.source != FillingStationEntity.SOURCE_GPS_AUTO }
+            .map { station -> StationPickerOption(station, distanceKm(station, location)) }
+            .sortedWith(compareBy<StationPickerOption> { it.distanceKm ?: Double.MAX_VALUE }.thenBy { it.station.name })
+
+        private fun distanceKm(station: FillingStationEntity, location: Location?): Double? {
+            if (location == null) return null
+            val lat = station.latitude.toDoubleOrNull() ?: return null
+            val lon = station.longitude.toDoubleOrNull() ?: return null
+            return LocationUtils.haversineKm(location.latitude, location.longitude, lat, lon)
         }
     }
 }

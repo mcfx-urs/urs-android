@@ -26,6 +26,7 @@ import ch.mcfx.urs.data.sync.SyncWorker
 import ch.mcfx.urs.location.LocationCapture
 import ch.mcfx.urs.location.LocationCaptureScheduler
 import ch.mcfx.urs.location.LocationHistorySettingsStore
+import ch.mcfx.urs.location.LocationProvider
 import ch.mcfx.urs.notifications.NotificationChannels
 import ch.mcfx.urs.notifications.NotificationSender
 import ch.mcfx.urs.notifications.ReminderScheduler
@@ -93,9 +94,16 @@ class UrsApplication : Application() {
         // the whole process, unlike an individual Activity's onStart) — the
         // user's own requirement (2026-07-17): the 24h clock is wall-clock
         // time since the last successful unlock, not "once per process".
+        // Same foreground signal also refreshes the ambient LocationProvider
+        // so a screen that needs it (the fuel-add station picker)
+        // already has a recent fix instead of fetching one itself; a no-op
+        // without location permission granted yet.
         ProcessLifecycleOwner.get().lifecycle.addObserver(
             LifecycleEventObserver { _, event ->
-                if (event == Lifecycle.Event.ON_START) container.biometricGate.reevaluate()
+                if (event == Lifecycle.Event.ON_START) {
+                    container.biometricGate.reevaluate()
+                    container.applicationScope.launch { container.locationProvider.refresh() }
+                }
             },
         )
     }
@@ -183,6 +191,7 @@ class AppContainer(context: Context) {
         json = json,
     )
     val locationCapture = LocationCapture(context)
+    val locationProvider = LocationProvider(context, locationCapture)
     val locationHistorySettingsStore = LocationHistorySettingsStore(context)
 
     // Not started here - connect()/disconnect() are driven by whatever

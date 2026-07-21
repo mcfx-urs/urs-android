@@ -7,6 +7,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- The fuel fill-up form's filling-station picker now sorts stations by
+  distance to the device's current location (showing the distance next
+  to each one) instead of alphabetically, with a new app-wide location
+  service that's kept warm on app foreground and requests location
+  permission proactively on first Home-screen launch (#2).
 - A new "Car" section in the navigation drawer (replacing the direct
   "Fuel" entry there, though Home's Fuel tile is unchanged), opening a
   hub with Fuel and OBD tiles.
@@ -18,6 +23,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Ad-hoc GPS-only filling stations (created via "No station / on the
+  go") no longer appear as selectable options in the station picker
+  for later fill-ups, which could previously assign a new fill-up the
+  wrong, stale coordinates from a past ad-hoc stop.
 - Login and biometric-unlock screens now bring up the VPN tunnel
   before contacting the backend, and show a distinct "can't reach the
   server" message instead of "wrong username or password" when it's
