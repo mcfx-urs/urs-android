@@ -46,6 +46,10 @@ class AuthTokenStore(context: Context) {
     val currentUserId: String?
         get() = accessToken?.let { JwtDecoder.subject(it) }
 
+    /** Whether the current access token carries the super-user flag (see ). */
+    val isSuperUser: Boolean
+        get() = accessToken?.let { JwtDecoder.isSuperUser(it) } ?: false
+
     /**
      * The username last used to log in — not sensitive (unlike the tokens
      * above), stored in plain prefs purely for display (e.g. "Logged in as

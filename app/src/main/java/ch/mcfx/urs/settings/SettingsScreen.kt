@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.runtime.Composable
@@ -19,13 +20,19 @@ private val SETTINGS_TILES = listOf(
     SettingsTile(SettingsRoutes.GENERAL, R.string.settings_tile_general, Icons.Filled.Tune),
 )
 
+private val ADMIN_TILE =
+    SettingsTile(SettingsRoutes.ADMIN, R.string.settings_tile_admin, Icons.Filled.AdminPanelSettings)
+
+// isSuperUser (see ) gates the Admin tile — regular users never see
+// it at all, rather than seeing it disabled.
 @Composable
-fun SettingsScreen(onNavigate: (route: String) -> Unit) {
+fun SettingsScreen(isSuperUser: Boolean, onNavigate: (route: String) -> Unit) {
+    val tiles = if (isSuperUser) SETTINGS_TILES + ADMIN_TILE else SETTINGS_TILES
     Column(
         modifier = Modifier.fillMaxSize().padding(Spacing.l),
         verticalArrangement = Arrangement.spacedBy(Spacing.s),
     ) {
-        SETTINGS_TILES.forEach { tile ->
+        tiles.forEach { tile ->
             SettingsRow(tile = tile, onClick = { onNavigate(tile.route) })
         }
     }

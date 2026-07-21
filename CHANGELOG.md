@@ -20,6 +20,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   polled at 1 Hz with automatic reconnect on a dropped connection. A
   setup screen (gear icon) handles the Bluetooth permission request
   and shows pairing/connection status.
+- A new Admin tile in Settings, visible only to super-user accounts,
+  with a confirm-then-restart action for the backend server.
 
 ### Fixed
 

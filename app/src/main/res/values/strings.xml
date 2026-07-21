@@ -326,4 +326,12 @@
     <string name="worktime_delete">Delete</string>
     <string name="worktime_delete_confirm_title">Delete this entry?</string>
     <string name="worktime_delete_confirm_body">This can\'t be undone.</string>
+
+    <string name="settings_tile_admin">Admin</string>
+    <string name="admin_restart_server">Restart server</string>
+    <string name="admin_restart_confirm_title">Restart the backend server?</string>
+    <string name="admin_restart_confirm_body">The app will be briefly unreachable for everyone while it restarts.</string>
+    <string name="admin_restart_in_progress">Restarting…</string>
+    <string name="admin_restart_requested">Restart requested. The server will be back shortly.</string>
+    <string name="admin_restart_failed">Restart failed. Please try again.</string>
 </resources>

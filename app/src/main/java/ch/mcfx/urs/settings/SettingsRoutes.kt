@@ -13,4 +13,5 @@ object SettingsRoutes {
     const val ABOUT = "settings/about"
     const val LOCATION_HISTORY = "settings/location-history"
     const val PRODUCT_MANAGEMENT = "settings/product-management"
+    const val ADMIN = "settings/admin"
 }
