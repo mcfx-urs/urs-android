@@ -50,6 +50,7 @@
     <string name="login_submit">Log in</string>
     <string name="login_submitting">Logging in…</string>
     <string name="login_error">Wrong username or password.</string>
+    <string name="login_error_connectivity">Can\'t reach the server. Check your VPN or Wi-Fi connection.</string>
 
     <string name="worktime_settings_employment_percent_label">Employment percentage</string>
     <string name="worktime_settings_employment_percent_hint">% of a full-time week (e.g. 40 = 2 days/week)</string>

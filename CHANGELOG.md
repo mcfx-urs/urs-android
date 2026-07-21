@@ -16,6 +16,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   setup screen (gear icon) handles the Bluetooth permission request
   and shows pairing/connection status.
 
+### Fixed
+
+- Login and biometric-unlock screens now bring up the VPN tunnel
+  before contacting the backend, and show a distinct "can't reach the
+  server" message instead of "wrong username or password" when it's
+  unreachable.
+
 ## [0.6.0] - 2026-07-21
 
 ### Added
