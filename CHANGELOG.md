@@ -7,6 +7,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Bluetooth OBD-II module (`ch.mcfx.urs.obd`): connects to a paired
+  Mucar BT200 adapter, polls engine RPM, vehicle speed, coolant temp,
+  and fuel level at 1 Hz, with automatic reconnect on a dropped
+  connection. No UI yet — foundation for a future live-data screen.
+
+## [0.6.0] - 2026-07-21
+
+### Added
+
 - Fuel: "Filled to full" toggle on the add-fill-up form, so a partial
   fill-up no longer distorts the average-consumption figures.
 - Life map: optional periodic background location capture, browsable
