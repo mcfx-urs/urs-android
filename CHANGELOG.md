@@ -9,6 +9,57 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- The fuel fill-up form's filling-station picker now sorts stations by
+  distance to the device's current location (showing the distance next
+  to each one) instead of alphabetically, with a new app-wide location
+  service that's kept warm on app foreground and requests location
+  permission proactively on first Home-screen launch (#2).
+- A new "Car" section in the navigation drawer (replacing the direct
+  "Fuel" entry there, though Home's Fuel tile is unchanged), opening a
+  hub with Fuel and OBD tiles.
+- OBD: connects to a paired Mucar BT200 Bluetooth adapter and shows
+  live engine RPM, vehicle speed, coolant temp, and fuel level,
+  polled at 1 Hz with automatic reconnect on a dropped connection. A
+  setup screen (gear icon) handles the Bluetooth permission request
+  and shows pairing/connection status.
+- A new Admin tile in Settings, visible only to super-user accounts,
+  with a confirm-then-restart action for the backend server, which
+  polls until the server responds again and reports back once it's up.
+- The catalog image picker now has a search field that narrows the
+  grid to images linked to a matching product/category name.
+- Long-pressing a fill-up in the fuel-fills list opens Edit/Delete
+  actions, so a mistaken entry can now be corrected or removed (#4).
+- A "Change password" action in Account Settings, which also logs out
+  every other session on success.
+
+### Fixed
+
+- Ad-hoc GPS-only filling stations (created via "No station / on the
+  go") no longer appear as selectable options in the station picker
+  for later fill-ups, which could previously assign a new fill-up the
+  wrong, stale coordinates from a past ad-hoc stop.
+- Login and biometric-unlock screens now bring up the VPN tunnel
+  before contacting the backend, and show a distinct "can't reach the
+  server" message instead of "wrong username or password" when it's
+  unreachable.
+- Login and biometric-unlock screens now follow the app's dark/light
+  theme instead of always showing a light background, which also
+  restores status bar icon visibility in dark mode.
+- Inventory/shopping-list share sheets and the product-image picker no
+  longer crash the app if their backend fetch fails (#5).
+- The app no longer crashes on startup for an existing install whose
+  local database predates the `source` column added to the
+  filling-station cache — the Room database version was bumped to
+  match.
+- Work Settings save and the Work Time month-override sheet now show
+  an error instead of silently discarding a failed save (#5).
+- Product settings popup now shows an error instead of silently
+  discarding a failed save (#5).
+
+## [0.6.0] - 2026-07-21
+
+### Added
+
 - Fuel: "Filled to full" toggle on the add-fill-up form, so a partial
   fill-up no longer distorts the average-consumption figures.
 - Life map: optional periodic background location capture, browsable
@@ -37,6 +88,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Settings: a new Product Management screen for creating, editing, and
   deleting manually-created catalog products and categories, with a
   picker for reusing an existing catalog image.
+
+### Changed
+
+- Settings menu restructured into About / Account / General. Account
+  now also holds the former standalone Work Settings fields
+  (employment %, target hours, hourly wage), with Log out moved to the
+  bottom. General is a new sub-screen holding VPN, Notifications,
+  Location History, and Product Management. The unused "Users"
+  placeholder tile is removed.
 
 ### Fixed
 

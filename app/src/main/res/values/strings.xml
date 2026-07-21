@@ -10,6 +10,7 @@
     <string name="home_welcome_back">Welcome back 👋</string>
     <string name="home_bear_footer">urs looks out for you</string>
     <string name="nav_fuel">Fuel</string>
+    <string name="nav_car">Car</string>
     <string name="nav_inventory">Inventory</string>
     <string name="nav_shopping_list">Shopping List</string>
     <string name="nav_beer">Beer</string>
@@ -23,13 +24,12 @@
 
     <string name="settings_title">Settings</string>
     <string name="settings_tile_account">Account</string>
-    <string name="settings_tile_users">Users</string>
+    <string name="settings_tile_general">General</string>
     <string name="settings_tile_vpn">VPN</string>
     <string name="settings_tile_notifications">Notifications</string>
     <string name="settings_tile_work_time">Work Settings</string>
     <string name="settings_tile_about">About</string>
     <string name="settings_tile_location_history">Location History</string>
-    <string name="settings_users_description">Login and multi-user management will live here once that feature is built.</string>
 
     <string name="about_org">mcfx</string>
     <string name="about_version_build_type">%1$s %2$s</string>
@@ -39,6 +39,15 @@
     <string name="account_logged_in_as">Logged in as %1$s</string>
     <string name="account_log_out">Log out</string>
     <string name="account_biometric_unlock">Unlock with fingerprint/face</string>
+    <string name="account_change_password">Change password</string>
+    <string name="account_change_password_title">Change password</string>
+    <string name="account_change_password_current">Current password</string>
+    <string name="account_change_password_new">New password</string>
+    <string name="account_change_password_confirm">Confirm new password</string>
+    <string name="account_change_password_submit">Change password</string>
+    <string name="account_change_password_submitting">Changing password…</string>
+    <string name="account_change_password_success">Password changed. Every other session has been logged out.</string>
+    <string name="account_change_password_error_wrong_current">Current password is incorrect.</string>
 
     <string name="biometric_prompt_title">Unlock urs</string>
     <string name="biometric_prompt_use_password">Use password</string>
@@ -50,6 +59,7 @@
     <string name="login_submit">Log in</string>
     <string name="login_submitting">Logging in…</string>
     <string name="login_error">Wrong username or password.</string>
+    <string name="login_error_connectivity">Can\'t reach the server. Check your VPN or Wi-Fi connection.</string>
 
     <string name="worktime_settings_employment_percent_label">Employment percentage</string>
     <string name="worktime_settings_employment_percent_hint">% of a full-time week (e.g. 40 = 2 days/week)</string>
@@ -116,6 +126,37 @@
     <string name="vpn_connect">Connect</string>
     <string name="vpn_disconnect">Disconnect</string>
 
+    <string name="car_tile_fuel">Fuel</string>
+    <string name="car_tile_obd">OBD</string>
+
+    <string name="obd_live_title">OBD</string>
+    <string name="obd_setup_title">OBD Setup</string>
+    <string name="obd_rpm">RPM</string>
+    <string name="obd_speed">Speed</string>
+    <string name="obd_coolant">Coolant</string>
+    <string name="obd_fuel_level">Fuel Level</string>
+    <string name="obd_unit_kmh"> km/h</string>
+    <string name="obd_unit_celsius">°C</string>
+    <string name="obd_unit_percent">%</string>
+    <string name="obd_status_disconnected">Disconnected</string>
+    <string name="obd_status_connecting">Connecting…</string>
+    <string name="obd_status_initializing">Initializing…</string>
+    <string name="obd_status_connected">Connected</string>
+    <string name="obd_status_reconnecting">Reconnecting…</string>
+    <string name="obd_status_error">Connection failed</string>
+    <string name="obd_permission_label">Bluetooth access</string>
+    <string name="obd_permission_granted">Granted</string>
+    <string name="obd_permission_grant">Grant</string>
+    <string name="obd_device_label">OBD adapter</string>
+    <string name="obd_device_not_selected">Not selected</string>
+    <string name="obd_device_choose">Choose device</string>
+    <string name="obd_device_change">Change</string>
+    <string name="obd_choose_device_title">Choose OBD adapter</string>
+    <string name="obd_choose_device_empty">No paired devices found. Pair your adapter first.</string>
+    <string name="obd_open_bluetooth_settings">Open Bluetooth settings</string>
+    <string name="obd_connect">Connect</string>
+    <string name="obd_disconnect">Disconnect</string>
+
     <string name="fuel_title">Fuel</string>
     <string name="fuel_avg_consumption_6mo">%1$.1f L/100km · 6mo avg</string>
     <string name="fuel_tile_fills">Fill-ups</string>
@@ -148,6 +189,11 @@
     <string name="fill_status_failed">Failed</string>
     <string name="fill_pending_location">Location captured</string>
     <string name="fills_empty">No fill-ups yet.</string>
+    <string name="fill_station_locked">Station can\'t be changed to GPS/on-the-go once saved</string>
+    <string name="fill_edit">Edit</string>
+    <string name="fill_delete">Delete</string>
+    <string name="fill_delete_confirm_title">Delete this fill-up?</string>
+    <string name="fill_delete_confirm_body">This can\'t be undone.</string>
 
     <string name="station_add">New gas station</string>
     <string name="station_name">Name</string>
@@ -247,6 +293,8 @@
     <string name="product_management_image_none">No image selected</string>
     <string name="product_management_image_picker_title">Choose an image</string>
     <string name="product_management_image_picker_empty">No images available yet.</string>
+    <string name="product_management_image_picker_search_label">Search</string>
+    <string name="product_management_image_picker_no_matches">No images match your search.</string>
     <string name="product_management_edit">Edit</string>
     <string name="product_management_delete">Delete</string>
     <string name="product_management_delete_product_confirm_title">Delete this product?</string>
@@ -293,4 +341,14 @@
     <string name="worktime_delete">Delete</string>
     <string name="worktime_delete_confirm_title">Delete this entry?</string>
     <string name="worktime_delete_confirm_body">This can\'t be undone.</string>
+
+    <string name="settings_tile_admin">Admin</string>
+    <string name="admin_restart_server">Restart server</string>
+    <string name="admin_restart_confirm_title">Restart the backend server?</string>
+    <string name="admin_restart_confirm_body">The app will be briefly unreachable for everyone while it restarts.</string>
+    <string name="admin_restart_in_progress">Restarting…</string>
+    <string name="admin_restart_requested">Restart requested. Checking when the server is back…</string>
+    <string name="admin_restart_back_up">The server is back up.</string>
+    <string name="admin_restart_check_timeout">Still not reachable. It may need more time, or something went wrong.</string>
+    <string name="admin_restart_failed">Restart failed. Please try again.</string>
 </resources>

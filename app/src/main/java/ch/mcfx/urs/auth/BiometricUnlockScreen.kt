@@ -2,6 +2,7 @@ package ch.mcfx.urs.auth
 
 import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -95,7 +96,7 @@ fun BiometricUnlockScreen(gate: BiometricGate, onUsePasswordInstead: () -> Unit)
     LaunchedEffect(Unit) { prompt() }
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(Spacing.xl),
+        modifier = Modifier.fillMaxSize().background(UrsTheme.colors.background).padding(Spacing.xl),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

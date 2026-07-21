@@ -28,6 +28,9 @@ class WorkTimeSettingsViewModel(private val userRepository: UserRepository) : Vi
     private val _justSaved = MutableStateFlow(false)
     val justSaved: StateFlow<Boolean> = _justSaved.asStateFlow()
 
+    private val _saveFailed = MutableStateFlow(false)
+    val saveFailed: StateFlow<Boolean> = _saveFailed.asStateFlow()
+
     init {
         viewModelScope.launch {
             try {
@@ -46,16 +49,19 @@ class WorkTimeSettingsViewModel(private val userRepository: UserRepository) : Vi
     fun setTargetHours(value: String) {
         _targetHours.value = value
         _justSaved.value = false
+        _saveFailed.value = false
     }
 
     fun setEmploymentPercent(value: String) {
         _employmentPercent.value = value
         _justSaved.value = false
+        _saveFailed.value = false
     }
 
     fun setHourlyWage(value: String) {
         _hourlyWage.value = value
         _justSaved.value = false
+        _saveFailed.value = false
     }
 
     fun save() {
@@ -65,10 +71,11 @@ class WorkTimeSettingsViewModel(private val userRepository: UserRepository) : Vi
                 userRepository.setEmploymentPercent(_employmentPercent.value)
                 userRepository.setHourlyWage(_hourlyWage.value)
                 _justSaved.value = true
+                _saveFailed.value = false
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
-                // Best-effort only — this simple form has no dedicated error UI yet.
+                _saveFailed.value = true
             }
         }
     }

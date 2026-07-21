@@ -91,6 +91,24 @@ data class FillPayload(
     @SerialName("station_longitude") val stationLongitude: String? = null,
 )
 
+// Separate from FillPayload (no driven/stationCounter/GPS fields) — mirrors
+// ListItemUpdatePayload's split from ListItemPayload. The backend's
+// `PUT /api/v1/fill/{id}` route ignores driven/filling_station_counter
+// entirely and has no ad-hoc-station-creation branch, so fill_station_id is
+// always a known station here.
+@Serializable
+data class FillUpdatePayload(
+    @SerialName("fill_date") val date: String,
+    @SerialName("fill_car_id") val carId: String,
+    @SerialName("fill_station_id") val stationId: String,
+    @SerialName("fill_fuel_id") val fuelId: String,
+    @SerialName("fill_price") val pricePerLiter: String,
+    @SerialName("fill_amount") val liters: String,
+    @SerialName("fill_odometer") val odometer: String,
+    @SerialName("fill_currency_code") val currencyCode: String = "CHF",
+    @SerialName("fill_is_full_tank") val isFullTank: String = "1",
+)
+
 @Serializable
 data class CurrencyDto(
     @SerialName("currency_code") val code: String,
@@ -187,6 +205,7 @@ data class CatalogImageDto(
     @SerialName("catalog_image_id") val id: String,
     @SerialName("catalog_image_source_image_name") val sourceImageName: String = "",
     @SerialName("catalog_image_extension") val extension: String = "",
+    @SerialName("catalog_image_linked_names") val linkedNames: String = "",
 )
 
 // 204 No Content (untracked anywhere the caller can access) maps to this
@@ -479,6 +498,12 @@ data class LoginPayload(
 @Serializable
 data class RefreshPayload(
     @SerialName("refresh_token") val refreshToken: String,
+)
+
+@Serializable
+data class ChangePasswordPayload(
+    @SerialName("current_password") val currentPassword: String,
+    @SerialName("new_password") val newPassword: String,
 )
 
 // expires_in is a genuine JSON number on the backend (computed seconds, not

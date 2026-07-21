@@ -71,6 +71,12 @@ class WorkTimeViewModel(
     private val _showForm = MutableStateFlow(false)
     val showForm: StateFlow<Boolean> = _showForm.asStateFlow()
 
+    private val _showOverrideSheet = MutableStateFlow(false)
+    val showOverrideSheet: StateFlow<Boolean> = _showOverrideSheet.asStateFlow()
+
+    private val _overrideSaveFailed = MutableStateFlow(false)
+    val overrideSaveFailed: StateFlow<Boolean> = _overrideSaveFailed.asStateFlow()
+
     private val _actionSheetEntry = MutableStateFlow<WorkTimeEntryWithBreaks?>(null)
     val actionSheetEntry: StateFlow<WorkTimeEntryWithBreaks?> = _actionSheetEntry.asStateFlow()
 
@@ -129,14 +135,24 @@ class WorkTimeViewModel(
         _selectedMonth.value = month
     }
 
+    fun openOverrideSheet() {
+        _overrideSaveFailed.value = false
+        _showOverrideSheet.value = true
+    }
+
+    fun closeOverrideSheet() {
+        _showOverrideSheet.value = false
+    }
+
     fun setMonthOverride(daysWorked: String) {
         viewModelScope.launch {
             try {
                 repository.setMonthOverride(_selectedYear.value, _selectedMonth.value, daysWorked)
+                _showOverrideSheet.value = false
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
-                // Best-effort only — this simple field has no dedicated error UI yet.
+                _overrideSaveFailed.value = true
             }
         }
     }
@@ -145,10 +161,11 @@ class WorkTimeViewModel(
         viewModelScope.launch {
             try {
                 repository.clearMonthOverride(_selectedYear.value, _selectedMonth.value)
+                _showOverrideSheet.value = false
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
-                // Best-effort only — see setMonthOverride.
+                _overrideSaveFailed.value = true
             }
         }
     }

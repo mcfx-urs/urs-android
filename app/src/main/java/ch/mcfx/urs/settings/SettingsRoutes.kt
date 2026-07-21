@@ -6,11 +6,12 @@ package ch.mcfx.urs.settings
 // drawer or the Home tile grid, only inside the Settings hub.
 object SettingsRoutes {
     const val HUB = "settings/hub"
+    const val GENERAL = "settings/general"
     const val VPN = "settings/vpn"
     const val NOTIFICATIONS = "settings/notifications"
-    const val WORK_TIME = "settings/work-time"
     const val ACCOUNT = "settings/account"
     const val ABOUT = "settings/about"
     const val LOCATION_HISTORY = "settings/location-history"
     const val PRODUCT_MANAGEMENT = "settings/product-management"
+    const val ADMIN = "settings/admin"
 }

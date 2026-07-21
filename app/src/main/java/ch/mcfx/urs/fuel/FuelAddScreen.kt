@@ -1,8 +1,5 @@
 package ch.mcfx.urs.fuel
 
-import android.Manifest
-import android.content.Context
-import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -25,13 +22,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
 import ch.mcfx.urs.data.local.CurrencyEntity
-import ch.mcfx.urs.data.local.FillingStationEntity
 import ch.mcfx.urs.data.local.CarEntity
+import ch.mcfx.urs.location.LOCATION_PERMISSIONS
+import ch.mcfx.urs.location.hasLocationPermission
 import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsCheckbox
 import ch.mcfx.urs.ui.components.UrsDropdownField
@@ -41,16 +38,14 @@ import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.components.UrsTextField
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Spacing
+import java.util.Locale
 
 // No "error" role in the design system's palette yet (see Color.kt) — mirrors
 // the same local-constant pattern already used in FuelStationsScreen /
 // ProductListScreen, rather than waiting on the broader token set.
 private val FormErrorColor = Color(0xFFD64545)
 
-private val locationPermissions = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
-
-private fun hasLocationPermission(context: Context) =
-    locationPermissions.any { ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED }
+private fun formatDistanceKm(km: Double): String = String.format(Locale.US, "%.1f km", km)
 
 // A dedicated full screen rather than the list's old bottom sheet, per
 //  — reachable both from the Fuel hub's "Add Fill-up" tile and from
@@ -59,13 +54,15 @@ private fun hasLocationPermission(context: Context) =
 @Composable
 fun FuelAddScreen(
     onDone: () -> Unit,
+    /** Null creates a new fill; set edits that existing local row (see [FuelViewModel.openFormForEdit]). */
+    fillId: Long? = null,
     viewModel: FuelViewModel = viewModel(factory = FuelViewModel.Factory),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val formState by viewModel.formState.collectAsStateWithLifecycle()
     val showForm by viewModel.showForm.collectAsStateWithLifecycle()
 
-    LaunchedEffect(Unit) { viewModel.openForm() }
+    LaunchedEffect(Unit) { if (fillId != null) viewModel.openFormForEdit(fillId) else viewModel.openForm() }
 
     var hasOpened by remember { mutableStateOf(false) }
     LaunchedEffect(showForm) {
@@ -84,10 +81,14 @@ fun FuelAddScreen(
                 FillForm(
                     form = formState,
                     cars = state.cars,
-                    stations = state.stations,
+                    pickerStations = state.pickerStations,
                     currencies = state.currencies,
                     viewModel = viewModel,
                 )
+            } else if (fillId != null) {
+                // openFormForEdit is still loading the fill to pre-fill —
+                // matches WorkTimeAddScreen's identical loading state.
+                UrsProgressIndicator(Modifier.align(Alignment.Center))
             }
         }
     }
@@ -97,7 +98,7 @@ fun FuelAddScreen(
 private fun FillForm(
     form: FillFormState,
     cars: List<CarEntity>,
-    stations: List<FillingStationEntity>,
+    pickerStations: List<StationPickerOption>,
     currencies: List<CurrencyEntity>,
     viewModel: FuelViewModel,
 ) {
@@ -123,21 +124,26 @@ private fun FillForm(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            UrsText(stringResource(R.string.fill_no_station), style = UrsTheme.typography.body)
-            UrsCheckbox(
-                checked = form.useGps,
-                onCheckedChange = { checked ->
-                    viewModel.setUseGps(checked)
-                    // Requested lazily, only once the user actually picks
-                    // "no station" — not upfront at launch.
-                    if (checked && hasLocationPermission) viewModel.captureLocation()
-                },
-            )
+        // Hidden once editing an already-synced fill — PUT /api/v1/fill/{id}
+        // has no ad-hoc-station-creation branch, so a known station is
+        // required at that point (see FillFormState.editingIsSynced).
+        if (!form.editingIsSynced) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                UrsText(stringResource(R.string.fill_no_station), style = UrsTheme.typography.body)
+                UrsCheckbox(
+                    checked = form.useGps,
+                    onCheckedChange = { checked ->
+                        viewModel.setUseGps(checked)
+                        // Requested lazily, only once the user actually picks
+                        // "no station" — not upfront at launch.
+                        if (checked && hasLocationPermission) viewModel.captureLocation()
+                    },
+                )
+            }
         }
 
         if (form.useGps) {
@@ -155,7 +161,7 @@ private fun FillForm(
                     )
                     UrsOutlinedButton(
                         text = stringResource(R.string.fill_grant),
-                        onClick = { locationPermissionLauncher.launch(locationPermissions) },
+                        onClick = { locationPermissionLauncher.launch(LOCATION_PERMISSIONS) },
                     )
                 }
             } else {
@@ -185,12 +191,27 @@ private fun FillForm(
         } else {
             UrsDropdownField(
                 label = stringResource(R.string.fill_station),
-                options = stations,
+                options = pickerStations,
                 selectedLabel = form.station?.name,
-                optionLabel = { it.name },
-                onSelect = viewModel::selectStation,
+                optionLabel = { it.station.name },
+                // Right-aligned distance column, formatted "%.1f km" — always
+                // exactly one digit after the decimal point and a constant
+                // " km" suffix, so the decimal point lands at the same offset
+                // from the row's right edge regardless of the integer part's
+                // digit count (Roboto's tabular figures keep every digit the
+                // same advance width) — no manual padding needed for the
+                // columns to visually line up.
+                optionTrailingLabel = { it.distanceKm?.let(::formatDistanceKm) },
+                onSelect = { viewModel.selectStation(it.station) },
                 modifier = Modifier.fillMaxWidth(),
             )
+            if (form.editingIsSynced) {
+                UrsText(
+                    stringResource(R.string.fill_station_locked),
+                    style = UrsTheme.typography.caption,
+                    color = UrsTheme.colors.onSurfaceMuted,
+                )
+            }
         }
 
         UrsTextField(

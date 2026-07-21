@@ -36,6 +36,7 @@ import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.auth.BiometricUnlockScreen
 import ch.mcfx.urs.auth.LoginScreen
 import ch.mcfx.urs.beer.BeerScreen
+import ch.mcfx.urs.car.CarHubScreen
 import ch.mcfx.urs.fuel.FuelAddScreen
 import ch.mcfx.urs.fuel.FuelHubScreen
 import ch.mcfx.urs.fuel.FuelRoutes
@@ -48,15 +49,19 @@ import ch.mcfx.urs.inventory.InventoriesScreen
 import ch.mcfx.urs.inventory.InventoryRoutes
 import ch.mcfx.urs.inventory.ProductListScreen
 import ch.mcfx.urs.lifemap.LifeMapScreen
+import ch.mcfx.urs.obd.ObdLiveScreen
+import ch.mcfx.urs.obd.ObdRoutes
+import ch.mcfx.urs.obd.ObdSetupScreen
 import ch.mcfx.urs.settings.AboutScreen
 import ch.mcfx.urs.settings.AccountSettingsScreen
+import ch.mcfx.urs.settings.AdminScreen
+import ch.mcfx.urs.settings.GeneralSettingsScreen
 import ch.mcfx.urs.settings.LocationHistorySettingsScreen
 import ch.mcfx.urs.settings.NotificationSettingsScreen
 import ch.mcfx.urs.settings.ProductManagementScreen
 import ch.mcfx.urs.settings.SettingsRoutes
 import ch.mcfx.urs.settings.SettingsScreen
 import ch.mcfx.urs.settings.VpnSettingsScreen
-import ch.mcfx.urs.settings.WorkTimeSettingsScreen
 import ch.mcfx.urs.shoppinglist.ListDetailScreen
 import ch.mcfx.urs.shoppinglist.ShoppingListRoutes
 import ch.mcfx.urs.shoppinglist.ShoppingListsScreen
@@ -79,6 +84,19 @@ import kotlinx.coroutines.launch
 fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
     val context = LocalContext.current
     val app = context.applicationContext as UrsApplication
+
+    // Silent, best-effort only: the app is fully usable without any VPN set
+    // up at all. If a tunnel is already configured and permissions are
+    // already granted, try to bring it up in the background; otherwise do
+    // nothing here — no prompts, no banner. Screens that actually need the
+    // backend show their own existing error/retry state if it's unreachable.
+    // Placed ahead of the isLoggedIn/biometric gates below:
+    // both of those `return` early, so this never ran at all while either
+    // screen was showing, leaving LoginScreen to hit the backend over
+    // whatever network happened to be active with no tunnel brought up.
+    LaunchedEffect(Unit) {
+        app.container.networkGate.ensureReachable()
+    }
 
     // Gates the whole app behind login — swaps out the entire
     // drawer+NavHost UI below for LoginScreen whenever there's no valid
@@ -112,15 +130,6 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
     val drawerState = rememberUrsDrawerState(initialValue = UrsDrawerValue.Closed)
     val coroutineScope = rememberCoroutineScope()
 
-    // Silent, best-effort only: the app is fully usable without any VPN set
-    // up at all. If a tunnel is already configured and permissions are
-    // already granted, try to bring it up in the background; otherwise do
-    // nothing here — no prompts, no banner. Screens that actually need the
-    // backend show their own existing error/retry state if it's unreachable.
-    LaunchedEffect(Unit) {
-        app.container.networkGate.ensureReachable()
-    }
-
     // Hands the controller back to MainActivity so a notification tap can
     // deep-link while the app is already running (onNewIntent) as well as
     // on cold start (handled once here, for the Activity's launching intent).
@@ -149,7 +158,7 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                     color = UrsTheme.colors.accent,
                 )
             }
-            Destination.entries.forEach { destination ->
+            Destination.entries.filter { it.showInDrawer }.forEach { destination ->
                 UrsNavigationDrawerItem(
                     label = stringResource(destination.labelRes),
                     icon = destination.icon,
@@ -225,14 +234,27 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                     composable(Destination.HOME.route) {
                         HomeScreen(onNavigate = { navController.navigateToDestination(it) })
                     }
+                    composable(Destination.CAR.route) {
+                        CarHubScreen(onNavigate = { route -> navController.navigate(route) })
+                    }
                     composable(Destination.FUEL.route) {
                         FuelHubScreen(onNavigate = { route -> navController.navigate(route) })
                     }
                     composable(FuelRoutes.FILLS) {
-                        FuelScreen(onAddFillUp = { navController.navigate(FuelRoutes.ADD) })
+                        FuelScreen(
+                            onAddFillUp = { navController.navigate(FuelRoutes.ADD) },
+                            onEditFillUp = { fillId -> navController.navigate(FuelRoutes.edit(fillId)) },
+                        )
                     }
                     composable(FuelRoutes.ADD) {
                         FuelAddScreen(onDone = { navController.popBackStack() })
+                    }
+                    composable(
+                        route = FuelRoutes.EDIT,
+                        arguments = listOf(navArgument("fillId") { type = NavType.LongType }),
+                    ) { backStackEntry ->
+                        val fillId = backStackEntry.arguments?.getLong("fillId") ?: return@composable
+                        FuelAddScreen(fillId = fillId, onDone = { navController.popBackStack() })
                     }
                     composable(FuelRoutes.STATIONS) { FuelStationsScreen() }
                     composable(FuelRoutes.STATS) { FuelStatsScreen() }
@@ -300,16 +322,26 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                         WorkTimeAddScreen(entryId = entryId, onDone = { navController.popBackStack() })
                     }
                     composable(Destination.LIFE_MAP.route) { LifeMapScreen() }
+                    composable(ObdRoutes.LIVE) {
+                        ObdLiveScreen(onOpenSetup = { navController.navigate(ObdRoutes.SETUP) })
+                    }
+                    composable(ObdRoutes.SETUP) { ObdSetupScreen() }
                     composable(Destination.SETTINGS.route) {
-                        SettingsScreen(onNavigate = { route -> navController.navigate(route) })
+                        SettingsScreen(
+                            isSuperUser = app.container.authTokenStore.isSuperUser,
+                            onNavigate = { route -> navController.navigate(route) },
+                        )
+                    }
+                    composable(SettingsRoutes.GENERAL) {
+                        GeneralSettingsScreen(onNavigate = { route -> navController.navigate(route) })
                     }
                     composable(SettingsRoutes.VPN) { VpnSettingsScreen() }
                     composable(SettingsRoutes.NOTIFICATIONS) { NotificationSettingsScreen() }
-                    composable(SettingsRoutes.WORK_TIME) { WorkTimeSettingsScreen() }
                     composable(SettingsRoutes.ACCOUNT) { AccountSettingsScreen() }
                     composable(SettingsRoutes.ABOUT) { AboutScreen() }
                     composable(SettingsRoutes.LOCATION_HISTORY) { LocationHistorySettingsScreen() }
                     composable(SettingsRoutes.PRODUCT_MANAGEMENT) { ProductManagementScreen() }
+                    composable(SettingsRoutes.ADMIN) { AdminScreen() }
                 }
             }
         }
@@ -332,13 +364,19 @@ private val FUEL_ROUTE_LABELS = mapOf(
 )
 
 private val SETTINGS_ROUTE_LABELS = mapOf(
+    SettingsRoutes.GENERAL to R.string.settings_tile_general,
     SettingsRoutes.VPN to R.string.settings_tile_vpn,
     SettingsRoutes.NOTIFICATIONS to R.string.settings_tile_notifications,
-    SettingsRoutes.WORK_TIME to R.string.settings_tile_work_time,
     SettingsRoutes.ACCOUNT to R.string.settings_tile_account,
     SettingsRoutes.ABOUT to R.string.settings_tile_about,
     SettingsRoutes.LOCATION_HISTORY to R.string.settings_tile_location_history,
     SettingsRoutes.PRODUCT_MANAGEMENT to R.string.settings_tile_product_management,
+    SettingsRoutes.ADMIN to R.string.settings_tile_admin,
+)
+
+private val OBD_ROUTE_LABELS = mapOf(
+    ObdRoutes.LIVE to R.string.obd_live_title,
+    ObdRoutes.SETUP to R.string.obd_setup_title,
 )
 
 private val INVENTORY_ROUTE_LABELS = mapOf(
@@ -362,6 +400,7 @@ private fun isAccentTopBarRoute(route: String): Boolean =
 private fun currentScreenLabel(route: String): Int =
     Destination.entries.find { it.route == route }?.labelRes
         ?: FUEL_ROUTE_LABELS[route]
+        ?: OBD_ROUTE_LABELS[route]
         ?: SETTINGS_ROUTE_LABELS[route]
         ?: INVENTORY_ROUTE_LABELS[route]
         ?: SHOPPING_LIST_ROUTE_LABELS[route]

@@ -9,6 +9,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.data.FuelRepository
 import ch.mcfx.urs.fuel.FuelStats
+import ch.mcfx.urs.location.LocationProvider
 import java.time.LocalDate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,7 +25,10 @@ data class HomeUiState(
 // Home only needs lightweight cross-feature quick-stats for its tiles (e.g.
 // Fuel's 6-month average consumption) — full per-feature detail lives on
 // each feature's own screens, not here.
-class HomeViewModel(private val fuelRepository: FuelRepository) : ViewModel() {
+class HomeViewModel(
+    private val fuelRepository: FuelRepository,
+    private val locationProvider: LocationProvider,
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -39,11 +43,23 @@ class HomeViewModel(private val fuelRepository: FuelRepository) : ViewModel() {
         }
     }
 
+    // location permission is requested proactively here (once, not
+    // on every Home visit) rather than contextually in the fuel-add form,
+    // so the ambient LocationProvider is already warm by the time any
+    // screen wants a proximity sort.
+    fun hasPromptedLocationPermission(): Boolean = locationProvider.hasPromptedPermission()
+
+    fun markLocationPermissionPrompted() = locationProvider.markPermissionPrompted()
+
+    fun refreshLocation() {
+        viewModelScope.launch { locationProvider.refresh() }
+    }
+
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as UrsApplication
-                HomeViewModel(app.container.fuelRepository)
+                HomeViewModel(app.container.fuelRepository, app.container.locationProvider)
             }
         }
     }

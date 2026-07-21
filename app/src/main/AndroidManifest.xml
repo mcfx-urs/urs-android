@@ -32,6 +32,20 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
+    <!-- Bluetooth OBD-II adapter (Mucar BT200), see ch.mcfx.urs.obd.
+         BLUETOOTH/BLUETOOTH_ADMIN cover API < 31 (install-time "normal"
+         permissions there); BLUETOOTH_CONNECT/BLUETOOTH_SCAN are the API
+         31+ runtime-dialog replacements, since minSdk (26) is below 31.
+         neverForLocation on BLUETOOTH_SCAN: this app only connects to an
+         already-paired device by name, it never scans to derive location. -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation" />
+    <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
+
     <!-- Notifications infrastructure (Issue #1). POST_NOTIFICATIONS is a
          normal runtime-dialog permission on API 33+; below that, showing a
          notification just works without any prompt. -->
