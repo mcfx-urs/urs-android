@@ -9,6 +9,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.data.UserRepository
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,6 +33,12 @@ class AdminViewModel(private val userRepository: UserRepository) : ViewModel() {
     private val _restartFailed = MutableStateFlow(false)
     val restartFailed: StateFlow<Boolean> = _restartFailed.asStateFlow()
 
+    private val _serverBackUp = MutableStateFlow(false)
+    val serverBackUp: StateFlow<Boolean> = _serverBackUp.asStateFlow()
+
+    private val _checkTimedOut = MutableStateFlow(false)
+    val checkTimedOut: StateFlow<Boolean> = _checkTimedOut.asStateFlow()
+
     fun requestRestart() {
         _confirmingRestart.value = true
     }
@@ -45,6 +52,8 @@ class AdminViewModel(private val userRepository: UserRepository) : ViewModel() {
         _restarting.value = true
         _restartRequested.value = false
         _restartFailed.value = false
+        _serverBackUp.value = false
+        _checkTimedOut.value = false
         viewModelScope.launch {
             try {
                 userRepository.restartServer()
@@ -56,10 +65,37 @@ class AdminViewModel(private val userRepository: UserRepository) : ViewModel() {
             } finally {
                 _restarting.value = false
             }
+            if (_restartRequested.value) {
+                pollUntilBackUp()
+            }
         }
     }
 
+    // Polls the public root route (see UrsApi.ping) until it responds,
+    // confirming the restart actually completed — without this, "the
+    // server will be back shortly" had no way to ever resolve to anything
+    // on screen, it just sat there regardless of what actually happened.
+    private suspend fun pollUntilBackUp() {
+        val deadline = System.currentTimeMillis() + POLL_TIMEOUT_MS
+        while (System.currentTimeMillis() < deadline) {
+            delay(POLL_INTERVAL_MS)
+            try {
+                userRepository.ping()
+                _serverBackUp.value = true
+                return
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // Expected while the pod is still restarting — keep polling.
+            }
+        }
+        _checkTimedOut.value = true
+    }
+
     companion object {
+        private const val POLL_INTERVAL_MS = 3_000L
+        private const val POLL_TIMEOUT_MS = 90_000L
+
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as UrsApplication

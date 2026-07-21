@@ -212,4 +212,10 @@ interface UrsApi {
 
     @POST("api/v1/admin/restart")
     suspend fun restartServer()
+
+    // The bare root route (misc.Cow() banner, plain text, no auth) — used
+    // purely as a liveness probe to detect when the backend has come back
+    // up after restartServer(). "." resolves to the base URL itself.
+    @GET(".")
+    suspend fun ping()
 }

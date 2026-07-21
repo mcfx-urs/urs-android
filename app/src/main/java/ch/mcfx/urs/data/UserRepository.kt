@@ -69,4 +69,8 @@ class UserRepository(
     // Super-user only (see ) — the backend itself rejects this with
     // 403 for anyone else, this is just the call site.
     suspend fun restartServer() = api.restartServer()
+
+    // Throws if unreachable, returns normally once the backend responds —
+    // used to poll for the server coming back up after restartServer().
+    suspend fun ping() = api.ping()
 }
