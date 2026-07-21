@@ -347,6 +347,8 @@
     <string name="admin_restart_confirm_title">Restart the backend server?</string>
     <string name="admin_restart_confirm_body">The app will be briefly unreachable for everyone while it restarts.</string>
     <string name="admin_restart_in_progress">Restarting…</string>
-    <string name="admin_restart_requested">Restart requested. The server will be back shortly.</string>
+    <string name="admin_restart_requested">Restart requested. Checking when the server is back…</string>
+    <string name="admin_restart_back_up">The server is back up.</string>
+    <string name="admin_restart_check_timeout">Still not reachable. It may need more time, or something went wrong.</string>
     <string name="admin_restart_failed">Restart failed. Please try again.</string>
 </resources>

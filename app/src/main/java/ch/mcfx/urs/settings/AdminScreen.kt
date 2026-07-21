@@ -32,6 +32,8 @@ fun AdminScreen(viewModel: AdminViewModel = viewModel(factory = AdminViewModel.F
     val restarting by viewModel.restarting.collectAsStateWithLifecycle()
     val restartRequested by viewModel.restartRequested.collectAsStateWithLifecycle()
     val restartFailed by viewModel.restartFailed.collectAsStateWithLifecycle()
+    val serverBackUp by viewModel.serverBackUp.collectAsStateWithLifecycle()
+    val checkTimedOut by viewModel.checkTimedOut.collectAsStateWithLifecycle()
 
     Column(
         modifier = Modifier.fillMaxSize().padding(Spacing.xl),
@@ -63,7 +65,11 @@ fun AdminScreen(viewModel: AdminViewModel = viewModel(factory = AdminViewModel.F
             UrsText(stringResource(R.string.admin_restart_in_progress), color = UrsTheme.colors.onSurfaceMuted)
         }
         if (restartRequested) {
-            UrsText(stringResource(R.string.admin_restart_requested), color = UrsTheme.colors.onSurfaceMuted)
+            when {
+                serverBackUp -> UrsText(stringResource(R.string.admin_restart_back_up), color = UrsTheme.colors.onSurfaceMuted)
+                checkTimedOut -> UrsText(stringResource(R.string.admin_restart_check_timeout), color = FormErrorColor)
+                else -> UrsText(stringResource(R.string.admin_restart_requested), color = UrsTheme.colors.onSurfaceMuted)
+            }
         }
         if (restartFailed) {
             UrsText(stringResource(R.string.admin_restart_failed), color = FormErrorColor)
