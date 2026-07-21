@@ -7,10 +7,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- Bluetooth OBD-II module (`ch.mcfx.urs.obd`): connects to a paired
-  Mucar BT200 adapter, polls engine RPM, vehicle speed, coolant temp,
-  and fuel level at 1 Hz, with automatic reconnect on a dropped
-  connection. No UI yet — foundation for a future live-data screen.
+- A new "Car" section in the navigation drawer (replacing the direct
+  "Fuel" entry there, though Home's Fuel tile is unchanged), opening a
+  hub with Fuel and OBD tiles.
+- OBD: connects to a paired Mucar BT200 Bluetooth adapter and shows
+  live engine RPM, vehicle speed, coolant temp, and fuel level,
+  polled at 1 Hz with automatic reconnect on a dropped connection. A
+  setup screen (gear icon) handles the Bluetooth permission request
+  and shows pairing/connection status.
 
 ## [0.6.0] - 2026-07-21
 

@@ -36,6 +36,7 @@ import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.auth.BiometricUnlockScreen
 import ch.mcfx.urs.auth.LoginScreen
 import ch.mcfx.urs.beer.BeerScreen
+import ch.mcfx.urs.car.CarHubScreen
 import ch.mcfx.urs.fuel.FuelAddScreen
 import ch.mcfx.urs.fuel.FuelHubScreen
 import ch.mcfx.urs.fuel.FuelRoutes
@@ -48,6 +49,9 @@ import ch.mcfx.urs.inventory.InventoriesScreen
 import ch.mcfx.urs.inventory.InventoryRoutes
 import ch.mcfx.urs.inventory.ProductListScreen
 import ch.mcfx.urs.lifemap.LifeMapScreen
+import ch.mcfx.urs.obd.ObdLiveScreen
+import ch.mcfx.urs.obd.ObdRoutes
+import ch.mcfx.urs.obd.ObdSetupScreen
 import ch.mcfx.urs.settings.AboutScreen
 import ch.mcfx.urs.settings.AccountSettingsScreen
 import ch.mcfx.urs.settings.GeneralSettingsScreen
@@ -149,7 +153,7 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                     color = UrsTheme.colors.accent,
                 )
             }
-            Destination.entries.forEach { destination ->
+            Destination.entries.filter { it.showInDrawer }.forEach { destination ->
                 UrsNavigationDrawerItem(
                     label = stringResource(destination.labelRes),
                     icon = destination.icon,
@@ -224,6 +228,9 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                 ) {
                     composable(Destination.HOME.route) {
                         HomeScreen(onNavigate = { navController.navigateToDestination(it) })
+                    }
+                    composable(Destination.CAR.route) {
+                        CarHubScreen(onNavigate = { route -> navController.navigate(route) })
                     }
                     composable(Destination.FUEL.route) {
                         FuelHubScreen(onNavigate = { route -> navController.navigate(route) })
@@ -300,6 +307,10 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                         WorkTimeAddScreen(entryId = entryId, onDone = { navController.popBackStack() })
                     }
                     composable(Destination.LIFE_MAP.route) { LifeMapScreen() }
+                    composable(ObdRoutes.LIVE) {
+                        ObdLiveScreen(onOpenSetup = { navController.navigate(ObdRoutes.SETUP) })
+                    }
+                    composable(ObdRoutes.SETUP) { ObdSetupScreen() }
                     composable(Destination.SETTINGS.route) {
                         SettingsScreen(onNavigate = { route -> navController.navigate(route) })
                     }
@@ -343,6 +354,11 @@ private val SETTINGS_ROUTE_LABELS = mapOf(
     SettingsRoutes.PRODUCT_MANAGEMENT to R.string.settings_tile_product_management,
 )
 
+private val OBD_ROUTE_LABELS = mapOf(
+    ObdRoutes.LIVE to R.string.obd_live_title,
+    ObdRoutes.SETUP to R.string.obd_setup_title,
+)
+
 private val INVENTORY_ROUTE_LABELS = mapOf(
     InventoryRoutes.PRODUCTS to R.string.inventory_products_title,
 )
@@ -364,6 +380,7 @@ private fun isAccentTopBarRoute(route: String): Boolean =
 private fun currentScreenLabel(route: String): Int =
     Destination.entries.find { it.route == route }?.labelRes
         ?: FUEL_ROUTE_LABELS[route]
+        ?: OBD_ROUTE_LABELS[route]
         ?: SETTINGS_ROUTE_LABELS[route]
         ?: INVENTORY_ROUTE_LABELS[route]
         ?: SHOPPING_LIST_ROUTE_LABELS[route]
