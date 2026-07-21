@@ -159,6 +159,7 @@
     <string name="fill_add">New fill-up</string>
     <string name="fill_car">Car</string>
     <string name="fill_station">Filling station</string>
+    <string name="fill_station_with_distance">%1$s · %2$s</string>
     <string name="fill_no_station">No station / on the go</string>
     <string name="fill_currency">Currency</string>
     <string name="fill_capture_location">Capture location</string>

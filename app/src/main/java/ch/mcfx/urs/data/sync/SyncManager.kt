@@ -186,7 +186,9 @@ class SyncManager(
             // response.stationId — cache it locally (the backend itself
             // never surfaces gps_auto stations back through the picker
             // endpoint, so this is the only place this app ever learns
-            // about it).
+            // about it), tagged SOURCE_GPS_AUTO so the fuel-add picker
+            // excludes it (FuelViewModel) while fill-history name lookups
+            // (FuelScreen) still resolve it fine.
             fillingStationDao.upsert(
                 FillingStationEntity(
                     id = response.stationId,
@@ -195,6 +197,7 @@ class SyncManager(
                     address = "",
                     latitude = payload.stationLatitude ?: "",
                     longitude = payload.stationLongitude ?: "",
+                    source = FillingStationEntity.SOURCE_GPS_AUTO,
                 ),
             )
         } else {
