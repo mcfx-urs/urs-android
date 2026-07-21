@@ -30,6 +30,7 @@ import ch.mcfx.urs.notifications.NotificationChannels
 import ch.mcfx.urs.notifications.NotificationSender
 import ch.mcfx.urs.notifications.ReminderScheduler
 import ch.mcfx.urs.notifications.ReminderStore
+import ch.mcfx.urs.obd.ObdManager
 import ch.mcfx.urs.vpn.NetworkGate
 import ch.mcfx.urs.vpn.VpnConfigRepository
 import ch.mcfx.urs.vpn.WifiSsidReader
@@ -183,6 +184,11 @@ class AppContainer(context: Context) {
     )
     val locationCapture = LocationCapture(context)
     val locationHistorySettingsStore = LocationHistorySettingsStore(context)
+
+    // Not started here - connect()/disconnect() are driven by whatever
+    // future UI surfaces this (a live-data screen). Constructed eagerly
+    // like the app's other managers so that surface has a ready instance.
+    val obdManager = ObdManager(context)
 
     // Reuses the same authenticated httpClient Retrofit uses (AuthInterceptor
     // + AuthAuthenticator already attached) — /api/v1/catalog-image/{id} sits
