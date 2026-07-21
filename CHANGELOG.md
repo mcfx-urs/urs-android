@@ -36,6 +36,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   deleting manually-created catalog products and categories, with a
   picker for reusing an existing catalog image.
 
+### Changed
+
+- Settings menu restructured into About / Account / General. Account
+  now also holds the former standalone Work Settings fields
+  (employment %, target hours, hourly wage), with Log out moved to the
+  bottom. General is a new sub-screen holding VPN, Notifications,
+  Location History, and Product Management. The unused "Users"
+  placeholder tile is removed.
+
 ### Fixed
 
 - Life map: the map no longer grows over the time-range dropdown (or,

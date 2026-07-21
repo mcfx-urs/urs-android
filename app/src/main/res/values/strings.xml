@@ -23,13 +23,12 @@
 
     <string name="settings_title">Settings</string>
     <string name="settings_tile_account">Account</string>
-    <string name="settings_tile_users">Users</string>
+    <string name="settings_tile_general">General</string>
     <string name="settings_tile_vpn">VPN</string>
     <string name="settings_tile_notifications">Notifications</string>
     <string name="settings_tile_work_time">Work Settings</string>
     <string name="settings_tile_about">About</string>
     <string name="settings_tile_location_history">Location History</string>
-    <string name="settings_users_description">Login and multi-user management will live here once that feature is built.</string>
 
     <string name="about_org">mcfx</string>
     <string name="about_version_build_type">%1$s %2$s</string>

@@ -50,13 +50,13 @@ import ch.mcfx.urs.inventory.ProductListScreen
 import ch.mcfx.urs.lifemap.LifeMapScreen
 import ch.mcfx.urs.settings.AboutScreen
 import ch.mcfx.urs.settings.AccountSettingsScreen
+import ch.mcfx.urs.settings.GeneralSettingsScreen
 import ch.mcfx.urs.settings.LocationHistorySettingsScreen
 import ch.mcfx.urs.settings.NotificationSettingsScreen
 import ch.mcfx.urs.settings.ProductManagementScreen
 import ch.mcfx.urs.settings.SettingsRoutes
 import ch.mcfx.urs.settings.SettingsScreen
 import ch.mcfx.urs.settings.VpnSettingsScreen
-import ch.mcfx.urs.settings.WorkTimeSettingsScreen
 import ch.mcfx.urs.shoppinglist.ListDetailScreen
 import ch.mcfx.urs.shoppinglist.ShoppingListRoutes
 import ch.mcfx.urs.shoppinglist.ShoppingListsScreen
@@ -303,9 +303,11 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                     composable(Destination.SETTINGS.route) {
                         SettingsScreen(onNavigate = { route -> navController.navigate(route) })
                     }
+                    composable(SettingsRoutes.GENERAL) {
+                        GeneralSettingsScreen(onNavigate = { route -> navController.navigate(route) })
+                    }
                     composable(SettingsRoutes.VPN) { VpnSettingsScreen() }
                     composable(SettingsRoutes.NOTIFICATIONS) { NotificationSettingsScreen() }
-                    composable(SettingsRoutes.WORK_TIME) { WorkTimeSettingsScreen() }
                     composable(SettingsRoutes.ACCOUNT) { AccountSettingsScreen() }
                     composable(SettingsRoutes.ABOUT) { AboutScreen() }
                     composable(SettingsRoutes.LOCATION_HISTORY) { LocationHistorySettingsScreen() }
@@ -332,9 +334,9 @@ private val FUEL_ROUTE_LABELS = mapOf(
 )
 
 private val SETTINGS_ROUTE_LABELS = mapOf(
+    SettingsRoutes.GENERAL to R.string.settings_tile_general,
     SettingsRoutes.VPN to R.string.settings_tile_vpn,
     SettingsRoutes.NOTIFICATIONS to R.string.settings_tile_notifications,
-    SettingsRoutes.WORK_TIME to R.string.settings_tile_work_time,
     SettingsRoutes.ACCOUNT to R.string.settings_tile_account,
     SettingsRoutes.ABOUT to R.string.settings_tile_about,
     SettingsRoutes.LOCATION_HISTORY to R.string.settings_tile_location_history,
