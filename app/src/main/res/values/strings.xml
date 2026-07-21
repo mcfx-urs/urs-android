@@ -280,6 +280,8 @@
     <string name="product_management_image_none">No image selected</string>
     <string name="product_management_image_picker_title">Choose an image</string>
     <string name="product_management_image_picker_empty">No images available yet.</string>
+    <string name="product_management_image_picker_search_label">Search</string>
+    <string name="product_management_image_picker_no_matches">No images match your search.</string>
     <string name="product_management_edit">Edit</string>
     <string name="product_management_delete">Delete</string>
     <string name="product_management_delete_product_confirm_title">Delete this product?</string>

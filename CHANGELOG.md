@@ -22,6 +22,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   and shows pairing/connection status.
 - A new Admin tile in Settings, visible only to super-user accounts,
   with a confirm-then-restart action for the backend server.
+- The catalog image picker now has a search field that narrows the
+  grid to images linked to a matching product/category name.
 
 ### Fixed
 
