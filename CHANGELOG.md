@@ -25,6 +25,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Login and biometric-unlock screens now follow the app's dark/light
   theme instead of always showing a light background, which also
   restores status bar icon visibility in dark mode.
+- Inventory/shopping-list share sheets and the product-image picker no
+  longer crash the app if their backend fetch fails (#5).
+- Work Settings save and the Work Time month-override sheet now show
+  an error instead of silently discarding a failed save (#5).
+- Product settings popup now shows an error instead of silently
+  discarding a failed save (#5).
 
 ## [0.6.0] - 2026-07-21
 

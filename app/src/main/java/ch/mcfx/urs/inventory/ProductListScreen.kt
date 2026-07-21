@@ -298,6 +298,7 @@ private fun ProductSettingsForm(form: ProductSettingsFormState, viewModel: Produ
     val tile = form.product ?: return
     val thresholdOrderError = stringResource(R.string.inventory_settings_error_threshold_order)
     val reminderFieldsError = stringResource(R.string.inventory_settings_error_reminder_fields)
+    val saveError = stringResource(R.string.error_save)
     val reminderTitle = stringResource(R.string.inventory_settings_reminder_title, tile.name)
     val reminderBody = stringResource(R.string.inventory_settings_reminder_body, tile.name)
 
@@ -374,6 +375,7 @@ private fun ProductSettingsForm(form: ProductSettingsFormState, viewModel: Produ
                 viewModel.submitSettings(
                     thresholdOrderError = thresholdOrderError,
                     reminderFieldsError = reminderFieldsError,
+                    saveError = saveError,
                     reminderTitle = reminderTitle,
                     reminderBody = reminderBody,
                 )

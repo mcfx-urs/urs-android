@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -33,6 +34,10 @@ import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.components.UrsTextField
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Spacing
+
+// Same reasoning as other screens' local text-style/color constants — the
+// design system's type scale doesn't have an "error" role in its palette yet.
+private val FormErrorColor = Color(0xFFD64545)
 
 /**
  * Logging out here just calls [AccountSettingsViewModel.logout], which
@@ -74,6 +79,7 @@ fun AccountSettingsScreen(
     val employmentPercent by workTimeViewModel.employmentPercent.collectAsStateWithLifecycle()
     val hourlyWage by workTimeViewModel.hourlyWage.collectAsStateWithLifecycle()
     val justSaved by workTimeViewModel.justSaved.collectAsStateWithLifecycle()
+    val saveFailed by workTimeViewModel.saveFailed.collectAsStateWithLifecycle()
 
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Spacing.xl),
@@ -166,6 +172,9 @@ fun AccountSettingsScreen(
 
         if (justSaved) {
             UrsText(stringResource(R.string.worktime_settings_saved), color = UrsTheme.colors.onSurfaceMuted)
+        }
+        if (saveFailed) {
+            UrsText(stringResource(R.string.error_save), color = FormErrorColor)
         }
 
         UrsOutlinedButton(
