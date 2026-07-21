@@ -44,6 +44,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   restores status bar icon visibility in dark mode.
 - Inventory/shopping-list share sheets and the product-image picker no
   longer crash the app if their backend fetch fails (#5).
+- The app no longer crashes on startup for an existing install whose
+  local database predates the `source` column added to the
+  filling-station cache — the Room database version was bumped to
+  match.
 - Work Settings save and the Work Time month-override sheet now show
   an error instead of silently discarding a failed save (#5).
 - Product settings popup now shows an error instead of silently
