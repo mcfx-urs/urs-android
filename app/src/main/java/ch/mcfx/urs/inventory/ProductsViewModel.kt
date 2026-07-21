@@ -259,6 +259,7 @@ class ProductsViewModel(
     fun submitSettings(
         thresholdOrderError: String,
         reminderFieldsError: String,
+        saveError: String,
         reminderTitle: String,
         reminderBody: String,
     ) {
@@ -325,7 +326,7 @@ class ProductsViewModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
-                _settingsForm.update { it.copy(submitting = false, error = null) }
+                _settingsForm.update { it.copy(submitting = false, error = saveError) }
             }
         }
     }

@@ -1,6 +1,7 @@
 package ch.mcfx.urs.auth
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -49,7 +50,7 @@ fun LoginScreen(viewModel: LoginViewModel = viewModel(factory = LoginViewModel.F
     val passwordFocusRequester = remember { FocusRequester() }
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(Spacing.xl),
+        modifier = Modifier.fillMaxSize().background(UrsTheme.colors.background).padding(Spacing.xl),
         verticalArrangement = Arrangement.Center,
     ) {
         Column(
@@ -95,9 +96,15 @@ fun LoginScreen(viewModel: LoginViewModel = viewModel(factory = LoginViewModel.F
             modifier = Modifier.fillMaxWidth().padding(top = Spacing.s),
         )
 
-        if (form.submitFailed) {
+        if (form.failure != LoginFailure.NONE) {
             UrsText(
-                stringResource(R.string.login_error),
+                stringResource(
+                    if (form.failure == LoginFailure.CONNECTIVITY) {
+                        R.string.login_error_connectivity
+                    } else {
+                        R.string.login_error
+                    },
+                ),
                 color = FormErrorColor,
                 style = UrsTheme.typography.body,
                 modifier = Modifier.padding(top = Spacing.s),

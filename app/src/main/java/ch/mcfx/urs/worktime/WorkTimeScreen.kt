@@ -76,8 +76,8 @@ fun WorkTimeScreen(
     val pendingDeleteEntry by viewModel.pendingDeleteEntry.collectAsStateWithLifecycle()
     val selectedYear by viewModel.selectedYear.collectAsStateWithLifecycle()
     val selectedMonth by viewModel.selectedMonth.collectAsStateWithLifecycle()
-
-    var overrideSheetOpen by remember { mutableStateOf(false) }
+    val overrideSheetOpen by viewModel.showOverrideSheet.collectAsStateWithLifecycle()
+    val overrideSaveFailed by viewModel.overrideSaveFailed.collectAsStateWithLifecycle()
 
     Box(modifier = Modifier.fillMaxSize()) {
         when (val state = uiState) {
@@ -87,7 +87,7 @@ fun WorkTimeScreen(
                 selectedYear = selectedYear,
                 selectedMonth = selectedMonth,
                 onSelectMonth = viewModel::selectMonth,
-                onEditOverride = { overrideSheetOpen = true },
+                onEditOverride = viewModel::openOverrideSheet,
                 onLongPress = viewModel::openActionSheet,
             )
         }
@@ -126,21 +126,16 @@ fun WorkTimeScreen(
     if (overrideSheetOpen) {
         val currentOverride = (uiState as? WorkTimeUiState.Data)?.monthOverrides
             ?.find { it.year == selectedYear && it.month == selectedMonth }
-        UrsBottomSheet(onDismissRequest = { overrideSheetOpen = false }) {
+        UrsBottomSheet(onDismissRequest = viewModel::closeOverrideSheet) {
             MonthOverrideSheet(
                 year = selectedYear,
                 month = selectedMonth,
                 initialValue = currentOverride?.daysWorked ?: "",
                 hasOverride = currentOverride != null,
-                onSave = { hours ->
-                    viewModel.setMonthOverride(hours)
-                    overrideSheetOpen = false
-                },
-                onClear = {
-                    viewModel.clearMonthOverride()
-                    overrideSheetOpen = false
-                },
-                onCancel = { overrideSheetOpen = false },
+                saveFailed = overrideSaveFailed,
+                onSave = viewModel::setMonthOverride,
+                onClear = viewModel::clearMonthOverride,
+                onCancel = viewModel::closeOverrideSheet,
             )
         }
     }
@@ -288,6 +283,7 @@ private fun MonthOverrideSheet(
     month: Int,
     initialValue: String,
     hasOverride: Boolean,
+    saveFailed: Boolean,
     onSave: (String) -> Unit,
     onClear: () -> Unit,
     onCancel: () -> Unit,
@@ -321,6 +317,13 @@ private fun MonthOverrideSheet(
                 onClick = { onSave(value) },
                 enabled = value.toFloatOrNull() != null,
                 modifier = Modifier.weight(1f),
+            )
+        }
+        if (saveFailed) {
+            UrsText(
+                stringResource(R.string.error_save),
+                color = FormErrorColor,
+                style = UrsTheme.typography.body,
             )
         }
     }

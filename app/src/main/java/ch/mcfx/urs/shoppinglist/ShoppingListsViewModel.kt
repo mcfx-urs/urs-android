@@ -159,9 +159,15 @@ class ShoppingListsViewModel(
         _actionSheetList.value = null
         val serverId = list.serverId ?: return
         viewModelScope.launch {
-            val members = userRepository.getAllUsers()
-            val shares = repository.getListShares(serverId)
-            _shareState.value = ListShareState(list = list, members = members, sharedUserIds = shares.map { it.userId }.toSet())
+            try {
+                val members = userRepository.getAllUsers()
+                val shares = repository.getListShares(serverId)
+                _shareState.value = ListShareState(list = list, members = members, sharedUserIds = shares.map { it.userId }.toSet())
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // Best-effort: sheet simply doesn't open if the members/shares fetch failed.
+            }
         }
     }
 

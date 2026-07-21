@@ -30,7 +30,14 @@ import androidx.room.TypeConverters
     // AppContainer.database's fallbackToDestructiveMigration doc comment.
     // v13: source added to CatalogProductEntity/CatalogCategoryEntity,
     // catalogImageId added to CatalogCategoryEntity.
-    version = 13,
+    // v14: source added to FillingStationEntity (proximity-sort picker) —
+    // this bump was missed when that column was added, which left an
+    // installed v13 build's on-disk schema (no `source` column) with a
+    // different identity hash than a rebuilt-but-still-v13 APK's schema,
+    // crashing on startup with Room's "cannot verify data integrity"
+    // instead of going through fallbackToDestructiveMigration at all
+    // (that only triggers on an actual version transition).
+    version = 14,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)

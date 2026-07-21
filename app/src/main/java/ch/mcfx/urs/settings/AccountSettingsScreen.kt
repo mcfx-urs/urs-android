@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -15,17 +18,28 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
+import ch.mcfx.urs.ui.components.UrsBottomSheet
+import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsCheckbox
 import ch.mcfx.urs.ui.components.UrsOutlinedButton
 import ch.mcfx.urs.ui.components.UrsText
+import ch.mcfx.urs.ui.components.UrsTextField
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Spacing
+
+// Same reasoning as other screens' local text-style/color constants — the
+// design system's type scale doesn't have an "error" role in its palette yet.
+private val FormErrorColor = Color(0xFFD64545)
 
 /**
  * Logging out here just calls [AccountSettingsViewModel.logout], which
@@ -40,11 +54,20 @@ import ch.mcfx.urs.ui.tokens.Spacing
  * enrolled. Turning it on immediately runs a real [BiometricPrompt], both
  * to create the gating Keystore key and to prove it works right now,
  * rather than just flipping a flag and finding out at the next app open.
+ *
+ * Also hosts the former standalone Work Settings screen (employment %,
+ * target hours, hourly wage) as a second section below the account info —
+ * merged in as part of the Settings restructure (About/Account/General).
  */
 @Composable
-fun AccountSettingsScreen(viewModel: AccountSettingsViewModel = viewModel(factory = AccountSettingsViewModel.Factory)) {
+fun AccountSettingsScreen(
+    viewModel: AccountSettingsViewModel = viewModel(factory = AccountSettingsViewModel.Factory),
+    workTimeViewModel: WorkTimeSettingsViewModel = viewModel(factory = WorkTimeSettingsViewModel.Factory),
+    changePasswordViewModel: ChangePasswordViewModel = viewModel(factory = ChangePasswordViewModel.Factory),
+) {
     val context = LocalContext.current
     val gate = viewModel.biometricGate
+    var showChangePasswordSheet by remember { mutableStateOf(false) }
 
     val canOfferBiometric = remember {
         BiometricManager.from(context).canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) ==
@@ -56,13 +79,28 @@ fun AccountSettingsScreen(viewModel: AccountSettingsViewModel = viewModel(factor
     val biometricPromptTitle = stringResource(R.string.biometric_prompt_title)
     val cancelLabel = stringResource(R.string.cancel)
 
+    val targetHours by workTimeViewModel.targetHours.collectAsStateWithLifecycle()
+    val employmentPercent by workTimeViewModel.employmentPercent.collectAsStateWithLifecycle()
+    val hourlyWage by workTimeViewModel.hourlyWage.collectAsStateWithLifecycle()
+    val justSaved by workTimeViewModel.justSaved.collectAsStateWithLifecycle()
+    val saveFailed by workTimeViewModel.saveFailed.collectAsStateWithLifecycle()
+
     Column(
-        modifier = Modifier.fillMaxSize().padding(Spacing.xl),
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Spacing.xl),
         verticalArrangement = Arrangement.spacedBy(Spacing.l),
     ) {
         UrsText(
             stringResource(R.string.account_logged_in_as, viewModel.userName ?: ""),
             style = UrsTheme.typography.body,
+        )
+
+        UrsOutlinedButton(
+            text = stringResource(R.string.account_change_password),
+            onClick = {
+                changePasswordViewModel.reset()
+                showChangePasswordSheet = true
+            },
+            modifier = Modifier.fillMaxWidth(),
         )
 
         if (canOfferBiometric) {
@@ -109,9 +147,132 @@ fun AccountSettingsScreen(viewModel: AccountSettingsViewModel = viewModel(factor
             }
         }
 
+        UrsText(stringResource(R.string.settings_tile_work_time), style = UrsTheme.typography.cardTitle)
+
+        UrsTextField(
+            value = employmentPercent,
+            onValueChange = workTimeViewModel::setEmploymentPercent,
+            label = stringResource(R.string.worktime_settings_employment_percent_label),
+            supportingText = stringResource(R.string.worktime_settings_employment_percent_hint),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        UrsTextField(
+            value = targetHours,
+            onValueChange = workTimeViewModel::setTargetHours,
+            label = stringResource(R.string.worktime_settings_target_hours_label),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        UrsTextField(
+            value = hourlyWage,
+            onValueChange = workTimeViewModel::setHourlyWage,
+            label = stringResource(R.string.worktime_settings_hourly_wage_label),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        UrsButton(
+            text = stringResource(R.string.save),
+            onClick = workTimeViewModel::save,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        if (justSaved) {
+            UrsText(stringResource(R.string.worktime_settings_saved), color = UrsTheme.colors.onSurfaceMuted)
+        }
+        if (saveFailed) {
+            UrsText(stringResource(R.string.error_save), color = FormErrorColor)
+        }
+
         UrsOutlinedButton(
             text = stringResource(R.string.account_log_out),
             onClick = viewModel::logout,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+
+    if (showChangePasswordSheet) {
+        UrsBottomSheet(onDismissRequest = { showChangePasswordSheet = false }) {
+            ChangePasswordForm(
+                viewModel = changePasswordViewModel,
+                onDone = { showChangePasswordSheet = false },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ChangePasswordForm(viewModel: ChangePasswordViewModel, onDone: () -> Unit) {
+    val form by viewModel.formState.collectAsStateWithLifecycle()
+
+    Column(
+        modifier = Modifier.padding(horizontal = Spacing.xl).padding(bottom = Spacing.xxl),
+        verticalArrangement = Arrangement.spacedBy(Spacing.m),
+    ) {
+        UrsText(stringResource(R.string.account_change_password_title), style = UrsTheme.typography.screenTitle)
+
+        if (form.success) {
+            UrsText(stringResource(R.string.account_change_password_success), style = UrsTheme.typography.body)
+            UrsButton(text = stringResource(R.string.close), onClick = onDone, modifier = Modifier.fillMaxWidth())
+            return
+        }
+
+        UrsTextField(
+            value = form.currentPassword,
+            onValueChange = viewModel::setCurrentPassword,
+            label = stringResource(R.string.account_change_password_current),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        UrsTextField(
+            value = form.newPassword,
+            onValueChange = viewModel::setNewPassword,
+            label = stringResource(R.string.account_change_password_new),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        UrsTextField(
+            value = form.confirmPassword,
+            onValueChange = viewModel::setConfirmPassword,
+            label = stringResource(R.string.account_change_password_confirm),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        if (form.failure != ChangePasswordFailure.NONE) {
+            UrsText(
+                stringResource(
+                    when (form.failure) {
+                        ChangePasswordFailure.WRONG_CURRENT_PASSWORD -> R.string.account_change_password_error_wrong_current
+                        ChangePasswordFailure.CONNECTIVITY -> R.string.login_error_connectivity
+                        else -> R.string.error_save
+                    },
+                ),
+                color = FormErrorColor,
+                style = UrsTheme.typography.body,
+            )
+        }
+
+        UrsButton(
+            text = stringResource(
+                if (form.submitting) R.string.account_change_password_submitting else R.string.account_change_password_submit,
+            ),
+            onClick = viewModel::submit,
+            enabled = form.isValid && !form.submitting,
             modifier = Modifier.fillMaxWidth(),
         )
     }

@@ -147,13 +147,19 @@ class InventoriesViewModel(
         _actionSheetInventory.value = null
         val serverId = inventory.serverId ?: return
         viewModelScope.launch {
-            val members = userRepository.getAllUsers()
-            val shares = repository.getInventoryShares(serverId)
-            _shareState.value = InventoryShareState(
-                inventory = inventory,
-                members = members,
-                sharedUserIds = shares.map { it.userId }.toSet(),
-            )
+            try {
+                val members = userRepository.getAllUsers()
+                val shares = repository.getInventoryShares(serverId)
+                _shareState.value = InventoryShareState(
+                    inventory = inventory,
+                    members = members,
+                    sharedUserIds = shares.map { it.userId }.toSet(),
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // Best-effort: sheet simply doesn't open if the members/shares fetch failed.
+            }
         }
     }
 

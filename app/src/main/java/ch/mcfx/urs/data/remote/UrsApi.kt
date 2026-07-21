@@ -16,6 +16,9 @@ interface UrsApi {
     @POST("api/v1/refresh")
     suspend fun refresh(@Body payload: RefreshPayload): TokenResponseDto
 
+    @PUT("api/v1/change-password")
+    suspend fun changePassword(@Body payload: ChangePasswordPayload): TokenResponseDto
+
     @GET("api/v1/car")
     suspend fun getCars(): List<CarDto>
 
@@ -33,6 +36,12 @@ interface UrsApi {
 
     @POST("api/v1/fill")
     suspend fun createFill(@Body payload: FillPayload): FillDto
+
+    @PUT("api/v1/fill/{id}")
+    suspend fun updateFill(@Path("id") id: String, @Body payload: FillUpdatePayload)
+
+    @DELETE("api/v1/fill/{id}")
+    suspend fun deleteFill(@Path("id") id: String)
 
     @GET("api/v1/currency")
     suspend fun getCurrencies(): List<CurrencyDto>
@@ -200,4 +209,13 @@ interface UrsApi {
 
     @POST("api/v1/location-history")
     suspend fun createLocationHistory(@Body payload: LocationHistoryPayload): LocationHistoryResponse
+
+    @POST("api/v1/admin/restart")
+    suspend fun restartServer()
+
+    // The bare root route (misc.Cow() banner, plain text, no auth) — used
+    // purely as a liveness probe to detect when the backend has come back
+    // up after restartServer(). "." resolves to the base URL itself.
+    @GET(".")
+    suspend fun ping()
 }

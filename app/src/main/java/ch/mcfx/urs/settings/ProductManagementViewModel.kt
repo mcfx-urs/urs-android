@@ -105,7 +105,13 @@ class ProductManagementViewModel(private val repository: CatalogRepository) : Vi
 
     fun loadImages() {
         viewModelScope.launch {
-            _images.value = repository.getImages()
+            try {
+                _images.value = repository.getImages()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // Best-effort only — image picker just stays empty if this fetch failed.
+            }
         }
     }
 

@@ -1,5 +1,7 @@
 package ch.mcfx.urs.home
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,11 +18,13 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -29,6 +33,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
+import ch.mcfx.urs.location.LOCATION_PERMISSIONS
+import ch.mcfx.urs.location.hasLocationPermission
 import ch.mcfx.urs.navigation.Destination
 import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsPill
@@ -93,6 +99,22 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val featured = FEATURE_TILES.first()
     val tiles = FEATURE_TILES.drop(1)
+
+    val context = LocalContext.current
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { result -> if (result.values.any { it }) viewModel.refreshLocation() }
+
+    // proactive, one-time request — not re-shown on every Home visit
+    // once the user has answered it (granted or denied) the first time.
+    LaunchedEffect(Unit) {
+        if (hasLocationPermission(context)) {
+            viewModel.refreshLocation()
+        } else if (!viewModel.hasPromptedLocationPermission()) {
+            viewModel.markLocationPermissionPrompted()
+            locationPermissionLauncher.launch(LOCATION_PERMISSIONS)
+        }
+    }
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
