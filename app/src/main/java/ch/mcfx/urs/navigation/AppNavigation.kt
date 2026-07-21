@@ -84,6 +84,19 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
     val context = LocalContext.current
     val app = context.applicationContext as UrsApplication
 
+    // Silent, best-effort only: the app is fully usable without any VPN set
+    // up at all. If a tunnel is already configured and permissions are
+    // already granted, try to bring it up in the background; otherwise do
+    // nothing here — no prompts, no banner. Screens that actually need the
+    // backend show their own existing error/retry state if it's unreachable.
+    // Placed ahead of the isLoggedIn/biometric gates below:
+    // both of those `return` early, so this never ran at all while either
+    // screen was showing, leaving LoginScreen to hit the backend over
+    // whatever network happened to be active with no tunnel brought up.
+    LaunchedEffect(Unit) {
+        app.container.networkGate.ensureReachable()
+    }
+
     // Gates the whole app behind login — swaps out the entire
     // drawer+NavHost UI below for LoginScreen whenever there's no valid
     // session, rather than trying to model "logged out" as just another
@@ -115,15 +128,6 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
     val navController = rememberNavController()
     val drawerState = rememberUrsDrawerState(initialValue = UrsDrawerValue.Closed)
     val coroutineScope = rememberCoroutineScope()
-
-    // Silent, best-effort only: the app is fully usable without any VPN set
-    // up at all. If a tunnel is already configured and permissions are
-    // already granted, try to bring it up in the background; otherwise do
-    // nothing here — no prompts, no banner. Screens that actually need the
-    // backend show their own existing error/retry state if it's unreachable.
-    LaunchedEffect(Unit) {
-        app.container.networkGate.ensureReachable()
-    }
 
     // Hands the controller back to MainActivity so a notification tap can
     // deep-link while the app is already running (onNewIntent) as well as
