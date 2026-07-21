@@ -24,6 +24,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   with a confirm-then-restart action for the backend server.
 - The catalog image picker now has a search field that narrows the
   grid to images linked to a matching product/category name.
+- Long-pressing a fill-up in the fuel-fills list opens Edit/Delete
+  actions, so a mistaken entry can now be corrected or removed (#4).
 
 ### Fixed
 

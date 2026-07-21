@@ -46,6 +46,13 @@ sealed interface FuelUiState {
 data class StationPickerOption(val station: FillingStationEntity, val distanceKm: Double?)
 
 data class FillFormState(
+    // Null = creating a new fill; set = editing this local row.
+    val editingFillId: Long? = null,
+    // True once editing a fill the backend already confirmed (has a
+    // FillEntity.serverId) — the GPS/ad-hoc-station toggle is locked in
+    // that case, since PUT /api/v1/fill/{id} has no ad-hoc-station-creation
+    // branch (see FuelRepository.updateFill).
+    val editingIsSynced: Boolean = false,
     val car: CarEntity? = null,
     val station: FillingStationEntity? = null,
     // Mutually exclusive with `station`: either a known station is picked,
@@ -94,6 +101,12 @@ class FuelViewModel(
     private val _showForm = MutableStateFlow(false)
     val showForm: StateFlow<Boolean> = _showForm.asStateFlow()
 
+    private val _actionSheetFill = MutableStateFlow<FillEntity?>(null)
+    val actionSheetFill: StateFlow<FillEntity?> = _actionSheetFill.asStateFlow()
+
+    private val _pendingDeleteFill = MutableStateFlow<FillEntity?>(null)
+    val pendingDeleteFill: StateFlow<FillEntity?> = _pendingDeleteFill.asStateFlow()
+
     init {
         // Cars/fills/stations/currencies are all Room-backed Flows now, so
         // this screen (including the Add-fill form's car picker) has
@@ -122,8 +135,61 @@ class FuelViewModel(
         _showForm.value = true
     }
 
+    /**
+     * Loads the fill fresh via the repository (not from [uiState], which may
+     * not have emitted yet on a cold navigation into this screen) and
+     * pre-fills the same form the create flow uses — [showForm] flips to
+     * `true` only once that load completes, mirrors
+     * WorkTimeViewModel.openFormForEdit.
+     */
+    fun openFormForEdit(fillId: Long) {
+        viewModelScope.launch {
+            val data = repository.getFillForEdit(fillId) ?: return@launch
+            _formState.value = FillFormState(
+                editingFillId = data.fill.id,
+                editingIsSynced = data.fill.serverId != null,
+                car = data.car,
+                station = data.station,
+                odometer = data.fill.odometer,
+                pricePerLiter = data.fill.pricePerLiter,
+                liters = data.fill.liters,
+                date = data.fill.date.substringBefore(' '),
+                isFullTank = data.fill.isFullTank,
+                currencyCode = data.fill.currencyCode,
+            )
+            _showForm.value = true
+        }
+    }
+
     fun closeForm() {
         _showForm.value = false
+    }
+
+    fun openActionSheet(fill: FillEntity) {
+        _actionSheetFill.value = fill
+    }
+
+    fun closeActionSheet() {
+        _actionSheetFill.value = null
+    }
+
+    fun requestDelete() {
+        val fill = _actionSheetFill.value ?: return
+        _actionSheetFill.value = null
+        _pendingDeleteFill.value = fill
+    }
+
+    fun cancelDelete() {
+        _pendingDeleteFill.value = null
+    }
+
+    fun confirmDelete() {
+        val fill = _pendingDeleteFill.value ?: return
+        _pendingDeleteFill.value = null
+        // Local delete inside repository.deleteFill is immediate and
+        // effectively can't fail — no submitting/failure UI state needed
+        // here, unlike the form's submit().
+        viewModelScope.launch { repository.deleteFill(fill.id) }
     }
 
     fun selectCar(car: CarEntity) {
@@ -191,23 +257,41 @@ class FuelViewModel(
         viewModelScope.launch {
             _formState.update { it.copy(submitting = true, submitFailed = false) }
             try {
-                repository.createFill(
-                    car = car,
-                    station = form.station,
-                    date = form.date,
-                    odometer = form.odometer,
-                    pricePerLiter = form.pricePerLiter,
-                    liters = form.liters,
-                    lastOdometer = form.lastOdometer,
-                    currencyCode = form.currencyCode,
-                    gpsLatitude = form.gpsLatitude,
-                    gpsLongitude = form.gpsLongitude,
-                    isFullTank = form.isFullTank,
-                )
-                // createFill is a local-only write and returns instantly —
-                // no network round-trip to wait on, so the form can close
-                // right away. A later sync failure surfaces via the row's
-                // own pending/failed badge (see FuelScreen), not here.
+                val editingFillId = form.editingFillId
+                if (editingFillId != null) {
+                    repository.updateFill(
+                        localId = editingFillId,
+                        car = car,
+                        station = form.station,
+                        date = form.date,
+                        odometer = form.odometer,
+                        pricePerLiter = form.pricePerLiter,
+                        liters = form.liters,
+                        currencyCode = form.currencyCode,
+                        gpsLatitude = form.gpsLatitude,
+                        gpsLongitude = form.gpsLongitude,
+                        isFullTank = form.isFullTank,
+                    )
+                } else {
+                    repository.createFill(
+                        car = car,
+                        station = form.station,
+                        date = form.date,
+                        odometer = form.odometer,
+                        pricePerLiter = form.pricePerLiter,
+                        liters = form.liters,
+                        lastOdometer = form.lastOdometer,
+                        currencyCode = form.currencyCode,
+                        gpsLatitude = form.gpsLatitude,
+                        gpsLongitude = form.gpsLongitude,
+                        isFullTank = form.isFullTank,
+                    )
+                }
+                // Both paths above are local-only writes that return
+                // instantly — no network round-trip to wait on, so the form
+                // can close right away. A later sync failure surfaces via
+                // the row's own pending/failed badge (see FuelScreen), not
+                // here.
                 _showForm.value = false
             } catch (e: CancellationException) {
                 throw e

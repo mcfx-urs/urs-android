@@ -54,13 +54,15 @@ private fun formatDistanceKm(km: Double): String = String.format(Locale.US, "%.1
 @Composable
 fun FuelAddScreen(
     onDone: () -> Unit,
+    /** Null creates a new fill; set edits that existing local row (see [FuelViewModel.openFormForEdit]). */
+    fillId: Long? = null,
     viewModel: FuelViewModel = viewModel(factory = FuelViewModel.Factory),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val formState by viewModel.formState.collectAsStateWithLifecycle()
     val showForm by viewModel.showForm.collectAsStateWithLifecycle()
 
-    LaunchedEffect(Unit) { viewModel.openForm() }
+    LaunchedEffect(Unit) { if (fillId != null) viewModel.openFormForEdit(fillId) else viewModel.openForm() }
 
     var hasOpened by remember { mutableStateOf(false) }
     LaunchedEffect(showForm) {
@@ -83,6 +85,10 @@ fun FuelAddScreen(
                     currencies = state.currencies,
                     viewModel = viewModel,
                 )
+            } else if (fillId != null) {
+                // openFormForEdit is still loading the fill to pre-fill —
+                // matches WorkTimeAddScreen's identical loading state.
+                UrsProgressIndicator(Modifier.align(Alignment.Center))
             }
         }
     }
@@ -118,21 +124,26 @@ private fun FillForm(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            UrsText(stringResource(R.string.fill_no_station), style = UrsTheme.typography.body)
-            UrsCheckbox(
-                checked = form.useGps,
-                onCheckedChange = { checked ->
-                    viewModel.setUseGps(checked)
-                    // Requested lazily, only once the user actually picks
-                    // "no station" — not upfront at launch.
-                    if (checked && hasLocationPermission) viewModel.captureLocation()
-                },
-            )
+        // Hidden once editing an already-synced fill — PUT /api/v1/fill/{id}
+        // has no ad-hoc-station-creation branch, so a known station is
+        // required at that point (see FillFormState.editingIsSynced).
+        if (!form.editingIsSynced) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                UrsText(stringResource(R.string.fill_no_station), style = UrsTheme.typography.body)
+                UrsCheckbox(
+                    checked = form.useGps,
+                    onCheckedChange = { checked ->
+                        viewModel.setUseGps(checked)
+                        // Requested lazily, only once the user actually picks
+                        // "no station" — not upfront at launch.
+                        if (checked && hasLocationPermission) viewModel.captureLocation()
+                    },
+                )
+            }
         }
 
         if (form.useGps) {
@@ -194,6 +205,13 @@ private fun FillForm(
                 onSelect = { viewModel.selectStation(it.station) },
                 modifier = Modifier.fillMaxWidth(),
             )
+            if (form.editingIsSynced) {
+                UrsText(
+                    stringResource(R.string.fill_station_locked),
+                    style = UrsTheme.typography.caption,
+                    color = UrsTheme.colors.onSurfaceMuted,
+                )
+            }
         }
 
         UrsTextField(

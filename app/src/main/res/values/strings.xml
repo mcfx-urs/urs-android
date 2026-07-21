@@ -181,6 +181,11 @@
     <string name="fill_status_failed">Failed</string>
     <string name="fill_pending_location">Location captured</string>
     <string name="fills_empty">No fill-ups yet.</string>
+    <string name="fill_station_locked">Station can\'t be changed to GPS/on-the-go once saved</string>
+    <string name="fill_edit">Edit</string>
+    <string name="fill_delete">Delete</string>
+    <string name="fill_delete_confirm_title">Delete this fill-up?</string>
+    <string name="fill_delete_confirm_body">This can\'t be undone.</string>
 
     <string name="station_add">New gas station</string>
     <string name="station_name">Name</string>

@@ -10,7 +10,9 @@ import ch.mcfx.urs.data.local.FillEntity
 import ch.mcfx.urs.data.local.FillingStationDao
 import ch.mcfx.urs.data.local.FillingStationEntity
 import ch.mcfx.urs.data.local.OutboxDao
+import ch.mcfx.urs.data.local.OutboxFillDeletePayload
 import ch.mcfx.urs.data.local.OutboxFillPayload
+import ch.mcfx.urs.data.local.OutboxFillUpdatePayload
 import ch.mcfx.urs.data.local.OutboxMutationEntity
 import ch.mcfx.urs.data.local.SyncStatus
 import ch.mcfx.urs.data.remote.CarDto
@@ -27,6 +29,8 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+
+data class FillEditData(val fill: FillEntity, val car: CarEntity, val station: FillingStationEntity?)
 
 class FuelRepository(
     private val api: UrsApi,
@@ -148,6 +152,118 @@ class FuelRepository(
             ),
         )
 
+        applicationScope.launch { syncManager.syncNow() }
+    }
+
+    /**
+     * Resolves a local fill row into the entities its edit form needs
+     * (looked up fresh via DAOs, not [observeFills]'s cached Flow — that
+     * Flow may not have emitted yet on a cold navigation straight into the
+     * edit screen, same reasoning as WorkTimeViewModel.openFormForEdit).
+     * Returns null if the fill or its car no longer exists locally.
+     */
+    suspend fun getFillForEdit(localId: Long): FillEditData? {
+        val fill = fillDao.getById(localId) ?: return null
+        val car = carDao.getById(fill.carId) ?: return null
+        val station = fill.stationId?.let { fillingStationDao.getById(it) }
+        return FillEditData(fill, car, station)
+    }
+
+    /**
+     * Offline-first edit path, same shape as [WorkTimeRepository.updateEntry].
+     * A fill that hasn't reached the server yet (no [FillEntity.serverId])
+     * has its still-pending create mutation's payload rewritten in place —
+     * GPS/ad-hoc station reassignment is still possible here, since that
+     * mutation still goes through the ad-hoc-creation-capable create route.
+     * An already-synced fill cancels whatever mutation is still pending for
+     * it and queues a fresh `PUT` update instead — [station] must be
+     * non-null by this point (enforced by FuelAddScreen locking the GPS
+     * toggle once editing an already-synced fill), since the PUT route has
+     * no ad-hoc-station-creation branch.
+     */
+    suspend fun updateFill(
+        localId: Long,
+        car: CarEntity,
+        station: FillingStationEntity?,
+        date: String,
+        odometer: String,
+        pricePerLiter: String,
+        liters: String,
+        currencyCode: String,
+        gpsLatitude: String?,
+        gpsLongitude: String?,
+        isFullTank: Boolean,
+    ) {
+        val current = fillDao.getById(localId) ?: return
+        val fullDate = "$date 00:00:00"
+
+        val outboxId = if (current.serverId == null) {
+            val payload = OutboxFillPayload(
+                carId = car.id,
+                fuelId = car.fuelId,
+                date = fullDate,
+                odometer = odometer,
+                pricePerLiter = pricePerLiter,
+                liters = liters,
+                driven = current.driven,
+                isFullTank = isFullTank,
+                currencyCode = currencyCode,
+                stationId = station?.id,
+                stationLatitude = gpsLatitude,
+                stationLongitude = gpsLongitude,
+            )
+            current.outboxId?.let { outboxDao.updatePayload(it, json.encodeToString(payload)) }
+            current.outboxId
+        } else {
+            val stationId = station?.id ?: return
+            current.outboxId?.let { outboxDao.delete(it) }
+            val payload = OutboxFillUpdatePayload(
+                serverId = current.serverId.toString(),
+                carId = car.id,
+                fuelId = car.fuelId,
+                date = fullDate,
+                stationId = stationId,
+                odometer = odometer,
+                pricePerLiter = pricePerLiter,
+                liters = liters,
+                isFullTank = isFullTank,
+                currencyCode = currencyCode,
+            )
+            outboxDao.insert(
+                OutboxMutationEntity(
+                    type = OutboxMutationEntity.TYPE_UPDATE_FILL,
+                    payloadJson = json.encodeToString(payload),
+                    createdAt = System.currentTimeMillis(),
+                ),
+            )
+        }
+
+        fillDao.updateFields(
+            localId, station?.id, fullDate, pricePerLiter, liters, odometer, isFullTank, currencyCode,
+            SyncStatus.PENDING, outboxId,
+        )
+        applicationScope.launch { syncManager.syncNow() }
+    }
+
+    /**
+     * Offline-first delete path, same shape as [WorkTimeRepository.deleteEntry].
+     * The local row is always removed immediately; a server-side delete is
+     * only queued if the server ever actually learned about this fill
+     * ([FillEntity.serverId] set).
+     */
+    suspend fun deleteFill(localId: Long) {
+        val current = fillDao.getById(localId) ?: return
+        current.outboxId?.let { outboxDao.delete(it) }
+        fillDao.deleteEntry(localId)
+
+        val serverId = current.serverId ?: return
+        outboxDao.insert(
+            OutboxMutationEntity(
+                type = OutboxMutationEntity.TYPE_DELETE_FILL,
+                payloadJson = json.encodeToString(OutboxFillDeletePayload(serverId = serverId.toString())),
+                createdAt = System.currentTimeMillis(),
+            ),
+        )
         applicationScope.launch { syncManager.syncNow() }
     }
 
