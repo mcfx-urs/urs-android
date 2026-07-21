@@ -39,6 +39,15 @@
     <string name="account_logged_in_as">Logged in as %1$s</string>
     <string name="account_log_out">Log out</string>
     <string name="account_biometric_unlock">Unlock with fingerprint/face</string>
+    <string name="account_change_password">Change password</string>
+    <string name="account_change_password_title">Change password</string>
+    <string name="account_change_password_current">Current password</string>
+    <string name="account_change_password_new">New password</string>
+    <string name="account_change_password_confirm">Confirm new password</string>
+    <string name="account_change_password_submit">Change password</string>
+    <string name="account_change_password_submitting">Changing password…</string>
+    <string name="account_change_password_success">Password changed. Every other session has been logged out.</string>
+    <string name="account_change_password_error_wrong_current">Current password is incorrect.</string>
 
     <string name="biometric_prompt_title">Unlock urs</string>
     <string name="biometric_prompt_use_password">Use password</string>

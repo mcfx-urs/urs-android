@@ -16,6 +16,9 @@ interface UrsApi {
     @POST("api/v1/refresh")
     suspend fun refresh(@Body payload: RefreshPayload): TokenResponseDto
 
+    @PUT("api/v1/change-password")
+    suspend fun changePassword(@Body payload: ChangePasswordPayload): TokenResponseDto
+
     @GET("api/v1/car")
     suspend fun getCars(): List<CarDto>
 

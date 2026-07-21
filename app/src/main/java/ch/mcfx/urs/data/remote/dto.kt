@@ -500,6 +500,12 @@ data class RefreshPayload(
     @SerialName("refresh_token") val refreshToken: String,
 )
 
+@Serializable
+data class ChangePasswordPayload(
+    @SerialName("current_password") val currentPassword: String,
+    @SerialName("new_password") val newPassword: String,
+)
+
 // expires_in is a genuine JSON number on the backend (computed seconds, not
 // a DB column) — unlike every other DTO in this file, which is a string
 // because it mirrors a DB column the backend always serializes as one.
