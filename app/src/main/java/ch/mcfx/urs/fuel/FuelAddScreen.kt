@@ -189,19 +189,19 @@ private fun FillForm(
                 }
             }
         } else {
-            // Raw (unformatted) template fetched here, in composable context —
-            // optionLabel below is a plain (T) -> String lambda, not
-            // @Composable, so stringResource itself can't be called inside it.
-            val stationWithDistanceFormat = stringResource(R.string.fill_station_with_distance)
             UrsDropdownField(
                 label = stringResource(R.string.fill_station),
                 options = pickerStations,
                 selectedLabel = form.station?.name,
-                optionLabel = { option ->
-                    option.distanceKm?.let {
-                        String.format(stationWithDistanceFormat, option.station.name, formatDistanceKm(it))
-                    } ?: option.station.name
-                },
+                optionLabel = { it.station.name },
+                // Right-aligned distance column, formatted "%.1f km" — always
+                // exactly one digit after the decimal point and a constant
+                // " km" suffix, so the decimal point lands at the same offset
+                // from the row's right edge regardless of the integer part's
+                // digit count (Roboto's tabular figures keep every digit the
+                // same advance width) — no manual padding needed for the
+                // columns to visually line up.
+                optionTrailingLabel = { it.distanceKm?.let(::formatDistanceKm) },
                 onSelect = { viewModel.selectStation(it.station) },
                 modifier = Modifier.fillMaxWidth(),
             )

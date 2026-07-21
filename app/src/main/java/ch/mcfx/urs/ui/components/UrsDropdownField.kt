@@ -66,6 +66,12 @@ fun <T> UrsDropdownField(
     optionLabel: (T) -> String,
     onSelect: (T) -> Unit,
     modifier: Modifier = Modifier,
+    // Optional right-aligned second column per option (e.g. a distance) —
+    // null skips the column entirely, a per-option null return just leaves
+    // that one row without it. Rendered as a plain (unpadded) trailing
+    // Text, right after the label's weight(1f) box, so it always ends up
+    // flush with the row's own right edge regardless of the label's length.
+    optionTrailingLabel: ((T) -> String?)? = null,
 ) {
     val colors = UrsTheme.colors
     var expanded by remember { mutableStateOf(false) }
@@ -128,10 +134,8 @@ fun <T> UrsDropdownField(
                     onDismissRequest = { expanded = false },
                 ) {
                     options.forEach { option ->
-                        UrsText(
-                            text = optionLabel(option),
-                            style = UrsTheme.typography.body,
-                            color = colors.onSurface,
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
@@ -139,7 +143,21 @@ fun <T> UrsDropdownField(
                                     expanded = false
                                 }
                                 .padding(horizontal = Spacing.l, vertical = Spacing.m),
-                        )
+                        ) {
+                            UrsText(
+                                text = optionLabel(option),
+                                style = UrsTheme.typography.body,
+                                color = colors.onSurface,
+                                modifier = Modifier.weight(1f),
+                            )
+                            optionTrailingLabel?.invoke(option)?.let { trailing ->
+                                UrsText(
+                                    text = trailing,
+                                    style = UrsTheme.typography.body,
+                                    color = colors.onSurfaceMuted,
+                                )
+                            }
+                        }
                     }
                 }
             }
