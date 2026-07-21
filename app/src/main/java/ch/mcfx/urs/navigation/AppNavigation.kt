@@ -54,6 +54,7 @@ import ch.mcfx.urs.obd.ObdRoutes
 import ch.mcfx.urs.obd.ObdSetupScreen
 import ch.mcfx.urs.settings.AboutScreen
 import ch.mcfx.urs.settings.AccountSettingsScreen
+import ch.mcfx.urs.settings.AdminScreen
 import ch.mcfx.urs.settings.GeneralSettingsScreen
 import ch.mcfx.urs.settings.LocationHistorySettingsScreen
 import ch.mcfx.urs.settings.NotificationSettingsScreen
@@ -316,7 +317,10 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                     }
                     composable(ObdRoutes.SETUP) { ObdSetupScreen() }
                     composable(Destination.SETTINGS.route) {
-                        SettingsScreen(onNavigate = { route -> navController.navigate(route) })
+                        SettingsScreen(
+                            isSuperUser = app.container.authTokenStore.isSuperUser,
+                            onNavigate = { route -> navController.navigate(route) },
+                        )
                     }
                     composable(SettingsRoutes.GENERAL) {
                         GeneralSettingsScreen(onNavigate = { route -> navController.navigate(route) })
@@ -327,6 +331,7 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                     composable(SettingsRoutes.ABOUT) { AboutScreen() }
                     composable(SettingsRoutes.LOCATION_HISTORY) { LocationHistorySettingsScreen() }
                     composable(SettingsRoutes.PRODUCT_MANAGEMENT) { ProductManagementScreen() }
+                    composable(SettingsRoutes.ADMIN) { AdminScreen() }
                 }
             }
         }
@@ -356,6 +361,7 @@ private val SETTINGS_ROUTE_LABELS = mapOf(
     SettingsRoutes.ABOUT to R.string.settings_tile_about,
     SettingsRoutes.LOCATION_HISTORY to R.string.settings_tile_location_history,
     SettingsRoutes.PRODUCT_MANAGEMENT to R.string.settings_tile_product_management,
+    SettingsRoutes.ADMIN to R.string.settings_tile_admin,
 )
 
 private val OBD_ROUTE_LABELS = mapOf(

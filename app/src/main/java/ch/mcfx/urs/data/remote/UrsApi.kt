@@ -200,4 +200,7 @@ interface UrsApi {
 
     @POST("api/v1/location-history")
     suspend fun createLocationHistory(@Body payload: LocationHistoryPayload): LocationHistoryResponse
+
+    @POST("api/v1/admin/restart")
+    suspend fun restartServer()
 }
