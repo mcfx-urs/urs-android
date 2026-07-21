@@ -187,6 +187,7 @@ data class CatalogImageDto(
     @SerialName("catalog_image_id") val id: String,
     @SerialName("catalog_image_source_image_name") val sourceImageName: String = "",
     @SerialName("catalog_image_extension") val extension: String = "",
+    @SerialName("catalog_image_linked_names") val linkedNames: String = "",
 )
 
 // 204 No Content (untracked anywhere the caller can access) maps to this
