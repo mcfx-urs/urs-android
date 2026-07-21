@@ -22,6 +22,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   before contacting the backend, and show a distinct "can't reach the
   server" message instead of "wrong username or password" when it's
   unreachable.
+- Login and biometric-unlock screens now follow the app's dark/light
+  theme instead of always showing a light background, which also
+  restores status bar icon visibility in dark mode.
 
 ## [0.6.0] - 2026-07-21
 
