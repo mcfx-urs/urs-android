@@ -34,6 +34,12 @@ interface UrsApi {
     @POST("api/v1/fill")
     suspend fun createFill(@Body payload: FillPayload): FillDto
 
+    @PUT("api/v1/fill/{id}")
+    suspend fun updateFill(@Path("id") id: String, @Body payload: FillUpdatePayload)
+
+    @DELETE("api/v1/fill/{id}")
+    suspend fun deleteFill(@Path("id") id: String)
+
     @GET("api/v1/currency")
     suspend fun getCurrencies(): List<CurrencyDto>
 

@@ -241,10 +241,20 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                         FuelHubScreen(onNavigate = { route -> navController.navigate(route) })
                     }
                     composable(FuelRoutes.FILLS) {
-                        FuelScreen(onAddFillUp = { navController.navigate(FuelRoutes.ADD) })
+                        FuelScreen(
+                            onAddFillUp = { navController.navigate(FuelRoutes.ADD) },
+                            onEditFillUp = { fillId -> navController.navigate(FuelRoutes.edit(fillId)) },
+                        )
                     }
                     composable(FuelRoutes.ADD) {
                         FuelAddScreen(onDone = { navController.popBackStack() })
+                    }
+                    composable(
+                        route = FuelRoutes.EDIT,
+                        arguments = listOf(navArgument("fillId") { type = NavType.LongType }),
+                    ) { backStackEntry ->
+                        val fillId = backStackEntry.arguments?.getLong("fillId") ?: return@composable
+                        FuelAddScreen(fillId = fillId, onDone = { navController.popBackStack() })
                     }
                     composable(FuelRoutes.STATIONS) { FuelStationsScreen() }
                     composable(FuelRoutes.STATS) { FuelStatsScreen() }

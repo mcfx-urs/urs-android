@@ -9,7 +9,9 @@ import ch.mcfx.urs.data.local.ListDao
 import ch.mcfx.urs.data.local.ListItemDao
 import ch.mcfx.urs.data.local.LocationHistoryDao
 import ch.mcfx.urs.data.local.OutboxDao
+import ch.mcfx.urs.data.local.OutboxFillDeletePayload
 import ch.mcfx.urs.data.local.OutboxFillPayload
+import ch.mcfx.urs.data.local.OutboxFillUpdatePayload
 import ch.mcfx.urs.data.local.OutboxInventoryDeletePayload
 import ch.mcfx.urs.data.local.OutboxInventoryPayload
 import ch.mcfx.urs.data.local.OutboxInventoryProductPayload
@@ -30,6 +32,7 @@ import ch.mcfx.urs.data.local.WorkTimeDao
 import ch.mcfx.urs.data.local.localInventoryId
 import ch.mcfx.urs.data.local.localListId
 import ch.mcfx.urs.data.remote.FillPayload
+import ch.mcfx.urs.data.remote.FillUpdatePayload
 import ch.mcfx.urs.data.remote.InventoryPayload
 import ch.mcfx.urs.data.remote.InventoryProductCreatePayload
 import ch.mcfx.urs.data.remote.ListItemPayload
@@ -102,6 +105,8 @@ class SyncManager(
         return try {
             when (mutation.type) {
                 OutboxMutationEntity.TYPE_CREATE_FILL -> replayCreateFill(mutation)
+                OutboxMutationEntity.TYPE_UPDATE_FILL -> replayUpdateFill(mutation)
+                OutboxMutationEntity.TYPE_DELETE_FILL -> replayDeleteFill(mutation)
                 OutboxMutationEntity.TYPE_CREATE_WORK_TIME_ENTRY -> replayCreateWorkTimeEntry(mutation)
                 OutboxMutationEntity.TYPE_UPDATE_WORK_TIME_ENTRY -> replayUpdateWorkTimeEntry(mutation)
                 OutboxMutationEntity.TYPE_DELETE_WORK_TIME_ENTRY -> replayDeleteWorkTimeEntry(mutation)
@@ -210,6 +215,39 @@ class SyncManager(
             }
         }
 
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    // No local-row lookup needed — payload.serverId identifies the target
+    // directly (same reasoning as OutboxWorkTimeEntryUpdatePayload's doc
+    // comment), and the PUT route returns no body to reconcile against.
+    private suspend fun replayUpdateFill(mutation: OutboxMutationEntity): Boolean {
+        val payload = json.decodeFromString(OutboxFillUpdatePayload.serializer(), mutation.payloadJson)
+        api.updateFill(
+            payload.serverId,
+            FillUpdatePayload(
+                date = payload.date,
+                carId = payload.carId,
+                stationId = payload.stationId,
+                fuelId = payload.fuelId,
+                pricePerLiter = payload.pricePerLiter,
+                liters = payload.liters,
+                odometer = payload.odometer,
+                currencyCode = payload.currencyCode,
+                isFullTank = if (payload.isFullTank) "1" else "0",
+            ),
+        )
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    // No local row to look up — deleteFill() already removed it immediately,
+    // offline-first, before this mutation was ever queued (same shape as
+    // replayDeleteWorkTimeEntry).
+    private suspend fun replayDeleteFill(mutation: OutboxMutationEntity): Boolean {
+        val payload = json.decodeFromString(OutboxFillDeletePayload.serializer(), mutation.payloadJson)
+        api.deleteFill(payload.serverId)
         outboxDao.delete(mutation.id)
         return true
     }

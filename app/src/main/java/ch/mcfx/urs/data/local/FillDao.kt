@@ -16,6 +16,9 @@ interface FillDao {
     @Query("SELECT * FROM fill WHERE outboxId = :outboxId LIMIT 1")
     suspend fun getByOutboxId(outboxId: Long): FillEntity?
 
+    @Query("SELECT * FROM fill WHERE id = :id")
+    suspend fun getById(id: Long): FillEntity?
+
     @Insert
     suspend fun insert(fill: FillEntity): Long
 
@@ -47,4 +50,25 @@ interface FillDao {
 
     @Query("UPDATE fill SET syncStatus = 'FAILED' WHERE id = :id")
     suspend fun markFailed(id: Long)
+
+    @Query(
+        "UPDATE fill SET stationId = :stationId, date = :date, pricePerLiter = :pricePerLiter, " +
+            "liters = :liters, odometer = :odometer, isFullTank = :isFullTank, currencyCode = :currencyCode, " +
+            "syncStatus = :syncStatus, outboxId = :outboxId WHERE id = :id",
+    )
+    suspend fun updateFields(
+        id: Long,
+        stationId: String?,
+        date: String,
+        pricePerLiter: String,
+        liters: String,
+        odometer: String,
+        isFullTank: Boolean,
+        currencyCode: String,
+        syncStatus: SyncStatus,
+        outboxId: Long?,
+    )
+
+    @Query("DELETE FROM fill WHERE id = :id")
+    suspend fun deleteEntry(id: Long)
 }
