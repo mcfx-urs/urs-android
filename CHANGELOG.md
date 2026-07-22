@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-07-22
+
 ### Added
 
 - Super users can now tap a filling station in the stations list to edit its name, address, and coordinates.
