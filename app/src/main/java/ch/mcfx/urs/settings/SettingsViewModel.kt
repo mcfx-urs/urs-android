@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import ch.mcfx.urs.UrsApplication
+import ch.mcfx.urs.vpn.NetworkGate
 import ch.mcfx.urs.vpn.VpnConfigRepository
 import ch.mcfx.urs.vpn.VpnConnectionState
 import ch.mcfx.urs.vpn.WireGuardManager
@@ -22,6 +23,7 @@ import kotlinx.coroutines.launch
 class SettingsViewModel(
     private val configRepository: VpnConfigRepository,
     val wireGuardManager: WireGuardManager,
+    private val networkGate: NetworkGate,
 ) : ViewModel() {
 
     private val _configText = MutableStateFlow(configRepository.getConfigText() ?: "")
@@ -65,19 +67,22 @@ class SettingsViewModel(
         _justSaved.value = true
     }
 
+    // Routed through NetworkGate (not WireGuardManager directly) so a manual
+    // disconnect actually sticks instead of being silently overridden by the
+    // automatic Wi-Fi-triggered reconnect logic — see NetworkGate.userDisconnect().
     fun connect() {
-        viewModelScope.launch { wireGuardManager.connect() }
+        viewModelScope.launch { networkGate.userConnect() }
     }
 
     fun disconnect() {
-        viewModelScope.launch { wireGuardManager.disconnect() }
+        viewModelScope.launch { networkGate.userDisconnect() }
     }
 
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as UrsApplication
-                SettingsViewModel(app.container.vpnConfigRepository, app.container.wireGuardManager)
+                SettingsViewModel(app.container.vpnConfigRepository, app.container.wireGuardManager, app.container.networkGate)
             }
         }
     }

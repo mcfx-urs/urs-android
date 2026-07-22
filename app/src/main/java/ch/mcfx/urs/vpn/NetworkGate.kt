@@ -43,9 +43,22 @@ class NetworkGate(
         data object NeedsLocationPermission : Result
         data object NotConfigured : Result
         data object ConnectFailed : Result
+        data object UserDisabled : Result
     }
 
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
+
+    // Set by userDisconnect() (the Settings screen's manual "Disconnect"
+    // button) and cleared by userConnect() (manual "Connect"). Without this,
+    // a manual disconnect away from home Wi-Fi looked like it did nothing:
+    // the Wi-Fi NetworkCallback below re-runs ensureReachable() on the very
+    // next routine capability tick (a few seconds away) and immediately
+    // reconnects, since nothing distinguished "not connected because the
+    // user turned it off" from "not connected yet". Per-process only, same
+    // as WireGuardManager's own state — resets on a fresh app start, in
+    // keeping with this class's existing "best-effort, no persisted intent"
+    // design (see the class-level comment above).
+    private var userDisabledTunnel = false
 
     // Startup can trigger ensureReachable() from two places at once (the
     // initial app-launch check and startObserving()'s onCapabilitiesChanged,
@@ -56,6 +69,19 @@ class NetworkGate(
     private val mutex = Mutex()
 
     suspend fun ensureReachable(): Result = mutex.withLock { ensureReachableLocked() }
+
+    // Settings screen's manual "Disconnect" action.
+    suspend fun userDisconnect() = mutex.withLock {
+        userDisabledTunnel = true
+        wireGuardManager.disconnect()
+    }
+
+    // Settings screen's manual "Connect" action — clears the override above
+    // so the automatic home/away logic resumes normally afterward.
+    suspend fun userConnect(): Result = mutex.withLock {
+        userDisabledTunnel = false
+        ensureReachableLocked()
+    }
 
     private suspend fun ensureReachableLocked(): Result {
         val homeSsids = configRepository.getHomeSsids()
@@ -80,6 +106,20 @@ class NetworkGate(
         wireGuardManager.permissionIntentIfNeeded()?.let { intent ->
             return Result.NeedsVpnPermission(intent)
         }
+
+        // The Wi-Fi NetworkCallback re-runs ensureReachable() on every
+        // onCapabilitiesChanged tick, including routine RSSI-only updates
+        // Android sends for an already-connected, unchanged Wi-Fi network —
+        // not just on a real SSID change. Without this check, an already-up
+        // tunnel got torn down and rebuilt from scratch on every such tick
+        // (confirmed via on-device logcat), which is what made the VPN/Wi-Fi
+        // status-bar icons flap repeatedly while the app was open.
+        if (wireGuardManager.state.value == VpnConnectionState.CONNECTED) {
+            onConnectivityAvailable()
+            return Result.Connected
+        }
+
+        if (userDisabledTunnel) return Result.UserDisabled
 
         if (!wireGuardManager.connect()) return Result.ConnectFailed
         // The Wi-Fi NetworkCallback below only fires onConnectivityAvailable()
