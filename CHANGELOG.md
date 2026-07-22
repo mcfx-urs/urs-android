@@ -5,6 +5,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-07-22
+
+### Fixed
+
+- The VPN tunnel no longer repeatedly disconnects and reconnects while
+  the app is open and away from the configured home Wi-Fi, which
+  caused the VPN and Wi-Fi status-bar icons to flicker continuously.
+- Manually disconnecting the VPN tunnel from Settings now actually
+  stays disconnected, instead of reconnecting on its own within a few
+  seconds.
+
 ## [0.7.0] - 2026-07-22
 
 ### Added
