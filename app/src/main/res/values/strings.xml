@@ -201,6 +201,15 @@
     <string name="station_name">Name</string>
     <string name="station_address">Address (optional)</string>
     <string name="stations_empty">No gas stations yet.</string>
+    <string name="station_search_position">Search position</string>
+    <string name="station_searching_position">Searching…</string>
+    <string name="station_position_not_found">Position not found for this address.</string>
+    <string name="station_position_set_manually">Set position manually</string>
+    <string name="station_position_set">Position set</string>
+    <string name="station_position_adjust">Adjust</string>
+    <string name="station_map_title">Confirm position</string>
+    <string name="station_map_instructions">Drag the pin or tap the map to adjust the position.</string>
+    <string name="station_map_confirm">Use this position</string>
 
     <string name="stats_all_cars">All cars</string>
     <string name="stats_avg_consumption">Average consumption</string>

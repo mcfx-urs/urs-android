@@ -61,6 +61,15 @@ data class FillingStationPayload(
     @SerialName("filling_station_longitude") val longitude: String = "",
 )
 
+// A computed geocoding result, not a DB-mirroring column — real Double,
+// unlike this file's usual all-String convention (see the top-of-file
+// comment).
+@Serializable
+data class GeocodeResultDto(
+    @SerialName("latitude") val latitude: Double,
+    @SerialName("longitude") val longitude: Double,
+)
+
 @Serializable
 data class FillPayload(
     @SerialName("fill_date") val date: String,

@@ -20,6 +20,7 @@ import ch.mcfx.urs.data.remote.CurrencyDto
 import ch.mcfx.urs.data.remote.FillDto
 import ch.mcfx.urs.data.remote.FillingStationDto
 import ch.mcfx.urs.data.remote.FillingStationPayload
+import ch.mcfx.urs.data.remote.GeocodeResultDto
 import ch.mcfx.urs.data.remote.UrsApi
 import ch.mcfx.urs.data.sync.SyncManager
 import kotlinx.coroutines.CancellationException
@@ -71,9 +72,21 @@ class FuelRepository(
     // tolerate a plain network error via their own existing UI state.
     suspend fun getStations(): List<FillingStationDto> = emptyAsNull { api.getFillingStations() }
 
-    suspend fun createStation(name: String, address: String = "") {
-        api.createFillingStation(FillingStationPayload(name = name, address = address))
+    suspend fun createStation(name: String, address: String = "", latitude: String? = null, longitude: String? = null) {
+        api.createFillingStation(
+            FillingStationPayload(
+                name = name,
+                address = address,
+                latitude = latitude ?: "",
+                longitude = longitude ?: "",
+            ),
+        )
     }
+
+    // Direct, unbuffered REST call — a read-only lookup has no reason to go
+    // through the outbox. Exceptions (including a 404 "no match") propagate
+    // to the caller, same as every other function in this file.
+    suspend fun geocode(address: String): GeocodeResultDto = api.geocode(address)
 
     suspend fun getFills(): List<FillDto> =
         emptyAsNull { api.getFills() }.sortedByDescending { it.date }

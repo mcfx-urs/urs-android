@@ -11,6 +11,7 @@ object FuelRoutes {
     // Follows WorkTimeRoutes.EDIT's parameterized-route convention.
     const val EDIT = "fuel/edit/{fillId}"
     const val STATIONS = "fuel/stations"
+    const val STATIONS_MAP = "fuel/stations/map"
     const val STATS = "fuel/stats"
 
     fun edit(fillId: Long): String = "fuel/edit/$fillId"
