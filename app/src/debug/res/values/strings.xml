@@ -3,5 +3,5 @@
     <!-- Overrides main/res/values/strings.xml's app_name for the debug
          build type only, so it's visually distinguishable from the
          release install on the home screen when both are present. -->
-    <string name="app_name">urs (debug)</string>
+    <string name="app_name">Ursa</string>
 </resources>
