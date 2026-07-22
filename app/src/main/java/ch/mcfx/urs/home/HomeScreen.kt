@@ -105,7 +105,7 @@ fun HomeScreen(
         ActivityResultContracts.RequestMultiplePermissions(),
     ) { result -> if (result.values.any { it }) viewModel.refreshLocation() }
 
-    // proactive, one-time request — not re-shown on every Home visit
+    // Proactive, one-time request — not re-shown on every Home visit
     // once the user has answered it (granted or denied) the first time.
     LaunchedEffect(Unit) {
         if (hasLocationPermission(context)) {

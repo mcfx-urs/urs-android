@@ -4,8 +4,8 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 /**
- * Local, read-only mirror of one entry of `GET /recently-used-product`
- * — the single data source behind both ListDetailScreen's
+ * Local, read-only mirror of one entry of `GET /recently-used-product` —
+ * the single data source behind both ListDetailScreen's
  * "recently used" tail section and AddProductScreen's "Zuletzt" tab.
  * Server-authoritative and small (capped at 50 server-side), so this is a
  * plain full-replace-on-refresh cache, same "no offline-first shape at all"

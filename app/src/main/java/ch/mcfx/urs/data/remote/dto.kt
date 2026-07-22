@@ -151,7 +151,7 @@ data class NewCatalogCategoryResponseDto(
     @SerialName("catalog_category_name") val name: String,
 )
 
-// rename/re-link a manually-created category (source='manual' only,
+// Rename/re-link a manually-created category (source='manual' only,
 // enforced server-side) — "" clears the image link, same nullable-as-empty
 // convention as the rest of this file.
 @Serializable
@@ -175,8 +175,8 @@ data class CatalogProductDto(
     @SerialName("catalog_product_popularity_index") val popularityIndex: String = "",
     @SerialName("catalog_product_catalog_image_id") val catalogImageId: String = "",
     // Most-recently-used notes for this product's list items, newest first
-    // (1 = most recent) — global per catalog product (, moved off the
-    // old per-household inventory_product), shifted 1→2→3 server-side each
+    // (1 = most recent) — global per catalog product, moved off the
+    // old per-household inventory_product, shifted 1→2→3 server-side each
     // time a distinct note is used again. Surfaced as tap-to-fill chips in
     // AddProductScreen's note step.
     @SerialName("catalog_product_recent_note_1") val recentNote1: String = "",
@@ -198,7 +198,7 @@ data class NewCatalogProductResponseDto(
     @SerialName("catalog_product_catalog_category_id") val catalogCategoryId: String = "",
 )
 
-// rename/re-link a manually-created product (source='manual' only,
+// Rename/re-link a manually-created product (source='manual' only,
 // enforced server-side) — "" clears a link, same nullable-as-empty
 // convention as the rest of this file.
 @Serializable
@@ -208,7 +208,7 @@ data class CatalogProductUpdatePayload(
     @SerialName("catalog_product_catalog_image_id") val catalogImageId: String = "",
 )
 
-// one entry from the reusable-image picker (GET /api/v1/catalog-image).
+// One entry from the reusable-image picker (GET /api/v1/catalog-image).
 @Serializable
 data class CatalogImageDto(
     @SerialName("catalog_image_id") val id: String,
@@ -290,8 +290,8 @@ data class InventoryProductCreatePayload(
 )
 
 // PUT /inventory-product/{id} — quantity is the only field that can change
-// post-creation (the catalog product link and inventory are both
-// fixed at creation time, no more re-categorization).
+// post-creation — the catalog product link and inventory are both
+// fixed at creation time, no more re-categorization.
 @Serializable
 data class InventoryProductQuantityPayload(
     @SerialName("inventory_product_quantity") val quantity: String,
@@ -426,7 +426,7 @@ data class WorkTimeEntryPayload(
 @Serializable
 data class UserDto(
     @SerialName("user_id") val id: String,
-    // Only used for display so far (UrsShareSheet's member picker, ) —
+    // Only used for display so far (UrsShareSheet's member picker) —
     // every other field below predates that and is read straight off the
     // full GET /getuser response, which also always includes this.
     @SerialName("user_name") val userName: String = "",

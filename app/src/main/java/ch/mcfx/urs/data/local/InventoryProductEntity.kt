@@ -29,8 +29,8 @@ data class InventoryProductEntity(
     // product's sync, null once synced.
     val outboxId: Long? = null,
     val inventoryId: String,
-    // Always set (no more "not from catalog" case — every
-    // inventory product now tracks a real catalog_product).
+    // Always set — no more "not from catalog" case, every
+    // inventory product now tracks a real catalog_product.
     val catalogProductId: String,
     // Null means "not currently tracked" — mirrors the backend's
     // nullable-column convention (see InventoryRepository.updateProductQuantity).

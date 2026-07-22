@@ -43,7 +43,7 @@ class HomeViewModel(
         }
     }
 
-    // location permission is requested proactively here (once, not
+    // Location permission is requested proactively here (once, not
     // on every Home visit) rather than contextually in the fuel-add form,
     // so the ambient LocationProvider is already warm by the time any
     // screen wants a proximity sort.

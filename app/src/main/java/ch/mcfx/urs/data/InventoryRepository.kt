@@ -31,16 +31,16 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 /**
- * Offline-first write path for inventories and their tracked products
- * — same shape as [ShoppingListRepository], with full
- * create/rename/delete outbox coverage for the inventory itself (mirrors
+ * Offline-first write path for inventories and their tracked products —
+ * same shape as [ShoppingListRepository], with full create/rename/delete
+ * outbox coverage for the inventory itself (mirrors
  * [ch.mcfx.urs.data.local.ListEntity]'s doc comment: an inventory is now a
  * named, ownable, shareable, multi-instance container just like a shopping
  * list always was, replacing the old one-inventory-per-user model built on
  * `inventory_category`). Product identity/grouping is resolved entirely
  * through `catalog_product` (see [CatalogRepository]) — this class never
- * touches the shopping list, and vice versa core rule: adding
- * something to a list never touches inventory).
+ * touches the shopping list, and vice versa (adding something to a list
+ * never touches inventory).
  */
 class InventoryRepository(
     private val api: UrsApi,
@@ -156,9 +156,9 @@ class InventoryRepository(
      * is whatever [InventoryEntity.publicId] the caller currently knows the
      * parent inventory by (a real backend id, or a not-yet-synced stand-in)
      * — `SyncManager` resolves it to the real id at replay time.
-     * [catalogProductId] is always a real `catalog_product` id (no
-     * more manually-typed name, the product identity comes entirely from the
-     * catalog). Deduplicates against an existing tracked row for the same
+     * [catalogProductId] is always a real `catalog_product` id — no
+     * manually-typed name, the product identity comes entirely from the
+     * catalog. Deduplicates against an existing tracked row for the same
      * catalog product *within this inventory* — a product can be tracked in
      * some inventories and not others, so this dedup is per-inventory, not
      * household-wide like the old shape this replaces.
@@ -203,8 +203,8 @@ class InventoryRepository(
     // Direct REST write, no outbox (see deleteProduct's doc comment); the
     // local mirror is updated on success so the tile grid still reflects it
     // without waiting on the next refreshFromBackend. Quantity is the only
-    // field this route can still change post-creation — no more
-    // name/category to carry along.
+    // field this route can still change post-creation — no more name/category
+    // to carry along.
     suspend fun updateProductQuantity(productId: String, newQuantity: Int?) {
         api.updateInventoryProduct(productId, InventoryProductQuantityPayload(quantity = newQuantity?.toString().orEmpty()))
         inventoryProductDao.updateQuantityByServerId(productId, newQuantity)

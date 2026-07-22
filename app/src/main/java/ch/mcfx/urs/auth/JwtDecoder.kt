@@ -20,7 +20,7 @@ object JwtDecoder {
     fun subject(token: String): String? =
         payload(token)?.get("sub")?.jsonPrimitive?.content
 
-    /** The `is_super_user` claim (see ), false if absent or unparseable. */
+    /** The `is_super_user` claim, false if absent or unparseable. */
     fun isSuperUser(token: String): Boolean =
         payload(token)?.get("is_super_user")?.jsonPrimitive?.boolean ?: false
 

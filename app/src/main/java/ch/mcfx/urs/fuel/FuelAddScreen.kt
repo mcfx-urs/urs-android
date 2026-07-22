@@ -47,8 +47,8 @@ private val FormErrorColor = Color(0xFFD64545)
 
 private fun formatDistanceKm(km: Double): String = String.format(Locale.US, "%.1f km", km)
 
-// A dedicated full screen rather than the list's old bottom sheet, per
-//  — reachable both from the Fuel hub's "Add Fill-up" tile and from
+// A dedicated full screen rather than the list's old bottom sheet —
+// reachable both from the Fuel hub's "Add Fill-up" tile and from
 // the Fill-ups list's FAB. Reuses FuelViewModel's existing form/submit
 // logic unchanged; only the presentation (screen vs. sheet) differs.
 @Composable

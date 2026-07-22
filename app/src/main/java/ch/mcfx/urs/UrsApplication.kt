@@ -96,9 +96,9 @@ class UrsApplication : Application() {
         // user's own requirement (2026-07-17): the 24h clock is wall-clock
         // time since the last successful unlock, not "once per process".
         // Same foreground signal also refreshes the ambient LocationProvider
-        // so a screen that needs it (the fuel-add station picker)
-        // already has a recent fix instead of fetching one itself; a no-op
-        // without location permission granted yet.
+        // so a screen that needs it (the fuel-add station picker) already
+        // has a recent fix instead of fetching one itself; a no-op without
+        // location permission granted yet.
         ProcessLifecycleOwner.get().lifecycle.addObserver(
             LifecycleEventObserver { _, event ->
                 if (event == Lifecycle.Event.ON_START) {
@@ -148,8 +148,7 @@ class AppContainer(context: Context) {
                     HttpLoggingInterceptor().apply {
                         level = HttpLoggingInterceptor.Level.BODY
                         // The access token is otherwise printed in full on every
-                        // logged request — this app has no auth at all before
-                        // , so this redaction didn't exist/matter until now.
+                        // logged request.
                         redactHeader("Authorization")
                     }
                 )

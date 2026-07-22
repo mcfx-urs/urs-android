@@ -8,12 +8,12 @@ import kotlinx.serialization.Serializable
  * .publicId] as it stood when this was queued — a real backend id, or (if
  * the list was still offline) a not-yet-synced stand-in that `SyncManager`
  * resolves to the real id at replay time, once the list's own create has
- * gone through. [catalogProductId] is always a real `catalog_product` id
- * (`catalog_product` rows are server-authoritative reference data
- * this app never creates offline-first in this flow, only via the
- * synchronous, direct-REST `POST /catalog-product` manual-creation call —
- * see [ch.mcfx.urs.data.ShoppingListRepository.addCatalogProduct]), so
- * unlike [listId] it never needs its own stand-in-resolution step.
+ * gone through. [catalogProductId] is always a real `catalog_product` id —
+ * `catalog_product` rows are server-authoritative reference data this app
+ * never creates offline-first in this flow, only via the synchronous,
+ * direct-REST `POST /catalog-product` manual-creation call — see
+ * [ch.mcfx.urs.data.ShoppingListRepository.addCatalogProduct], so unlike
+ * [listId] it never needs its own stand-in-resolution step.
  */
 @Serializable
 data class OutboxListItemPayload(

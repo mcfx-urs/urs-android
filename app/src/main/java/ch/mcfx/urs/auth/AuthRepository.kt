@@ -24,8 +24,8 @@ class AuthRepository(
     }
 
     /**
-     * the backend revokes every other outstanding refresh token for
-     * this user on a successful change, then issues a fresh pair for the
+     * The backend revokes every other outstanding refresh token for this
+     * user on a successful change, then issues a fresh pair for the
      * caller — stored here so this device stays logged in while every other
      * session is forced back to the login screen on its next refresh.
      */

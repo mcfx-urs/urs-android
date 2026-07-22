@@ -48,11 +48,11 @@ import ch.mcfx.urs.ui.tokens.Spacing
 /**
  * Content of the "add a product to this list" panel, opened from
  * [ListDetailScreen]'s FAB — redesigned around three tabs (HÄUFIG/ZULETZT/
- * KATEGORIEN) plus a search box that overrides all three when non-blank
- *. A single [ch.mcfx.urs.ui.components.UrsDockedPanel] instance
+ * KATEGORIEN) plus a search box that overrides all three when non-blank.
+ * A single [ch.mcfx.urs.ui.components.UrsDockedPanel] instance
  * switches between "browse/search" and "confirm-note" modes driven by
  * [AddProductViewModel]'s state, same "no nested overlay" reasoning as the
- * pre- screen this replaces — the panel's own fixed height (set by its
+ * earlier screen this replaces — the panel's own fixed height (set by its
  * caller) is what keeps both modes, and every tab within browse mode, the
  * exact same size; this composable only ever fills that given height, never
  * measures its own.

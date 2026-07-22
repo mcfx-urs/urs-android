@@ -9,7 +9,7 @@ import java.time.LocalDate
 // contributes its liters to the enclosing span but never anchors one on
 // its own. Fills before the first full-tank fill, and a trailing run of
 // partial fills after the last full-tank fill, produce no sample at all
-// (truncated silently, per ).
+// (truncated silently).
 object FuelStats {
 
     // `date` is the span's *closing* full-tank fill's date — used both as

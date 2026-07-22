@@ -276,7 +276,7 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                         route = Destination.INVENTORY.route,
                         // First deep-link target in the app (Issue #1) — a
                         // grouped/summary low-stock notification opens the
-                        // inventories list (Inventory gained its own
+                        // inventories list (Inventory has its own
                         // top-level, multi-instance list-of-containers screen,
                         // same shape Shopping List always had).
                         deepLinks = listOf(navDeepLink { uriPattern = "urs://${Destination.INVENTORY.route}" }),

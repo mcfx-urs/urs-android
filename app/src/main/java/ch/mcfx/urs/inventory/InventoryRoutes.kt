@@ -2,13 +2,13 @@ package ch.mcfx.urs.inventory
 
 import android.net.Uri
 
-// Inventory gained a top-level "list of inventories" screen (mirrors
+// Inventory has a top-level "list of inventories" screen (mirrors
 // ShoppingListRoutes' own LISTS/LIST_DETAIL two-tier shape — an inventory is
-// now a named, multi-instance, shareable container just like a shopping
+// a named, multi-instance, shareable container just like a shopping
 // list). PRODUCTS travels down the inventoryId/inventoryName it was opened
 // from — inventoryName is purely for display (no dynamic-title mechanism
 // exists in AppNavigation today, same reasoning as this object's own
-// pre- history), not re-fetched from the backend. An inventory's
+// earlier history), not re-fetched from the backend. An inventory's
 // tracked products are one flat tile grid, with no category-tile
 // drill-down step in between.
 object InventoryRoutes {

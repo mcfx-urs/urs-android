@@ -43,7 +43,7 @@ interface CatalogProductDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertOne(entity: CatalogProductEntity)
 
-    //  edit form write path — targeted column update so unrelated
+    // Edit form write path — targeted column update so unrelated
     // cached fields (categoryName, searchTerms, brands, popularityIndex,
     // recentNote*) survive an edit untouched, unlike upsertOne's full-row
     // replace.

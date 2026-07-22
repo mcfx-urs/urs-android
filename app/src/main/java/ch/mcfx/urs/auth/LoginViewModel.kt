@@ -54,8 +54,8 @@ class LoginViewModel(private val repository: AuthRepository) : ViewModel() {
                 _formState.update { it.copy(submitting = false, failure = LoginFailure.INVALID_CREDENTIALS) }
             } catch (_: IOException) {
                 // Request never got a response at all (no VPN/Wi-Fi to the
-                // backend, timeout, etc.) — distinct from a wrong
-                // password rather than collapsing into the same message.
+                // backend, timeout, etc.) — distinct from a wrong password
+                // rather than collapsing into the same message.
                 _formState.update { it.copy(submitting = false, failure = LoginFailure.CONNECTIVITY) }
             } catch (_: Exception) {
                 _formState.update { it.copy(submitting = false, failure = LoginFailure.INVALID_CREDENTIALS) }

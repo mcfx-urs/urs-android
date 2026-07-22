@@ -154,7 +154,7 @@ class ShoppingListsViewModel(
         viewModelScope.launch { repository.deleteList(list.id) }
     }
 
-    /** New in  — lists gained ownership+sharing, same shape as [ch.mcfx.urs.inventory.InventoriesViewModel.openShareSheet]. */
+    /** Lists have ownership+sharing, same shape as [ch.mcfx.urs.inventory.InventoriesViewModel.openShareSheet]. */
     fun openShareSheet(list: ListEntity) {
         _actionSheetList.value = null
         val serverId = list.serverId ?: return

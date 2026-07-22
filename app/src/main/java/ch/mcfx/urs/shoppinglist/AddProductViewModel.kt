@@ -99,7 +99,7 @@ class AddProductViewModel(
         // collectLatest (not flatMapLatest) so a fast typist's/tab-switcher's
         // stale in-flight combine() is cancelled cleanly without an
         // experimental coroutines opt-in this codebase doesn't otherwise use
-        // anywhere (see the pre- AddProductViewModel this replaces).
+        // anywhere (see the earlier AddProductViewModel this replaces).
         viewModelScope.launch {
             combine(_query, _selectedTab, _selectedCategory) { q, tab, category -> Triple(q, tab, category) }
                 .collectLatest { (q, tab, category) -> sourceFor(q, tab, category).collect { _results.value = it } }
@@ -170,7 +170,7 @@ class AddProductViewModel(
     }
 
     // Deliberately does not close the whole sheet on confirm — returns to
-    // whichever tab/search was active, same reasoning as the pre-
+    // whichever tab/search was active, same reasoning as the earlier
     // AddProductScreen this replaces: adding several different results in a
     // row, or the same one twice with a different note, never needs the FAB
     // to be tapped again in between.

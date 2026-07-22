@@ -44,7 +44,7 @@ fun catalogImageUrl(catalogImageId: Int?): String? = catalogImageId?.let { "${Bu
 /**
  * `LazyVerticalGrid(GridCells.Fixed(3))`-friendly product tile, replacing
  * the row-based product/list-item layout across Inventory and Shopping List
- * grid redesign). Built on [UrsCard] for the same elevated-surface
+ * (the shared-catalog grid redesign). Built on [UrsCard] for the same elevated-surface
  * treatment every other card in this app already has. [AsyncImage]-backed
  * (Coil, via [ch.mcfx.urs.UrsApplication.container]'s authenticated
  * `imageLoader` — `/api/v1/catalog-image/{id}` sits on the protected route

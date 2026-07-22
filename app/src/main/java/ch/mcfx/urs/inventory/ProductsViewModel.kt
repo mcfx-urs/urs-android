@@ -200,7 +200,7 @@ class ProductsViewModel(
     }
 
     fun deleteProduct(tile: InventoryProductTile) {
-        // Same "nothing to delete server-side yet" guard as before .
+        // Same "nothing to delete server-side yet" guard as elsewhere.
         val serverId = tile.product.serverId ?: return
         viewModelScope.launch {
             try {
