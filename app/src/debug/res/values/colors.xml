@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Overrides main/res/values/colors.xml's ic_launcher_background for
+         the debug build type only, so the debug app icon is visually
+         distinguishable from the release install on the home screen. -->
+    <color name="ic_launcher_background">#FF6F00</color>
+</resources>
