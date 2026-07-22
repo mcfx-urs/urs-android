@@ -83,6 +83,18 @@ class FuelRepository(
         )
     }
 
+    suspend fun updateStation(id: String, name: String, address: String = "", latitude: String? = null, longitude: String? = null) {
+        api.updateFillingStation(
+            id,
+            FillingStationPayload(
+                name = name,
+                address = address,
+                latitude = latitude ?: "",
+                longitude = longitude ?: "",
+            ),
+        )
+    }
+
     // Direct, unbuffered REST call — a read-only lookup has no reason to go
     // through the outbox. Exceptions (including a 404 "no match") propagate
     // to the caller, same as every other function in this file.

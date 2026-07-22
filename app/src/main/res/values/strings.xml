@@ -198,6 +198,7 @@
     <string name="fill_delete_confirm_body">This can\'t be undone.</string>
 
     <string name="station_add">New gas station</string>
+    <string name="station_edit">Edit gas station</string>
     <string name="station_name">Name</string>
     <string name="station_address">Address (optional)</string>
     <string name="stations_empty">No gas stations yet.</string>

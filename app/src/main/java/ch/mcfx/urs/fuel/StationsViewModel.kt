@@ -27,6 +27,10 @@ sealed interface StationsUiState {
 }
 
 data class StationFormState(
+    // Null = creating a new station; set = editing this existing one
+    // (super-user-gated at both the UI entry point and the
+    // backend endpoint).
+    val editingId: String? = null,
     val name: String = "",
     val address: String = "",
     val latitude: String? = null,
@@ -81,6 +85,17 @@ class StationsViewModel(
         _showForm.value = true
     }
 
+    fun openFormForEdit(station: FillingStationDto) {
+        _formState.value = StationFormState(
+            editingId = station.id,
+            name = station.name,
+            address = station.address,
+            latitude = station.latitude.ifBlank { null },
+            longitude = station.longitude.ifBlank { null },
+        )
+        _showForm.value = true
+    }
+
     fun closeForm() {
         _showForm.value = false
     }
@@ -132,12 +147,23 @@ class StationsViewModel(
         viewModelScope.launch {
             _formState.update { it.copy(submitting = true, submitFailed = false) }
             try {
-                repository.createStation(
-                    name = form.name.trim(),
-                    address = form.address.trim(),
-                    latitude = form.latitude,
-                    longitude = form.longitude,
-                )
+                val editingId = form.editingId
+                if (editingId == null) {
+                    repository.createStation(
+                        name = form.name.trim(),
+                        address = form.address.trim(),
+                        latitude = form.latitude,
+                        longitude = form.longitude,
+                    )
+                } else {
+                    repository.updateStation(
+                        id = editingId,
+                        name = form.name.trim(),
+                        address = form.address.trim(),
+                        latitude = form.latitude,
+                        longitude = form.longitude,
+                    )
+                }
                 _showForm.value = false
                 load()
             } catch (e: CancellationException) {

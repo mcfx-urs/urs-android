@@ -1,5 +1,6 @@
 package ch.mcfx.urs.fuel
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,6 +51,10 @@ private val FormErrorColor = Color(0xFFD64545)
 fun FuelStationsScreen(
     viewModel: StationsViewModel = viewModel(factory = StationsViewModel.Factory),
     onOpenMapConfirm: () -> Unit = {},
+    // Editing an existing station is gated to super users — the
+    // backend rejects the PUT for anyone else too, this just hides the
+    // affordance for callers who'd get a 403 anyway.
+    isSuperUser: Boolean = false,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val formState by viewModel.formState.collectAsStateWithLifecycle()
@@ -72,7 +77,11 @@ fun FuelStationsScreen(
                 UrsButton(text = stringResource(R.string.retry), onClick = viewModel::load)
             }
 
-            is StationsUiState.Data -> StationList(state.stations)
+            is StationsUiState.Data -> StationList(
+                stations = state.stations,
+                isSuperUser = isSuperUser,
+                onEdit = viewModel::openFormForEdit,
+            )
         }
 
         if (uiState is StationsUiState.Data) {
@@ -93,7 +102,11 @@ fun FuelStationsScreen(
 }
 
 @Composable
-private fun StationList(stations: List<FillingStationDto>) {
+private fun StationList(
+    stations: List<FillingStationDto>,
+    isSuperUser: Boolean,
+    onEdit: (FillingStationDto) -> Unit,
+) {
     if (stations.isEmpty()) {
         Box(Modifier.fillMaxSize()) {
             UrsText(
@@ -111,7 +124,12 @@ private fun StationList(stations: List<FillingStationDto>) {
         verticalArrangement = Arrangement.spacedBy(Spacing.s),
     ) {
         items(stations, key = { it.id }) { station ->
-            UrsCard(radius = Radius.row, modifier = Modifier.fillMaxWidth()) {
+            val rowModifier = if (isSuperUser) {
+                Modifier.fillMaxWidth().clickable { onEdit(station) }
+            } else {
+                Modifier.fillMaxWidth()
+            }
+            UrsCard(radius = Radius.row, modifier = rowModifier) {
                 UrsText(station.name, style = UrsTheme.typography.cardTitle)
                 if (station.address.isNotBlank()) {
                     UrsText(
@@ -131,7 +149,10 @@ private fun StationForm(form: StationFormState, viewModel: StationsViewModel, on
         modifier = Modifier.padding(horizontal = Spacing.xl).padding(bottom = Spacing.xxl),
         verticalArrangement = Arrangement.spacedBy(Spacing.m),
     ) {
-        UrsText(stringResource(R.string.station_add), style = UrsTheme.typography.screenTitle)
+        UrsText(
+            stringResource(if (form.editingId != null) R.string.station_edit else R.string.station_add),
+            style = UrsTheme.typography.screenTitle,
+        )
 
         UrsTextField(
             value = form.name,

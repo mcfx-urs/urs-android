@@ -261,7 +261,10 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                         FuelAddScreen(fillId = fillId, onDone = { navController.popBackStack() })
                     }
                     composable(FuelRoutes.STATIONS) {
-                        FuelStationsScreen(onOpenMapConfirm = { navController.navigate(FuelRoutes.STATIONS_MAP) })
+                        FuelStationsScreen(
+                            onOpenMapConfirm = { navController.navigate(FuelRoutes.STATIONS_MAP) },
+                            isSuperUser = app.container.authTokenStore.isSuperUser,
+                        )
                     }
                     composable(FuelRoutes.STATIONS_MAP) { backStackEntry ->
                         val stationsEntry = remember(backStackEntry) { navController.getBackStackEntry(FuelRoutes.STATIONS) }
