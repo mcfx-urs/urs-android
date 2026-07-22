@@ -7,6 +7,7 @@ import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface UrsApi {
 
@@ -27,6 +28,9 @@ interface UrsApi {
 
     @POST("api/v1/filling-station")
     suspend fun createFillingStation(@Body payload: FillingStationPayload): FillingStationDto
+
+    @GET("api/v1/geocode")
+    suspend fun geocode(@Query("address") address: String): GeocodeResultDto
 
     @GET("api/v1/fill")
     suspend fun getFills(): List<FillDto>

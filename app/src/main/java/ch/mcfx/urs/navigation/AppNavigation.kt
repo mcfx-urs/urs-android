@@ -15,8 +15,10 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -41,8 +43,10 @@ import ch.mcfx.urs.fuel.FuelAddScreen
 import ch.mcfx.urs.fuel.FuelHubScreen
 import ch.mcfx.urs.fuel.FuelRoutes
 import ch.mcfx.urs.fuel.FuelScreen
+import ch.mcfx.urs.fuel.FuelStationMapScreen
 import ch.mcfx.urs.fuel.FuelStationsScreen
 import ch.mcfx.urs.fuel.FuelStatsScreen
+import ch.mcfx.urs.fuel.StationsViewModel
 import ch.mcfx.urs.home.HomeScreen
 import ch.mcfx.urs.data.local.publicId
 import ch.mcfx.urs.inventory.InventoriesScreen
@@ -256,7 +260,17 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                         val fillId = backStackEntry.arguments?.getLong("fillId") ?: return@composable
                         FuelAddScreen(fillId = fillId, onDone = { navController.popBackStack() })
                     }
-                    composable(FuelRoutes.STATIONS) { FuelStationsScreen() }
+                    composable(FuelRoutes.STATIONS) {
+                        FuelStationsScreen(onOpenMapConfirm = { navController.navigate(FuelRoutes.STATIONS_MAP) })
+                    }
+                    composable(FuelRoutes.STATIONS_MAP) { backStackEntry ->
+                        val stationsEntry = remember(backStackEntry) { navController.getBackStackEntry(FuelRoutes.STATIONS) }
+                        val stationsViewModel: StationsViewModel = viewModel(stationsEntry, factory = StationsViewModel.Factory)
+                        FuelStationMapScreen(
+                            viewModel = stationsViewModel,
+                            onConfirm = { navController.popBackStack() },
+                        )
+                    }
                     composable(FuelRoutes.STATS) { FuelStatsScreen() }
                     composable(
                         route = Destination.INVENTORY.route,
@@ -360,6 +374,7 @@ private val FUEL_ROUTE_LABELS = mapOf(
     FuelRoutes.FILLS to R.string.fuel_tile_fills,
     FuelRoutes.ADD to R.string.fuel_tile_add,
     FuelRoutes.STATIONS to R.string.fuel_tile_stations,
+    FuelRoutes.STATIONS_MAP to R.string.station_map_title,
     FuelRoutes.STATS to R.string.fuel_tile_stats,
 )
 

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,6 +29,7 @@ import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsBottomSheet
 import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsFab
+import ch.mcfx.urs.ui.components.UrsOutlinedButton
 import ch.mcfx.urs.ui.components.UrsProgressIndicator
 import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.components.UrsTextField
@@ -44,10 +47,17 @@ private val FabIconStyle = TextStyle(fontSize = 28.sp)
 private val FormErrorColor = Color(0xFFD64545)
 
 @Composable
-fun FuelStationsScreen(viewModel: StationsViewModel = viewModel(factory = StationsViewModel.Factory)) {
+fun FuelStationsScreen(
+    viewModel: StationsViewModel = viewModel(factory = StationsViewModel.Factory),
+    onOpenMapConfirm: () -> Unit = {},
+) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val formState by viewModel.formState.collectAsStateWithLifecycle()
     val showForm by viewModel.showForm.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) {
+        viewModel.openMapConfirm.collect { onOpenMapConfirm() }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         when (val state = uiState) {
@@ -77,7 +87,7 @@ fun FuelStationsScreen(viewModel: StationsViewModel = viewModel(factory = Statio
 
     if (showForm) {
         UrsBottomSheet(onDismissRequest = viewModel::closeForm) {
-            StationForm(form = formState, viewModel = viewModel)
+            StationForm(form = formState, viewModel = viewModel, onOpenMapConfirm = onOpenMapConfirm)
         }
     }
 }
@@ -116,7 +126,7 @@ private fun StationList(stations: List<FillingStationDto>) {
 }
 
 @Composable
-private fun StationForm(form: StationFormState, viewModel: StationsViewModel) {
+private fun StationForm(form: StationFormState, viewModel: StationsViewModel, onOpenMapConfirm: () -> Unit) {
     Column(
         modifier = Modifier.padding(horizontal = Spacing.xl).padding(bottom = Spacing.xxl),
         verticalArrangement = Arrangement.spacedBy(Spacing.m),
@@ -138,6 +148,37 @@ private fun StationForm(form: StationFormState, viewModel: StationsViewModel) {
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
+
+        if (form.latitude != null) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                UrsText(stringResource(R.string.station_position_set), style = UrsTheme.typography.body)
+                UrsOutlinedButton(text = stringResource(R.string.station_position_adjust), onClick = onOpenMapConfirm)
+            }
+        } else {
+            UrsOutlinedButton(
+                text = stringResource(if (form.geocoding) R.string.station_searching_position else R.string.station_search_position),
+                onClick = viewModel::searchPosition,
+                enabled = form.address.isNotBlank() && !form.geocoding,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+
+        if (form.geocodeFailed) {
+            UrsText(
+                stringResource(R.string.station_position_not_found),
+                color = FormErrorColor,
+                style = UrsTheme.typography.body,
+            )
+            UrsOutlinedButton(
+                text = stringResource(R.string.station_position_set_manually),
+                onClick = onOpenMapConfirm,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
 
         if (form.submitFailed) {
             UrsText(

@@ -10,6 +10,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Added a toggle in VPN settings to restrict the WireGuard tunnel to urs's own traffic only.
 - The debug build's app icon now has an orange background, distinguishing it from the release icon on the home screen.
 - The debug build is now named "Ursa" instead of "urs (debug)", shown throughout the app (toolbar, About screen, login screen, notifications) as well as the home screen label.
+- The manual "add filling station" form gained an address-based position search (backend geocoding) with a full-screen map step to confirm or manually place the pin.
+
+### Fixed
+
+- The map-confirm step's "Use this position" button no longer sits partly behind the system navigation bar on devices using 3-button navigation.
 
 ## [0.7.1] - 2026-07-22
 
