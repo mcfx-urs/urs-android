@@ -498,6 +498,18 @@ data class LocationHistoryResponse(
     @SerialName("location_history_id") val id: String,
 )
 
+// GET /api/v1/location-history's response shape — same string-typed fields
+// as LocationHistoryPayload, plus the server-assigned id (see
+// LocationHistoryRepository.toEntity).
+@Serializable
+data class LocationHistoryDto(
+    @SerialName("location_history_id") val id: String,
+    @SerialName("location_history_latitude") val latitude: String,
+    @SerialName("location_history_longitude") val longitude: String,
+    @SerialName("location_history_accuracy_m") val accuracyMeters: String = "",
+    @SerialName("location_history_captured_at") val capturedAt: String,
+)
+
 @Serializable
 data class LoginPayload(
     @SerialName("user_name") val userName: String,

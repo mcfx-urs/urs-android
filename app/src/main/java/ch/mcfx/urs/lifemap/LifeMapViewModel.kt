@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import ch.mcfx.urs.UrsApplication
+import ch.mcfx.urs.data.LocationHistoryRepository
 import ch.mcfx.urs.data.local.LocationHistoryDao
 import ch.mcfx.urs.data.local.LocationHistoryEntity
 import java.time.Instant
@@ -35,7 +36,10 @@ enum class TimeRange(private val days: Long?) {
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class LifeMapViewModel(private val locationHistoryDao: LocationHistoryDao) : ViewModel() {
+class LifeMapViewModel(
+    private val locationHistoryDao: LocationHistoryDao,
+    private val locationHistoryRepository: LocationHistoryRepository,
+) : ViewModel() {
 
     private val _selectedRange = MutableStateFlow(TimeRange.LAST_MONTH)
     val selectedRange: StateFlow<TimeRange> = _selectedRange.asStateFlow()
@@ -44,6 +48,10 @@ class LifeMapViewModel(private val locationHistoryDao: LocationHistoryDao) : Vie
     val points: StateFlow<List<LocationHistoryEntity>> = _points.asStateFlow()
 
     init {
+        // pull the full server-side history down on load so points
+        // captured on another install of this same account also show up
+        // here — observeSince below only ever sees this device's local Room.
+        viewModelScope.launch { locationHistoryRepository.refreshFromBackend() }
         viewModelScope.launch {
             _selectedRange
                 .flatMapLatest { range -> locationHistoryDao.observeSince(range.toSinceMillis()) }
@@ -59,7 +67,7 @@ class LifeMapViewModel(private val locationHistoryDao: LocationHistoryDao) : Vie
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as UrsApplication
-                LifeMapViewModel(app.container.database.locationHistoryDao())
+                LifeMapViewModel(app.container.database.locationHistoryDao(), app.container.locationHistoryRepository)
             }
         }
     }

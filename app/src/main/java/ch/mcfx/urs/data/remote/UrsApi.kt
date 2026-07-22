@@ -214,6 +214,19 @@ interface UrsApi {
     @POST("api/v1/location-history")
     suspend fun createLocationHistory(@Body payload: LocationHistoryPayload): LocationHistoryResponse
 
+    // from/limit/order are required (not defaulted) call-site args, not
+    // optional query params — the endpoint's own default limit is only 50,
+    // and its hard cap is 10000 (`sanitizeLimit` in `urs-backend`), too small
+    // to ever be "the whole history" on its own for an always-on periodic
+    // capture — see LocationHistoryRepository's paging loop, which is the
+    // only caller and decides all three explicitly for that reason.
+    @GET("api/v1/location-history")
+    suspend fun getLocationHistory(
+        @Query("from") from: String,
+        @Query("limit") limit: String,
+        @Query("order") order: String,
+    ): List<LocationHistoryDto>
+
     @POST("api/v1/admin/restart")
     suspend fun restartServer()
 
