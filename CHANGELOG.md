@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 
 - The map-confirm step's "Use this position" button no longer sits partly behind the system navigation bar on devices using 3-button navigation.
+- Life map now reliably centers on the last location point when it first loads or the time range changes, instead of sometimes landing on an unrelated part of the world map.
 
 ## [0.7.1] - 2026-07-22
 

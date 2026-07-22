@@ -139,11 +139,22 @@ private fun LifeMapView(
     // synced; recentring on every one of those used to snap the map back to
     // DEFAULT_ZOOM mid-interaction, which read as the map resetting itself
     // whenever the user zoomed.
+    //
+    // The setZoom()/setCenter() calls are deferred via view.post() — calling
+    // them directly here can run before the MapView has a valid (non-zero)
+    // layout size (e.g. right on first load, before Room's Flow has had time
+    // to let the view settle), which computes the geo-to-screen projection
+    // against a zero-size rect and silently lands on the wrong spot — the
+    // same root cause fixed for FuelStationMapScreen's map-confirm step,
+    // confirmed on-device there to be off by a lot, not just a few pixels.
     var lastFitRange by remember { mutableStateOf<TimeRange?>(null) }
     LaunchedEffect(selectedRange, points) {
         if (points.isNotEmpty() && selectedRange != lastFitRange) {
-            mapView.controller.setCenter(GeoPoint(points.last().latitude, points.last().longitude))
-            mapView.controller.setZoom(DEFAULT_ZOOM)
+            val center = GeoPoint(points.last().latitude, points.last().longitude)
+            mapView.post {
+                mapView.controller.setZoom(DEFAULT_ZOOM)
+                mapView.controller.setCenter(center)
+            }
             lastFitRange = selectedRange
         }
     }
