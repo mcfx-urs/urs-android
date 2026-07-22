@@ -51,7 +51,7 @@ import ch.mcfx.urs.ui.tokens.Radius
 import ch.mcfx.urs.ui.tokens.Spacing
 
 // Fixed warning-color tones, independent of the light/dark theme palette —
-// same values as the pre- row list this restores.
+// same values as the earlier row list this restores.
 private val FirstWarningColor = Color(0xFFE0813F)
 private val SecondWarningColor = Color(0xFFD64545)
 

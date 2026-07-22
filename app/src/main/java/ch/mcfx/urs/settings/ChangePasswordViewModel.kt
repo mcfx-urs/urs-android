@@ -17,8 +17,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 
-// Mirrors urs-backend's own minPasswordLength (web/auth.go) — kept as-is
-// per scoping decision, not a new/stricter rule invented here.
+// Mirrors urs-backend's own minPasswordLength (web/auth.go) — kept as-is,
+// not a new/stricter rule invented here.
 private const val MIN_NEW_PASSWORD_LENGTH = 8
 
 enum class ChangePasswordFailure { NONE, WRONG_CURRENT_PASSWORD, CONNECTIVITY, UNKNOWN }
@@ -38,7 +38,7 @@ data class ChangePasswordFormState(
 }
 
 /**
- * . Same submit/failure-mapping shape as [ch.mcfx.urs.auth.LoginViewModel]
+ * Same submit/failure-mapping shape as [ch.mcfx.urs.auth.LoginViewModel]
  * (HttpException vs. IOException distinguished the same way), plus a
  * distinct WRONG_CURRENT_PASSWORD case since — unlike login — this form
  * already knows the caller's identity and just needs to say which field

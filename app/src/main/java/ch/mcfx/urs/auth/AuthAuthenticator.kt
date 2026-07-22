@@ -23,8 +23,8 @@ private val PUBLIC_PATHS = setOf(
 
 /**
  * Handles a `401` on any protected route by attempting exactly one silent
- * refresh-and-retry "401-triggered refresh-and-retry" design) —
- * OkHttp calls this automatically whenever a response comes back 401.
+ * refresh-and-retry — OkHttp calls this automatically whenever a response
+ * comes back 401.
  *
  * Runs synchronously on OkHttp's own dispatcher thread, not the caller's
  * coroutine — that's why it makes a raw, un-intercepted [refreshClient]

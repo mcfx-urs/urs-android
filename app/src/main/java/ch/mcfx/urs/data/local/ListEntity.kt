@@ -10,7 +10,7 @@ import androidx.room.PrimaryKey
  * delete outbox coverage (see `ShoppingListRepository.renameList`/
  * `deleteList`), mirroring [ch.mcfx.urs.data.local.WorkTimeEntryEntity]'s
  * full create/update/delete outbox shape — this was true even before
- *  gave inventory the identical shape (`InventoryEntity` replacing
+ * inventory gained the identical shape (`InventoryEntity` replacing
  * the old create-only `InventoryCategoryEntity`).
  */
 @Entity(tableName = "list")

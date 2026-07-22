@@ -15,9 +15,9 @@ data class WorkSettings(
 )
 
 // The work-time endpoints below still take an explicit user_id path segment
-// on the backend per-user scoping covered cars/fuel_fill/odometer/
+// on the backend (per-user scoping covered cars/fuel_fill/odometer/
 // inventory_category/inventory_product/beer_log — work-time wasn't in that
-// list, it already had its own user_id column from an earlier ticket). The
+// list, it already had its own user_id column from an earlier change). The
 // id itself now comes from the logged-in session (AuthTokenStore.currentUserId,
 // decoded from the access token) instead of the old hardcoded
 // UserDefaults.DEFAULT_USER_ID placeholder.
@@ -66,7 +66,7 @@ class UserRepository(
         api.updateUserHourlyWage(userId, UserHourlyWagePayload(hourlyWage = wage))
     }
 
-    // Super-user only (see ) — the backend itself rejects this with
+    // Super-user only — the backend itself rejects this with
     // 403 for anyone else, this is just the call site.
     suspend fun restartServer() = api.restartServer()
 

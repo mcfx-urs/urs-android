@@ -33,9 +33,9 @@ sealed interface FuelUiState {
         // Unfiltered — still needed as-is so FuelScreen's fill-history can
         // resolve a station name for a past ad-hoc (SOURCE_GPS_AUTO) fill.
         val stations: List<FillingStationEntity>,
-        // Picker-ready subset: gps_auto stations excluded hard
-        // requirement — they only ever existed to hold one past fill's GPS
-        // coordinates, never as a reusable choice) and proximity-sorted
+        // Picker-ready subset: gps_auto stations excluded — they only ever
+        // existed to hold one past fill's GPS coordinates, never as a
+        // reusable choice — and proximity-sorted
         // when a location is available, alphabetical otherwise.
         val pickerStations: List<StationPickerOption>,
         val fills: List<FillEntity>,

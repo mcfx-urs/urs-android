@@ -448,9 +448,9 @@ class SyncManager(
      * earlier in this same pass; if not, this mutation fails too and is
      * simply retried next sync. [OutboxListItemPayload.catalogProductId]
      * needs no such resolution — see that field's doc comment. There's also
-     * no more "checked" state to forward once this create replays (
-     * removed it entirely) — the old post-create `updateListItem` follow-up
-     * call this replaces is gone along with it.
+     * no more "checked" state to forward once this create replays — the old
+     * post-create `updateListItem` follow-up call this replaces is gone
+     * along with it.
      */
     private suspend fun replayCreateListItem(mutation: OutboxMutationEntity): Boolean {
         val localItem = listItemDao.getByOutboxId(mutation.id) ?: run {

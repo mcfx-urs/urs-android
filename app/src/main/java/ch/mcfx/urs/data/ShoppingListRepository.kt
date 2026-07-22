@@ -46,12 +46,11 @@ data class ShoppingListItemDetail(
 /**
  * Offline-first write path for shopping lists and their items — same shape
  * as [InventoryRepository], with full create/update/delete outbox coverage
- * (see [ListEntity]'s doc comment). Unlike before , this repository
- * has no dependency on [InventoryRepository]/inventory data at all: a list
- * item now points directly at a shared `catalog_product` (see
- * [CatalogRepository]), and adding something to a list never creates or
- * touches an inventory product — core rule ("Inventar-Management
- * ist ein manueller Prozess").
+ * (see [ListEntity]'s doc comment). This repository has no dependency on
+ * [InventoryRepository]/inventory data at all: a list item points directly
+ * at a shared `catalog_product` (see [CatalogRepository]), and adding
+ * something to a list never creates or touches an inventory product
+ * ("Inventar-Management ist ein manueller Prozess").
  */
 class ShoppingListRepository(
     private val api: UrsApi,
@@ -75,9 +74,9 @@ class ShoppingListRepository(
      * the product/category names it's rendered with, resolved against the
      * cached [CatalogProductEntity]/[ch.mcfx.urs.data.local.CatalogCategoryEntity]
      * by [ListItemEntity.catalogProductId] — always a real id (see that
-     * field's own doc comment), so unlike the pre- shape this
-     * replaces, no local-id fallback/stand-in resolution is needed here: an
-     * item whose catalog product isn't cached locally yet (a cold start
+     * field's own doc comment), so no local-id fallback/stand-in resolution
+     * is needed here: an item whose catalog product isn't cached locally
+     * yet (a cold start
      * before [ch.mcfx.urs.data.CatalogRepository.refreshFromBackend] has run
      * once) simply doesn't show until that cache warms up, the same
      * "product must already be cached" precondition catalog search already
@@ -203,8 +202,8 @@ class ShoppingListRepository(
      * .TYPE_CREATE_LIST_ITEM] mutation plus the local mirror row, same shape
      * as [createList]. [listId] is the parent list's `publicId` (a real
      * backend id, or a not-yet-synced stand-in — see `SyncManager`).
-     * [catalogProductId] is always a real `catalog_product` id ( —
-     * see [ListItemEntity]'s doc comment). No dedup against an existing row
+     * [catalogProductId] is always a real `catalog_product` id (see
+     * [ListItemEntity]'s doc comment). No dedup against an existing row
      * for the same product on this list — the backend itself allows the
      * same product to appear multiple times, distinguished only by note
      * (see `urs-backend`'s `00014_add_list_tables.sql`), so adding the same
@@ -241,8 +240,8 @@ class ShoppingListRepository(
 
     /**
      * Adds a predefined catalog product to a list — just forwards
-     * to [addExistingProduct], nothing more: unlike the pre- shape
-     * this replaces, this never creates or reuses an inventory product.
+     * to [addExistingProduct], nothing more: this never creates or reuses
+     * an inventory product.
      * "Recently used" bumps itself server-side (the backend's
      * `InsertListItem` logs `list_item_usage` in the same transaction as
      * creating the list item) — no separate client-side call needed beyond

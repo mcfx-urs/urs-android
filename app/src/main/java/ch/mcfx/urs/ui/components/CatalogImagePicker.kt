@@ -20,13 +20,13 @@ import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Spacing
 
 /**
- * image-reuse picker — every existing [CatalogImageDto] as a tile
+ * Image-reuse picker — every existing [CatalogImageDto] as a tile
  * grid, same shape as a product grid ([UrsSquareTile] in a 3-column
  * [LazyVerticalGrid]) so picking a photo to reuse feels like the rest of the
  * catalog UI rather than a bespoke gallery widget. No upload here — this
  * only ever offers images already seeded on the backend's image volume.
  *
- * search field narrows [images] by [CatalogImageDto.linkedNames]
+ * The search field narrows [images] by [CatalogImageDto.linkedNames]
  * (the product/category name(s) the backend resolves for each image) —
  * scrolling the grid stays the default way to browse, this only filters it.
  * An image with no linked name has nothing to match, so it drops out of any

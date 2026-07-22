@@ -177,8 +177,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - A "Recently used" section at the bottom of a shopping list, fed by
   the same data as the add-product picker's RECENT tab.
 - A Shopping List tile on the home screen, next to Fuel.
-- Login: the app now requires signing in (backend auth landed in ),
-  gating the whole app behind a new login screen. Access/refresh tokens
+- Login: the app now requires signing in, gating the whole app behind
+  a new login screen. Access/refresh tokens
   are stored encrypted at rest (Android Keystore-backed AES-256-GCM,
   same mechanism as the existing WireGuard config storage) and attached
   to every backend request automatically; an expired access token is

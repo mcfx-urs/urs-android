@@ -48,7 +48,7 @@ class LifeMapViewModel(
     val points: StateFlow<List<LocationHistoryEntity>> = _points.asStateFlow()
 
     init {
-        // pull the full server-side history down on load so points
+        // Pull the full server-side history down on load so points
         // captured on another install of this same account also show up
         // here — observeSince below only ever sees this device's local Room.
         viewModelScope.launch { locationHistoryRepository.refreshFromBackend() }

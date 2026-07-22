@@ -24,7 +24,7 @@ import ch.mcfx.urs.ui.tokens.Spacing
 private val FormErrorColor = Color(0xFFD64545)
 
 // Only reachable from Settings when AuthTokenStore.isSuperUser is true (see
-// SettingsScreen and ) — the backend itself also rejects the restart
+// SettingsScreen) — the backend itself also rejects the restart
 // call with 403 for anyone else, this screen is just the UI on top.
 @Composable
 fun AdminScreen(viewModel: AdminViewModel = viewModel(factory = AdminViewModel.Factory)) {

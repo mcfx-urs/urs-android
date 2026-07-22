@@ -18,8 +18,8 @@ import kotlinx.serialization.SerializationException
 import retrofit2.HttpException
 
 /**
- * Read-only Room cache of the shared/public product catalog —
- * separate from [InventoryRepository]/[ShoppingListRepository] since it's a
+ * Read-only Room cache of the shared/public product catalog — separate
+ * from [InventoryRepository]/[ShoppingListRepository] since it's a
  * different data lifecycle: server-authoritative reference data neither of
  * those write to directly, so there's no outbox involvement for the bulk of
  * this class, just a plain read-through cache populated by
@@ -102,8 +102,8 @@ class CatalogRepository(
     }
 
     /**
-     * rename/re-link a manually-created product (name/category/
-     * image) — Product Management's edit form. Same direct-REST shape as
+     * Rename/re-link a manually-created product (name/category/image) —
+     * Product Management's edit form. Same direct-REST shape as
      * [createProduct]; the local cache is updated from the request's own
      * inputs rather than re-fetching, mirroring how create already works.
      */
@@ -119,26 +119,26 @@ class CatalogRepository(
         catalogProductDao.updateFields(id, name, catalogCategoryId, catalogImageId?.toIntOrNull())
     }
 
-    /** delete a manually-created product — Product Management's delete action. */
+    /** Delete a manually-created product — Product Management's delete action. */
     suspend fun deleteProduct(id: String) {
         api.deleteCatalogProduct(id)
         catalogProductDao.deleteById(id)
     }
 
-    /** rename/re-link a manually-created category — Product Management's edit form. */
+    /** Rename/re-link a manually-created category — Product Management's edit form. */
     suspend fun updateCategory(id: String, name: String, catalogImageId: String?) {
         api.updateCatalogCategory(id, CatalogCategoryUpdatePayload(name = name, catalogImageId = catalogImageId.orEmpty()))
         catalogCategoryDao.updateFields(id, name, catalogImageId?.toIntOrNull())
     }
 
-    /** delete a manually-created category — Product Management's delete action. */
+    /** Delete a manually-created category — Product Management's delete action. */
     suspend fun deleteCategory(id: String) {
         api.deleteCatalogCategory(id)
         catalogCategoryDao.deleteById(id)
     }
 
     /**
-     * every catalog image available for reuse — no local cache (a
+     * Every catalog image available for reuse — no local cache (a
      * fresh network read every time the picker opens), same reasoning as
      * [quantityOnHand]: this list only matters while the picker is open, not
      * worth an offline-first shape.

@@ -14,9 +14,9 @@ import kotlinx.serialization.SerializationException
 /**
  * Pulls the authenticated user's full server-side location history down
  * into Room so the life map shows every point regardless of which
- * device/install originally captured it — the upload-only outbox
- * sync ([ch.mcfx.urs.data.sync.SyncManager.replayCreateLocationHistory])
- * never had a pull path back down.
+ * device/install originally captured it — the upload-only outbox sync
+ * ([ch.mcfx.urs.data.sync.SyncManager.replayCreateLocationHistory]) never
+ * had a pull path back down.
  *
  * Pages through the endpoint's hard cap (`sanitizeLimit`'s 10000 in
  * `urs-backend`) rather than trusting a single call: an always-on periodic

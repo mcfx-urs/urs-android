@@ -9,10 +9,10 @@ import kotlinx.serialization.Serializable
  * a real backend id, or (if the inventory itself was still offline) a
  * not-yet-synced stand-in that `SyncManager` resolves to the real id at
  * replay time, once the inventory's own create has gone through.
- * [catalogProductId] is always a real `catalog_product` id (the
+ * [catalogProductId] is always a real `catalog_product` id — the
  * product identity and its inventory are both fixed at creation time, no
- * more manually-typed name — see [ch.mcfx.urs.data.InventoryRepository
- * .createProduct]).
+ * manually-typed name — see [ch.mcfx.urs.data.InventoryRepository
+ * .createProduct].
  */
 @Serializable
 data class OutboxInventoryProductPayload(

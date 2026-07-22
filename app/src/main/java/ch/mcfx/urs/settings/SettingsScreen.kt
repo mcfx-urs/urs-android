@@ -23,7 +23,7 @@ private val SETTINGS_TILES = listOf(
 private val ADMIN_TILE =
     SettingsTile(SettingsRoutes.ADMIN, R.string.settings_tile_admin, Icons.Filled.AdminPanelSettings)
 
-// isSuperUser (see ) gates the Admin tile — regular users never see
+// isSuperUser gates the Admin tile — regular users never see
 // it at all, rather than seeing it disabled.
 @Composable
 fun SettingsScreen(isSuperUser: Boolean, onNavigate: (route: String) -> Unit) {

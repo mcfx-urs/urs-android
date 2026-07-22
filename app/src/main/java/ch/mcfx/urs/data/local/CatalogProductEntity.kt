@@ -15,11 +15,11 @@ import androidx.room.PrimaryKey
  * kept as the raw semicolon-joined string the backend sends, not split into
  * a list — splitting only happens where a search actually needs it.
  * [catalogCategoryId] is nullable — a product can be uncategorized — and
- * points at a [CatalogCategoryEntity] row (, replacing the old
- * `inventory_product`-owned category link). [recentNote1]/[recentNote2]/
- * [recentNote3] moved here from the old `inventory_product` (they're
+ * points at a [CatalogCategoryEntity] row, replacing the old
+ * `inventory_product`-owned category link. [recentNote1]/[recentNote2]/
+ * [recentNote3] moved here from the old `inventory_product` — they're
  * now global per catalog product, since `list_item` no longer references
- * `inventory_product` at all). [source] ("manual" vs "external_catalog", ) gates
+ * `inventory_product` at all. [source] ("manual" vs "external_catalog") gates
  * whether the Product Management screen offers edit/delete for this row.
  */
 @Entity(tableName = "catalog_product")

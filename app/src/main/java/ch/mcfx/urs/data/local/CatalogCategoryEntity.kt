@@ -11,10 +11,10 @@ import androidx.room.PrimaryKey
  * Replaces the old per-user `inventory_category` entirely — grouping now
  * comes from [CatalogProductEntity.catalogCategoryId] pointing at a row
  * here, shared across every inventory/list rather than owned by one user.
- * [source] ("manual" vs "external_catalog", ) gates whether the Product
- * Management screen offers edit/delete for this row. [catalogImageId] is
- * only ever set through that same edit flow — categories have no image at
- * creation time.
+ * [source] ("manual" vs "external_catalog") gates whether the Product Management
+ * screen offers edit/delete for this row. [catalogImageId] is only ever
+ * set through that same edit flow — categories have no image at creation
+ * time.
  */
 @Entity(tableName = "catalog_category")
 data class CatalogCategoryEntity(

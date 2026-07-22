@@ -5,8 +5,8 @@ import androidx.room.PrimaryKey
 
 /**
  * Local, always-available mirror of an inventory — a named, ownable,
- * shareable container tracking on-hand quantities of catalog products
- *, replacing the old one-inventory-per-user model built on
+ * shareable container tracking on-hand quantities of catalog products,
+ * replacing the old one-inventory-per-user model built on
  * `inventory_category`. Same offline-first shape as [ListEntity] (stable
  * local [id], nullable [serverId]/[outboxId] until confirmed, [syncStatus]),
  * including full create/rename/delete outbox coverage — unlike the old

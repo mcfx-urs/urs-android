@@ -46,7 +46,7 @@ class AuthTokenStore(context: Context) {
     val currentUserId: String?
         get() = accessToken?.let { JwtDecoder.subject(it) }
 
-    /** Whether the current access token carries the super-user flag (see ). */
+    /** Whether the current access token carries the super-user flag. */
     val isSuperUser: Boolean
         get() = accessToken?.let { JwtDecoder.isSuperUser(it) } ?: false
 
