@@ -30,6 +30,7 @@
     <string name="settings_tile_work_time">Work Settings</string>
     <string name="settings_tile_about">About</string>
     <string name="settings_tile_location_history">Location History</string>
+    <string name="settings_tile_watch_relay">Watch Relay</string>
 
     <string name="about_org">mcfx</string>
     <string name="about_version_build_type">%1$s %2$s</string>
@@ -99,6 +100,12 @@
     <string name="location_history_stationary_threshold_50">50 m</string>
     <string name="location_history_stationary_threshold_100">100 m</string>
     <string name="location_history_stationary_threshold_250">250 m</string>
+
+    <string name="watch_relay_title">Watch Relay</string>
+    <string name="watch_relay_description">Lets the urs-zepp companion watch app trigger quick actions (like logging a beer) without opening the app. Runs a small local server while enabled, shown as an ongoing notification, so it works even with the app closed.</string>
+    <string name="watch_relay_enable">Enable watch relay</string>
+    <string name="watch_relay_notification_title">Watch relay active</string>
+    <string name="watch_relay_notification_body">Listening for quick actions from your watch</string>
 
     <string name="life_map_range_label">Time range</string>
     <string name="life_map_range_last_month">Last month</string>

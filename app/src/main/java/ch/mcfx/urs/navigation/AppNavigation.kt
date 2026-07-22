@@ -66,6 +66,7 @@ import ch.mcfx.urs.settings.ProductManagementScreen
 import ch.mcfx.urs.settings.SettingsRoutes
 import ch.mcfx.urs.settings.SettingsScreen
 import ch.mcfx.urs.settings.VpnSettingsScreen
+import ch.mcfx.urs.settings.WatchRelaySettingsScreen
 import ch.mcfx.urs.shoppinglist.ListDetailScreen
 import ch.mcfx.urs.shoppinglist.ShoppingListRoutes
 import ch.mcfx.urs.shoppinglist.ShoppingListsScreen
@@ -357,6 +358,7 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                     composable(SettingsRoutes.ACCOUNT) { AccountSettingsScreen() }
                     composable(SettingsRoutes.ABOUT) { AboutScreen() }
                     composable(SettingsRoutes.LOCATION_HISTORY) { LocationHistorySettingsScreen() }
+                    composable(SettingsRoutes.WATCH_RELAY) { WatchRelaySettingsScreen() }
                     composable(SettingsRoutes.PRODUCT_MANAGEMENT) { ProductManagementScreen() }
                     composable(SettingsRoutes.ADMIN) { AdminScreen() }
                 }
@@ -388,6 +390,7 @@ private val SETTINGS_ROUTE_LABELS = mapOf(
     SettingsRoutes.ACCOUNT to R.string.settings_tile_account,
     SettingsRoutes.ABOUT to R.string.settings_tile_about,
     SettingsRoutes.LOCATION_HISTORY to R.string.settings_tile_location_history,
+    SettingsRoutes.WATCH_RELAY to R.string.settings_tile_watch_relay,
     SettingsRoutes.PRODUCT_MANAGEMENT to R.string.settings_tile_product_management,
     SettingsRoutes.ADMIN to R.string.settings_tile_admin,
 )
