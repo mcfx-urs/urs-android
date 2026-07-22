@@ -59,6 +59,21 @@
     <!-- So a scheduled reminder survives a reboot (exact alarms don't). -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!-- Watch relay (Settings → Watch Relay): a loopback-only HTTP server so
+         the urs-zepp companion watch app can trigger a beer-log entry
+         without needing this app's WireGuard tunnel/session itself. Must
+         stay reachable even with the app closed, hence a foreground
+         service. Type specialUse, not connectedDevice: connectedDevice
+         additionally requires one of BLUETOOTH_CONNECT/BLUETOOTH_SCAN/
+         CHANGE_WIFI_STATE/etc. to be actually granted at runtime (not just
+         declared), which crashed this service at startForeground() on a
+         fresh install with no Bluetooth permission granted yet — this
+         service does its own plain loopback HTTP listening, it doesn't
+         itself touch Bluetooth or Wi-Fi APIs, so that requirement doesn't
+         fit. specialUse has no such extra permission entanglement. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+
     <application
         android:name=".UrsApplication"
         android:label="@string/app_name"
@@ -89,6 +104,15 @@
         <activity
             android:name=".settings.PortraitCaptureActivity"
             android:screenOrientation="portrait" />
+
+        <service
+            android:name=".watchrelay.WatchRelayService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Local HTTP relay for the urs-zepp companion watch app" />
+        </service>
 
         <receiver
             android:name=".notifications.ReminderAlarmReceiver"

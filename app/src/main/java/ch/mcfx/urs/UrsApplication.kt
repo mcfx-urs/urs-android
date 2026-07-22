@@ -37,6 +37,8 @@ import ch.mcfx.urs.vpn.NetworkGate
 import ch.mcfx.urs.vpn.VpnConfigRepository
 import ch.mcfx.urs.vpn.WifiSsidReader
 import ch.mcfx.urs.vpn.WireGuardManager
+import ch.mcfx.urs.watchrelay.WatchRelayService
+import ch.mcfx.urs.watchrelay.WatchRelaySettingsStore
 import coil3.ImageLoader
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import kotlinx.coroutines.CoroutineScope
@@ -89,6 +91,13 @@ class UrsApplication : Application() {
         // all (e.g. right after an app update).
         if (container.locationHistorySettingsStore.isEnabled()) {
             LocationCaptureScheduler.reschedule(this, container.locationHistorySettingsStore.intervalMinutes())
+        }
+        // Same rationale — a killed-and-relaunched process (not a full
+        // reboot, which BootCompletedReceiver covers) otherwise leaves the
+        // watch relay silently stopped despite the Settings toggle still
+        // showing enabled.
+        if (container.watchRelaySettingsStore.isEnabled()) {
+            WatchRelayService.start(this)
         }
         // Re-checks BiometricGate's 24h window on every app-level foreground,
         // not just a true cold start (ProcessLifecycleOwner fires once for
@@ -204,6 +213,7 @@ class AppContainer(context: Context) {
     val locationCapture = LocationCapture(context)
     val locationProvider = LocationProvider(context, locationCapture)
     val locationHistorySettingsStore = LocationHistorySettingsStore(context)
+    val watchRelaySettingsStore = WatchRelaySettingsStore(context)
 
     // Not started here - connect()/disconnect() are driven by whatever
     // future UI surfaces this (a live-data screen). Constructed eagerly

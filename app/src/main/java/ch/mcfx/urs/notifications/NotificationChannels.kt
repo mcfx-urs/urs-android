@@ -11,6 +11,7 @@ import androidx.core.content.ContextCompat
 object NotificationChannels {
 
     const val INVENTORY = "inventory"
+    const val WATCH_RELAY = "watch_relay"
 
     private data class ChannelDef(
         val id: String,
@@ -25,6 +26,12 @@ object NotificationChannels {
             name = "Inventory",
             description = "Low-stock and other Inventory reminders",
             importance = NotificationManager.IMPORTANCE_DEFAULT,
+        ),
+        ChannelDef(
+            id = WATCH_RELAY,
+            name = "Watch relay",
+            description = "Ongoing status notification while the watch relay is active",
+            importance = NotificationManager.IMPORTANCE_LOW,
         ),
     )
 
