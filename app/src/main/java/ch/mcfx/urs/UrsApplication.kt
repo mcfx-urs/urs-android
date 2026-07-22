@@ -15,6 +15,7 @@ import ch.mcfx.urs.data.BeerRepository
 import ch.mcfx.urs.data.CatalogRepository
 import ch.mcfx.urs.data.FuelRepository
 import ch.mcfx.urs.data.InventoryRepository
+import ch.mcfx.urs.data.LocationHistoryRepository
 import ch.mcfx.urs.data.ShoppingListRepository
 import ch.mcfx.urs.data.UserRepository
 import ch.mcfx.urs.data.WorkTimeRepository
@@ -267,6 +268,10 @@ class AppContainer(context: Context) {
         tokenStore = authTokenStore,
     )
     val userRepository = UserRepository(retrofit.create(UrsApi::class.java), authTokenStore)
+    val locationHistoryRepository = LocationHistoryRepository(
+        api = ursApi,
+        locationHistoryDao = database.locationHistoryDao(),
+    )
 
     val reminderStore = ReminderStore(context)
     val notificationSender = NotificationSender(context)
