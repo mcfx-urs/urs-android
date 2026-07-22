@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Added a "Watch Relay" setting under General, letting the urs-zepp companion watch app log a beer fill without opening the app.
+
 ## [0.9.0] - 2026-07-22
 
 ### Added
