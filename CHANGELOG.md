@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Added a toggle in VPN settings to restrict the WireGuard tunnel to urs's own traffic only.
 - The debug build's app icon now has an orange background, distinguishing it from the release icon on the home screen.
+- The debug build is now named "Ursa" instead of "urs (debug)", shown throughout the app (toolbar, About screen, login screen, notifications) as well as the home screen label.
 
 ## [0.7.1] - 2026-07-22
 
