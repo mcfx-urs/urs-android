@@ -125,6 +125,8 @@
     <string name="vpn_status_error">Connection failed</string>
     <string name="vpn_connect">Connect</string>
     <string name="vpn_disconnect">Disconnect</string>
+    <string name="vpn_exclusive_mode_title">Restrict tunnel to this app</string>
+    <string name="vpn_exclusive_mode_description">When on, only urs\'s traffic goes through the VPN — every other app on the device stays off it.</string>
 
     <string name="car_tile_fuel">Fuel</string>
     <string name="car_tile_obd">OBD</string>

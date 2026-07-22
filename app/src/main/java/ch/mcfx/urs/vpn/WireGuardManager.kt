@@ -6,6 +6,7 @@ import android.net.VpnService
 import com.wireguard.android.backend.GoBackend
 import com.wireguard.android.backend.Tunnel
 import com.wireguard.config.Config
+import com.wireguard.config.Interface
 import java.io.BufferedReader
 import java.io.StringReader
 import kotlinx.coroutines.Dispatchers
@@ -55,7 +56,8 @@ class WireGuardManager(
         _state.value = VpnConnectionState.CONNECTING
         return try {
             val config = withContext(Dispatchers.IO) {
-                Config.parse(BufferedReader(StringReader(configText)))
+                val parsed = Config.parse(BufferedReader(StringReader(configText)))
+                if (configRepository.isExclusiveModeEnabled()) scopeToThisApp(parsed) else parsed
             }
             withContext(Dispatchers.IO) {
                 backend.setState(this@WireGuardManager, Tunnel.State.UP, config)
@@ -66,6 +68,33 @@ class WireGuardManager(
             _state.value = VpnConnectionState.ERROR
             false
         }
+    }
+
+    // Rebuilds the parsed Config's Interface with includeApplication(urs's own
+    // package) added, carrying every other Interface field over unchanged —
+    // the user's own pasted config text is never touched, only the in-memory
+    // Config object handed to GoBackend. GoBackend turns includeApplication
+    // into VpnService.Builder.addAllowedApplication(...) under the hood, which
+    // scopes the tunnel to this app's traffic only.
+    private fun scopeToThisApp(config: Config): Config {
+        val original = config.getInterface()
+        val scopedInterface = Interface.Builder()
+            .setKeyPair(original.getKeyPair())
+            .addAddresses(original.getAddresses())
+            .addDnsServers(original.getDnsServers())
+            .addDnsSearchDomains(original.getDnsSearchDomains())
+            .includeApplications(original.getIncludedApplications())
+            .excludeApplications(original.getExcludedApplications())
+            .includeApplication(context.packageName)
+            .apply {
+                original.getListenPort().ifPresent { setListenPort(it) }
+                original.getMtu().ifPresent { setMtu(it) }
+            }
+            .build()
+        return Config.Builder()
+            .setInterface(scopedInterface)
+            .addPeers(config.getPeers())
+            .build()
     }
 
     suspend fun disconnect() {

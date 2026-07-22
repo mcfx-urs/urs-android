@@ -6,6 +6,7 @@ import ch.mcfx.urs.security.KeystoreCipher
 private const val PREFS_NAME = "vpn_prefs"
 private const val KEY_WG_CONFIG_ENCRYPTED = "wireguard_config_text_enc"
 private const val KEY_HOME_SSIDS = "home_wifi_ssids"
+private const val KEY_EXCLUSIVE_MODE = "vpn_exclusive_mode"
 private const val KEYSTORE_ALIAS = "urs_vpn_config_key"
 
 // Holds the WireGuard client config (a real private key granting home-network
@@ -40,5 +41,11 @@ class VpnConfigRepository(context: Context) {
     fun removeHomeSsid(ssid: String) {
         val updated = getHomeSsids().toMutableSet().apply { remove(ssid) }
         prefs.edit().putStringSet(KEY_HOME_SSIDS, updated).apply()
+    }
+
+    fun isExclusiveModeEnabled(): Boolean = prefs.getBoolean(KEY_EXCLUSIVE_MODE, false)
+
+    fun setExclusiveModeEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_EXCLUSIVE_MODE, enabled).apply()
     }
 }

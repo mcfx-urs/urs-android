@@ -38,6 +38,9 @@ class SettingsViewModel(
     private val _justSaved = MutableStateFlow(false)
     val justSaved: StateFlow<Boolean> = _justSaved.asStateFlow()
 
+    private val _exclusiveModeEnabled = MutableStateFlow(configRepository.isExclusiveModeEnabled())
+    val exclusiveModeEnabled: StateFlow<Boolean> = _exclusiveModeEnabled.asStateFlow()
+
     val tunnelState: StateFlow<VpnConnectionState> get() = wireGuardManager.state
 
     fun setConfigText(value: String) {
@@ -65,6 +68,25 @@ class SettingsViewModel(
     fun saveConfig() {
         configRepository.setConfigText(_configText.value)
         _justSaved.value = true
+    }
+
+    // A flip while the tunnel is already up needs an explicit reconnect to
+    // take effect: NetworkGate.ensureReachableLocked() short-circuits without
+    // calling WireGuardManager.connect() again whenever its cached state is
+    // already CONNECTED (that's what stops routine Wi-Fi capability ticks
+    // from rebuilding an already-good tunnel — see NetworkGate's own
+    // comments) — so even pressing "Connect" again wouldn't have picked up
+    // the new config on its own.
+    fun setExclusiveMode(enabled: Boolean) {
+        val changed = enabled != _exclusiveModeEnabled.value
+        configRepository.setExclusiveModeEnabled(enabled)
+        _exclusiveModeEnabled.value = enabled
+        if (changed && wireGuardManager.state.value == VpnConnectionState.CONNECTED) {
+            viewModelScope.launch {
+                networkGate.userDisconnect()
+                networkGate.userConnect()
+            }
+        }
     }
 
     // Routed through NetworkGate (not WireGuardManager directly) so a manual
