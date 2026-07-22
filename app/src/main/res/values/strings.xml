@@ -92,6 +92,13 @@
     <string name="location_history_interval_60">Every hour</string>
     <string name="location_history_interval_120">Every 2 hours</string>
     <string name="location_history_interval_240">Every 4 hours</string>
+    <string name="location_history_stationary_threshold_label">Skip nearby repeats within</string>
+    <string name="location_history_stationary_threshold_0">Off</string>
+    <string name="location_history_stationary_threshold_10">10 m</string>
+    <string name="location_history_stationary_threshold_25">25 m</string>
+    <string name="location_history_stationary_threshold_50">50 m</string>
+    <string name="location_history_stationary_threshold_100">100 m</string>
+    <string name="location_history_stationary_threshold_250">250 m</string>
 
     <string name="life_map_range_label">Time range</string>
     <string name="life_map_range_last_month">Last month</string>

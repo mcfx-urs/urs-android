@@ -60,6 +60,7 @@ private fun hasBackgroundLocationPermission(context: Context) =
         PackageManager.PERMISSION_GRANTED
 
 private val INTERVAL_OPTIONS_MINUTES = listOf(1L, 2L, 5L, 10L, 15L, 30L, 60L, 120L, 240L)
+private val STATIONARY_THRESHOLD_OPTIONS_METERS = listOf(0L, 10L, 25L, 50L, 100L, 250L)
 
 @Composable
 fun LocationHistorySettingsScreen(
@@ -67,6 +68,7 @@ fun LocationHistorySettingsScreen(
 ) {
     val enabled by viewModel.enabled.collectAsStateWithLifecycle()
     val intervalMinutes by viewModel.intervalMinutes.collectAsStateWithLifecycle()
+    val stationaryThresholdMeters by viewModel.stationaryThresholdMeters.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
     var hasForegroundPermission by remember { mutableStateOf(hasForegroundLocationPermission(context)) }
@@ -104,6 +106,15 @@ fun LocationHistorySettingsScreen(
         60L to stringResource(R.string.location_history_interval_60),
         120L to stringResource(R.string.location_history_interval_120),
         240L to stringResource(R.string.location_history_interval_240),
+    )
+
+    val stationaryThresholdLabels = mapOf(
+        0L to stringResource(R.string.location_history_stationary_threshold_0),
+        10L to stringResource(R.string.location_history_stationary_threshold_10),
+        25L to stringResource(R.string.location_history_stationary_threshold_25),
+        50L to stringResource(R.string.location_history_stationary_threshold_50),
+        100L to stringResource(R.string.location_history_stationary_threshold_100),
+        250L to stringResource(R.string.location_history_stationary_threshold_250),
     )
 
     val colors = UrsTheme.colors
@@ -167,6 +178,15 @@ fun LocationHistorySettingsScreen(
                 selectedLabel = intervalLabels[intervalMinutes],
                 optionLabel = { intervalLabels[it] ?: it.toString() },
                 onSelect = viewModel::setIntervalMinutes,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            UrsDropdownField(
+                label = stringResource(R.string.location_history_stationary_threshold_label),
+                options = STATIONARY_THRESHOLD_OPTIONS_METERS,
+                selectedLabel = stationaryThresholdLabels[stationaryThresholdMeters],
+                optionLabel = { stationaryThresholdLabels[it] ?: it.toString() },
+                onSelect = viewModel::setStationaryThresholdMeters,
                 modifier = Modifier.fillMaxWidth(),
             )
         }

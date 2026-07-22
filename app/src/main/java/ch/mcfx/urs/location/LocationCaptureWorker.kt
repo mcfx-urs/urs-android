@@ -1,6 +1,7 @@
 package ch.mcfx.urs.location
 
 import android.content.Context
+import android.location.Location
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingWorkPolicy
 import androidx.work.WorkerParameters
@@ -10,6 +11,9 @@ import ch.mcfx.urs.data.local.OutboxLocationHistoryPayload
 import ch.mcfx.urs.data.local.OutboxMutationEntity
 import ch.mcfx.urs.data.local.SyncStatus
 import kotlinx.serialization.encodeToString
+
+/** A fix this imprecise (typically poor sky visibility/indoors) is more likely noise than a real position. */
+private const val MAX_ACCURACY_METERS = 100f
 
 /**
  * Periodic background GPS fix for the life map feature — deliberately
@@ -51,6 +55,28 @@ class LocationCaptureWorker(context: Context, params: WorkerParameters) : Corout
         // worth Result.retry()'s backoff churn, since a permanently-missing
         // permission would otherwise retry forever.
         val location = app.container.locationCapture.captureLocation() ?: return Result.success()
+
+        // Drop unreliable fixes outright, before they can ever look like a
+        // spurious jump in the track.
+        if (location.hasAccuracy() && location.accuracy > MAX_ACCURACY_METERS) return Result.success()
+
+        // Stationary dedup: skip storing (and syncing) a fix that's
+        // essentially the same spot as the last one — the common case for
+        // long overnight/at-work/on-vacation stretches with periodic
+        // capture. Only compares against the single last stored point, not
+        // a longer history, so movement below the threshold sustained
+        // across many consecutive captures would never register — an
+        // accepted trade-off for this coarse life-map use case, not a
+        // precise-tracking one.
+        val stationaryThresholdMeters = store.stationaryThresholdMeters()
+        if (stationaryThresholdMeters > 0) {
+            val lastPoint = app.container.database.locationHistoryDao().getLatest()
+            if (lastPoint != null) {
+                val distanceMeters = FloatArray(1)
+                Location.distanceBetween(lastPoint.latitude, lastPoint.longitude, location.latitude, location.longitude, distanceMeters)
+                if (distanceMeters[0] < stationaryThresholdMeters) return Result.success()
+            }
+        }
 
         val payload = OutboxLocationHistoryPayload(
             latitude = location.latitude,

@@ -8,11 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - Super users can now tap a filling station in the stations list to edit its name, address, and coordinates.
+- Added a "Skip nearby repeats within" setting under Location History to reduce redundant location captures while stationary.
 
 ### Changed
 
 - Life map's track line now gradates from black (oldest point) to red (newest point) instead of a single solid color, and is thinner.
 - Life map no longer shows start/end pin markers.
+- Location capture now discards fixes with poor GPS accuracy instead of storing every fix unconditionally.
 
 ### Fixed
 
