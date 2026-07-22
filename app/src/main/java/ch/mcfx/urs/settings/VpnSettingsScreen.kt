@@ -32,6 +32,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
 import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsCard
+import ch.mcfx.urs.ui.components.UrsCheckbox
 import ch.mcfx.urs.ui.components.UrsIconButton
 import ch.mcfx.urs.ui.components.UrsOutlinedButton
 import ch.mcfx.urs.ui.components.UrsText
@@ -54,6 +55,7 @@ fun VpnSettingsScreen(viewModel: SettingsViewModel = viewModel(factory = Setting
     val homeSsids by viewModel.homeSsids.collectAsStateWithLifecycle()
     val justSaved by viewModel.justSaved.collectAsStateWithLifecycle()
     val tunnelState by viewModel.tunnelState.collectAsStateWithLifecycle()
+    val exclusiveModeEnabled by viewModel.exclusiveModeEnabled.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
     fun checkWifiDetectionPermissions() =
@@ -174,6 +176,22 @@ fun VpnSettingsScreen(viewModel: SettingsViewModel = viewModel(factory = Setting
                             enabled = tunnelState != VpnConnectionState.CONNECTING,
                         )
                     }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        UrsText(stringResource(R.string.vpn_exclusive_mode_title), style = UrsTheme.typography.body)
+                        UrsText(
+                            stringResource(R.string.vpn_exclusive_mode_description),
+                            style = UrsTheme.typography.caption,
+                            color = UrsTheme.colors.onSurfaceMuted,
+                        )
+                    }
+                    UrsCheckbox(checked = exclusiveModeEnabled, onCheckedChange = viewModel::setExclusiveMode)
                 }
 
                 Spacer(Modifier.height(Spacing.l))

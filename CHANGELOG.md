@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Added a toggle in VPN settings to restrict the WireGuard tunnel to urs's own traffic only.
+
 ## [0.7.1] - 2026-07-22
 
 ### Fixed
