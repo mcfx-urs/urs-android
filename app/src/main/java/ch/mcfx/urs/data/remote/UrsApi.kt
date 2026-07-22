@@ -29,6 +29,11 @@ interface UrsApi {
     @POST("api/v1/filling-station")
     suspend fun createFillingStation(@Body payload: FillingStationPayload): FillingStationDto
 
+    // Super-user-gated server-side () — the backend returns 403 for
+    // anyone else, this call surfaces that as a normal HTTP exception.
+    @PUT("api/v1/filling-station/{id}")
+    suspend fun updateFillingStation(@Path("id") id: String, @Body payload: FillingStationPayload)
+
     @GET("api/v1/geocode")
     suspend fun geocode(@Query("address") address: String): GeocodeResultDto
 
