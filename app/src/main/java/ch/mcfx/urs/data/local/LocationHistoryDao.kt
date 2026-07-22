@@ -16,6 +16,9 @@ interface LocationHistoryDao {
     @Query("SELECT * FROM location_history WHERE capturedAt >= :sinceMillis ORDER BY capturedAt ASC")
     fun observeSince(sinceMillis: Long): Flow<List<LocationHistoryEntity>>
 
+    @Query("SELECT * FROM location_history ORDER BY capturedAt DESC LIMIT 1")
+    suspend fun getLatest(): LocationHistoryEntity?
+
     @Query("SELECT * FROM location_history WHERE outboxId = :outboxId LIMIT 1")
     suspend fun getByOutboxId(outboxId: Long): LocationHistoryEntity?
 

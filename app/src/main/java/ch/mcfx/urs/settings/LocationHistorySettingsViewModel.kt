@@ -24,6 +24,9 @@ class LocationHistorySettingsViewModel(
     private val _intervalMinutes = MutableStateFlow(settingsStore.intervalMinutes())
     val intervalMinutes: StateFlow<Long> = _intervalMinutes.asStateFlow()
 
+    private val _stationaryThresholdMeters = MutableStateFlow(settingsStore.stationaryThresholdMeters())
+    val stationaryThresholdMeters: StateFlow<Long> = _stationaryThresholdMeters.asStateFlow()
+
     fun setEnabled(enabled: Boolean) {
         settingsStore.setEnabled(enabled)
         _enabled.value = enabled
@@ -42,6 +45,11 @@ class LocationHistorySettingsViewModel(
         if (settingsStore.isEnabled()) {
             LocationCaptureScheduler.reschedule(context, minutes)
         }
+    }
+
+    fun setStationaryThresholdMeters(meters: Long) {
+        settingsStore.setStationaryThresholdMeters(meters)
+        _stationaryThresholdMeters.value = meters
     }
 
     companion object {
