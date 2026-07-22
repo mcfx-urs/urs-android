@@ -17,9 +17,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.graphics.ColorUtils
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -33,10 +36,23 @@ import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Spacing
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
-import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polyline
 
 private const val DEFAULT_ZOOM = 12.0
+
+/** Life Map track's age-gradient stops, oldest to newest — a "heat" scale rather than a plain two-color blend. */
+private val TrackGradientStops = listOf(
+    Color(0xFF000000), // oldest — black
+    Color(0xFFFF9800), // orange
+    Color(0xFFF44336), // newest — red
+)
+
+/** Interpolates piecewise across [stops] (already ARGB [Int]s) by [fraction] in `0f..1f`. */
+private fun blendGradientStops(stops: List<Int>, fraction: Float): Int {
+    val scaled = fraction.coerceIn(0f, 1f) * (stops.size - 1)
+    val index = scaled.toInt().coerceIn(0, stops.size - 2)
+    return ColorUtils.blendARGB(stops[index], stops[index + 1], scaled - index)
+}
 
 @Composable
 fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewModel.Factory)) {
@@ -63,8 +79,6 @@ fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewM
         LifeMapView(
             points = points,
             selectedRange = selectedRange,
-            startLabel = stringResource(R.string.life_map_marker_start),
-            endLabel = stringResource(R.string.life_map_marker_end),
             modifier = Modifier.fillMaxSize(),
         )
 
@@ -107,14 +121,20 @@ fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewM
 private fun LifeMapView(
     points: List<LocationHistoryEntity>,
     selectedRange: TimeRange,
-    startLabel: String,
-    endLabel: String,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val mapView = remember {
-        MapView(context).apply { setMultiTouchControls(true) }
+        MapView(context).apply {
+            setMultiTouchControls(true)
+            // Redundant with pinch-zoom, and osmdroid's on-screen +/- buttons
+            // anchor to the raw screen edge rather than respecting window
+            // insets — on 3-button-nav devices they render partly hidden
+            // behind the system navigation bar.
+            setBuiltInZoomControls(false)
+        }
     }
+    val gradientStopsArgb = remember(TrackGradientStops) { TrackGradientStops.map { it.toArgb() } }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, mapView) {
@@ -172,24 +192,26 @@ private fun LifeMapView(
             view.overlays.clear()
             val geoPoints = points.map { GeoPoint(it.latitude, it.longitude) }
 
-            if (geoPoints.size >= 2) {
-                view.overlays.add(Polyline(view).apply { setPoints(geoPoints) })
-            }
-            geoPoints.firstOrNull()?.let { start ->
-                view.overlays.add(
-                    Marker(view).apply {
-                        position = start
-                        title = startLabel
-                    },
-                )
-            }
-            geoPoints.lastOrNull()?.takeIf { geoPoints.size > 1 }?.let { end ->
-                view.overlays.add(
-                    Marker(view).apply {
-                        position = end
-                        title = endLabel
-                    },
-                )
+            // No native multi-color polyline in osmdroid — approximate the
+            // black→orange→red age gradient with one short segment per
+            // consecutive point pair, each colored by that segment's
+            // position between the oldest and newest capturedAt in the
+            // current list (points is already ascending, per
+            // LocationHistoryDao.observeSince's ORDER BY capturedAt).
+            if (points.size >= 2) {
+                val oldestAt = points.first().capturedAt
+                val newestAt = points.last().capturedAt
+                val span = (newestAt - oldestAt).coerceAtLeast(1)
+                for (i in 1 until points.size) {
+                    val fraction = (points[i].capturedAt - oldestAt).toFloat() / span
+                    view.overlays.add(
+                        Polyline(view).apply {
+                            setPoints(listOf(geoPoints[i - 1], geoPoints[i]))
+                            outlinePaint.color = blendGradientStops(gradientStopsArgb, fraction)
+                            outlinePaint.strokeWidth = 1.5f * context.resources.displayMetrics.density
+                        },
+                    )
+                }
             }
             view.invalidate()
         },

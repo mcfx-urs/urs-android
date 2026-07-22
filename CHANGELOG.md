@@ -9,6 +9,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Super users can now tap a filling station in the stations list to edit its name, address, and coordinates.
 
+### Changed
+
+- Life map's track line now gradates from black (oldest point) to red (newest point) instead of a single solid color, and is thinner.
+- Life map no longer shows start/end pin markers.
+
+### Fixed
+
+- The map's on-screen zoom +/- buttons no longer render partly hidden behind the system navigation bar on devices using 3-button navigation.
+
 ## [0.8.0] - 2026-07-22
 
 ### Added

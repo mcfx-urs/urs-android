@@ -115,7 +115,14 @@ private fun StationMapView(
 ) {
     val context = LocalContext.current
     val mapView = remember {
-        MapView(context).apply { setMultiTouchControls(true) }
+        MapView(context).apply {
+            setMultiTouchControls(true)
+            // Redundant with pinch-zoom, and osmdroid's on-screen +/- buttons
+            // anchor to the raw screen edge rather than respecting window
+            // insets — on 3-button-nav devices they render partly hidden
+            // behind the system navigation bar.
+            setBuiltInZoomControls(false)
+        }
     }
 
     val lifecycleOwner = LocalLifecycleOwner.current
