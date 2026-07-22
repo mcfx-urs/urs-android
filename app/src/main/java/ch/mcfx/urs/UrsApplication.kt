@@ -158,7 +158,18 @@ class AppContainer(context: Context) {
     // Deliberately carries neither AuthInterceptor nor the authenticator
     // below — AuthAuthenticator uses this to make its own refresh call, and
     // a failing refresh call must not recurse back into authentication.
-    private val refreshClient = baseHttpClientBuilder().build()
+    // retryOnConnectionFailure(false): OkHttp otherwise silently re-sends a
+    // request on a fresh connection when a pooled one turns out to be dead
+    // (e.g. right after a backend redeploy) — safe for ordinary calls, but
+    // this one carries a single-use refresh token. If the first, invisible
+    // attempt actually reached the server and rotated the token before the
+    // client saw the dead connection, the automatic retry then presents an
+    // already-consumed token, which the backend can't tell apart from theft
+    // and revokes every session. A clean failure here already correctly
+    // forces a re-login, so there's nothing to gain from the silent retry.
+    private val refreshClient = baseHttpClientBuilder()
+        .retryOnConnectionFailure(false)
+        .build()
 
     private val httpClient = baseHttpClientBuilder()
         .addInterceptor(AuthInterceptor(authTokenStore))

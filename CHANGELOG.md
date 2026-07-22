@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - The map-confirm step's "Use this position" button no longer sits partly behind the system navigation bar on devices using 3-button navigation.
 - Life map now reliably centers on the last location point when it first loads or the time range changes, instead of sometimes landing on an unrelated part of the world map.
+- A silently retried token-refresh request could get flagged as reuse and force-log-out every session, most noticeable right after a backend redeploy.
 
 ## [0.7.1] - 2026-07-22
 
