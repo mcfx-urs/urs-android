@@ -119,6 +119,33 @@ data class FillUpdatePayload(
 )
 
 @Serializable
+data class FuelDto(
+    @SerialName("fuel_id") val id: String,
+    @SerialName("fuel_name") val name: String,
+)
+
+// Records a price observed at a known station, independent of a fill-up
+// (e.g. seen while driving past without stopping). Rejected server-side for
+// an unknown or ad-hoc (SOURCE_GPS_AUTO) station — same reusable-station
+// requirement as the auto-record-on-fill-up path.
+@Serializable
+data class FuelPricePayload(
+    val date: String,
+    val price: String,
+    @SerialName("fuel_type_id") val fuelTypeId: String,
+    @SerialName("station_id") val stationId: String,
+)
+
+@Serializable
+data class FuelPriceDto(
+    val id: String,
+    val date: String,
+    val price: String,
+    @SerialName("fuel_type_id") val fuelTypeId: String,
+    @SerialName("station_id") val stationId: String,
+)
+
+@Serializable
 data class CurrencyDto(
     @SerialName("currency_code") val code: String,
     @SerialName("currency_name") val name: String,

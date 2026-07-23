@@ -41,6 +41,7 @@ import ch.mcfx.urs.beer.BeerScreen
 import ch.mcfx.urs.car.CarHubScreen
 import ch.mcfx.urs.fuel.FuelAddScreen
 import ch.mcfx.urs.fuel.FuelHubScreen
+import ch.mcfx.urs.fuel.FuelPriceAddScreen
 import ch.mcfx.urs.fuel.FuelRoutes
 import ch.mcfx.urs.fuel.FuelScreen
 import ch.mcfx.urs.fuel.FuelStationMapScreen
@@ -142,7 +143,11 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route ?: Destination.HOME.route
-    val isTopLevel = Destination.entries.any { it.route == currentRoute }
+    // showInDrawer, not just membership in the enum: FUEL is a Destination
+    // (routing target for HomeScreen's direct tile) but, like OBD, is really
+    // a sub-screen of CAR now — it needs a back arrow to CAR, not a hamburger,
+    // same as any other non-drawer sub-route.
+    val isTopLevel = Destination.entries.any { it.route == currentRoute && it.showInDrawer }
 
     UrsNavigationDrawer(
         drawerState = drawerState,
@@ -276,6 +281,9 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                         )
                     }
                     composable(FuelRoutes.STATS) { FuelStatsScreen() }
+                    composable(FuelRoutes.PRICE) {
+                        FuelPriceAddScreen(onDone = { navController.popBackStack() })
+                    }
                     composable(
                         route = Destination.INVENTORY.route,
                         // First deep-link target in the app (Issue #1) — a
@@ -381,6 +389,7 @@ private val FUEL_ROUTE_LABELS = mapOf(
     FuelRoutes.STATIONS to R.string.fuel_tile_stations,
     FuelRoutes.STATIONS_MAP to R.string.station_map_title,
     FuelRoutes.STATS to R.string.fuel_tile_stats,
+    FuelRoutes.PRICE to R.string.fuel_tile_price,
 )
 
 private val SETTINGS_ROUTE_LABELS = mapOf(
