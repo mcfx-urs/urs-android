@@ -179,6 +179,7 @@
     <string name="fuel_tile_stats">Statistics</string>
     <string name="fuel_tile_sync_now">Sync now</string>
     <string name="fuel_tile_syncing">Syncing…</string>
+    <string name="fuel_tile_price">Record Fuel Price</string>
     <string name="fill_add">New fill-up</string>
     <string name="fill_car">Car</string>
     <string name="fill_station">Filling station</string>
@@ -223,6 +224,8 @@
     <string name="station_map_title">Confirm position</string>
     <string name="station_map_instructions">Drag the pin or tap the map to adjust the position.</string>
     <string name="station_map_confirm">Use this position</string>
+
+    <string name="fuel_price_fuel_type">Fuel type</string>
 
     <string name="stats_all_cars">All cars</string>
     <string name="stats_avg_consumption">Average consumption</string>

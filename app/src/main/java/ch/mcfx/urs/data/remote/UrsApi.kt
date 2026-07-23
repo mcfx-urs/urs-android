@@ -52,6 +52,12 @@ interface UrsApi {
     @DELETE("api/v1/fill/{id}")
     suspend fun deleteFill(@Path("id") id: String)
 
+    @GET("api/v1/get-fuel")
+    suspend fun getFuelTypes(): List<FuelDto>
+
+    @POST("api/v1/fuel-price")
+    suspend fun createFuelPrice(@Body payload: FuelPricePayload): FuelPriceDto
+
     @GET("api/v1/currency")
     suspend fun getCurrencies(): List<CurrencyDto>
 

@@ -308,20 +308,22 @@ class FuelViewModel(
                 FuelViewModel(app.container.fuelRepository, app.container.locationCapture, app.container.locationProvider)
             }
         }
-
-        private fun buildPickerStations(
-            stations: List<FillingStationEntity>,
-            location: Location?,
-        ): List<StationPickerOption> = stations
-            .filter { it.source != FillingStationEntity.SOURCE_GPS_AUTO }
-            .map { station -> StationPickerOption(station, distanceKm(station, location)) }
-            .sortedWith(compareBy<StationPickerOption> { it.distanceKm ?: Double.MAX_VALUE }.thenBy { it.station.name })
-
-        private fun distanceKm(station: FillingStationEntity, location: Location?): Double? {
-            if (location == null) return null
-            val lat = station.latitude.toDoubleOrNull() ?: return null
-            val lon = station.longitude.toDoubleOrNull() ?: return null
-            return LocationUtils.haversineKm(location.latitude, location.longitude, lat, lon)
-        }
     }
+}
+
+// Top-level (not FuelViewModel-private) so FuelPriceViewModel's own station
+// picker can reuse the same exclude-ad-hoc/proximity-sort logic.
+internal fun buildPickerStations(
+    stations: List<FillingStationEntity>,
+    location: Location?,
+): List<StationPickerOption> = stations
+    .filter { it.source != FillingStationEntity.SOURCE_GPS_AUTO }
+    .map { station -> StationPickerOption(station, distanceKm(station, location)) }
+    .sortedWith(compareBy<StationPickerOption> { it.distanceKm ?: Double.MAX_VALUE }.thenBy { it.station.name })
+
+private fun distanceKm(station: FillingStationEntity, location: Location?): Double? {
+    if (location == null) return null
+    val lat = station.latitude.toDoubleOrNull() ?: return null
+    val lon = station.longitude.toDoubleOrNull() ?: return null
+    return LocationUtils.haversineKm(location.latitude, location.longitude, lat, lon)
 }
