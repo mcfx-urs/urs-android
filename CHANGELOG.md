@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - Added a "Watch Relay" setting under General, letting the urs-zepp companion watch app log a beer fill without opening the app.
+- Added a "Record Fuel Price" screen to the Fuel hub, for logging a price at a known station without a fill-up.
+
+### Fixed
+
+- The Fuel hub's top bar now shows a back arrow instead of the drawer menu, matching its sub-screen-of-Car navigation.
 
 ## [0.9.0] - 2026-07-22
 

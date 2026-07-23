@@ -20,6 +20,9 @@ import ch.mcfx.urs.data.remote.CurrencyDto
 import ch.mcfx.urs.data.remote.FillDto
 import ch.mcfx.urs.data.remote.FillingStationDto
 import ch.mcfx.urs.data.remote.FillingStationPayload
+import ch.mcfx.urs.data.remote.FuelDto
+import ch.mcfx.urs.data.remote.FuelPriceDto
+import ch.mcfx.urs.data.remote.FuelPricePayload
 import ch.mcfx.urs.data.remote.GeocodeResultDto
 import ch.mcfx.urs.data.remote.UrsApi
 import ch.mcfx.urs.data.sync.SyncManager
@@ -94,6 +97,15 @@ class FuelRepository(
             ),
         )
     }
+
+    // Direct REST reads/writes, same as getStations/createStation above —
+    // recording a standalone price observation is a rare, non-critical
+    // action with no edit/delete lifecycle, so it doesn't warrant the
+    // outbox/Room-entity machinery createFill uses.
+    suspend fun getFuelTypes(): List<FuelDto> = emptyAsNull { api.getFuelTypes() }
+
+    suspend fun submitFuelPrice(date: String, price: String, fuelTypeId: String, stationId: String): FuelPriceDto =
+        api.createFuelPrice(FuelPricePayload(date = date, price = price, fuelTypeId = fuelTypeId, stationId = stationId))
 
     // Direct, unbuffered REST call — a read-only lookup has no reason to go
     // through the outbox. Exceptions (including a 404 "no match") propagate
