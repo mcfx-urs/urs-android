@@ -9,10 +9,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Added a "Watch Relay" setting under General, letting the urs-zepp companion watch app log a beer fill without opening the app.
 - Added a "Record Fuel Price" screen to the Fuel hub, for logging a price at a known station without a fill-up.
+- Added a "New Fuel Fill" shortcut to Home, for creating a fill-up directly without going through the Fuel hub.
+- The Beer tile on Home now shows the number of days since your last logged beer.
+
+### Changed
+
+- Renamed "Car" to "Vehicle" throughout (Home tile, drawer, screen titles) — vehicle types beyond cars are planned.
+- The "Vehicle" tile now appears on Home directly (previously only reachable from the drawer); the old standalone "Fuel" Home tile is gone, replaced by the new "New Fuel Fill" shortcut and the "Vehicle" tile.
+- Life Map now also appears as a Home tile, not just in the drawer.
+- The drawer no longer lists Gokart or Price Monitor (still reachable as "soon" tiles from Home).
+
+### Removed
+
+- Removed the "Users" and "Health" tiles/drawer entries (no feature behind them).
+- Removed the "🐻 Urs looks out for you" footer line from Home.
 
 ### Fixed
 
 - The Fuel hub's top bar now shows a back arrow instead of the drawer menu, matching its sub-screen-of-Car navigation.
+- Settings is now pinned to the bottom edge of the drawer instead of just trailing the list.
+- Home's tile grid no longer has its last row obscured by the system navigation bar.
 
 ## [0.9.0] - 2026-07-22
 

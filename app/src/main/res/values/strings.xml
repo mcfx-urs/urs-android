@@ -8,16 +8,16 @@
 
     <string name="nav_home">Home</string>
     <string name="home_welcome_back">Welcome back 👋</string>
-    <string name="home_bear_footer">urs looks out for you</string>
+    <string name="home_new_fuel_fill">New Fuel Fill</string>
+    <string name="home_days_since_beer">Last beer: %1$d days ago</string>
     <string name="nav_fuel">Fuel</string>
-    <string name="nav_car">Car</string>
+    <string name="nav_vehicle">Vehicle</string>
     <string name="nav_inventory">Inventory</string>
     <string name="nav_shopping_list">Shopping List</string>
     <string name="nav_beer">Beer</string>
-    <string name="nav_health">Health</string>
     <string name="nav_gokart">Gokart</string>
     <string name="nav_price_monitor">Price Monitor</string>
-    <string name="nav_users">Users</string>
+    <string name="nav_k">K</string>
     <string name="nav_work_time">Work Time</string>
     <string name="nav_life_map">Life Map</string>
     <string name="nav_settings">Settings</string>

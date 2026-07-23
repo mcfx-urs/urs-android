@@ -7,6 +7,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import ch.mcfx.urs.UrsApplication
+import ch.mcfx.urs.beer.BeerStats
+import ch.mcfx.urs.data.BeerRepository
 import ch.mcfx.urs.data.FuelRepository
 import ch.mcfx.urs.fuel.FuelStats
 import ch.mcfx.urs.location.LocationProvider
@@ -20,6 +22,7 @@ private const val QUICK_STAT_WINDOW_MONTHS = 6L
 
 data class HomeUiState(
     val fuelAvgConsumptionL100Km: Float? = null,
+    val daysSinceLastBeer: Long? = null,
 )
 
 // Home only needs lightweight cross-feature quick-stats for its tiles (e.g.
@@ -27,6 +30,7 @@ data class HomeUiState(
 // each feature's own screens, not here.
 class HomeViewModel(
     private val fuelRepository: FuelRepository,
+    private val beerRepository: BeerRepository,
     private val locationProvider: LocationProvider,
 ) : ViewModel() {
 
@@ -37,8 +41,10 @@ class HomeViewModel(
         viewModelScope.launch {
             val fills = runCatching { fuelRepository.getFills() }.getOrDefault(emptyList())
             val since = LocalDate.now().minusMonths(QUICK_STAT_WINDOW_MONTHS)
+            val beerEntries = runCatching { beerRepository.getEntries() }.getOrDefault(emptyList())
             _uiState.value = HomeUiState(
                 fuelAvgConsumptionL100Km = FuelStats.averageConsumptionL100Km(fills, since = since),
+                daysSinceLastBeer = BeerStats.daysSinceLast(beerEntries),
             )
         }
     }
@@ -59,7 +65,7 @@ class HomeViewModel(
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as UrsApplication
-                HomeViewModel(app.container.fuelRepository, app.container.locationProvider)
+                HomeViewModel(app.container.fuelRepository, app.container.beerRepository, app.container.locationProvider)
             }
         }
     }
