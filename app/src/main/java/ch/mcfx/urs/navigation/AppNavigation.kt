@@ -6,9 +6,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
@@ -74,6 +78,7 @@ import ch.mcfx.urs.shoppinglist.ShoppingListsScreen
 import ch.mcfx.urs.ui.components.UrsDrawerValue
 import ch.mcfx.urs.ui.components.UrsIconButton
 import ch.mcfx.urs.ui.components.UrsNavigationDrawer
+import ch.mcfx.urs.ui.components.UrsDrawerState
 import ch.mcfx.urs.ui.components.UrsNavigationDrawerItem
 import ch.mcfx.urs.ui.components.UrsPill
 import ch.mcfx.urs.ui.components.UrsText
@@ -84,6 +89,7 @@ import ch.mcfx.urs.ui.tokens.Spacing
 import ch.mcfx.urs.worktime.WorkTimeAddScreen
 import ch.mcfx.urs.worktime.WorkTimeRoutes
 import ch.mcfx.urs.worktime.WorkTimeScreen
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 @Composable
@@ -168,30 +174,18 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                     color = UrsTheme.colors.accent,
                 )
             }
-            Destination.entries.filter { it.showInDrawer }.forEach { destination ->
-                UrsNavigationDrawerItem(
-                    label = stringResource(destination.labelRes),
-                    icon = destination.icon,
-                    selected = destination.route == currentRoute,
-                    enabled = destination.isAvailable,
-                    trailing = if (destination.isAvailable) {
-                        null
-                    } else {
-                        {
-                            UrsPill(
-                                text = stringResource(R.string.coming_soon).uppercase(),
-                                containerColor = UrsTheme.colors.surface,
-                                contentColor = UrsTheme.colors.onSurfaceMuted,
-                                style = UrsTheme.typography.tag,
-                            )
-                        }
-                    },
-                    onClick = {
-                        navController.navigateToDestination(destination)
-                        coroutineScope.launch { drawerState.close() }
-                    },
-                )
-            }
+            val drawerDestinations = Destination.entries.filter { it.showInDrawer }
+            val (mainDestinations, settingsDestination) = drawerDestinations.partition { it != Destination.SETTINGS }
+
+            mainDestinations.forEach { destination -> DrawerItem(destination, currentRoute, navController, drawerState, coroutineScope) }
+            // Pins Settings to the true bottom edge of the panel (not just
+            // "last in the list", which — with this few items — would still
+            // land partway up the screen) — a Spacer eating the remaining
+            // ColumnScope weight in this fillMaxHeight() Column pushes
+            // anything after it all the way down.
+            Spacer(modifier = Modifier.weight(1f))
+            settingsDestination.forEach { destination -> DrawerItem(destination, currentRoute, navController, drawerState, coroutineScope) }
+            Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
         },
     ) {
         Column(modifier = Modifier.fillMaxSize().background(UrsTheme.colors.background)) {
@@ -242,7 +236,10 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                     startDestination = Destination.HOME.route,
                 ) {
                     composable(Destination.HOME.route) {
-                        HomeScreen(onNavigate = { navController.navigateToDestination(it) })
+                        HomeScreen(
+                            onNavigate = { navController.navigateToDestination(it) },
+                            onNavigateRoute = { route -> navController.navigate(route) },
+                        )
                     }
                     composable(Destination.CAR.route) {
                         CarHubScreen(onNavigate = { route -> navController.navigate(route) })
@@ -381,6 +378,38 @@ private fun NavHostController.navigateToDestination(destination: Destination) {
         launchSingleTop = true
         restoreState = true
     }
+}
+
+@Composable
+private fun DrawerItem(
+    destination: Destination,
+    currentRoute: String,
+    navController: NavHostController,
+    drawerState: UrsDrawerState,
+    coroutineScope: CoroutineScope,
+) {
+    UrsNavigationDrawerItem(
+        label = stringResource(destination.labelRes),
+        icon = destination.icon,
+        selected = destination.route == currentRoute,
+        enabled = destination.isAvailable,
+        trailing = if (destination.isAvailable) {
+            null
+        } else {
+            {
+                UrsPill(
+                    text = stringResource(R.string.coming_soon).uppercase(),
+                    containerColor = UrsTheme.colors.surface,
+                    contentColor = UrsTheme.colors.onSurfaceMuted,
+                    style = UrsTheme.typography.tag,
+                )
+            }
+        },
+        onClick = {
+            navController.navigateToDestination(destination)
+            coroutineScope.launch { drawerState.close() }
+        },
+    )
 }
 
 private val FUEL_ROUTE_LABELS = mapOf(
