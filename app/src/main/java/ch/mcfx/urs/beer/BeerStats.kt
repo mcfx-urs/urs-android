@@ -5,6 +5,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 
 object BeerStats {
 
@@ -38,6 +39,13 @@ object BeerStats {
             Bucket(label = month.month.name.take(3).lowercase().replaceFirstChar { it.uppercase() }, count = countsByMonth[month] ?: 0)
         }
     }
+
+    // Null if there's no logged entry at all — HomeScreen's subtitle simply
+    // omits itself in that case, same convention as fuelAvgConsumptionL100Km.
+    fun daysSinceLast(entries: List<BeerLogDto>, today: LocalDate = LocalDate.now()): Long? =
+        entries.mapNotNull { parseDateTime(it.date)?.toLocalDate() }
+            .maxOrNull()
+            ?.let { ChronoUnit.DAYS.between(it, today) }
 
     fun totalLitersThisYear(entries: List<BeerLogDto>, year: Int = LocalDate.now().year): Double =
         entries

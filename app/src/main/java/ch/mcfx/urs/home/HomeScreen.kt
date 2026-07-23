@@ -2,17 +2,17 @@ package ch.mcfx.urs.home
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -25,7 +25,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
@@ -33,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
+import ch.mcfx.urs.fuel.FuelRoutes
 import ch.mcfx.urs.location.LOCATION_PERMISSIONS
 import ch.mcfx.urs.location.hasLocationPermission
 import ch.mcfx.urs.navigation.Destination
@@ -44,18 +44,21 @@ import ch.mcfx.urs.ui.tokens.Spacing
 
 // WORK_TIME leads the list on purpose: it's the day-to-day recurring entry
 // (unlike an occasional fuel fill-up), so it takes over the featured,
-// two-column top slot that FUEL used to occupy — see FeaturedCard below,
-// which always renders whichever destination is first here.
+// two-column top slot — see FeaturedCard below, which always renders
+// whichever destination is first here. The "New Fuel Fill" shortcut right
+// below it is a separate, non-Destination full-width row (see
+// NewFuelFillCard) since it navigates straight to FuelRoutes.ADD rather
+// than a Destination's own route — it isn't part of this list.
 private val FEATURE_TILES = listOf(
     Destination.WORK_TIME,
     Destination.SHOPPING_LIST,
-    Destination.FUEL,
+    Destination.CAR,
     Destination.INVENTORY,
     Destination.BEER,
-    Destination.HEALTH,
-    Destination.GOKART,
+    Destination.LIFE_MAP,
     Destination.PRICE_MONITOR,
-    Destination.USERS,
+    Destination.K,
+    Destination.GOKART,
 )
 
 // The mockup uses raw emoji as tile icons (colorful, not tinted vectors) —
@@ -82,18 +85,19 @@ private val TileHeight = 116.dp
 private val TILE_EMOJI = mapOf(
     Destination.WORK_TIME to "🕒",
     Destination.SHOPPING_LIST to "🛒",
-    Destination.FUEL to "⛽",
+    Destination.CAR to "🚗",
     Destination.INVENTORY to "📦",
     Destination.BEER to "🍺",
-    Destination.HEALTH to "🩺",
+    Destination.LIFE_MAP to "🗺️",
     Destination.GOKART to "🏁",
     Destination.PRICE_MONITOR to "📷",
-    Destination.USERS to "👥",
+    Destination.K to "❓",
 )
 
 @Composable
 fun HomeScreen(
     onNavigate: (Destination) -> Unit,
+    onNavigateRoute: (route: String) -> Unit,
     viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -118,7 +122,17 @@ fun HomeScreen(
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
-        contentPadding = PaddingValues(Spacing.l),
+        // Edge-to-edge (MainActivity's enableEdgeToEdge()) means the grid
+        // draws behind the system nav bar unless told otherwise — the last
+        // tile row would otherwise sit partly underneath/obscured by it,
+        // same class of bug UrsFab/FuelStationMapScreen already work around
+        // for their own floating controls.
+        contentPadding = PaddingValues(
+            start = Spacing.l,
+            end = Spacing.l,
+            top = Spacing.l,
+            bottom = Spacing.l + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
+        ),
         horizontalArrangement = Arrangement.spacedBy(Spacing.m),
         verticalArrangement = Arrangement.spacedBy(Spacing.m),
         modifier = Modifier.fillMaxSize(),
@@ -131,6 +145,14 @@ fun HomeScreen(
                 onClick = { onNavigate(featured) },
             )
         }
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            NewFuelFillCard(
+                subtitle = uiState.fuelAvgConsumptionL100Km?.let {
+                    stringResource(R.string.fuel_avg_consumption_6mo, it)
+                },
+                onClick = { onNavigateRoute(FuelRoutes.ADD) },
+            )
+        }
         items(tiles) { destination ->
             FeatureTile(
                 destination = destination,
@@ -138,7 +160,6 @@ fun HomeScreen(
                 onClick = { onNavigate(destination) },
             )
         }
-        item(span = { GridItemSpan(maxLineSpan) }) { BearFooter() }
     }
 }
 
@@ -155,32 +176,45 @@ private fun WelcomeLede() {
     )
 }
 
+// Full-width shortcut straight to FuelRoutes.ADD, skipping the Fuel hub —
+// not Destination-backed (unlike FeaturedCard/FeatureTile) since it
+// navigates to a plain sub-route, not a top-level Destination.
 @Composable
-private fun BearFooter() {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Spacing.s),
-        modifier = Modifier.padding(top = Spacing.s),
+private fun NewFuelFillCard(subtitle: String?, onClick: () -> Unit) {
+    val colors = UrsTheme.colors
+
+    UrsCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
     ) {
-        Image(
-            painter = painterResource(R.drawable.urs_bear_logo),
-            contentDescription = null,
-            modifier = Modifier.size(34.dp),
-        )
-        UrsText(
-            text = stringResource(R.string.home_bear_footer),
-            style = UrsTheme.typography.caption,
-            color = UrsTheme.colors.onSurfaceMuted,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                UrsText(
+                    text = stringResource(R.string.home_new_fuel_fill),
+                    style = UrsTheme.typography.cardTitle,
+                    color = colors.accent,
+                )
+                if (subtitle != null) {
+                    UrsText(text = subtitle, style = UrsTheme.typography.statAccent, color = colors.accent)
+                }
+            }
+            UrsText(text = "⛽", style = FeaturedIconStyle)
+        }
     }
 }
 
-// Only Fuel has a quick-stat today; other tiles simply show none until they
-// have data worth surfacing here too.
+// Fuel's average-consumption stat now lives on the New Fuel Fill shortcut
+// (see NewFuelFillCard), not a Destination tile — other tiles simply show
+// none until they have data worth surfacing here too.
 @Composable
 private fun quickStat(destination: Destination, state: HomeUiState): String? = when (destination) {
-    Destination.FUEL -> state.fuelAvgConsumptionL100Km?.let {
-        stringResource(R.string.fuel_avg_consumption_6mo, it)
+    Destination.BEER -> state.daysSinceLastBeer?.let {
+        stringResource(R.string.home_days_since_beer, it)
     }
     else -> null
 }
