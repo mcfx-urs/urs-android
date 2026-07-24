@@ -1,4 +1,4 @@
-package ch.mcfx.urs.car
+package ch.mcfx.urs.vehicle
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -25,13 +25,13 @@ import ch.mcfx.urs.ui.tokens.Spacing
 // Same emoji-icon size as FuelHubScreen/SettingsScreen's tile grids.
 private val TileIconStyle = TextStyle(fontSize = 32.sp)
 
-private enum class CarTile(val route: String, val labelRes: Int, val emoji: String) {
-    FUEL(FuelRoutes.HUB, R.string.car_tile_fuel, "⛽"),
-    OBD(ObdRoutes.LIVE, R.string.car_tile_obd, "📟"),
+private enum class VehicleTile(val route: String, val labelRes: Int, val emoji: String) {
+    FUEL(FuelRoutes.HUB, R.string.vehicle_tile_fuel, "⛽"),
+    OBD(ObdRoutes.LIVE, R.string.vehicle_tile_obd, "📟"),
 }
 
 @Composable
-fun CarHubScreen(onNavigate: (route: String) -> Unit) {
+fun VehicleHubScreen(onNavigate: (route: String) -> Unit) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
         contentPadding = PaddingValues(Spacing.l),
@@ -39,7 +39,7 @@ fun CarHubScreen(onNavigate: (route: String) -> Unit) {
         verticalArrangement = Arrangement.spacedBy(Spacing.m),
         modifier = Modifier.fillMaxSize(),
     ) {
-        items(CarTile.entries) { tile ->
+        items(VehicleTile.entries) { tile ->
             HubTile(
                 emoji = tile.emoji,
                 label = stringResource(tile.labelRes),

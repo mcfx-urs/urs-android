@@ -26,7 +26,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
 import ch.mcfx.urs.data.local.CurrencyEntity
-import ch.mcfx.urs.data.local.CarEntity
+import ch.mcfx.urs.data.local.VehicleEntity
 import ch.mcfx.urs.location.LOCATION_PERMISSIONS
 import ch.mcfx.urs.location.hasLocationPermission
 import ch.mcfx.urs.ui.components.UrsButton
@@ -80,7 +80,7 @@ fun FuelAddScreen(
             is FuelUiState.Data -> if (showForm) {
                 FillForm(
                     form = formState,
-                    cars = state.cars,
+                    vehicles = state.vehicles,
                     pickerStations = state.pickerStations,
                     currencies = state.currencies,
                     viewModel = viewModel,
@@ -97,7 +97,7 @@ fun FuelAddScreen(
 @Composable
 private fun FillForm(
     form: FillFormState,
-    cars: List<CarEntity>,
+    vehicles: List<VehicleEntity>,
     pickerStations: List<StationPickerOption>,
     currencies: List<CurrencyEntity>,
     viewModel: FuelViewModel,
@@ -116,11 +116,11 @@ private fun FillForm(
         verticalArrangement = Arrangement.spacedBy(Spacing.m),
     ) {
         UrsDropdownField(
-            label = stringResource(R.string.fill_car),
-            options = cars,
-            selectedLabel = form.car?.let { "${it.brand} ${it.model}" },
+            label = stringResource(R.string.fill_vehicle),
+            options = vehicles,
+            selectedLabel = form.vehicle?.let { "${it.brand} ${it.model}" },
             optionLabel = { "${it.brand} ${it.model}" },
-            onSelect = viewModel::selectCar,
+            onSelect = viewModel::selectVehicle,
             modifier = Modifier.fillMaxWidth(),
         )
 

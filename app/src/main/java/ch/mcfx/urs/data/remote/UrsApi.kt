@@ -20,8 +20,8 @@ interface UrsApi {
     @PUT("api/v1/change-password")
     suspend fun changePassword(@Body payload: ChangePasswordPayload): TokenResponseDto
 
-    @GET("api/v1/car")
-    suspend fun getCars(): List<CarDto>
+    @GET("api/v1/vehicle")
+    suspend fun getVehicles(): List<VehicleDto>
 
     @GET("api/v1/get-filling-station")
     suspend fun getFillingStations(): List<FillingStationDto>
@@ -40,8 +40,8 @@ interface UrsApi {
     @GET("api/v1/fill")
     suspend fun getFills(): List<FillDto>
 
-    @GET("api/v1/odometer/{carId}")
-    suspend fun getOdometer(@Path("carId") carId: String): List<OdometerEntryDto>
+    @GET("api/v1/odometer/{vehicleId}")
+    suspend fun getOdometer(@Path("vehicleId") vehicleId: String): List<OdometerEntryDto>
 
     @POST("api/v1/fill")
     suspend fun createFill(@Body payload: FillPayload): FillDto

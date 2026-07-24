@@ -22,7 +22,7 @@ data class FillEntity(
     // Null while an ad-hoc station's real ID is still unknown — resolved to
     // the backend's assigned filling_station_id once this fill syncs.
     val stationId: String? = null,
-    val carId: String,
+    val vehicleId: String,
     val fuelId: String,
     val date: String,
     val pricePerLiter: String,

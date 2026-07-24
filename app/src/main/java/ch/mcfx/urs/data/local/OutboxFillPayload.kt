@@ -16,7 +16,7 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class OutboxFillPayload(
-    val carId: String,
+    val vehicleId: String,
     val fuelId: String,
     val date: String,
     val odometer: String,
@@ -43,7 +43,7 @@ data class OutboxFillPayload(
 @Serializable
 data class OutboxFillUpdatePayload(
     val serverId: String,
-    val carId: String,
+    val vehicleId: String,
     val fuelId: String,
     val date: String,
     val stationId: String,

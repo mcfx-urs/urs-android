@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - Renamed "Car" to "Vehicle" throughout (Home tile, drawer, screen titles) — vehicle types beyond cars are planned.
+- Completed the Car-to-Vehicle rename internally (local storage, sync payloads, backend API calls) to match the UI wording above.
 - The "Vehicle" tile now appears on Home directly (previously only reachable from the drawer); the old standalone "Fuel" Home tile is gone, replaced by the new "New Fuel Fill" shortcut and the "Vehicle" tile.
 - Life Map now also appears as a Home tile, not just in the drawer.
 - The drawer no longer lists Gokart or Price Monitor (still reachable as "soon" tiles from Home).

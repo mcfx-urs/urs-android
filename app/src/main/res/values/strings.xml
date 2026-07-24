@@ -140,8 +140,8 @@
     <string name="vpn_exclusive_mode_title">Restrict tunnel to this app</string>
     <string name="vpn_exclusive_mode_description">When on, only urs\'s traffic goes through the VPN — every other app on the device stays off it.</string>
 
-    <string name="car_tile_fuel">Fuel</string>
-    <string name="car_tile_obd">OBD</string>
+    <string name="vehicle_tile_fuel">Fuel</string>
+    <string name="vehicle_tile_obd">OBD</string>
 
     <string name="obd_live_title">OBD</string>
     <string name="obd_setup_title">OBD Setup</string>
@@ -181,7 +181,7 @@
     <string name="fuel_tile_syncing">Syncing…</string>
     <string name="fuel_tile_price">Record Fuel Price</string>
     <string name="fill_add">New fill-up</string>
-    <string name="fill_car">Car</string>
+    <string name="fill_vehicle">Vehicle</string>
     <string name="fill_station">Filling station</string>
     <string name="fill_no_station">No station / on the go</string>
     <string name="fill_currency">Currency</string>
@@ -227,7 +227,7 @@
 
     <string name="fuel_price_fuel_type">Fuel type</string>
 
-    <string name="stats_all_cars">All cars</string>
+    <string name="stats_all_vehicles">All vehicles</string>
     <string name="stats_avg_consumption">Average consumption</string>
     <string name="stats_avg_price">Average price / L</string>
     <string name="stats_total_cost">Total cost</string>

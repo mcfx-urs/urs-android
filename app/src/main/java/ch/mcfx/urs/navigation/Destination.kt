@@ -15,7 +15,7 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.ui.graphics.vector.ImageVector
 import ch.mcfx.urs.R
-import ch.mcfx.urs.car.CarRoutes
+import ch.mcfx.urs.vehicle.VehicleHubRoutes
 import ch.mcfx.urs.fuel.FuelRoutes
 import ch.mcfx.urs.inventory.InventoryRoutes
 import ch.mcfx.urs.settings.SettingsRoutes
@@ -32,9 +32,9 @@ enum class Destination(
     val icon: ImageVector,
     val isAvailable: Boolean,
     // FUEL stays registered (route/icon/label) for the fuel/hub NavHost
-    // route (reached via CAR's own Fuel tile), but is hidden from the
-    // drawer — CAR (Fuel + OBD) is the drawer-level entry point for
-    // car/vehicle-related screens. GOKART/PRICE_MONITOR/K are also
+    // route (reached via VEHICLE's own Fuel tile), but is hidden from the
+    // drawer — VEHICLE (Fuel + OBD) is the drawer-level entry point for
+    // vehicle-related screens. GOKART/PRICE_MONITOR/K are also
     // drawer-hidden (): still shown as "soon" placeholders on Home,
     // but the drawer only lists destinations with a real screen behind them.
     val showInDrawer: Boolean = true,
@@ -44,7 +44,7 @@ enum class Destination(
     // kept matching 's specified drawer order: Home, Vehicle,
     // Shopping, Inventory, Work Time, Life Map, Beer, Settings.
     HOME("home", R.string.nav_home, Icons.Filled.Home, isAvailable = true),
-    CAR(CarRoutes.HUB, R.string.nav_vehicle, Icons.Filled.DirectionsCar, isAvailable = true),
+    VEHICLE(VehicleHubRoutes.HUB, R.string.nav_vehicle, Icons.Filled.DirectionsCar, isAvailable = true),
     FUEL(FuelRoutes.HUB, R.string.nav_fuel, Icons.Filled.LocalGasStation, isAvailable = true, showInDrawer = false),
     SHOPPING_LIST(ShoppingListRoutes.LISTS, R.string.nav_shopping_list, Icons.Filled.ShoppingCart, isAvailable = true),
     INVENTORY(InventoryRoutes.INVENTORIES, R.string.nav_inventory, Icons.Filled.Inventory2, isAvailable = true),
