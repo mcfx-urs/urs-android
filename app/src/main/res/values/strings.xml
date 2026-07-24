@@ -311,6 +311,7 @@
     <string name="stats_monthly_title">By month</string>
     <string name="stats_chart_consumption">Consumption trend (L/100km)</string>
     <string name="stats_chart_km">Kilometers driven per month</string>
+    <string name="stats_chart_price">Fuel price development</string>
     <string name="stats_l100km">%1$.1f L/100km</string>
     <string name="stats_empty">Not enough data yet.</string>
 

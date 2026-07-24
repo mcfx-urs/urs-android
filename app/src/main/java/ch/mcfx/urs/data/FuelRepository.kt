@@ -107,6 +107,10 @@ class FuelRepository(
     suspend fun submitFuelPrice(date: String, price: String, fuelTypeId: String, stationId: String): FuelPriceDto =
         api.createFuelPrice(FuelPricePayload(date = date, price = price, fuelTypeId = fuelTypeId, stationId = stationId))
 
+    // Same "direct read, no outbox" reasoning as getFuelTypes — price
+    // history is a read-only feed with no offline-write concern.
+    suspend fun getFuelPrices(fuelId: String): List<FuelPriceDto> = emptyAsNull { api.getFuelPrices(fuelId) }
+
     // Direct, unbuffered REST call — a read-only lookup has no reason to go
     // through the outbox. Exceptions (including a 404 "no match") propagate
     // to the caller, same as every other function in this file.

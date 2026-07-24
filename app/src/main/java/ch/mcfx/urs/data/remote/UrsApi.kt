@@ -83,6 +83,9 @@ interface UrsApi {
     @POST("api/v1/fuel-price")
     suspend fun createFuelPrice(@Body payload: FuelPricePayload): FuelPriceDto
 
+    @GET("api/v1/fuel-price/{fuelId}")
+    suspend fun getFuelPrices(@Path("fuelId") fuelId: String): List<FuelPriceDto>
+
     @GET("api/v1/currency")
     suspend fun getCurrencies(): List<CurrencyDto>
 

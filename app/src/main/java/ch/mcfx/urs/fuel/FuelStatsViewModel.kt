@@ -38,6 +38,10 @@ data class FuelStatsUiState(
     val totalKm: Float = 0f,
     val fillCount: Int = 0,
     val monthly: List<MonthlyFuelStat> = emptyList(),
+    // One entry per fuel type (name to its own price history, oldest
+    // first) — best-effort, loaded separately from the main fills/vehicles
+    // load so a price-history hiccup never blocks the rest of the screen.
+    val priceHistory: List<Pair<String, List<Float>>> = emptyList(),
 )
 
 // Statistics are computed entirely client-side from the raw fills list, same
@@ -67,6 +71,26 @@ class FuelStatsViewModel(private val repository: FuelRepository) : ViewModel() {
             } catch (_: Exception) {
                 _uiState.update { it.copy(loading = false, error = true) }
             }
+        }
+        viewModelScope.launch { loadPriceHistory() }
+    }
+
+    private suspend fun loadPriceHistory() {
+        try {
+            val fuelTypes = repository.getFuelTypes()
+            val history = coroutineScope {
+                fuelTypes.map { fuel -> fuel to async { repository.getFuelPrices(fuel.id) } }
+                    .map { (fuel, deferred) ->
+                        fuel.name to deferred.await()
+                            .sortedBy { FuelStats.parseDate(it.date) ?: LocalDate.MIN }
+                            .mapNotNull { it.price.toFloatOrNull() }
+                    }
+            }
+            _uiState.update { it.copy(priceHistory = history) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // Best-effort only — the rest of the screen doesn't depend on this.
         }
     }
 
