@@ -34,8 +34,20 @@
 
     <string name="about_org">mcfx</string>
     <string name="about_version_build_type">%1$s %2$s</string>
-    <string name="about_build_time">Buildtime %1$s</string>
-    <string name="about_joke">“%1$s”</string>
+    <string name="about_build_time">%1$s</string>
+    <string name="about_joke">%1$s</string>
+    <string name="about_state_title">State</string>
+    <string name="about_state_sync">Sync</string>
+    <string name="about_state_backend">Backend</string>
+    <string name="about_state_vpn">VPN</string>
+    <string name="about_sync_never">Never synced yet</string>
+    <string name="about_sync_last_synced">Last synced %1$s</string>
+    <string name="about_sync_pending_count">%1$d pending</string>
+    <string name="about_sync_failed_count">%1$d failed</string>
+    <string name="about_backend_checking">Checking…</string>
+    <string name="about_backend_reachable">Reachable</string>
+    <string name="about_backend_unreachable">Unreachable</string>
+    <string name="about_backend_recheck">Recheck backend connection</string>
 
     <string name="account_logged_in_as">Logged in as %1$s</string>
     <string name="account_log_out">Log out</string>

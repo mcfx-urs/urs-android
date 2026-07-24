@@ -14,9 +14,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Added a "New Fuel Fill" shortcut to Home, for creating a fill-up directly without going through the Fuel hub.
 - The Beer tile on Home now shows the number of days since your last logged beer.
 - Date fields (fill-up, fuel price, service entry, vehicle registration/MFK dates, work-time entry) now use a calendar date picker instead of a free-text field, with a built-in toggle to type the date instead.
+- The About screen now shows a "State" section (sync status with last-synced time, backend reachability with a manual recheck, VPN connection state), so connectivity problems are visible instead of silent.
+- Added a direct About shortcut next to Settings at the bottom of the navigation drawer.
 
 ### Changed
 
+- The About screen's build timestamp is now formatted as `dd.MM.yyyy HH:mm:ss` instead of a raw `yyyyMMdd-HHmmss` string, and the daily joke no longer has quotation marks around it.
 - Renamed "Car" to "Vehicle" throughout (Home tile, drawer, screen titles) — vehicle types beyond cars are planned.
 - Completed the Car-to-Vehicle rename internally (local storage, sync payloads, backend API calls) to match the UI wording above.
 - The "Vehicle" tile now appears on Home directly (previously only reachable from the drawer); the old standalone "Fuel" Home tile is gone, replaced by the new "New Fuel Fill" shortcut and the "Vehicle" tile.

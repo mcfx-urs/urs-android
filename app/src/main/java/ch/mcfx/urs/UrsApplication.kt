@@ -25,6 +25,7 @@ import ch.mcfx.urs.data.local.AppDatabase
 import ch.mcfx.urs.data.remote.UrsApi
 import ch.mcfx.urs.data.sync.ReachabilityChecker
 import ch.mcfx.urs.data.sync.SyncManager
+import ch.mcfx.urs.data.sync.SyncStatusStore
 import ch.mcfx.urs.data.sync.SyncWorker
 import ch.mcfx.urs.location.LocationCapture
 import ch.mcfx.urs.location.LocationCaptureScheduler
@@ -198,6 +199,7 @@ class AppContainer(context: Context) {
     val authRepository = AuthRepository(ursApi, authTokenStore)
 
     val reachabilityChecker = ReachabilityChecker()
+    val syncStatusStore = SyncStatusStore(context)
     val syncManager = SyncManager(
         api = ursApi,
         fillDao = database.fillDao(),
@@ -211,6 +213,7 @@ class AppContainer(context: Context) {
         vehicleServiceDao = database.vehicleServiceDao(),
         outboxDao = database.outboxDao(),
         reachabilityChecker = reachabilityChecker,
+        syncStatusStore = syncStatusStore,
         json = json,
     )
     val locationCapture = LocationCapture(context)
