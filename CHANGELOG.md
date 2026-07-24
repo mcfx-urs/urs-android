@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Added a "Record Fuel Price" screen to the Fuel hub, for logging a price at a known station without a fill-up.
 - Added a "New Fuel Fill" shortcut to Home, for creating a fill-up directly without going through the Fuel hub.
 - The Beer tile on Home now shows the number of days since your last logged beer.
+- Date fields (fill-up, fuel price, service entry, vehicle registration/MFK dates, work-time entry) now use a calendar date picker instead of a free-text field, with a built-in toggle to type the date instead.
 
 ### Changed
 
@@ -32,6 +33,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The Fuel hub's top bar now shows a back arrow instead of the drawer menu, matching its sub-screen-of-Car navigation.
 - Settings is now pinned to the bottom edge of the drawer instead of just trailing the list.
 - Home's tile grid no longer has its last row obscured by the system navigation bar.
+- The Save/Log out button on several forms (fill-up, fuel price, service entry, vehicle, work-time entry, account settings) is no longer obscured by or unreachable behind the system navigation bar.
 
 ## [0.9.0] - 2026-07-22
 
