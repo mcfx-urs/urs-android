@@ -190,7 +190,7 @@ interface UrsApi {
     suspend fun deleteListItem(@Path("id") id: String)
 
     @GET("api/v1/recently-used-product")
-    suspend fun getRecentlyUsedProducts(): List<RecentlyUsedProductDto>
+    suspend fun getRecentlyUsedProducts(@Query("list_id") listId: String): List<RecentlyUsedProductDto>
 
     @GET("api/v1/getuser")
     suspend fun getUsers(): List<UserDto>

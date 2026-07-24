@@ -22,8 +22,11 @@ import androidx.compose.material.icons.filled.Remove
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -100,6 +103,16 @@ private fun BrowseMode(viewModel: AddProductViewModel, modifier: Modifier = Modi
     val quantityOnHand by viewModel.quantityOnHand.collectAsStateWithLifecycle()
     val quickCreating by viewModel.quickCreating.collectAsStateWithLifecycle()
 
+    val searchFocusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    // Tapping "+" to open this picker should land the user straight in the
+    // search field with the keyboard already up — one less tap before
+    // typing, since searching is the single most common thing done here.
+    LaunchedEffect(Unit) {
+        searchFocusRequester.requestFocus()
+        keyboardController?.show()
+    }
+
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(Spacing.m),
@@ -108,6 +121,7 @@ private fun BrowseMode(viewModel: AddProductViewModel, modifier: Modifier = Modi
             value = query,
             onValueChange = viewModel::setQuery,
             label = stringResource(R.string.shoppinglist_add_product_search),
+            focusRequester = searchFocusRequester,
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )

@@ -68,7 +68,7 @@ class ListDetailViewModel(
             combine(
                 repository.observeLists(),
                 repository.observeItems(listId),
-                repository.observeRecentlyUsed(),
+                repository.observeRecentlyUsed(listId),
             ) { lists, items, recentlyUsed ->
                 val listName = lists.find { it.publicId == listId }?.name.orEmpty()
                 val groups = items
@@ -85,7 +85,7 @@ class ListDetailViewModel(
             }.collect { _uiState.value = it }
         }
         viewModelScope.launch { repository.refreshFromBackend() }
-        viewModelScope.launch { repository.refreshRecentlyUsed() }
+        viewModelScope.launch { repository.refreshRecentlyUsed(listId) }
     }
 
     /** Tap a tile = remove it from the list — no separate check action any more. */

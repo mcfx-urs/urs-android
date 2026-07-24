@@ -5,6 +5,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Tapping "+" to add a product now auto-focuses the search field and opens the keyboard.
+
+### Changed
+
+- Category headers in a list's tile grid are a bit larger, with more space after a category's last tile.
+- "Recently used" products are now scoped per list instead of shown the same across every list.
+- Picking a product from "recently used" now removes it from that list until it's used (added and later removed) again.
+
+### Fixed
+
+- "Recently used" now also updates when a product is removed from a list (tapping a tile to "buy" it), not just when it's added — previously the same products stayed at the top indefinitely.
+
 ## [0.10.0] - 2026-07-24
 
 ### Added

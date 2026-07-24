@@ -111,14 +111,14 @@ class AddProductViewModel(
         when {
             query.isNotBlank() -> catalogRepository.search(query)
             tab == AddProductTab.POPULAR -> catalogRepository.observeMostPopular()
-            tab == AddProductTab.RECENT -> shoppingListRepository.observeRecentlyUsed()
+            tab == AddProductTab.RECENT -> shoppingListRepository.observeRecentlyUsed(listId)
             tab == AddProductTab.CATEGORIES && category != null -> catalogRepository.observeByCategory(category.id)
             else -> flowOf(emptyList())
         }
 
     fun load() {
         viewModelScope.launch { catalogRepository.refreshFromBackend() }
-        viewModelScope.launch { shoppingListRepository.refreshRecentlyUsed() }
+        viewModelScope.launch { shoppingListRepository.refreshRecentlyUsed(listId) }
     }
 
     fun setQuery(value: String) {
