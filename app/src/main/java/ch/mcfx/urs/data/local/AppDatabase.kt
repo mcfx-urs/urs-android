@@ -46,7 +46,10 @@ import androidx.room.TypeConverters
     //      Fahrzeugausweis fields, MFK date) on VehicleEntity, plus the new
     //      VehicleServiceEntity/VehicleServiceTagEntity tables — same
     //      destructive-fallback handling as every bump above.
-    version = 16,
+    // v17: RecentlyUsedProductEntity re-keyed to (catalogProductId, listId)
+    //      — "recently used" is now scoped per list instead of global per
+    //      user — same destructive-fallback handling as every bump above.
+    version = 17,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)

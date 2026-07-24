@@ -123,9 +123,9 @@ private fun ItemGrid(
             fullWidthItem(key = "header-${group.categoryName}") {
                 UrsText(
                     group.categoryName,
-                    style = UrsTheme.typography.caption,
+                    style = UrsTheme.typography.body,
                     color = UrsTheme.colors.accent,
-                    modifier = Modifier.padding(top = Spacing.s, bottom = Spacing.xs),
+                    modifier = Modifier.padding(top = Spacing.l, bottom = Spacing.xs),
                 )
             }
             items(group.items, key = { it.item.id }) { detail ->

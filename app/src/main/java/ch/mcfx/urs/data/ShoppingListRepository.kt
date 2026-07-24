@@ -102,10 +102,20 @@ class ShoppingListRepository(
         }
 
     /** Same catalog-joined shape as [observeItems], for the "recently used" tail section / AddProductScreen's "Zuletzt" tab. */
-    fun observeRecentlyUsed(): Flow<List<CatalogProductEntity>> =
-        combine(recentlyUsedProductDao.observeAll(), catalogProductDao.observeAll()) { recents, products ->
+    // Excludes products already on this list — once a recently-used product
+    // gets added (back) onto the list, it should disappear from this feed
+    // rather than staying listed as if it still needed picking again; this
+    // combine reacts to observeItems' own list membership Flow, so it
+    // updates immediately, no manual "hide it" bookkeeping needed.
+    fun observeRecentlyUsed(listId: String): Flow<List<CatalogProductEntity>> =
+        combine(
+            recentlyUsedProductDao.observeForList(listId),
+            catalogProductDao.observeAll(),
+            listItemDao.observeByList(listId),
+        ) { recents, products, currentItems ->
             val productsById = products.associateBy { it.id }
-            recents.mapNotNull { productsById[it.catalogProductId] }
+            val currentProductIds = currentItems.map { it.catalogProductId }.toSet()
+            recents.mapNotNull { productsById[it.catalogProductId] }.filterNot { it.id in currentProductIds }
         }
 
     /**
@@ -330,16 +340,23 @@ class ShoppingListRepository(
     }
 
     /**
-     * Opportunistic backend refresh for the "recently used" cache — full
-     * replace on every call (see [RecentlyUsedProductEntity]'s doc comment),
-     * same best-effort shape as [refreshFromBackend].
+     * Opportunistic backend refresh for the "recently used" cache, scoped to
+     * one list — full replace of that list's own rows on every call (see
+     * [RecentlyUsedProductEntity]'s doc comment), same best-effort shape as
+     * [refreshFromBackend].
      */
-    suspend fun refreshRecentlyUsed() {
+    suspend fun refreshRecentlyUsed(listId: String) {
         refreshQuietly {
-            val products = emptyAsNull { api.getRecentlyUsedProducts() }
-            recentlyUsedProductDao.replaceAll(
+            val products = emptyAsNull { api.getRecentlyUsedProducts(listId) }
+            recentlyUsedProductDao.replaceForList(
+                listId,
                 products.mapIndexed { index, dto ->
-                    RecentlyUsedProductEntity(catalogProductId = dto.catalogProductId, lastUsedAt = dto.lastUsedAt, rank = index)
+                    RecentlyUsedProductEntity(
+                        catalogProductId = dto.catalogProductId,
+                        listId = listId,
+                        lastUsedAt = dto.lastUsedAt,
+                        rank = index,
+                    )
                 },
             )
         }
