@@ -23,6 +23,31 @@ interface UrsApi {
     @GET("api/v1/vehicle")
     suspend fun getVehicles(): List<VehicleDto>
 
+    // The backend's response body just echoes the request DTO back (no
+    // assigned vehicle_id — see postVehicle in urs-backend), so this isn't
+    // decoded as a VehicleDto; the repository re-fetches the full list via
+    // getVehicles() afterwards to learn the new vehicle's id.
+    @POST("api/v1/vehicle")
+    suspend fun createVehicle(@Body payload: VehiclePayload)
+
+    @PUT("api/v1/vehicle/{id}")
+    suspend fun updateVehicle(@Path("id") id: String, @Body payload: VehiclePayload)
+
+    @DELETE("api/v1/vehicle/{id}")
+    suspend fun deleteVehicle(@Path("id") id: String)
+
+    @POST("api/v1/vehicle-service")
+    suspend fun createVehicleService(@Body payload: VehicleServicePayload): VehicleServiceDto
+
+    @GET("api/v1/vehicle-service")
+    suspend fun getVehicleServices(): List<VehicleServiceDto>
+
+    @PUT("api/v1/vehicle-service/{id}")
+    suspend fun updateVehicleService(@Path("id") id: String, @Body payload: VehicleServicePayload): VehicleServiceDto
+
+    @DELETE("api/v1/vehicle-service/{id}")
+    suspend fun deleteVehicleService(@Path("id") id: String)
+
     @GET("api/v1/get-filling-station")
     suspend fun getFillingStations(): List<FillingStationDto>
 

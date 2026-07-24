@@ -71,6 +71,9 @@ import ch.mcfx.urs.settings.SettingsRoutes
 import ch.mcfx.urs.settings.SettingsScreen
 import ch.mcfx.urs.settings.VpnSettingsScreen
 import ch.mcfx.urs.settings.WatchRelaySettingsScreen
+import ch.mcfx.urs.service.ServiceAddScreen
+import ch.mcfx.urs.service.ServiceRoutes
+import ch.mcfx.urs.service.ServiceScreen
 import ch.mcfx.urs.shoppinglist.ListDetailScreen
 import ch.mcfx.urs.shoppinglist.ShoppingListRoutes
 import ch.mcfx.urs.shoppinglist.ShoppingListsScreen
@@ -85,7 +88,10 @@ import ch.mcfx.urs.ui.components.UrsTopBar
 import ch.mcfx.urs.ui.components.rememberUrsDrawerState
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Spacing
+import ch.mcfx.urs.vehicle.VehicleAddScreen
 import ch.mcfx.urs.vehicle.VehicleHubScreen
+import ch.mcfx.urs.vehicle.VehicleRoutes
+import ch.mcfx.urs.vehicle.VehicleScreen
 import ch.mcfx.urs.worktime.WorkTimeAddScreen
 import ch.mcfx.urs.worktime.WorkTimeRoutes
 import ch.mcfx.urs.worktime.WorkTimeScreen
@@ -243,6 +249,35 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                     }
                     composable(Destination.VEHICLE.route) {
                         VehicleHubScreen(onNavigate = { route -> navController.navigate(route) })
+                    }
+                    composable(VehicleRoutes.LIST) {
+                        VehicleScreen(
+                            onAddVehicle = { navController.navigate(VehicleRoutes.ADD) },
+                            onEditVehicle = { vehicleId -> navController.navigate(VehicleRoutes.edit(vehicleId)) },
+                        )
+                    }
+                    composable(VehicleRoutes.ADD) {
+                        VehicleAddScreen(onDone = { navController.popBackStack() })
+                    }
+                    composable(VehicleRoutes.EDIT) { backStackEntry ->
+                        val vehicleId = backStackEntry.arguments?.getString("vehicleId") ?: return@composable
+                        VehicleAddScreen(vehicleId = vehicleId, onDone = { navController.popBackStack() })
+                    }
+                    composable(ServiceRoutes.LIST) {
+                        ServiceScreen(
+                            onAddService = { navController.navigate(ServiceRoutes.ADD) },
+                            onEditService = { serviceId -> navController.navigate(ServiceRoutes.edit(serviceId)) },
+                        )
+                    }
+                    composable(ServiceRoutes.ADD) {
+                        ServiceAddScreen(onDone = { navController.popBackStack() })
+                    }
+                    composable(
+                        route = ServiceRoutes.EDIT,
+                        arguments = listOf(navArgument("serviceId") { type = NavType.LongType }),
+                    ) { backStackEntry ->
+                        val serviceId = backStackEntry.arguments?.getLong("serviceId") ?: return@composable
+                        ServiceAddScreen(serviceId = serviceId, onDone = { navController.popBackStack() })
                     }
                     composable(Destination.FUEL.route) {
                         FuelHubScreen(onNavigate = { route -> navController.navigate(route) })
@@ -433,6 +468,16 @@ private val SETTINGS_ROUTE_LABELS = mapOf(
     SettingsRoutes.ADMIN to R.string.settings_tile_admin,
 )
 
+private val VEHICLE_ROUTE_LABELS = mapOf(
+    VehicleRoutes.LIST to R.string.vehicle_list_title,
+    VehicleRoutes.ADD to R.string.vehicle_add_title,
+)
+
+private val SERVICE_ROUTE_LABELS = mapOf(
+    ServiceRoutes.LIST to R.string.service_list_title,
+    ServiceRoutes.ADD to R.string.service_add_title,
+)
+
 private val OBD_ROUTE_LABELS = mapOf(
     ObdRoutes.LIVE to R.string.obd_live_title,
     ObdRoutes.SETUP to R.string.obd_setup_title,
@@ -454,11 +499,15 @@ private fun isAccentTopBarRoute(route: String): Boolean =
     route == Destination.HOME.route ||
         route.startsWith("fuel/") ||
         route.startsWith("inventory/") ||
-        route.startsWith("shoppinglist/")
+        route.startsWith("shoppinglist/") ||
+        route.startsWith("vehicle/") ||
+        route.startsWith("service/")
 
 private fun currentScreenLabel(route: String): Int =
     Destination.entries.find { it.route == route }?.labelRes
         ?: FUEL_ROUTE_LABELS[route]
+        ?: VEHICLE_ROUTE_LABELS[route]
+        ?: SERVICE_ROUTE_LABELS[route]
         ?: OBD_ROUTE_LABELS[route]
         ?: SETTINGS_ROUTE_LABELS[route]
         ?: INVENTORY_ROUTE_LABELS[route]

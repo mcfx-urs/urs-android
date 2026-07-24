@@ -2,13 +2,14 @@ package ch.mcfx.urs.data.local
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import ch.mcfx.urs.data.VehicleType
 
 /**
- * Read-cache mirror of [ch.mcfx.urs.data.remote.VehicleDto]. Without this,
- * the Add-fill form's vehicle picker is empty on a cold app start with no
- * connectivity — vehicles are otherwise never created from this app, so
- * there's no outbox/pending-write concern here, purely a
- * refresh-on-reachable cache.
+ * Read-cache mirror of [ch.mcfx.urs.data.remote.VehicleDto]. Vehicle
+ * create/edit/delete now goes through [ch.mcfx.urs.data.VehicleRepository]
+ * (direct REST, no outbox) — this cache exists purely so pickers (Add-fill
+ * form, Service form) still have something to show on a cold start with no
+ * connectivity, kept warm by [ch.mcfx.urs.data.FuelRepository.refreshFromBackend].
  */
 @Entity(tableName = "vehicle")
 data class VehicleEntity(
@@ -18,4 +19,16 @@ data class VehicleEntity(
     val brand: String,
     val model: String,
     val year: String,
+    val engineCode: String? = null,
+    val vehicleType: VehicleType = VehicleType.CAR,
+    val color: String? = null,
+    val vin: String? = null,
+    val registrationNumber: String? = null,
+    val typeApprovalNumber: String? = null,
+    val displacementCcm: String? = null,
+    val powerKw: String? = null,
+    val powerPs: String? = null,
+    val weightKg: String? = null,
+    val firstRegistrationDate: String? = null,
+    val lastMfkDate: String? = null,
 )

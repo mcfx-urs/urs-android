@@ -24,9 +24,14 @@ import ch.mcfx.urs.data.local.OutboxListPayload
 import ch.mcfx.urs.data.local.OutboxListUpdatePayload
 import ch.mcfx.urs.data.local.OutboxLocationHistoryPayload
 import ch.mcfx.urs.data.local.OutboxMutationEntity
+import ch.mcfx.urs.data.local.OutboxVehicleServiceDeletePayload
+import ch.mcfx.urs.data.local.OutboxVehicleServicePayload
+import ch.mcfx.urs.data.local.OutboxVehicleServiceUpdatePayload
 import ch.mcfx.urs.data.local.OutboxWorkTimeEntryDeletePayload
 import ch.mcfx.urs.data.local.OutboxWorkTimeEntryPayload
 import ch.mcfx.urs.data.local.OutboxWorkTimeEntryUpdatePayload
+import ch.mcfx.urs.data.local.VehicleServiceDao
+import ch.mcfx.urs.data.local.VehicleServiceTagEntity
 import ch.mcfx.urs.data.local.WorkTimeBreakEntity
 import ch.mcfx.urs.data.local.WorkTimeDao
 import ch.mcfx.urs.data.local.localInventoryId
@@ -40,6 +45,8 @@ import ch.mcfx.urs.data.remote.ListItemUpdatePayload
 import ch.mcfx.urs.data.remote.ListPayload
 import ch.mcfx.urs.data.remote.LocationHistoryPayload
 import ch.mcfx.urs.data.remote.UrsApi
+import ch.mcfx.urs.data.remote.VehicleServicePayload
+import ch.mcfx.urs.data.remote.VehicleServiceTagDto
 import ch.mcfx.urs.data.remote.WorkTimeBreakPayload
 import ch.mcfx.urs.data.remote.WorkTimeEntryPayload
 import java.io.IOException
@@ -73,6 +80,7 @@ class SyncManager(
     private val listDao: ListDao,
     private val listItemDao: ListItemDao,
     private val locationHistoryDao: LocationHistoryDao,
+    private val vehicleServiceDao: VehicleServiceDao,
     private val outboxDao: OutboxDao,
     private val reachabilityChecker: ReachabilityChecker,
     private val json: Json,
@@ -121,6 +129,9 @@ class SyncManager(
                 OutboxMutationEntity.TYPE_UPDATE_LIST_ITEM -> replayUpdateListItem(mutation)
                 OutboxMutationEntity.TYPE_DELETE_LIST_ITEM -> replayDeleteListItem(mutation)
                 OutboxMutationEntity.TYPE_CREATE_LOCATION_HISTORY -> replayCreateLocationHistory(mutation)
+                OutboxMutationEntity.TYPE_CREATE_VEHICLE_SERVICE -> replayCreateVehicleService(mutation)
+                OutboxMutationEntity.TYPE_UPDATE_VEHICLE_SERVICE -> replayUpdateVehicleService(mutation)
+                OutboxMutationEntity.TYPE_DELETE_VEHICLE_SERVICE -> replayDeleteVehicleService(mutation)
                 else -> {
                     // Forward-compat placeholder — nothing else is queued today.
                     outboxDao.markFailed(mutation.id, "unknown outbox mutation type: ${mutation.type}")
@@ -520,6 +531,89 @@ class SyncManager(
         )
 
         locationHistoryDao.markSynced(localPoint.id, response.id.toLongOrNull() ?: 0L)
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    private suspend fun replayCreateVehicleService(mutation: OutboxMutationEntity): Boolean {
+        val localService = vehicleServiceDao.getByOutboxId(mutation.id) ?: run {
+            // No local row references this mutation any more — nothing left
+            // to reconcile against, drop the orphaned outbox row.
+            outboxDao.delete(mutation.id)
+            return true
+        }
+        val payload = json.decodeFromString(OutboxVehicleServicePayload.serializer(), mutation.payloadJson)
+
+        val response = api.createVehicleService(
+            VehicleServicePayload(
+                vehicleId = payload.vehicleId,
+                date = payload.date,
+                odometer = payload.odometer,
+                provider = payload.provider,
+                isDiy = if (payload.isDiy) "1" else "0",
+                notes = payload.notes,
+                costAmount = payload.costAmount,
+                currencyCode = payload.currencyCode,
+                tags = payload.tags.map { VehicleServiceTagDto(code = it.code, label = it.label.orEmpty()) },
+            ),
+        )
+
+        vehicleServiceDao.markSynced(localService.id, response.id.toLongOrNull() ?: 0L)
+        vehicleServiceDao.replaceTags(
+            localService.id,
+            response.tags.map {
+                VehicleServiceTagEntity(serviceId = localService.id, code = it.code, label = it.label.ifBlank { null })
+            },
+        )
+
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    // Mirrors replayUpdateWorkTimeEntry's shape (not replayUpdateFill's) —
+    // the response's resolved tags still need to be written back against the
+    // *local* service id via replaceTags, so the local row is looked up by
+    // outboxId despite payload.serverId already identifying the backend row.
+    private suspend fun replayUpdateVehicleService(mutation: OutboxMutationEntity): Boolean {
+        val localService = vehicleServiceDao.getByOutboxId(mutation.id) ?: run {
+            outboxDao.delete(mutation.id)
+            return true
+        }
+        val payload = json.decodeFromString(OutboxVehicleServiceUpdatePayload.serializer(), mutation.payloadJson)
+
+        val response = api.updateVehicleService(
+            payload.serverId,
+            VehicleServicePayload(
+                vehicleId = payload.vehicleId,
+                date = payload.date,
+                odometer = payload.odometer,
+                provider = payload.provider,
+                isDiy = if (payload.isDiy) "1" else "0",
+                notes = payload.notes,
+                costAmount = payload.costAmount,
+                currencyCode = payload.currencyCode,
+                tags = payload.tags.map { VehicleServiceTagDto(code = it.code, label = it.label.orEmpty()) },
+            ),
+        )
+
+        vehicleServiceDao.markSynced(localService.id, response.id.toLongOrNull() ?: payload.serverId.toLongOrNull() ?: 0L)
+        vehicleServiceDao.replaceTags(
+            localService.id,
+            response.tags.map {
+                VehicleServiceTagEntity(serviceId = localService.id, code = it.code, label = it.label.ifBlank { null })
+            },
+        )
+
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    // No local row to look up — deleteEntry() already removed it
+    // immediately, offline-first, before this mutation was ever queued (same
+    // shape as replayDeleteFill).
+    private suspend fun replayDeleteVehicleService(mutation: OutboxMutationEntity): Boolean {
+        val payload = json.decodeFromString(OutboxVehicleServiceDeletePayload.serializer(), mutation.payloadJson)
+        api.deleteVehicleService(payload.serverId)
         outboxDao.delete(mutation.id)
         return true
     }

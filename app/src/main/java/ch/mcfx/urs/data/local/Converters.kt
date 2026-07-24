@@ -1,6 +1,9 @@
 package ch.mcfx.urs.data.local
 
 import androidx.room.TypeConverter
+import ch.mcfx.urs.data.VehicleType
+import ch.mcfx.urs.data.toRaw
+import ch.mcfx.urs.data.vehicleTypeFromRaw
 
 class Converters {
     @TypeConverter
@@ -14,4 +17,10 @@ class Converters {
 
     @TypeConverter
     fun toOutboxStatus(value: String): OutboxStatus = OutboxStatus.valueOf(value)
+
+    @TypeConverter
+    fun fromVehicleType(value: VehicleType): String = value.toRaw()
+
+    @TypeConverter
+    fun toVehicleType(value: String): VehicleType = vehicleTypeFromRaw(value)
 }

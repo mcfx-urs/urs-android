@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Added vehicle create/edit/delete, and new optional vehicle fields (engine code, vehicle type, Fahrzeugausweis data, last-MFK-inspection date).
+- Added a "Service History" screen under the Vehicle hub, for tracking service/maintenance entries per vehicle (date, odometer, provider or DIY, cost, categories, custom tags).
 - Added a "Watch Relay" setting under General, letting the urs-zepp companion watch app log a beer fill without opening the app.
 - Added a "Record Fuel Price" screen to the Fuel hub, for logging a price at a known station without a fill-up.
 - Added a "New Fuel Fill" shortcut to Home, for creating a fill-up directly without going through the Fuel hub.
