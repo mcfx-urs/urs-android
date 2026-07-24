@@ -18,7 +18,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
-import ch.mcfx.urs.data.remote.CarDto
+import ch.mcfx.urs.data.remote.VehicleDto
 import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsFilterChip
 import ch.mcfx.urs.ui.components.UrsProgressIndicator
@@ -41,7 +41,7 @@ fun FuelStatsScreen(viewModel: FuelStatsViewModel = viewModel(factory = FuelStat
             UrsText(stringResource(R.string.error_load), modifier = Modifier.align(Alignment.Center))
         }
 
-        uiState.fillCount == 0 && uiState.cars.isEmpty() -> Box(Modifier.fillMaxSize()) {
+        uiState.fillCount == 0 && uiState.vehicles.isEmpty() -> Box(Modifier.fillMaxSize()) {
             UrsText(
                 stringResource(R.string.stats_empty),
                 modifier = Modifier.align(Alignment.Center),
@@ -55,10 +55,10 @@ fun FuelStatsScreen(viewModel: FuelStatsViewModel = viewModel(factory = FuelStat
             verticalArrangement = Arrangement.spacedBy(Spacing.l),
         ) {
             item {
-                CarFilterRow(
-                    cars = uiState.cars,
-                    selectedCarId = uiState.selectedCarId,
-                    onSelect = viewModel::selectCar,
+                VehicleFilterRow(
+                    vehicles = uiState.vehicles,
+                    selectedVehicleId = uiState.selectedVehicleId,
+                    onSelect = viewModel::selectVehicle,
                 )
             }
             item { StatsSummary(uiState) }
@@ -71,20 +71,20 @@ fun FuelStatsScreen(viewModel: FuelStatsViewModel = viewModel(factory = FuelStat
 }
 
 @Composable
-private fun CarFilterRow(cars: List<CarDto>, selectedCarId: String?, onSelect: (String?) -> Unit) {
+private fun VehicleFilterRow(vehicles: List<VehicleDto>, selectedVehicleId: String?, onSelect: (String?) -> Unit) {
     LazyRow(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
         item {
             UrsFilterChip(
-                label = stringResource(R.string.stats_all_cars),
-                selected = selectedCarId == null,
+                label = stringResource(R.string.stats_all_vehicles),
+                selected = selectedVehicleId == null,
                 onClick = { onSelect(null) },
             )
         }
-        items(cars, key = { it.id }) { car ->
+        items(vehicles, key = { it.id }) { vehicle ->
             UrsFilterChip(
-                label = "${car.brand} ${car.model}",
-                selected = selectedCarId == car.id,
-                onClick = { onSelect(car.id) },
+                label = "${vehicle.brand} ${vehicle.model}",
+                selected = selectedVehicleId == vehicle.id,
+                onClick = { onSelect(vehicle.id) },
             )
         }
     }

@@ -8,7 +8,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.data.FuelRepository
-import ch.mcfx.urs.data.remote.CarDto
+import ch.mcfx.urs.data.remote.VehicleDto
 import ch.mcfx.urs.data.remote.FillDto
 import java.time.LocalDate
 import kotlinx.coroutines.CancellationException
@@ -30,8 +30,8 @@ data class MonthlyFuelStat(
 data class FuelStatsUiState(
     val loading: Boolean = true,
     val error: Boolean = false,
-    val cars: List<CarDto> = emptyList(),
-    val selectedCarId: String? = null,
+    val vehicles: List<VehicleDto> = emptyList(),
+    val selectedVehicleId: String? = null,
     val avgConsumption: Float? = null,
     val avgPricePerLiter: Float? = null,
     val totalCost: Float = 0f,
@@ -53,14 +53,14 @@ class FuelStatsViewModel(private val repository: FuelRepository) : ViewModel() {
     init {
         viewModelScope.launch {
             try {
-                val cars: List<CarDto>
+                val vehicles: List<VehicleDto>
                 coroutineScope {
-                    val carsDeferred = async { repository.getCars() }
+                    val vehiclesDeferred = async { repository.getVehicles() }
                     val fillsDeferred = async { repository.getFills() }
-                    cars = carsDeferred.await()
+                    vehicles = vehiclesDeferred.await()
                     allFills = fillsDeferred.await()
                 }
-                _uiState.update { it.copy(cars = cars) }
+                _uiState.update { it.copy(vehicles = vehicles) }
                 recompute()
             } catch (e: CancellationException) {
                 throw e
@@ -70,14 +70,14 @@ class FuelStatsViewModel(private val repository: FuelRepository) : ViewModel() {
         }
     }
 
-    fun selectCar(carId: String?) {
-        _uiState.update { it.copy(selectedCarId = carId) }
+    fun selectVehicle(vehicleId: String?) {
+        _uiState.update { it.copy(selectedVehicleId = vehicleId) }
         recompute()
     }
 
     private fun recompute() {
-        val carId = _uiState.value.selectedCarId
-        val fills = if (carId != null) allFills.filter { it.carId == carId } else allFills
+        val vehicleId = _uiState.value.selectedVehicleId
+        val fills = if (vehicleId != null) allFills.filter { it.vehicleId == vehicleId } else allFills
 
         val totalCost = fills.sumOf { fillCost(it) }.toFloat()
         val totalLiters = fills.sumOf { it.liters.toDoubleOrNull() ?: 0.0 }

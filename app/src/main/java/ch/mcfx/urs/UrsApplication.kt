@@ -233,7 +233,7 @@ class AppContainer(context: Context) {
         fillDao = database.fillDao(),
         fillingStationDao = database.fillingStationDao(),
         currencyDao = database.currencyDao(),
-        carDao = database.carDao(),
+        vehicleDao = database.vehicleDao(),
         outboxDao = database.outboxDao(),
         syncManager = syncManager,
         applicationScope = applicationScope,

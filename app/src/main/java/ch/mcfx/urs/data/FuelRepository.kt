@@ -1,8 +1,8 @@
 package ch.mcfx.urs.data
 
 import ch.mcfx.urs.data.local.BundledCurrencies
-import ch.mcfx.urs.data.local.CarDao
-import ch.mcfx.urs.data.local.CarEntity
+import ch.mcfx.urs.data.local.VehicleDao
+import ch.mcfx.urs.data.local.VehicleEntity
 import ch.mcfx.urs.data.local.CurrencyDao
 import ch.mcfx.urs.data.local.CurrencyEntity
 import ch.mcfx.urs.data.local.FillDao
@@ -15,7 +15,7 @@ import ch.mcfx.urs.data.local.OutboxFillPayload
 import ch.mcfx.urs.data.local.OutboxFillUpdatePayload
 import ch.mcfx.urs.data.local.OutboxMutationEntity
 import ch.mcfx.urs.data.local.SyncStatus
-import ch.mcfx.urs.data.remote.CarDto
+import ch.mcfx.urs.data.remote.VehicleDto
 import ch.mcfx.urs.data.remote.CurrencyDto
 import ch.mcfx.urs.data.remote.FillDto
 import ch.mcfx.urs.data.remote.FillingStationDto
@@ -34,30 +34,30 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-data class FillEditData(val fill: FillEntity, val car: CarEntity, val station: FillingStationEntity?)
+data class FillEditData(val fill: FillEntity, val vehicle: VehicleEntity, val station: FillingStationEntity?)
 
 class FuelRepository(
     private val api: UrsApi,
     private val fillDao: FillDao,
     private val fillingStationDao: FillingStationDao,
     private val currencyDao: CurrencyDao,
-    private val carDao: CarDao,
+    private val vehicleDao: VehicleDao,
     private val outboxDao: OutboxDao,
     private val syncManager: SyncManager,
     private val applicationScope: CoroutineScope,
     private val json: Json,
 ) {
 
-    // Cars are never created from this app, so there's no outbox/pending
-    // concern here — this cache exists purely so the Add-fill form's car
+    // Vehicles are never created from this app, so there's no outbox/pending
+    // concern here — this cache exists purely so the Add-fill form's vehicle
     // picker still has something to show on a cold start with no
     // connectivity (see refreshFromBackend for how it's kept warm).
-    fun observeCars(): Flow<List<CarEntity>> = carDao.observeAll()
+    fun observeVehicles(): Flow<List<VehicleEntity>> = vehicleDao.observeAll()
 
     // Still a direct REST read — used only by the statistics screen, which
     // this pass didn't move onto the offline-first Room path (see
-    // FuelViewModel/observeCars for the one that did).
-    suspend fun getCars(): List<CarDto> = api.getCars()
+    // FuelViewModel/observeVehicles for the one that did).
+    suspend fun getVehicles(): List<VehicleDto> = api.getVehicles()
 
     fun observeFills(): Flow<List<FillEntity>> = fillDao.observeAll()
 
@@ -115,8 +115,8 @@ class FuelRepository(
     suspend fun getFills(): List<FillDto> =
         emptyAsNull { api.getFills() }.sortedByDescending { it.date }
 
-    suspend fun getLastOdometer(carId: String): String? =
-        emptyAsNull { api.getOdometer(carId) }
+    suspend fun getLastOdometer(vehicleId: String): String? =
+        emptyAsNull { api.getOdometer(vehicleId) }
             .maxByOrNull { it.mileage.toFloatOrNull() ?: 0f }
             ?.mileage
 
@@ -132,7 +132,7 @@ class FuelRepository(
      * sync resolves near-instantly anyway.
      */
     suspend fun createFill(
-        car: CarEntity,
+        vehicle: VehicleEntity,
         station: FillingStationEntity?,
         date: String,
         odometer: String,
@@ -150,8 +150,8 @@ class FuelRepository(
         val fullDate = "$date 00:00:00"
 
         val payload = OutboxFillPayload(
-            carId = car.id,
-            fuelId = car.fuelId,
+            vehicleId = vehicle.id,
+            fuelId = vehicle.fuelId,
             date = fullDate,
             odometer = odometer,
             pricePerLiter = pricePerLiter,
@@ -176,8 +176,8 @@ class FuelRepository(
             FillEntity(
                 outboxId = outboxId,
                 stationId = station?.id,
-                carId = car.id,
-                fuelId = car.fuelId,
+                vehicleId = vehicle.id,
+                fuelId = vehicle.fuelId,
                 date = fullDate,
                 pricePerLiter = pricePerLiter,
                 liters = liters,
@@ -197,13 +197,13 @@ class FuelRepository(
      * (looked up fresh via DAOs, not [observeFills]'s cached Flow — that
      * Flow may not have emitted yet on a cold navigation straight into the
      * edit screen, same reasoning as WorkTimeViewModel.openFormForEdit).
-     * Returns null if the fill or its car no longer exists locally.
+     * Returns null if the fill or its vehicle no longer exists locally.
      */
     suspend fun getFillForEdit(localId: Long): FillEditData? {
         val fill = fillDao.getById(localId) ?: return null
-        val car = carDao.getById(fill.carId) ?: return null
+        val vehicle = vehicleDao.getById(fill.vehicleId) ?: return null
         val station = fill.stationId?.let { fillingStationDao.getById(it) }
-        return FillEditData(fill, car, station)
+        return FillEditData(fill, vehicle, station)
     }
 
     /**
@@ -220,7 +220,7 @@ class FuelRepository(
      */
     suspend fun updateFill(
         localId: Long,
-        car: CarEntity,
+        vehicle: VehicleEntity,
         station: FillingStationEntity?,
         date: String,
         odometer: String,
@@ -236,8 +236,8 @@ class FuelRepository(
 
         val outboxId = if (current.serverId == null) {
             val payload = OutboxFillPayload(
-                carId = car.id,
-                fuelId = car.fuelId,
+                vehicleId = vehicle.id,
+                fuelId = vehicle.fuelId,
                 date = fullDate,
                 odometer = odometer,
                 pricePerLiter = pricePerLiter,
@@ -256,8 +256,8 @@ class FuelRepository(
             current.outboxId?.let { outboxDao.delete(it) }
             val payload = OutboxFillUpdatePayload(
                 serverId = current.serverId.toString(),
-                carId = car.id,
-                fuelId = car.fuelId,
+                vehicleId = vehicle.id,
+                fuelId = vehicle.fuelId,
                 date = fullDate,
                 stationId = stationId,
                 odometer = odometer,
@@ -317,7 +317,7 @@ class FuelRepository(
         refreshQuietly {
             api.getCurrencies().takeIf { it.isNotEmpty() }?.let { currencyDao.upsertAll(it.map(CurrencyDto::toEntity)) }
         }
-        refreshQuietly { api.getCars().takeIf { it.isNotEmpty() }?.let { carDao.upsertAll(it.map(CarDto::toEntity)) } }
+        refreshQuietly { api.getVehicles().takeIf { it.isNotEmpty() }?.let { vehicleDao.upsertAll(it.map(VehicleDto::toEntity)) } }
     }
 
     private suspend fun refreshQuietly(block: suspend () -> Unit) {
@@ -355,7 +355,7 @@ private fun FillDto.toEntity() = FillEntity(
     serverId = id.toLongOrNull(),
     outboxId = null,
     stationId = stationId,
-    carId = carId,
+    vehicleId = vehicleId,
     fuelId = fuelId,
     date = date,
     pricePerLiter = pricePerLiter,
@@ -371,7 +371,7 @@ private fun FillDto.toEntity() = FillEntity(
 
 private fun CurrencyDto.toEntity() = CurrencyEntity(code = code, name = name)
 
-private fun CarDto.toEntity() = CarEntity(
+private fun VehicleDto.toEntity() = VehicleEntity(
     id = id,
     fuelId = fuelId,
     fuelName = fuelName,

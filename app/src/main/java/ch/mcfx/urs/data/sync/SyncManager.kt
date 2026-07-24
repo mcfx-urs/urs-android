@@ -92,7 +92,7 @@ class SyncManager(
 
         var allSucceeded = true
         // Continues past individual failures rather than aborting the whole
-        // batch — one bad row (e.g. a since-deleted car) shouldn't block
+        // batch — one bad row (e.g. a since-deleted vehicle) shouldn't block
         // every other queued fill from syncing.
         for (mutation in outboxDao.pendingOrdered()) {
             if (!replay(mutation)) allSucceeded = false
@@ -169,7 +169,7 @@ class SyncManager(
         val response = api.createFill(
             FillPayload(
                 date = payload.date,
-                carId = payload.carId,
+                vehicleId = payload.vehicleId,
                 stationId = payload.stationId,
                 fuelId = payload.fuelId,
                 pricePerLiter = payload.pricePerLiter,
@@ -228,7 +228,7 @@ class SyncManager(
             payload.serverId,
             FillUpdatePayload(
                 date = payload.date,
-                carId = payload.carId,
+                vehicleId = payload.vehicleId,
                 stationId = payload.stationId,
                 fuelId = payload.fuelId,
                 pricePerLiter = payload.pricePerLiter,

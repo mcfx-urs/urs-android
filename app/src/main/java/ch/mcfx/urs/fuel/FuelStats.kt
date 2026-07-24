@@ -21,7 +21,7 @@ object FuelStats {
     }
 
     private data class ParsedFill(
-        val carId: String,
+        val vehicleId: String,
         val date: LocalDate,
         val odometer: Float,
         val liters: Float,
@@ -30,9 +30,9 @@ object FuelStats {
 
     fun consumptionSamples(fills: List<FillDto>): List<ConsumptionSample> =
         fills.mapNotNull(::parse)
-            .groupBy { it.carId }
+            .groupBy { it.vehicleId }
             .values
-            .flatMap { carFills -> buildSpans(carFills.sortedBy { it.date }) }
+            .flatMap { vehicleFills -> buildSpans(vehicleFills.sortedBy { it.date }) }
             .filter { it.kmDriven > 0f }
 
     private fun buildSpans(sortedFills: List<ParsedFill>): List<ConsumptionSample> {
@@ -77,6 +77,6 @@ object FuelStats {
         val date = parseDate(fill.date) ?: return null
         val odometer = fill.odometer.toFloatOrNull() ?: return null
         val liters = fill.liters.toFloatOrNull() ?: return null
-        return ParsedFill(fill.carId, date, odometer, liters, isFullTank = fill.isFullTank != "0")
+        return ParsedFill(fill.vehicleId, date, odometer, liters, isFullTank = fill.isFullTank != "0")
     }
 }

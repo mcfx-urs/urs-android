@@ -15,7 +15,7 @@ data class WorkSettings(
 )
 
 // The work-time endpoints below still take an explicit user_id path segment
-// on the backend (per-user scoping covered cars/fuel_fill/odometer/
+// on the backend (per-user scoping covered vehicles/fuel_fill/odometer/
 // inventory_category/inventory_product/beer_log — work-time wasn't in that
 // list, it already had its own user_id column from an earlier change). The
 // id itself now comes from the logged-in session (AuthTokenStore.currentUserId,

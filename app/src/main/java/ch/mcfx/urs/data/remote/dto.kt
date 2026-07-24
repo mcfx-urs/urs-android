@@ -7,13 +7,13 @@ import kotlinx.serialization.Serializable
 // string. Typed cleanup is planned together with the Phase 2 sync work.
 
 @Serializable
-data class CarDto(
-    @SerialName("car_id") val id: String,
-    @SerialName("car_fuel_id") val fuelId: String,
+data class VehicleDto(
+    @SerialName("vehicle_id") val id: String,
+    @SerialName("vehicle_fuel_id") val fuelId: String,
     @SerialName("fuel_name") val fuelName: String,
-    @SerialName("car_brand") val brand: String,
-    @SerialName("car_model") val model: String,
-    @SerialName("car_year") val year: String,
+    @SerialName("vehicle_brand") val brand: String,
+    @SerialName("vehicle_model") val model: String,
+    @SerialName("vehicle_year") val year: String,
 )
 
 @Serializable
@@ -30,7 +30,7 @@ data class FillingStationDto(
 data class FillDto(
     @SerialName("fill_id") val id: String,
     @SerialName("fill_date") val date: String,
-    @SerialName("fill_car_id") val carId: String,
+    @SerialName("fill_vehicle_id") val vehicleId: String,
     @SerialName("fill_station_id") val stationId: String,
     @SerialName("fill_fuel_id") val fuelId: String,
     @SerialName("fill_price") val pricePerLiter: String,
@@ -49,7 +49,7 @@ data class OdometerEntryDto(
     @SerialName("id") val id: String,
     @SerialName("date") val date: String,
     @SerialName("mileage") val mileage: String,
-    @SerialName("car_id") val carId: String,
+    @SerialName("vehicle_id") val vehicleId: String,
     @SerialName("driven") val driven: String,
 )
 
@@ -73,7 +73,7 @@ data class GeocodeResultDto(
 @Serializable
 data class FillPayload(
     @SerialName("fill_date") val date: String,
-    @SerialName("fill_car_id") val carId: String,
+    @SerialName("fill_vehicle_id") val vehicleId: String,
     // Null/empty signals "create an ad-hoc station instead" — matches the
     // backend's own `FillStationID == ""` check — in which case
     // [stationLatitude]/[stationLongitude] are required.
@@ -108,7 +108,7 @@ data class FillPayload(
 @Serializable
 data class FillUpdatePayload(
     @SerialName("fill_date") val date: String,
-    @SerialName("fill_car_id") val carId: String,
+    @SerialName("fill_vehicle_id") val vehicleId: String,
     @SerialName("fill_station_id") val stationId: String,
     @SerialName("fill_fuel_id") val fuelId: String,
     @SerialName("fill_price") val pricePerLiter: String,

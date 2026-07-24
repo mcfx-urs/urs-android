@@ -12,7 +12,7 @@ import ch.mcfx.urs.data.FuelRepository
 import ch.mcfx.urs.data.local.CurrencyEntity
 import ch.mcfx.urs.data.local.FillEntity
 import ch.mcfx.urs.data.local.FillingStationEntity
-import ch.mcfx.urs.data.local.CarEntity
+import ch.mcfx.urs.data.local.VehicleEntity
 import ch.mcfx.urs.location.LocationCapture
 import ch.mcfx.urs.location.LocationProvider
 import ch.mcfx.urs.location.LocationUtils
@@ -29,7 +29,7 @@ import kotlinx.coroutines.launch
 sealed interface FuelUiState {
     data object Loading : FuelUiState
     data class Data(
-        val cars: List<CarEntity>,
+        val vehicles: List<VehicleEntity>,
         // Unfiltered — still needed as-is so FuelScreen's fill-history can
         // resolve a station name for a past ad-hoc (SOURCE_GPS_AUTO) fill.
         val stations: List<FillingStationEntity>,
@@ -53,7 +53,7 @@ data class FillFormState(
     // that case, since PUT /api/v1/fill/{id} has no ad-hoc-station-creation
     // branch (see FuelRepository.updateFill).
     val editingIsSynced: Boolean = false,
-    val car: CarEntity? = null,
+    val vehicle: VehicleEntity? = null,
     val station: FillingStationEntity? = null,
     // Mutually exclusive with `station`: either a known station is picked,
     // or GPS coordinates are captured for an ad-hoc stop — never both.
@@ -79,7 +79,7 @@ data class FillFormState(
         }
 
     val isValid: Boolean
-        get() = car != null &&
+        get() = vehicle != null &&
             (station != null || (gpsLatitude != null && gpsLongitude != null)) &&
             odometer.toFloatOrNull() != null &&
             pricePerLiter.toFloatOrNull() != null &&
@@ -108,19 +108,19 @@ class FuelViewModel(
     val pendingDeleteFill: StateFlow<FillEntity?> = _pendingDeleteFill.asStateFlow()
 
     init {
-        // Cars/fills/stations/currencies are all Room-backed Flows now, so
-        // this screen (including the Add-fill form's car picker) has
+        // Vehicles/fills/stations/currencies are all Room-backed Flows now,
+        // so this screen (including the Add-fill form's vehicle picker) has
         // something to show even on a cold start with no connectivity —
         // load() below only refreshes the cache opportunistically.
         viewModelScope.launch {
             combine(
-                repository.observeCars(),
+                repository.observeVehicles(),
                 repository.observeStations(),
                 repository.observeFills(),
                 repository.observeCurrencies(),
                 locationProvider.currentLocation,
-            ) { cars, stations, fills, currencies, location ->
-                FuelUiState.Data(cars, stations, buildPickerStations(stations, location), fills, currencies)
+            ) { vehicles, stations, fills, currencies, location ->
+                FuelUiState.Data(vehicles, stations, buildPickerStations(stations, location), fills, currencies)
             }.collect { _uiState.value = it }
         }
         load()
@@ -148,7 +148,7 @@ class FuelViewModel(
             _formState.value = FillFormState(
                 editingFillId = data.fill.id,
                 editingIsSynced = data.fill.serverId != null,
-                car = data.car,
+                vehicle = data.vehicle,
                 station = data.station,
                 odometer = data.fill.odometer,
                 pricePerLiter = data.fill.pricePerLiter,
@@ -192,17 +192,17 @@ class FuelViewModel(
         viewModelScope.launch { repository.deleteFill(fill.id) }
     }
 
-    fun selectCar(car: CarEntity) {
-        _formState.update { it.copy(car = car, lastOdometer = null) }
+    fun selectVehicle(vehicle: VehicleEntity) {
+        _formState.update { it.copy(vehicle = vehicle, lastOdometer = null) }
         viewModelScope.launch {
             val last = try {
-                repository.getLastOdometer(car.id)
+                repository.getLastOdometer(vehicle.id)
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
                 null // best-effort hint, not critical
             }
-            _formState.update { if (it.car?.id == car.id) it.copy(lastOdometer = last) else it }
+            _formState.update { if (it.vehicle?.id == vehicle.id) it.copy(lastOdometer = last) else it }
         }
     }
 
@@ -251,7 +251,7 @@ class FuelViewModel(
 
     fun submit() {
         val form = _formState.value
-        val car = form.car ?: return
+        val vehicle = form.vehicle ?: return
         if (!form.isValid || form.submitting) return
 
         viewModelScope.launch {
@@ -261,7 +261,7 @@ class FuelViewModel(
                 if (editingFillId != null) {
                     repository.updateFill(
                         localId = editingFillId,
-                        car = car,
+                        vehicle = vehicle,
                         station = form.station,
                         date = form.date,
                         odometer = form.odometer,
@@ -274,7 +274,7 @@ class FuelViewModel(
                     )
                 } else {
                     repository.createFill(
-                        car = car,
+                        vehicle = vehicle,
                         station = form.station,
                         date = form.date,
                         odometer = form.odometer,
