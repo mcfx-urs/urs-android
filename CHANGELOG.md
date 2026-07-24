@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Fuel Stats now shows line charts for average consumption and kilometers driven per month.
 - Tapping "+" to add a product now auto-focuses the search field and opens the keyboard.
 
 ### Changed
@@ -14,10 +15,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Category headers in a list's tile grid are a bit larger, with more space after a category's last tile.
 - "Recently used" products are now scoped per list instead of shown the same across every list.
 - Picking a product from "recently used" now removes it from that list until it's used (added and later removed) again.
+- The Fuel Stats vehicle filter is now a dropdown instead of a row of buttons.
 
 ### Fixed
 
 - "Recently used" now also updates when a product is removed from a list (tapping a tile to "buy" it), not just when it's added — previously the same products stayed at the top indefinitely.
+- Fuel Stats' Total Cost and Average Price/Liter no longer mix currencies — a fill entered in a foreign currency (e.g. PLN) was previously added to the CHF total using its raw, unconverted price.
 
 ## [0.10.0] - 2026-07-24
 
