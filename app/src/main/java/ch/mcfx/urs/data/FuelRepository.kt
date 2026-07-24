@@ -370,12 +370,3 @@ private fun FillDto.toEntity() = FillEntity(
 )
 
 private fun CurrencyDto.toEntity() = CurrencyEntity(code = code, name = name)
-
-private fun VehicleDto.toEntity() = VehicleEntity(
-    id = id,
-    fuelId = fuelId,
-    fuelName = fuelName,
-    brand = brand,
-    model = model,
-    year = year,
-)

@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.sp
 import ch.mcfx.urs.R
 import ch.mcfx.urs.fuel.FuelRoutes
 import ch.mcfx.urs.obd.ObdRoutes
+import ch.mcfx.urs.service.ServiceRoutes
 import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.theme.UrsTheme
@@ -28,6 +29,8 @@ private val TileIconStyle = TextStyle(fontSize = 32.sp)
 private enum class VehicleTile(val route: String, val labelRes: Int, val emoji: String) {
     FUEL(FuelRoutes.HUB, R.string.vehicle_tile_fuel, "⛽"),
     OBD(ObdRoutes.LIVE, R.string.vehicle_tile_obd, "📟"),
+    VEHICLES(VehicleRoutes.LIST, R.string.vehicle_tile_vehicles, "🚘"),
+    SERVICE(ServiceRoutes.LIST, R.string.vehicle_tile_service, "🔧"),
 }
 
 @Composable

@@ -14,6 +14,41 @@ data class VehicleDto(
     @SerialName("vehicle_brand") val brand: String,
     @SerialName("vehicle_model") val model: String,
     @SerialName("vehicle_year") val year: String,
+    @SerialName("vehicle_engine_code") val engineCode: String = "",
+    @SerialName("vehicle_type") val vehicleType: String = "car",
+    @SerialName("vehicle_color") val color: String = "",
+    @SerialName("vehicle_vin") val vin: String = "",
+    @SerialName("vehicle_registration_number") val registrationNumber: String = "",
+    @SerialName("vehicle_type_approval_number") val typeApprovalNumber: String = "",
+    @SerialName("vehicle_displacement_ccm") val displacementCcm: String = "",
+    @SerialName("vehicle_power_kw") val powerKw: String = "",
+    @SerialName("vehicle_power_ps") val powerPs: String = "",
+    @SerialName("vehicle_weight_kg") val weightKg: String = "",
+    @SerialName("vehicle_first_registration_date") val firstRegistrationDate: String = "",
+    @SerialName("vehicle_last_mfk_date") val lastMfkDate: String = "",
+)
+
+// Used for both create (POST) and update (PUT) — the backend's Vehicle
+// request DTO takes the same shape for both (see web.Vehicle in
+// urs-backend), unlike Fill which has a separate FillUpdatePayload.
+@Serializable
+data class VehiclePayload(
+    @SerialName("vehicle_fuel_id") val fuelId: String,
+    @SerialName("vehicle_brand") val brand: String,
+    @SerialName("vehicle_model") val model: String,
+    @SerialName("vehicle_year") val year: String,
+    @SerialName("vehicle_engine_code") val engineCode: String = "",
+    @SerialName("vehicle_type") val vehicleType: String = "car",
+    @SerialName("vehicle_color") val color: String = "",
+    @SerialName("vehicle_vin") val vin: String = "",
+    @SerialName("vehicle_registration_number") val registrationNumber: String = "",
+    @SerialName("vehicle_type_approval_number") val typeApprovalNumber: String = "",
+    @SerialName("vehicle_displacement_ccm") val displacementCcm: String = "",
+    @SerialName("vehicle_power_kw") val powerKw: String = "",
+    @SerialName("vehicle_power_ps") val powerPs: String = "",
+    @SerialName("vehicle_weight_kg") val weightKg: String = "",
+    @SerialName("vehicle_first_registration_date") val firstRegistrationDate: String = "",
+    @SerialName("vehicle_last_mfk_date") val lastMfkDate: String = "",
 )
 
 @Serializable
@@ -562,4 +597,44 @@ data class TokenResponseDto(
     @SerialName("access_token") val accessToken: String,
     @SerialName("refresh_token") val refreshToken: String,
     @SerialName("expires_in") val expiresIn: Int,
+)
+
+// Same shape for request and response — the backend's VehicleServiceTag
+// (urs-backend, src/web/vehicleService.go) deliberately uses these full
+// field names on both sides, not a shorter code/label pair.
+@Serializable
+data class VehicleServiceTagDto(
+    @SerialName("vehicle_service_tag_code") val code: String,
+    @SerialName("vehicle_service_tag_label") val label: String = "",
+)
+
+@Serializable
+data class VehicleServiceDto(
+    @SerialName("vehicle_service_id") val id: String,
+    @SerialName("vehicle_service_vehicle_id") val vehicleId: String,
+    @SerialName("vehicle_service_date") val date: String,
+    @SerialName("vehicle_service_odometer") val odometer: String,
+    @SerialName("vehicle_service_provider") val provider: String = "",
+    @SerialName("vehicle_service_is_diy") val isDiy: String = "0",
+    @SerialName("vehicle_service_notes") val notes: String = "",
+    @SerialName("vehicle_service_cost_amount") val costAmount: String,
+    @SerialName("vehicle_service_currency_code") val currencyCode: String = "CHF",
+    @SerialName("vehicle_service_cost_amount_chf") val costAmountChf: String = "",
+    @SerialName("vehicle_service_cost_amount_chf_locked") val costAmountChfLocked: String = "0",
+    val tags: List<VehicleServiceTagDto> = emptyList(),
+)
+
+// Used for both create (POST) and update (PUT) — same shape on the
+// backend (web.VehicleServiceRequest).
+@Serializable
+data class VehicleServicePayload(
+    @SerialName("vehicle_service_vehicle_id") val vehicleId: String,
+    @SerialName("vehicle_service_date") val date: String,
+    @SerialName("vehicle_service_odometer") val odometer: String,
+    @SerialName("vehicle_service_provider") val provider: String = "",
+    @SerialName("vehicle_service_is_diy") val isDiy: String = "0",
+    @SerialName("vehicle_service_notes") val notes: String = "",
+    @SerialName("vehicle_service_cost_amount") val costAmount: String,
+    @SerialName("vehicle_service_currency_code") val currencyCode: String = "CHF",
+    val tags: List<VehicleServiceTagDto> = emptyList(),
 )

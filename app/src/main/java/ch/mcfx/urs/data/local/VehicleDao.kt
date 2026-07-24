@@ -16,4 +16,10 @@ interface VehicleDao {
 
     @Upsert
     suspend fun upsertAll(vehicles: List<VehicleEntity>)
+
+    @Upsert
+    suspend fun upsert(vehicle: VehicleEntity)
+
+    @Query("DELETE FROM vehicle WHERE id = :id")
+    suspend fun deleteById(id: String)
 }

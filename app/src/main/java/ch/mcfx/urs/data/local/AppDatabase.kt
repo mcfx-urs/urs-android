@@ -22,6 +22,8 @@ import androidx.room.TypeConverters
         ListEntity::class,
         ListItemEntity::class,
         LocationHistoryEntity::class,
+        VehicleServiceEntity::class,
+        VehicleServiceTagEntity::class,
     ],
     // Bumped for the isFullTank column on FillEntity, the life map
     // feature's LocationHistoryEntity (local capture + sync fields), and
@@ -40,7 +42,11 @@ import androidx.room.TypeConverters
     // v15: CarEntity/CarDao renamed to VehicleEntity/VehicleDao,
     //      table "car" renamed to "vehicle" — schema identity hash changes,
     //      same destructive-fallback handling as every bump above.
-    version = 15,
+    // v16: new vehicle detail columns (engine code, vehicle type,
+    //      Fahrzeugausweis fields, MFK date) on VehicleEntity, plus the new
+    //      VehicleServiceEntity/VehicleServiceTagEntity tables — same
+    //      destructive-fallback handling as every bump above.
+    version = 16,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -60,4 +66,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun listDao(): ListDao
     abstract fun listItemDao(): ListItemDao
     abstract fun locationHistoryDao(): LocationHistoryDao
+    abstract fun vehicleServiceDao(): VehicleServiceDao
 }
