@@ -83,6 +83,7 @@ class SyncManager(
     private val vehicleServiceDao: VehicleServiceDao,
     private val outboxDao: OutboxDao,
     private val reachabilityChecker: ReachabilityChecker,
+    private val syncStatusStore: SyncStatusStore,
     private val json: Json,
 ) {
     private val mutex = Mutex()
@@ -105,6 +106,10 @@ class SyncManager(
         for (mutation in outboxDao.pendingOrdered()) {
             if (!replay(mutation)) allSucceeded = false
         }
+        // Also fires when the outbox was already empty — that's still a
+        // legitimate "everything confirmed in sync" moment, since reaching
+        // this point already required the backend to be reachable.
+        if (allSucceeded) syncStatusStore.recordSuccess()
         return allSucceeded
     }
 

@@ -64,7 +64,7 @@ android {
         buildConfigField(
             "String",
             "BUILD_TIME",
-            "\"${SimpleDateFormat("yyyyMMdd-HHmmss").format(Date())}\"",
+            "\"${SimpleDateFormat("dd.MM.yyyy HH:mm:ss").format(Date())}\"",
         )
     }
 

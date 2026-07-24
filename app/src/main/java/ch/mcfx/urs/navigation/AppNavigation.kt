@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -190,7 +191,24 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
             // ColumnScope weight in this fillMaxHeight() Column pushes
             // anything after it all the way down.
             Spacer(modifier = Modifier.weight(1f))
-            settingsDestination.forEach { destination -> DrawerItem(destination, currentRoute, navController, drawerState, coroutineScope) }
+            // Settings + a direct About shortcut share this bottom row —
+            // About is otherwise three taps deep (drawer → Settings →
+            // About). Icons.Filled.Info matches the same icon the Settings
+            // hub's own About tile already uses, not a new one.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                settingsDestination.forEach { destination ->
+                    DrawerItem(destination, currentRoute, navController, drawerState, coroutineScope, modifier = Modifier.weight(1f))
+                }
+                UrsIconButton(
+                    onClick = {
+                        navController.navigate(SettingsRoutes.ABOUT)
+                        coroutineScope.launch { drawerState.close() }
+                    },
+                    contentDescription = stringResource(R.string.settings_tile_about),
+                    imageVector = Icons.Filled.Info,
+                    tint = UrsTheme.colors.accent,
+                )
+            }
             Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
         },
     ) {
@@ -422,8 +440,10 @@ private fun DrawerItem(
     navController: NavHostController,
     drawerState: UrsDrawerState,
     coroutineScope: CoroutineScope,
+    modifier: Modifier = Modifier,
 ) {
     UrsNavigationDrawerItem(
+        modifier = modifier,
         label = stringResource(destination.labelRes),
         icon = destination.icon,
         selected = destination.route == currentRoute,
