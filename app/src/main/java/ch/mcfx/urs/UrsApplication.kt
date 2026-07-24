@@ -16,7 +16,9 @@ import ch.mcfx.urs.data.CatalogRepository
 import ch.mcfx.urs.data.FuelRepository
 import ch.mcfx.urs.data.InventoryRepository
 import ch.mcfx.urs.data.LocationHistoryRepository
+import ch.mcfx.urs.data.ServiceRepository
 import ch.mcfx.urs.data.ShoppingListRepository
+import ch.mcfx.urs.data.VehicleRepository
 import ch.mcfx.urs.data.UserRepository
 import ch.mcfx.urs.data.WorkTimeRepository
 import ch.mcfx.urs.data.local.AppDatabase
@@ -206,6 +208,7 @@ class AppContainer(context: Context) {
         listDao = database.listDao(),
         listItemDao = database.listItemDao(),
         locationHistoryDao = database.locationHistoryDao(),
+        vehicleServiceDao = database.vehicleServiceDao(),
         outboxDao = database.outboxDao(),
         reachabilityChecker = reachabilityChecker,
         json = json,
@@ -234,6 +237,18 @@ class AppContainer(context: Context) {
         fillingStationDao = database.fillingStationDao(),
         currencyDao = database.currencyDao(),
         vehicleDao = database.vehicleDao(),
+        outboxDao = database.outboxDao(),
+        syncManager = syncManager,
+        applicationScope = applicationScope,
+        json = json,
+    )
+    val vehicleRepository = VehicleRepository(
+        api = ursApi,
+        vehicleDao = database.vehicleDao(),
+    )
+    val serviceRepository = ServiceRepository(
+        api = ursApi,
+        vehicleServiceDao = database.vehicleServiceDao(),
         outboxDao = database.outboxDao(),
         syncManager = syncManager,
         applicationScope = applicationScope,
