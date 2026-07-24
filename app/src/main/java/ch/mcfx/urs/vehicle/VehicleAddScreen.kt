@@ -4,10 +4,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -25,6 +30,7 @@ import ch.mcfx.urs.R
 import ch.mcfx.urs.data.VehicleType
 import ch.mcfx.urs.data.remote.FuelDto
 import ch.mcfx.urs.ui.components.UrsButton
+import ch.mcfx.urs.ui.components.UrsDateField
 import ch.mcfx.urs.ui.components.UrsDropdownField
 import ch.mcfx.urs.ui.components.UrsProgressIndicator
 import ch.mcfx.urs.ui.components.UrsText
@@ -79,7 +85,15 @@ fun VehicleAddScreen(
 @Composable
 private fun VehicleForm(form: VehicleFormState, fuelTypes: List<FuelDto>, viewModel: VehicleViewModel) {
     Column(
-        modifier = Modifier.padding(horizontal = Spacing.xl).padding(vertical = Spacing.xl),
+        modifier = Modifier
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = Spacing.xl)
+            .padding(top = Spacing.xl)
+            // Edge-to-edge means this screen draws behind the system nav
+            // bar unless told otherwise — the Save button would otherwise
+            // sit partly underneath/obscured by it, same class of bug
+            // HomeScreen/UrsFab/FuelStationMapScreen already work around.
+            .padding(bottom = Spacing.xl + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()),
         verticalArrangement = Arrangement.spacedBy(Spacing.m),
     ) {
         UrsTextField(
@@ -197,18 +211,16 @@ private fun VehicleForm(form: VehicleFormState, fuelTypes: List<FuelDto>, viewMo
                 modifier = Modifier.weight(1f),
             )
         }
-        UrsTextField(
+        UrsDateField(
             value = form.firstRegistrationDate,
             onValueChange = viewModel::setFirstRegistrationDate,
             label = stringResource(R.string.vehicle_first_registration_date),
-            singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
-        UrsTextField(
+        UrsDateField(
             value = form.lastMfkDate,
             onValueChange = viewModel::setLastMfkDate,
             label = stringResource(R.string.vehicle_last_mfk_date),
-            singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
 

@@ -4,11 +4,16 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.Composable
@@ -33,6 +38,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
 import ch.mcfx.urs.ui.components.UrsButton
+import ch.mcfx.urs.ui.components.UrsDateField
 import ch.mcfx.urs.ui.components.UrsIconButton
 import ch.mcfx.urs.ui.components.UrsOutlinedButton
 import ch.mcfx.urs.ui.components.UrsProgressIndicator
@@ -94,27 +100,36 @@ private fun EntryForm(form: WorkTimeFormState, viewModel: WorkTimeViewModel) {
     }
 
     Column(
-        modifier = Modifier.padding(horizontal = Spacing.xl).padding(vertical = Spacing.xl),
+        modifier = Modifier
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = Spacing.xl)
+            .padding(top = Spacing.xl)
+            // Edge-to-edge means this screen draws behind the system nav
+            // bar unless told otherwise — the Save button would otherwise
+            // sit partly underneath/obscured by it, same class of bug
+            // HomeScreen/UrsFab/FuelStationMapScreen already work around.
+            .padding(bottom = Spacing.xl + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()),
         verticalArrangement = Arrangement.spacedBy(Spacing.m),
     ) {
         val isEditing = form.editingEntryId != null
-        UrsTextField(
+        UrsDateField(
             value = form.date,
             // The backend's update endpoint doesn't support moving an entry
-            // to a different day — read-only once editing an existing entry
-            // rather than silently discarding a date change on save.
-            onValueChange = if (isEditing) {
-                {}
-            } else {
-                viewModel::setDate
-            },
+            // to a different day — disabled once editing an existing entry
+            // rather than letting the dialog open just to discard the pick.
+            onValueChange = viewModel::setDate,
             label = stringResource(R.string.worktime_date),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-            keyboardActions = nextFieldAction,
-            singleLine = true,
-            supportingText = if (isEditing) stringResource(R.string.worktime_date_locked) else null,
+            enabled = !isEditing,
             modifier = Modifier.fillMaxWidth(),
         )
+        if (isEditing) {
+            UrsText(
+                text = stringResource(R.string.worktime_date_locked),
+                style = UrsTheme.typography.caption,
+                color = UrsTheme.colors.onSurfaceMuted,
+                modifier = Modifier.padding(start = Spacing.m),
+            )
+        }
 
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.m)) {
             UrsTextField(

@@ -5,8 +5,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -30,6 +33,7 @@ import ch.mcfx.urs.data.local.CurrencyEntity
 import ch.mcfx.urs.data.local.VehicleEntity
 import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsCheckbox
+import ch.mcfx.urs.ui.components.UrsDateField
 import ch.mcfx.urs.ui.components.UrsDropdownField
 import ch.mcfx.urs.ui.components.UrsFilterChip
 import ch.mcfx.urs.ui.components.UrsProgressIndicator
@@ -92,7 +96,12 @@ private fun ServiceForm(
         modifier = Modifier
             .verticalScroll(rememberScrollState())
             .padding(horizontal = Spacing.xl)
-            .padding(vertical = Spacing.xl),
+            .padding(top = Spacing.xl)
+            // Edge-to-edge means this screen draws behind the system nav
+            // bar unless told otherwise — the Save button would otherwise
+            // sit partly underneath/obscured by it, same class of bug
+            // HomeScreen/UrsFab/FuelStationMapScreen already work around.
+            .padding(bottom = Spacing.xl + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()),
         verticalArrangement = Arrangement.spacedBy(Spacing.m),
     ) {
         UrsDropdownField(
@@ -104,11 +113,10 @@ private fun ServiceForm(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        UrsTextField(
+        UrsDateField(
             value = form.date,
             onValueChange = viewModel::setDate,
             label = stringResource(R.string.service_date),
-            singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
 

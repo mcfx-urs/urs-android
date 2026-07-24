@@ -3,10 +3,15 @@ package ch.mcfx.urs.fuel
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -20,6 +25,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
 import ch.mcfx.urs.data.remote.FuelDto
 import ch.mcfx.urs.ui.components.UrsButton
+import ch.mcfx.urs.ui.components.UrsDateField
 import ch.mcfx.urs.ui.components.UrsDropdownField
 import ch.mcfx.urs.ui.components.UrsProgressIndicator
 import ch.mcfx.urs.ui.components.UrsText
@@ -62,7 +68,15 @@ private fun PriceForm(
     viewModel: FuelPriceViewModel,
 ) {
     Column(
-        modifier = Modifier.padding(horizontal = Spacing.xl).padding(vertical = Spacing.xl),
+        modifier = Modifier
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = Spacing.xl)
+            .padding(top = Spacing.xl)
+            // Edge-to-edge means this screen draws behind the system nav
+            // bar unless told otherwise — the Save button would otherwise
+            // sit partly underneath/obscured by it, same class of bug
+            // HomeScreen/UrsFab/FuelStationMapScreen already work around.
+            .padding(bottom = Spacing.xl + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()),
         verticalArrangement = Arrangement.spacedBy(Spacing.m),
     ) {
         UrsDropdownField(
@@ -92,11 +106,10 @@ private fun PriceForm(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        UrsTextField(
+        UrsDateField(
             value = form.date,
             onValueChange = viewModel::setDate,
             label = stringResource(R.string.fill_date),
-            singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
 
