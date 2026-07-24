@@ -42,7 +42,6 @@ import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.auth.BiometricUnlockScreen
 import ch.mcfx.urs.auth.LoginScreen
 import ch.mcfx.urs.beer.BeerScreen
-import ch.mcfx.urs.car.CarHubScreen
 import ch.mcfx.urs.fuel.FuelAddScreen
 import ch.mcfx.urs.fuel.FuelHubScreen
 import ch.mcfx.urs.fuel.FuelPriceAddScreen
@@ -86,6 +85,7 @@ import ch.mcfx.urs.ui.components.UrsTopBar
 import ch.mcfx.urs.ui.components.rememberUrsDrawerState
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Spacing
+import ch.mcfx.urs.vehicle.VehicleHubScreen
 import ch.mcfx.urs.worktime.WorkTimeAddScreen
 import ch.mcfx.urs.worktime.WorkTimeRoutes
 import ch.mcfx.urs.worktime.WorkTimeScreen
@@ -151,8 +151,8 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
     val currentRoute = backStackEntry?.destination?.route ?: Destination.HOME.route
     // showInDrawer, not just membership in the enum: FUEL is a Destination
     // (routing target for HomeScreen's direct tile) but, like OBD, is really
-    // a sub-screen of CAR now — it needs a back arrow to CAR, not a hamburger,
-    // same as any other non-drawer sub-route.
+    // a sub-screen of VEHICLE now — it needs a back arrow to VEHICLE, not a
+    // hamburger, same as any other non-drawer sub-route.
     val isTopLevel = Destination.entries.any { it.route == currentRoute && it.showInDrawer }
 
     UrsNavigationDrawer(
@@ -241,8 +241,8 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                             onNavigateRoute = { route -> navController.navigate(route) },
                         )
                     }
-                    composable(Destination.CAR.route) {
-                        CarHubScreen(onNavigate = { route -> navController.navigate(route) })
+                    composable(Destination.VEHICLE.route) {
+                        VehicleHubScreen(onNavigate = { route -> navController.navigate(route) })
                     }
                     composable(Destination.FUEL.route) {
                         FuelHubScreen(onNavigate = { route -> navController.navigate(route) })

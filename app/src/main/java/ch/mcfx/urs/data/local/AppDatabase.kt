@@ -10,7 +10,7 @@ import androidx.room.TypeConverters
         FillingStationEntity::class,
         OutboxMutationEntity::class,
         CurrencyEntity::class,
-        CarEntity::class,
+        VehicleEntity::class,
         WorkTimeEntryEntity::class,
         WorkTimeBreakEntity::class,
         WorkTimeMonthOverrideEntity::class,
@@ -37,7 +37,10 @@ import androidx.room.TypeConverters
     // crashing on startup with Room's "cannot verify data integrity"
     // instead of going through fallbackToDestructiveMigration at all
     // (that only triggers on an actual version transition).
-    version = 14,
+    // v15: CarEntity/CarDao renamed to VehicleEntity/VehicleDao,
+    //      table "car" renamed to "vehicle" — schema identity hash changes,
+    //      same destructive-fallback handling as every bump above.
+    version = 15,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -46,7 +49,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun fillingStationDao(): FillingStationDao
     abstract fun outboxDao(): OutboxDao
     abstract fun currencyDao(): CurrencyDao
-    abstract fun carDao(): CarDao
+    abstract fun vehicleDao(): VehicleDao
     abstract fun workTimeDao(): WorkTimeDao
     abstract fun workTimeMonthOverrideDao(): WorkTimeMonthOverrideDao
     abstract fun inventoryDao(): InventoryDao

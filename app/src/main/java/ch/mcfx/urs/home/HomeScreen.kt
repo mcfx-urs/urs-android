@@ -52,7 +52,7 @@ import ch.mcfx.urs.ui.tokens.Spacing
 private val FEATURE_TILES = listOf(
     Destination.WORK_TIME,
     Destination.SHOPPING_LIST,
-    Destination.CAR,
+    Destination.VEHICLE,
     Destination.INVENTORY,
     Destination.BEER,
     Destination.LIFE_MAP,
@@ -85,7 +85,7 @@ private val TileHeight = 116.dp
 private val TILE_EMOJI = mapOf(
     Destination.WORK_TIME to "🕒",
     Destination.SHOPPING_LIST to "🛒",
-    Destination.CAR to "🚗",
+    Destination.VEHICLE to "🚗",
     Destination.INVENTORY to "📦",
     Destination.BEER to "🍺",
     Destination.LIFE_MAP to "🗺️",

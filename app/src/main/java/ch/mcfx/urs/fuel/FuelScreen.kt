@@ -107,8 +107,8 @@ fun FuelScreen(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun FillList(state: FuelUiState.Data, onLongPress: (FillEntity) -> Unit) {
-    val carNames = remember(state.cars) {
-        state.cars.associate { it.id to "${it.brand} ${it.model}" }
+    val vehicleNames = remember(state.vehicles) {
+        state.vehicles.associate { it.id to "${it.brand} ${it.model}" }
     }
     val stationNames = remember(state.stations) {
         state.stations.associate { it.id to it.name }
@@ -142,7 +142,7 @@ private fun FillList(state: FuelUiState.Data, onLongPress: (FillEntity) -> Unit)
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    UrsText(carNames[fill.carId] ?: fill.carId, style = UrsTheme.typography.cardTitle)
+                    UrsText(vehicleNames[fill.vehicleId] ?: fill.vehicleId, style = UrsTheme.typography.cardTitle)
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(Spacing.s),
                         verticalAlignment = Alignment.CenterVertically,
