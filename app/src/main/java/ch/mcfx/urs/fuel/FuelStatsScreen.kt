@@ -19,14 +19,22 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
 import ch.mcfx.urs.data.remote.VehicleDto
 import ch.mcfx.urs.ui.components.UrsCard
+import ch.mcfx.urs.ui.components.UrsChartSeries
 import ch.mcfx.urs.ui.components.UrsDropdownField
 import ch.mcfx.urs.ui.components.UrsLineChart
+import ch.mcfx.urs.ui.components.UrsMultiLineChart
 import ch.mcfx.urs.ui.components.UrsProgressIndicator
 import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Radius
 import ch.mcfx.urs.ui.tokens.Spacing
+import androidx.compose.ui.graphics.Color
 import java.util.Locale
+
+// No secondary/tertiary accent color exists in the design system yet — same
+// "local-constant workaround" pattern as FormErrorColor elsewhere, just for
+// telling multiple chart series apart rather than an error state.
+private val ChartPalette = listOf(Color(0xFF4A90D9), Color(0xFFD9A24A), Color(0xFF9B59B6))
 
 @Composable
 fun FuelStatsScreen(viewModel: FuelStatsViewModel = viewModel(factory = FuelStatsViewModel.Factory)) {
@@ -78,6 +86,16 @@ fun FuelStatsScreen(viewModel: FuelStatsViewModel = viewModel(factory = FuelStat
                                 label = stringResource(R.string.stats_chart_km),
                             )
                         }
+                    }
+                }
+            }
+            if (uiState.priceHistory.any { it.second.size >= 2 }) {
+                item {
+                    val chartSeries = uiState.priceHistory.mapIndexed { index, (name, values) ->
+                        UrsChartSeries(label = name, values = values, color = ChartPalette[index % ChartPalette.size])
+                    }
+                    UrsCard(modifier = Modifier.fillMaxWidth()) {
+                        UrsMultiLineChart(series = chartSeries, title = stringResource(R.string.stats_chart_price))
                     }
                 }
             }
