@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - Fuel Stats now shows line charts for average consumption and kilometers driven per month.
+- Fuel Stats now shows a fuel price development chart, one line per fuel type.
 - Tapping "+" to add a product now auto-focuses the search field and opens the keyboard.
 
 ### Changed
