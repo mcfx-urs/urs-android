@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -20,7 +19,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
 import ch.mcfx.urs.data.remote.VehicleDto
 import ch.mcfx.urs.ui.components.UrsCard
-import ch.mcfx.urs.ui.components.UrsFilterChip
+import ch.mcfx.urs.ui.components.UrsDropdownField
+import ch.mcfx.urs.ui.components.UrsLineChart
 import ch.mcfx.urs.ui.components.UrsProgressIndicator
 import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.theme.UrsTheme
@@ -55,13 +55,32 @@ fun FuelStatsScreen(viewModel: FuelStatsViewModel = viewModel(factory = FuelStat
             verticalArrangement = Arrangement.spacedBy(Spacing.l),
         ) {
             item {
-                VehicleFilterRow(
+                VehicleFilterDropdown(
                     vehicles = uiState.vehicles,
                     selectedVehicleId = uiState.selectedVehicleId,
                     onSelect = viewModel::selectVehicle,
                 )
             }
             item { StatsSummary(uiState) }
+            if (uiState.monthly.size >= 2) {
+                item {
+                    // monthly is newest-first (see FuelStatsViewModel.monthlyStats) —
+                    // reversed here so the chart reads left-to-right as oldest-to-newest.
+                    val ascending = uiState.monthly.asReversed()
+                    UrsCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(Spacing.l)) {
+                            UrsLineChart(
+                                values = ascending.mapNotNull { it.avgConsumption },
+                                label = stringResource(R.string.stats_chart_consumption),
+                            )
+                            UrsLineChart(
+                                values = ascending.map { it.totalKm },
+                                label = stringResource(R.string.stats_chart_km),
+                            )
+                        }
+                    }
+                }
+            }
             item {
                 UrsText(stringResource(R.string.stats_monthly_title), style = UrsTheme.typography.screenTitle)
             }
@@ -71,23 +90,18 @@ fun FuelStatsScreen(viewModel: FuelStatsViewModel = viewModel(factory = FuelStat
 }
 
 @Composable
-private fun VehicleFilterRow(vehicles: List<VehicleDto>, selectedVehicleId: String?, onSelect: (String?) -> Unit) {
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
-        item {
-            UrsFilterChip(
-                label = stringResource(R.string.stats_all_vehicles),
-                selected = selectedVehicleId == null,
-                onClick = { onSelect(null) },
-            )
-        }
-        items(vehicles, key = { it.id }) { vehicle ->
-            UrsFilterChip(
-                label = "${vehicle.brand} ${vehicle.model}",
-                selected = selectedVehicleId == vehicle.id,
-                onClick = { onSelect(vehicle.id) },
-            )
-        }
-    }
+private fun VehicleFilterDropdown(vehicles: List<VehicleDto>, selectedVehicleId: String?, onSelect: (String?) -> Unit) {
+    val allVehiclesLabel = stringResource(R.string.stats_all_vehicles)
+    val options: List<VehicleDto?> = listOf(null) + vehicles
+    UrsDropdownField(
+        label = allVehiclesLabel,
+        options = options,
+        selectedLabel = vehicles.firstOrNull { it.id == selectedVehicleId }?.let { "${it.brand} ${it.model}" }
+            ?: allVehiclesLabel,
+        optionLabel = { it?.let { v -> "${v.brand} ${v.model}" } ?: allVehiclesLabel },
+        onSelect = { onSelect(it?.id) },
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
 @Composable

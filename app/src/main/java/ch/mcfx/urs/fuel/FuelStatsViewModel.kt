@@ -127,7 +127,17 @@ class FuelStatsViewModel(private val repository: FuelRepository) : ViewModel() {
             }
     }
 
+    // Must use the backend's FX-resolved fill_amount_chf, not
+    // pricePerLiter*liters in the fill's own currency — a fill entered in
+    // e.g. PLN would otherwise add its raw (much larger) numeric price
+    // straight into a CHF total, inflating Total Cost/Avg Price per Liter.
+    // amountChf is only blank for a moment right after creation, before the
+    // async FX job (urs-backend's fx/job.go) resolves it — CHF fills fall
+    // back to the raw math (rate is always 1.0 for them anyway), non-CHF
+    // fills contribute 0 until resolved rather than mixing currencies.
     private fun fillCost(fill: FillDto): Double {
+        fill.amountChf.toDoubleOrNull()?.let { return it }
+        if (fill.currencyCode != "CHF") return 0.0
         val price = fill.pricePerLiter.toDoubleOrNull() ?: 0.0
         val liters = fill.liters.toDoubleOrNull() ?: 0.0
         return price * liters
