@@ -6,12 +6,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -22,8 +25,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -92,16 +98,28 @@ private fun ServiceForm(
     currencies: List<CurrencyEntity>,
     viewModel: ServiceViewModel,
 ) {
+    val focusManager = LocalFocusManager.current
+    // "Next" on every field's IME action, instead of the default tick/done —
+    // one shared instance since the behavior (move to the next field) is
+    // identical everywhere in this form. Matches WorkTimeAddScreen.
+    val nextFieldAction = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Next) })
+
     Column(
         modifier = Modifier
             .verticalScroll(rememberScrollState())
             .padding(horizontal = Spacing.xl)
             .padding(top = Spacing.xl)
-            // Edge-to-edge means this screen draws behind the system nav
-            // bar unless told otherwise — the Save button would otherwise
-            // sit partly underneath/obscured by it, same class of bug
-            // HomeScreen/UrsFab/FuelStationMapScreen already work around.
-            .padding(bottom = Spacing.xl + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()),
+            // Edge-to-edge means this screen draws behind the system nav bar
+            // and (while a field is focused) the on-screen keyboard, unless
+            // told otherwise — union rather than a separate imePadding() so
+            // the two inset paddings don't stack additively while the
+            // keyboard covers the nav bar (same reasoning as UrsBottomSheet).
+            // Without this, the scrollable area's bottom never grows to
+            // account for the keyboard, so fields/the Save button below the
+            // focused field stay hidden behind it with no way to scroll them
+            // into view.
+            .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime))
+            .padding(bottom = Spacing.xl),
         verticalArrangement = Arrangement.spacedBy(Spacing.m),
     ) {
         UrsDropdownField(
@@ -124,7 +142,8 @@ private fun ServiceForm(
             value = form.odometer,
             onValueChange = viewModel::setOdometer,
             label = stringResource(R.string.service_odometer),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+            keyboardActions = nextFieldAction,
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -143,6 +162,8 @@ private fun ServiceForm(
                 value = form.provider,
                 onValueChange = viewModel::setProvider,
                 label = stringResource(R.string.service_provider),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                keyboardActions = nextFieldAction,
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -153,7 +174,8 @@ private fun ServiceForm(
                 value = form.costAmount,
                 onValueChange = viewModel::setCostAmount,
                 label = stringResource(R.string.service_cost),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                keyboardActions = nextFieldAction,
                 singleLine = true,
                 modifier = Modifier.weight(1f),
             )
@@ -171,6 +193,8 @@ private fun ServiceForm(
             value = form.notes,
             onValueChange = viewModel::setNotes,
             label = stringResource(R.string.service_notes),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            keyboardActions = nextFieldAction,
             modifier = Modifier.fillMaxWidth(),
         )
 
@@ -193,6 +217,8 @@ private fun ServiceForm(
                 value = tag,
                 onValueChange = { viewModel.setCustomTag(index, it) },
                 label = stringResource(R.string.service_custom_tag_hint),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                keyboardActions = nextFieldAction,
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )

@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Add/Edit Service Entry, Add/Edit Vehicle, and Add Fill-up now show "Next" on the keyboard between fields instead of the default checkmark, and no longer trap fields or the Save button behind the on-screen keyboard while scrolling.
+
 ## [0.11.0] - 2026-07-25
 
 ### Added
