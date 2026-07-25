@@ -5,12 +5,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -21,8 +24,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -84,22 +90,36 @@ fun VehicleAddScreen(
 
 @Composable
 private fun VehicleForm(form: VehicleFormState, fuelTypes: List<FuelDto>, viewModel: VehicleViewModel) {
+    val focusManager = LocalFocusManager.current
+    // "Next" on every field's IME action, instead of the default tick/done —
+    // one shared instance since the behavior (move to the next field) is
+    // identical everywhere in this form. Matches WorkTimeAddScreen.
+    val nextFieldAction = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Next) })
+
     Column(
         modifier = Modifier
             .verticalScroll(rememberScrollState())
             .padding(horizontal = Spacing.xl)
             .padding(top = Spacing.xl)
-            // Edge-to-edge means this screen draws behind the system nav
-            // bar unless told otherwise — the Save button would otherwise
-            // sit partly underneath/obscured by it, same class of bug
-            // HomeScreen/UrsFab/FuelStationMapScreen already work around.
-            .padding(bottom = Spacing.xl + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()),
+            // Edge-to-edge means this screen draws behind the system nav bar
+            // and (while a field is focused) the on-screen keyboard, unless
+            // told otherwise — union rather than a separate imePadding() so
+            // the two inset paddings don't stack additively while the
+            // keyboard covers the nav bar (same reasoning as UrsBottomSheet).
+            // Without this, the scrollable area's bottom never grows to
+            // account for the keyboard, so fields/the Save button below the
+            // focused field stay hidden behind it with no way to scroll them
+            // into view — this form has enough fields that this bites hard.
+            .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime))
+            .padding(bottom = Spacing.xl),
         verticalArrangement = Arrangement.spacedBy(Spacing.m),
     ) {
         UrsTextField(
             value = form.brand,
             onValueChange = viewModel::setBrand,
             label = stringResource(R.string.vehicle_brand),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            keyboardActions = nextFieldAction,
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -107,6 +127,8 @@ private fun VehicleForm(form: VehicleFormState, fuelTypes: List<FuelDto>, viewMo
             value = form.model,
             onValueChange = viewModel::setModel,
             label = stringResource(R.string.vehicle_model),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            keyboardActions = nextFieldAction,
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -114,7 +136,8 @@ private fun VehicleForm(form: VehicleFormState, fuelTypes: List<FuelDto>, viewMo
             value = form.year,
             onValueChange = viewModel::setYear,
             label = stringResource(R.string.vehicle_year),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+            keyboardActions = nextFieldAction,
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -139,6 +162,8 @@ private fun VehicleForm(form: VehicleFormState, fuelTypes: List<FuelDto>, viewMo
             value = form.engineCode,
             onValueChange = viewModel::setEngineCode,
             label = stringResource(R.string.vehicle_engine_code),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            keyboardActions = nextFieldAction,
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -151,6 +176,8 @@ private fun VehicleForm(form: VehicleFormState, fuelTypes: List<FuelDto>, viewMo
             value = form.color,
             onValueChange = viewModel::setColor,
             label = stringResource(R.string.vehicle_color),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            keyboardActions = nextFieldAction,
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -158,6 +185,8 @@ private fun VehicleForm(form: VehicleFormState, fuelTypes: List<FuelDto>, viewMo
             value = form.vin,
             onValueChange = viewModel::setVin,
             label = stringResource(R.string.vehicle_vin),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            keyboardActions = nextFieldAction,
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -165,6 +194,8 @@ private fun VehicleForm(form: VehicleFormState, fuelTypes: List<FuelDto>, viewMo
             value = form.registrationNumber,
             onValueChange = viewModel::setRegistrationNumber,
             label = stringResource(R.string.vehicle_registration_number),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            keyboardActions = nextFieldAction,
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -172,6 +203,8 @@ private fun VehicleForm(form: VehicleFormState, fuelTypes: List<FuelDto>, viewMo
             value = form.typeApprovalNumber,
             onValueChange = viewModel::setTypeApprovalNumber,
             label = stringResource(R.string.vehicle_type_approval_number),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            keyboardActions = nextFieldAction,
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -180,7 +213,8 @@ private fun VehicleForm(form: VehicleFormState, fuelTypes: List<FuelDto>, viewMo
                 value = form.displacementCcm,
                 onValueChange = viewModel::setDisplacementCcm,
                 label = stringResource(R.string.vehicle_displacement_ccm),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                keyboardActions = nextFieldAction,
                 singleLine = true,
                 modifier = Modifier.weight(1f),
             )
@@ -188,7 +222,8 @@ private fun VehicleForm(form: VehicleFormState, fuelTypes: List<FuelDto>, viewMo
                 value = form.weightKg,
                 onValueChange = viewModel::setWeightKg,
                 label = stringResource(R.string.vehicle_weight_kg),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                keyboardActions = nextFieldAction,
                 singleLine = true,
                 modifier = Modifier.weight(1f),
             )
@@ -198,7 +233,8 @@ private fun VehicleForm(form: VehicleFormState, fuelTypes: List<FuelDto>, viewMo
                 value = form.powerKw,
                 onValueChange = viewModel::setPowerKw,
                 label = stringResource(R.string.vehicle_power_kw),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                keyboardActions = nextFieldAction,
                 singleLine = true,
                 modifier = Modifier.weight(1f),
             )
@@ -206,7 +242,8 @@ private fun VehicleForm(form: VehicleFormState, fuelTypes: List<FuelDto>, viewMo
                 value = form.powerPs,
                 onValueChange = viewModel::setPowerPs,
                 label = stringResource(R.string.vehicle_power_ps),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                keyboardActions = nextFieldAction,
                 singleLine = true,
                 modifier = Modifier.weight(1f),
             )
