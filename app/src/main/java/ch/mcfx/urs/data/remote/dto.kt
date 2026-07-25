@@ -251,6 +251,12 @@ data class NewCatalogProductPayload(
     @SerialName("catalog_product_name") val name: String,
     // "" = uncategorized, same nullable-column-as-empty-string convention as CatalogProductDto.
     @SerialName("catalog_product_catalog_category_id") val catalogCategoryId: String = "",
+    // true rejects with 409 instead of silently reusing an existing row
+    // (any source) with the same name — Product Management's "New
+    // product" form sets this; the shopping-list/inventory quick-add flow
+    // leaves it false to keep its intentional find-or-create dedup
+    // behavior (see urs-backend's CreateCatalogProductStrict).
+    @SerialName("require_new") val requireNew: Boolean = false,
 )
 
 @Serializable
@@ -270,13 +276,28 @@ data class CatalogProductUpdatePayload(
     @SerialName("catalog_product_catalog_image_id") val catalogImageId: String = "",
 )
 
-// One entry from the reusable-image picker (GET /api/v1/catalog-image).
+// One entry from the reusable-image picker (GET /api/v1/catalog-image) —
+// also reused for the admin pending-review list and the response of
+// generateCatalogImage, which only ever fill a subset of these
+// fields; the rest fall back to their defaults.
 @Serializable
 data class CatalogImageDto(
     @SerialName("catalog_image_id") val id: String,
     @SerialName("catalog_image_source_image_name") val sourceImageName: String = "",
     @SerialName("catalog_image_extension") val extension: String = "",
+    // "approved" or "pending_review" — always "approved" for rows
+    // from the reuse picker, meaningful for the admin pending list.
+    @SerialName("catalog_image_status") val status: String = "",
     @SerialName("catalog_image_linked_names") val linkedNames: String = "",
+)
+
+// Request body for generateCatalogImage — description is the
+// optional free-text field from the product form; the backend falls back
+// to productName as the prompt subject when it's blank.
+@Serializable
+data class GenerateCatalogImagePayload(
+    @SerialName("product_name") val productName: String,
+    @SerialName("description") val description: String = "",
 )
 
 // 204 No Content (untracked anywhere the caller can access) maps to this

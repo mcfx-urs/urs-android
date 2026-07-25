@@ -44,11 +44,13 @@ import ch.mcfx.urs.watchrelay.WatchRelayService
 import ch.mcfx.urs.watchrelay.WatchRelaySettingsStore
 import coil3.ImageLoader
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
+import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -183,8 +185,28 @@ class AppContainer(context: Context) {
         .retryOnConnectionFailure(false)
         .build()
 
+    // AI image generation () is synchronous and can legitimately run
+    // well past every other endpoint's default 10s read timeout. Without
+    // this, OkHttp gives up and closes the connection first, which
+    // urs-backend then sees as its request context being canceled (not a
+    // clean timeout) partway through a perfectly healthy generation.
+    // chain.withReadTimeout scopes the longer timeout to just this one
+    // endpoint rather than loosening it for every call. 100s sits above
+    // both the ingress's proxy-read-timeout (90s) and urs-backend's own
+    // imagegen.requestTimeout (75s, imagegen.go) — see that file's own
+    // comment for why the three need this exact ordering.
+    private val longRunningEndpointTimeout = Interceptor { chain ->
+        val request = chain.request()
+        if (request.url.encodedPath.endsWith("/catalog-image/generate")) {
+            chain.withReadTimeout(100, TimeUnit.SECONDS).proceed(request)
+        } else {
+            chain.proceed(request)
+        }
+    }
+
     private val httpClient = baseHttpClientBuilder()
         .addInterceptor(AuthInterceptor(authTokenStore))
+        .addInterceptor(longRunningEndpointTimeout)
         .authenticator(AuthAuthenticator(authTokenStore, refreshClient, BuildConfig.BASE_URL))
         .build()
 

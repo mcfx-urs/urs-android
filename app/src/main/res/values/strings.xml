@@ -401,6 +401,11 @@
     <string name="product_management_image_picker_empty">No images available yet.</string>
     <string name="product_management_image_picker_search_label">Search</string>
     <string name="product_management_image_picker_no_matches">No images match your search.</string>
+    <string name="product_management_description_label">Image description (optional, English)</string>
+    <string name="product_management_generate_image">Generate image</string>
+    <string name="product_management_generating_image">Generating…</string>
+    <string name="product_management_generate_image_failed">Image generation failed</string>
+    <string name="product_management_name_conflict">A product with this name already exists</string>
     <string name="product_management_edit">Edit</string>
     <string name="product_management_delete">Delete</string>
     <string name="product_management_delete_product_confirm_title">Delete this product?</string>
@@ -449,6 +454,11 @@
     <string name="worktime_delete_confirm_body">This can\'t be undone.</string>
 
     <string name="settings_tile_admin">Admin</string>
+    <string name="settings_tile_image_review">Image Review</string>
+    <string name="image_review_empty">No images pending review.</string>
+    <string name="image_review_load_failed">Couldn\'t load pending images.</string>
+    <string name="image_review_approve">Approve</string>
+    <string name="image_review_reject">Reject</string>
     <string name="admin_restart_server">Restart server</string>
     <string name="admin_restart_confirm_title">Restart the backend server?</string>
     <string name="admin_restart_confirm_body">The app will be briefly unreachable for everyone while it restarts.</string>

@@ -15,4 +15,5 @@ object SettingsRoutes {
     const val WATCH_RELAY = "settings/watch-relay"
     const val PRODUCT_MANAGEMENT = "settings/product-management"
     const val ADMIN = "settings/admin"
+    const val IMAGE_REVIEW = "settings/image-review"
 }
