@@ -20,16 +20,28 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
 
 enum class ProductManagementTab { PRODUCTS, CATEGORIES }
 
 data class ProductFormState(
     val editingId: String? = null,
     val name: String = "",
+    // Free-text prompt detail for image generation only () — never
+    // sent to createProduct/updateProduct, never persisted on the product
+    // itself, just shapes the next generateProductImage() call.
+    val description: String = "",
     val categoryId: String? = null,
     val imageId: String? = null,
     val submitting: Boolean = false,
     val submitFailed: Boolean = false,
+    // Distinct from submitFailed (): a 409 from createProduct's
+    // requireNew=true means a product with this exact name already
+    // exists (external_catalog or manual) — a specific, actionable message rather
+    // than the generic "failed to save".
+    val nameConflict: Boolean = false,
+    val generatingImage: Boolean = false,
+    val generateImageFailed: Boolean = false,
 ) {
     val isValid: Boolean get() = name.isNotBlank()
 }
@@ -221,6 +233,35 @@ class ProductManagementViewModel(private val repository: CatalogRepository) : Vi
         _productForm.update { it?.copy(imageId = imageId) }
     }
 
+    fun setProductDescription(description: String) {
+        _productForm.update { it?.copy(description = description) }
+    }
+
+    /**
+     * Generate a new product image () from the form's current
+     * name/description and assign it — same [setProductImage] target the
+     * manual reuse picker writes to, so submitProductForm() doesn't need to
+     * know a generated image from a reused one. Synchronous from the UI's
+     * point of view: [ProductFormState.generatingImage] drives a spinner
+     * while the (blocking) network call is in flight.
+     */
+    fun generateProductImage() {
+        val form = _productForm.value ?: return
+        val name = form.name.trim()
+        if (name.isBlank() || form.generatingImage) return
+        viewModelScope.launch {
+            _productForm.update { it?.copy(generatingImage = true, generateImageFailed = false) }
+            try {
+                val image = repository.generateImage(name, form.description.trim())
+                _productForm.update { it?.copy(generatingImage = false, imageId = image.id) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                _productForm.update { it?.copy(generatingImage = false, generateImageFailed = true) }
+            }
+        }
+    }
+
     fun closeProductForm() {
         _productForm.value = null
     }
@@ -229,13 +270,17 @@ class ProductManagementViewModel(private val repository: CatalogRepository) : Vi
         val form = _productForm.value ?: return
         if (!form.isValid || form.submitting) return
         viewModelScope.launch {
-            _productForm.update { it?.copy(submitting = true, submitFailed = false) }
+            _productForm.update { it?.copy(submitting = true, submitFailed = false, nameConflict = false) }
             try {
                 val name = form.name.trim()
                 if (form.editingId != null) {
                     repository.updateProduct(form.editingId, name, form.categoryId, form.imageId)
                 } else {
-                    val created = repository.createProduct(name, form.categoryId)
+                    // requireNew = true: reject a name collision with an
+                    // existing row (e.g. external_catalog) outright instead of
+                    // silently reusing it — see createProduct's own doc
+                    // comment for why ().
+                    val created = repository.createProduct(name, form.categoryId, requireNew = true)
                     // postCatalogProduct doesn't accept an image, so a
                     // create-with-image needs this follow-up PUT.
                     if (form.imageId != null) {
@@ -245,6 +290,12 @@ class ProductManagementViewModel(private val repository: CatalogRepository) : Vi
                 _productForm.value = null
             } catch (e: CancellationException) {
                 throw e
+            } catch (e: HttpException) {
+                if (e.code() == 409) {
+                    _productForm.update { it?.copy(submitting = false, nameConflict = true) }
+                } else {
+                    _productForm.update { it?.copy(submitting = false, submitFailed = true) }
+                }
             } catch (_: Exception) {
                 _productForm.update { it?.copy(submitting = false, submitFailed = true) }
             }

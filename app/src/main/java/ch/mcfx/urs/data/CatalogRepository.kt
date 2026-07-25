@@ -9,6 +9,7 @@ import ch.mcfx.urs.data.remote.CatalogCategoryUpdatePayload
 import ch.mcfx.urs.data.remote.CatalogImageDto
 import ch.mcfx.urs.data.remote.CatalogProductDto
 import ch.mcfx.urs.data.remote.CatalogProductUpdatePayload
+import ch.mcfx.urs.data.remote.GenerateCatalogImagePayload
 import ch.mcfx.urs.data.remote.NewCatalogCategoryPayload
 import ch.mcfx.urs.data.remote.NewCatalogProductPayload
 import ch.mcfx.urs.data.remote.UrsApi
@@ -85,10 +86,19 @@ class CatalogRepository(
         return entity
     }
 
-    /** Same "direct, synchronous, shared-pool" shape as [createCategory]. */
-    suspend fun createProduct(name: String, catalogCategoryId: String?): CatalogProductEntity {
+    /**
+     * Same "direct, synchronous, shared-pool" shape as [createCategory].
+     * [requireNew] defaults to false (today's shopping-list/inventory
+     * "type a new name" find-or-create behavior); Product Management's
+     * "New product" form passes true instead, so a name collision with an
+     * existing (e.g. external_catalog) row surfaces as a clear
+     * [retrofit2.HttpException] (409) instead of silently attaching to
+     * that row and only failing later, confusingly, when an image gets
+     * attached ().
+     */
+    suspend fun createProduct(name: String, catalogCategoryId: String?, requireNew: Boolean = false): CatalogProductEntity {
         val response = api.createCatalogProduct(
-            NewCatalogProductPayload(name = name, catalogCategoryId = catalogCategoryId.orEmpty()),
+            NewCatalogProductPayload(name = name, catalogCategoryId = catalogCategoryId.orEmpty(), requireNew = requireNew),
         )
         val entity = CatalogProductEntity(
             id = response.id,
@@ -144,6 +154,33 @@ class CatalogRepository(
      * worth an offline-first shape.
      */
     suspend fun getImages(): List<CatalogImageDto> = emptyAsNull { api.getCatalogImages() }
+
+    /**
+     * Generate a new product image via OpenAI () — a direct,
+     * synchronous REST call the product form awaits (with a spinner) before
+     * assigning the result the same way it would an existing, reused image.
+     * The returned image is `pending_review` server-side: usable by the
+     * product that generated it right away, but not yet offered by
+     * [getImages] to anyone else until a super user approves it. Exceptions
+     * are left to propagate — the caller (ProductManagementViewModel) is the
+     * one that knows how to surface a failed generation to the form.
+     */
+    suspend fun generateImage(productName: String, description: String): CatalogImageDto =
+        api.generateCatalogImage(GenerateCatalogImagePayload(productName = productName, description = description))
+
+    /**
+     * Pending-review images awaiting a super-user decision () — same
+     * no-local-cache reasoning as [getImages]. Server-side gated to super
+     * users; a non-super-user call surfaces as an [retrofit2.HttpException]
+     * (403), left to propagate.
+     */
+    suspend fun getPendingImages(): List<CatalogImageDto> = emptyAsNull { api.getPendingCatalogImages() }
+
+    /** Approve a pending-review image () — Image Review screen. */
+    suspend fun approveImage(id: String) = api.approveCatalogImage(id)
+
+    /** Reject (delete) a pending-review image () — Image Review screen. */
+    suspend fun rejectImage(id: String) = api.rejectCatalogImage(id)
 
     /**
      * Read-only display hint — the caller's total on-hand quantity

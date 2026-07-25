@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -23,6 +25,7 @@ import ch.mcfx.urs.ui.components.CatalogImagePicker
 import ch.mcfx.urs.ui.components.UrsBottomSheet
 import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsDropdownField
+import ch.mcfx.urs.ui.components.UrsOutlinedButton
 import ch.mcfx.urs.ui.components.UrsSquareTile
 import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.components.UrsTextField
@@ -52,8 +55,17 @@ fun CatalogProductFormSheet(viewModel: ProductManagementViewModel, onDismissRequ
 
     val currentForm = form ?: return
     UrsBottomSheet(onDismissRequest = onDismissRequest) {
+        // UrsBottomSheet already shrinks to fit above the keyboard (its own
+        // windowInsetsPadding), but this form's own content was never
+        // scrollable — with the description field/Generate button added
+        // (), the sheet can now be taller than the space left above
+        // the keyboard, pushing whatever's focused (or the Save button)
+        // out of view with no way to reach it. verticalScroll fixes that.
         Column(
-            modifier = Modifier.padding(horizontal = Spacing.l).padding(bottom = Spacing.l),
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = Spacing.l)
+                .padding(bottom = Spacing.l),
             verticalArrangement = Arrangement.spacedBy(Spacing.m),
         ) {
             UrsText(
@@ -92,7 +104,32 @@ fun CatalogProductFormSheet(viewModel: ProductManagementViewModel, onDismissRequ
                 )
             }
 
-            if (currentForm.submitFailed) {
+            // : description is transient prompt detail for image
+            // generation only, never sent to createProduct/updateProduct and
+            // never persisted on the product itself.
+            UrsTextField(
+                value = currentForm.description,
+                onValueChange = viewModel::setProductDescription,
+                label = stringResource(R.string.product_management_description_label),
+                singleLine = false,
+                minLines = 2,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            UrsOutlinedButton(
+                text = stringResource(
+                    if (currentForm.generatingImage) R.string.product_management_generating_image else R.string.product_management_generate_image,
+                ),
+                onClick = viewModel::generateProductImage,
+                enabled = currentForm.name.isNotBlank() && !currentForm.generatingImage,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            if (currentForm.generateImageFailed) {
+                UrsText(text = stringResource(R.string.product_management_generate_image_failed), color = FormErrorColor)
+            }
+
+            if (currentForm.nameConflict) {
+                UrsText(text = stringResource(R.string.product_management_name_conflict), color = FormErrorColor)
+            } else if (currentForm.submitFailed) {
                 UrsText(text = stringResource(R.string.error_save), color = FormErrorColor)
             }
 
