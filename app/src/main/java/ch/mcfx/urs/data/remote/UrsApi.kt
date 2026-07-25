@@ -159,6 +159,21 @@ interface UrsApi {
     @GET("api/v1/catalog-image")
     suspend fun getCatalogImages(): List<CatalogImageDto>
 
+    @POST("api/v1/catalog-image/generate")
+    suspend fun generateCatalogImage(@Body payload: GenerateCatalogImagePayload): CatalogImageDto
+
+    // Super-user-gated server-side — same shape as
+    // updateFillingStation/restartServer, the backend returns 403 for
+    // anyone else.
+    @GET("api/v1/admin/catalog-image/pending")
+    suspend fun getPendingCatalogImages(): List<CatalogImageDto>
+
+    @POST("api/v1/admin/catalog-image/{id}/approve")
+    suspend fun approveCatalogImage(@Path("id") id: String)
+
+    @POST("api/v1/admin/catalog-image/{id}/reject")
+    suspend fun rejectCatalogImage(@Path("id") id: String)
+
     @POST("api/v1/list")
     suspend fun createList(@Body payload: ListPayload): ListDto
 
