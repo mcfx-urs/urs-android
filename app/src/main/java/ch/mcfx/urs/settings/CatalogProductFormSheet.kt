@@ -25,6 +25,7 @@ import ch.mcfx.urs.ui.components.CatalogImagePicker
 import ch.mcfx.urs.ui.components.UrsBottomSheet
 import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsDropdownField
+import ch.mcfx.urs.ui.components.UrsErrorDialog
 import ch.mcfx.urs.ui.components.UrsOutlinedButton
 import ch.mcfx.urs.ui.components.UrsSquareTile
 import ch.mcfx.urs.ui.components.UrsText
@@ -123,10 +124,6 @@ fun CatalogProductFormSheet(viewModel: ProductManagementViewModel, onDismissRequ
                 enabled = currentForm.name.isNotBlank() && !currentForm.generatingImage,
                 modifier = Modifier.fillMaxWidth(),
             )
-            if (currentForm.generateImageFailed) {
-                UrsText(text = stringResource(R.string.product_management_generate_image_failed), color = FormErrorColor)
-            }
-
             if (currentForm.nameConflict) {
                 UrsText(text = stringResource(R.string.product_management_name_conflict), color = FormErrorColor)
             } else if (currentForm.submitFailed) {
@@ -157,5 +154,20 @@ fun CatalogProductFormSheet(viewModel: ProductManagementViewModel, onDismissRequ
                 },
             )
         }
+    }
+
+    if (currentForm.generateImageError != null) {
+        val message = stringResource(
+            when (currentForm.generateImageError) {
+                ImageGenerationErrorKind.NETWORK -> R.string.product_management_generate_image_failed_network
+                ImageGenerationErrorKind.SERVER -> R.string.product_management_generate_image_failed_server
+                ImageGenerationErrorKind.UNKNOWN -> R.string.product_management_generate_image_failed_unknown
+            },
+        )
+        UrsErrorDialog(
+            title = stringResource(R.string.product_management_generate_image_failed),
+            message = message,
+            onDismiss = viewModel::dismissImageGenerationError,
+        )
     }
 }

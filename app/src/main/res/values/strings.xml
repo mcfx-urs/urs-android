@@ -405,6 +405,9 @@
     <string name="product_management_generate_image">Generate image</string>
     <string name="product_management_generating_image">Generating…</string>
     <string name="product_management_generate_image_failed">Image generation failed</string>
+    <string name="product_management_generate_image_failed_network">No internet connection. Check your network and try again.</string>
+    <string name="product_management_generate_image_failed_server">The server couldn\'t generate this image right now. Please try again later.</string>
+    <string name="product_management_generate_image_failed_unknown">Something went wrong while generating the image. Please try again.</string>
     <string name="product_management_name_conflict">A product with this name already exists</string>
     <string name="product_management_edit">Edit</string>
     <string name="product_management_delete">Delete</string>
