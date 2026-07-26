@@ -419,7 +419,10 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                     composable(SettingsRoutes.LOCATION_HISTORY) { LocationHistorySettingsScreen() }
                     composable(SettingsRoutes.WATCH_RELAY) { WatchRelaySettingsScreen() }
                     composable(SettingsRoutes.PRODUCT_MANAGEMENT) {
-                        ProductManagementScreen(isSuperUser = app.container.authTokenStore.isSuperUser)
+                        ProductManagementScreen(
+                            isSuperUser = app.container.authTokenStore.isSuperUser,
+                            onNavigateToImageReview = { navController.navigate(SettingsRoutes.IMAGE_REVIEW) },
+                        )
                     }
                     composable(SettingsRoutes.ADMIN) { AdminScreen() }
                     composable(SettingsRoutes.IMAGE_REVIEW) { ImageReviewScreen() }
