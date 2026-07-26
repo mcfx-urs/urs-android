@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -26,7 +28,7 @@ import retrofit2.HttpException
 
 private const val TAG = "ProductManagementVM"
 
-enum class ProductManagementTab { PRODUCTS, CATEGORIES }
+enum class ProductManagementTab { PRODUCTS, CATEGORIES, CATALOG_SEARCH }
 
 /**
  * Coarse classification of a failed [ProductManagementViewModel.generateProductImage]
@@ -70,11 +72,15 @@ data class CategoryFormState(
 
 /**
  * Settings → Product Management screen — create/edit/delete for
- * manually-created catalog products and categories. Only ever surfaces
- * `source == "manual"` rows (filtered here, client-side); `external_catalog`-imported
- * rows never appear in either grid, so there's no separate per-row
- * edit/delete-hidden state to manage — being listed here already implies
- * it's editable, matching the backend's own `requireManualSource` guard.
+ * manually-created catalog products and categories. The PRODUCTS/CATEGORIES
+ * grids only ever surface `source == "manual"` rows (filtered here,
+ * client-side) — being listed there already implies it's editable, matching
+ * the backend's own `requireManualSource` guard on delete. The separate,
+ * super-user-only CATALOG_SEARCH tab (`catalogSearchResults` below) is the
+ * exception: it deliberately searches the *unfiltered* catalog so a
+ * `external_catalog`-imported row can be found and edited too, which the backend now
+ * allows for a super user (`requireEditableSource`) — editing it locks that
+ * row against the next external_catalog import (`catalog_product_is_locked`).
  */
 class ProductManagementViewModel(private val repository: CatalogRepository) : ViewModel() {
 
@@ -101,6 +107,38 @@ class ProductManagementViewModel(private val repository: CatalogRepository) : Vi
     // (manual or external-catalog), same as the shopping-list add-product flow.
     val allCategories: StateFlow<List<CatalogCategoryEntity>> = repository.observeCategories()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    // Super-user-only "Katalog" tab (catalog_product_is_locked) — unlike
+    // manualProducts/manualCategories above, deliberately unfiltered by
+    // source, since the whole point is finding an externally-imported row to lock+edit.
+    // Same search primitive AddProductViewModel already uses for its picker
+    // (Room LIKE across name/searchTerms/brands), just without that
+    // screen's "manual quick-add" framing.
+    private val _catalogSearchQuery = MutableStateFlow("")
+    val catalogSearchQuery: StateFlow<String> = _catalogSearchQuery.asStateFlow()
+
+    val catalogSearchResults: StateFlow<List<CatalogProductEntity>> = _catalogSearchQuery
+        .flatMapLatest { query -> if (query.isBlank()) flowOf(emptyList()) else repository.search(query) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun setCatalogSearchQuery(query: String) {
+        _catalogSearchQuery.value = query
+    }
+
+    // Opens the same edit form manualProducts' action sheet uses
+    // (editProductFromActionSheet below) — the backend now allows a super
+    // user to PUT a non-manual row too (putCatalogProduct), locking it
+    // against the next external-catalog import. No client-side gate here beyond the
+    // UI itself only offering this tab to a super user in the first place;
+    // the backend is the actual enforcement point.
+    fun editCatalogSearchResult(product: CatalogProductEntity) {
+        _productForm.value = ProductFormState(
+            editingId = product.id,
+            name = product.name,
+            categoryId = product.catalogCategoryId,
+            imageId = product.catalogImageId?.toString(),
+        )
+    }
 
     private val _images = MutableStateFlow<List<CatalogImageDto>>(emptyList())
     val images: StateFlow<List<CatalogImageDto>> = _images.asStateFlow()
@@ -143,6 +181,9 @@ class ProductManagementViewModel(private val repository: CatalogRepository) : Vi
         when (_tab.value) {
             ProductManagementTab.PRODUCTS -> _productForm.value = ProductFormState()
             ProductManagementTab.CATEGORIES -> _categoryForm.value = CategoryFormState()
+            // No "create" affordance on the search tab — the screen hides
+            // the FAB there instead of calling this.
+            ProductManagementTab.CATALOG_SEARCH -> {}
         }
     }
 

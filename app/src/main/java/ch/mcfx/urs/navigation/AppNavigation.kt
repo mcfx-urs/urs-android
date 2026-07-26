@@ -418,7 +418,9 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                     composable(SettingsRoutes.ABOUT) { AboutScreen() }
                     composable(SettingsRoutes.LOCATION_HISTORY) { LocationHistorySettingsScreen() }
                     composable(SettingsRoutes.WATCH_RELAY) { WatchRelaySettingsScreen() }
-                    composable(SettingsRoutes.PRODUCT_MANAGEMENT) { ProductManagementScreen() }
+                    composable(SettingsRoutes.PRODUCT_MANAGEMENT) {
+                        ProductManagementScreen(isSuperUser = app.container.authTokenStore.isSuperUser)
+                    }
                     composable(SettingsRoutes.ADMIN) { AdminScreen() }
                     composable(SettingsRoutes.IMAGE_REVIEW) { ImageReviewScreen() }
                 }
