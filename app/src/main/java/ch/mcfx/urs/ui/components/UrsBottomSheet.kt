@@ -9,16 +9,20 @@ import androidx.compose.foundation.gestures.anchoredDraggable
 import androidx.compose.foundation.gestures.animateTo
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentHeight
@@ -122,7 +126,18 @@ fun UrsBottomSheet(
     // Fraction of "how open" the sheet currently is, 0f (closed) .. 1f (open).
     val openFraction = if (closedOffsetPx > 0f) (1f - offsetPx / closedOffsetPx).coerceIn(0f, 1f) else 0f
 
-    Box(modifier = modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        // The sheet must never grow tall enough to push its own top past the
+        // status bar — without this cap, tall content (long forms, or a
+        // shorter form pushed taller by the IME's own bottom padding below)
+        // just overflows above y=0 behind the status bar instead of
+        // scrolling, since wrapContentHeight()+BottomCenter alone has no
+        // upper bound. Reserving exactly the status bar's own height keeps
+        // this in sync with the device's actual inset rather than a guessed
+        // constant.
+        val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+        val maxSheetHeight = maxHeight - statusBarTop
+
         // Only present once there's something to intercept — a fully closed
         // sheet must not steal taps meant for whatever is behind it.
         if (openFraction > 0f) {
@@ -143,6 +158,7 @@ fun UrsBottomSheet(
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .wrapContentHeight()
+                .heightIn(max = maxSheetHeight)
                 .offset { IntOffset(0, offsetPx.roundToInt()) }
                 .anchoredDraggable(anchoredState, Orientation.Vertical)
                 .onGloballyPositioned { coordinates ->
