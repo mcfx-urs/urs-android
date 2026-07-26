@@ -9,6 +9,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Product Management's "Generate image" failure now shows a specific reason (no connection, server error, or unknown) in a dismissible pop-up instead of a generic inline message.
 
+### Fixed
+
+- Bottom sheets and forms with the on-screen keyboard open (Product Management's edit form, Add Worktime, Add Fuel Price) no longer have their content pushed up past the status bar with the bottom cut off.
+
 ## [0.12.0] - 2026-07-25
 
 ### Added
