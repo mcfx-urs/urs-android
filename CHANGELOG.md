@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-07-26
+
 ### Changed
 
 - Product Management's "Generate image" failure now shows a specific reason (no connection, server error, or unknown) in a dismissible pop-up instead of a generic inline message.
