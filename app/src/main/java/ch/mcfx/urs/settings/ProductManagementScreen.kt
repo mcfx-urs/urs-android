@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.runtime.Composable
@@ -33,6 +34,7 @@ import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsFab
 import ch.mcfx.urs.ui.components.UrsFilterChip
 import ch.mcfx.urs.ui.components.UrsIcon
+import ch.mcfx.urs.ui.components.UrsIconButton
 import ch.mcfx.urs.ui.components.UrsOutlinedButton
 import ch.mcfx.urs.ui.components.UrsSquareTile
 import ch.mcfx.urs.ui.components.UrsText
@@ -64,6 +66,10 @@ private val DeleteTintColor = Color(0xFFD64545)
 fun ProductManagementScreen(
     viewModel: ProductManagementViewModel = viewModel(factory = ProductManagementViewModel.Factory),
     isSuperUser: Boolean = false,
+    // Image Review used to be its own top-level Settings tile — moved here
+    // (super-user only, same as the CATALOG_SEARCH tab) since it's
+    // catalog-image-review work, not a general Settings destination.
+    onNavigateToImageReview: () -> Unit = {},
 ) {
     val tab by viewModel.tab.collectAsStateWithLifecycle()
     val manualProducts by viewModel.manualProducts.collectAsStateWithLifecycle()
@@ -82,22 +88,35 @@ fun ProductManagementScreen(
             modifier = Modifier.fillMaxSize().padding(Spacing.l),
             verticalArrangement = Arrangement.spacedBy(Spacing.m),
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
-                UrsFilterChip(
-                    label = stringResource(R.string.product_management_tab_products),
-                    selected = tab == ProductManagementTab.PRODUCTS,
-                    onClick = { viewModel.selectTab(ProductManagementTab.PRODUCTS) },
-                )
-                UrsFilterChip(
-                    label = stringResource(R.string.product_management_tab_categories),
-                    selected = tab == ProductManagementTab.CATEGORIES,
-                    onClick = { viewModel.selectTab(ProductManagementTab.CATEGORIES) },
-                )
-                if (isSuperUser) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
                     UrsFilterChip(
-                        label = stringResource(R.string.product_management_tab_catalog_search),
-                        selected = tab == ProductManagementTab.CATALOG_SEARCH,
-                        onClick = { viewModel.selectTab(ProductManagementTab.CATALOG_SEARCH) },
+                        label = stringResource(R.string.product_management_tab_products),
+                        selected = tab == ProductManagementTab.PRODUCTS,
+                        onClick = { viewModel.selectTab(ProductManagementTab.PRODUCTS) },
+                    )
+                    UrsFilterChip(
+                        label = stringResource(R.string.product_management_tab_categories),
+                        selected = tab == ProductManagementTab.CATEGORIES,
+                        onClick = { viewModel.selectTab(ProductManagementTab.CATEGORIES) },
+                    )
+                    if (isSuperUser) {
+                        UrsFilterChip(
+                            label = stringResource(R.string.product_management_tab_catalog_search),
+                            selected = tab == ProductManagementTab.CATALOG_SEARCH,
+                            onClick = { viewModel.selectTab(ProductManagementTab.CATALOG_SEARCH) },
+                        )
+                    }
+                }
+                if (isSuperUser) {
+                    UrsIconButton(
+                        onClick = onNavigateToImageReview,
+                        contentDescription = stringResource(R.string.settings_tile_image_review),
+                        imageVector = Icons.Filled.CheckCircle,
                     )
                 }
             }
