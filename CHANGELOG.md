@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Super users see a new "Katalog" tab in Product Management to search the full product catalog (including external_catalog-imported products) and edit any result, not just manually-created products.
+
 ## [0.13.0] - 2026-07-26
 
 ### Changed

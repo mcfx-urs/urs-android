@@ -386,6 +386,10 @@
     <string name="settings_tile_product_management">Product Management</string>
     <string name="product_management_tab_products">PRODUCTS</string>
     <string name="product_management_tab_categories">CATEGORIES</string>
+    <string name="product_management_tab_catalog_search">CATALOG</string>
+    <string name="product_management_catalog_search_label">Search the full catalog</string>
+    <string name="product_management_catalog_search_hint">Search across manual and external_catalog products.</string>
+    <string name="product_management_catalog_search_empty">No products match your search.</string>
     <string name="product_management_empty_products">No manually-created products yet.</string>
     <string name="product_management_empty_categories">No manually-created categories yet.</string>
     <string name="product_management_add_product">New product</string>

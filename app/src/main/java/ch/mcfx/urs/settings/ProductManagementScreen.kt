@@ -36,6 +36,7 @@ import ch.mcfx.urs.ui.components.UrsIcon
 import ch.mcfx.urs.ui.components.UrsOutlinedButton
 import ch.mcfx.urs.ui.components.UrsSquareTile
 import ch.mcfx.urs.ui.components.UrsText
+import ch.mcfx.urs.ui.components.UrsTextField
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Spacing
 
@@ -51,15 +52,24 @@ private val DeleteTintColor = Color(0xFFD64545)
  * existing catalog image. Products/Categories toggle mirrors
  * [ch.mcfx.urs.shoppinglist.AddProductScreen]'s tab chips; long-press →
  * action sheet → edit/delete mirrors [ch.mcfx.urs.worktime.WorkTimeScreen].
- * Both grids only ever list `source == "manual"` rows (filtered in
- * [ProductManagementViewModel]) — imported `external_catalog` catalog data never
- * appears here at all, so there's no per-row hidden-action state to manage.
+ * The PRODUCTS/CATEGORIES grids only ever list `source == "manual"` rows
+ * (filtered in [ProductManagementViewModel]) — imported `external_catalog` catalog
+ * data never appears there, so there's no per-row hidden-action state to
+ * manage for those two tabs. [isSuperUser] additionally gates a third
+ * "Katalog" tab (see [CatalogSearchTab]) that searches the *unfiltered*
+ * catalog, letting a super user find and edit a `external_catalog` row too — the
+ * backend now allows that (locks the row against the next external_catalog import).
  */
 @Composable
-fun ProductManagementScreen(viewModel: ProductManagementViewModel = viewModel(factory = ProductManagementViewModel.Factory)) {
+fun ProductManagementScreen(
+    viewModel: ProductManagementViewModel = viewModel(factory = ProductManagementViewModel.Factory),
+    isSuperUser: Boolean = false,
+) {
     val tab by viewModel.tab.collectAsStateWithLifecycle()
     val manualProducts by viewModel.manualProducts.collectAsStateWithLifecycle()
     val manualCategories by viewModel.manualCategories.collectAsStateWithLifecycle()
+    val catalogSearchQuery by viewModel.catalogSearchQuery.collectAsStateWithLifecycle()
+    val catalogSearchResults by viewModel.catalogSearchResults.collectAsStateWithLifecycle()
     val actionSheetProduct by viewModel.actionSheetProduct.collectAsStateWithLifecycle()
     val actionSheetCategory by viewModel.actionSheetCategory.collectAsStateWithLifecycle()
     val pendingDeleteProduct by viewModel.pendingDeleteProduct.collectAsStateWithLifecycle()
@@ -83,6 +93,13 @@ fun ProductManagementScreen(viewModel: ProductManagementViewModel = viewModel(fa
                     selected = tab == ProductManagementTab.CATEGORIES,
                     onClick = { viewModel.selectTab(ProductManagementTab.CATEGORIES) },
                 )
+                if (isSuperUser) {
+                    UrsFilterChip(
+                        label = stringResource(R.string.product_management_tab_catalog_search),
+                        selected = tab == ProductManagementTab.CATALOG_SEARCH,
+                        onClick = { viewModel.selectTab(ProductManagementTab.CATALOG_SEARCH) },
+                    )
+                }
             }
 
             when (tab) {
@@ -95,14 +112,25 @@ fun ProductManagementScreen(viewModel: ProductManagementViewModel = viewModel(fa
                     categories = manualCategories,
                     onLongPress = viewModel::openCategoryActionSheet,
                 )
+
+                ProductManagementTab.CATALOG_SEARCH -> CatalogSearchTab(
+                    query = catalogSearchQuery,
+                    onQueryChange = viewModel::setCatalogSearchQuery,
+                    results = catalogSearchResults,
+                    onSelect = viewModel::editCatalogSearchResult,
+                )
             }
         }
 
-        UrsFab(
-            onClick = viewModel::openCreateForm,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(Spacing.l),
-        ) {
-            UrsText(text = "+", style = FabIconStyle, color = UrsTheme.colors.onAccent)
+        // No "create" FAB on the search tab — it only ever opens the
+        // edit form for an existing (selected) product.
+        if (tab != ProductManagementTab.CATALOG_SEARCH) {
+            UrsFab(
+                onClick = viewModel::openCreateForm,
+                modifier = Modifier.align(Alignment.BottomEnd).padding(Spacing.l),
+            ) {
+                UrsText(text = "+", style = FabIconStyle, color = UrsTheme.colors.onAccent)
+            }
         }
     }
 
@@ -192,6 +220,55 @@ private fun CategoryGrid(categories: List<CatalogCategoryEntity>, onLongPress: (
                 onClick = {},
                 onLongClick = { onLongPress(category) },
             )
+        }
+    }
+}
+
+/**
+ * Super-user-only "Katalog" tab — searches the unfiltered catalog (manual
+ * *and* external_catalog) and opens the same edit form as a long-pressed manual tile,
+ * for any result. The "external_catalog" badge on a non-manual result is the visual
+ * cue that editing it will lock it against the next external_catalog import, so it's
+ * worth pointing out before the user commits to that.
+ */
+@Composable
+private fun CatalogSearchTab(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    results: List<CatalogProductEntity>,
+    onSelect: (CatalogProductEntity) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
+        UrsTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            label = stringResource(R.string.product_management_catalog_search_label),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        when {
+            query.isBlank() -> UrsText(
+                text = stringResource(R.string.product_management_catalog_search_hint),
+                color = UrsTheme.colors.onSurfaceMuted,
+            )
+            results.isEmpty() -> UrsText(
+                text = stringResource(R.string.product_management_catalog_search_empty),
+                color = UrsTheme.colors.onSurfaceMuted,
+            )
+            else -> LazyVerticalGrid(
+                columns = GridCells.Fixed(3),
+                verticalArrangement = Arrangement.spacedBy(Spacing.s),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+            ) {
+                items(results, key = { it.id }) { product ->
+                    UrsSquareTile(
+                        title = product.name,
+                        catalogImageId = product.catalogImageId,
+                        onClick = { onSelect(product) },
+                        topEndBadge = if (product.source == "manual") null else product.source,
+                    )
+                }
+            }
         }
     }
 }
