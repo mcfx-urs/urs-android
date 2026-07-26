@@ -1,5 +1,6 @@
 package ch.mcfx.urs.settings
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
@@ -11,6 +12,7 @@ import ch.mcfx.urs.data.CatalogRepository
 import ch.mcfx.urs.data.local.CatalogCategoryEntity
 import ch.mcfx.urs.data.local.CatalogProductEntity
 import ch.mcfx.urs.data.remote.CatalogImageDto
+import java.io.IOException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -22,7 +24,17 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 
+private const val TAG = "ProductManagementVM"
+
 enum class ProductManagementTab { PRODUCTS, CATEGORIES }
+
+/**
+ * Coarse classification of a failed [ProductManagementViewModel.generateProductImage]
+ * call — drives which message [CatalogProductFormSheet] shows in its
+ * [ch.mcfx.urs.ui.components.UrsErrorDialog], since "no network" and "server/AI
+ * provider rejected the request" call for different user-facing wording.
+ */
+enum class ImageGenerationErrorKind { NETWORK, SERVER, UNKNOWN }
 
 data class ProductFormState(
     val editingId: String? = null,
@@ -41,7 +53,7 @@ data class ProductFormState(
     // than the generic "failed to save".
     val nameConflict: Boolean = false,
     val generatingImage: Boolean = false,
-    val generateImageFailed: Boolean = false,
+    val generateImageError: ImageGenerationErrorKind? = null,
 ) {
     val isValid: Boolean get() = name.isNotBlank()
 }
@@ -250,16 +262,26 @@ class ProductManagementViewModel(private val repository: CatalogRepository) : Vi
         val name = form.name.trim()
         if (name.isBlank() || form.generatingImage) return
         viewModelScope.launch {
-            _productForm.update { it?.copy(generatingImage = true, generateImageFailed = false) }
+            _productForm.update { it?.copy(generatingImage = true, generateImageError = null) }
             try {
                 val image = repository.generateImage(name, form.description.trim())
                 _productForm.update { it?.copy(generatingImage = false, imageId = image.id) }
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
-                _productForm.update { it?.copy(generatingImage = false, generateImageFailed = true) }
+            } catch (e: Exception) {
+                val kind = when (e) {
+                    is IOException -> ImageGenerationErrorKind.NETWORK
+                    is HttpException -> ImageGenerationErrorKind.SERVER
+                    else -> ImageGenerationErrorKind.UNKNOWN
+                }
+                Log.e(TAG, "generateProductImage failed ($kind)", e)
+                _productForm.update { it?.copy(generatingImage = false, generateImageError = kind) }
             }
         }
+    }
+
+    fun dismissImageGenerationError() {
+        _productForm.update { it?.copy(generateImageError = null) }
     }
 
     fun closeProductForm() {
