@@ -69,10 +69,12 @@ fun LocationHistorySettingsScreen(
     val enabled by viewModel.enabled.collectAsStateWithLifecycle()
     val intervalMinutes by viewModel.intervalMinutes.collectAsStateWithLifecycle()
     val stationaryThresholdMeters by viewModel.stationaryThresholdMeters.collectAsStateWithLifecycle()
+    val precisionModeEnabled by viewModel.precisionModeEnabled.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
     var hasForegroundPermission by remember { mutableStateOf(hasForegroundLocationPermission(context)) }
     var hasBackgroundPermission by remember { mutableStateOf(hasBackgroundLocationPermission(context)) }
+    var hasExactAlarmPermission by remember { mutableStateOf(viewModel.canScheduleExactAlarms()) }
 
     val foregroundPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -80,16 +82,19 @@ fun LocationHistorySettingsScreen(
         hasForegroundPermission = result.values.any { it }
     }
 
-    // Background location can only be granted/revoked from system Settings
-    // (deep-linked below), not a dialog this app controls — re-check both
-    // permissions whenever the user returns to this screen, same pattern as
-    // NotificationSettingsScreen's exact-alarm row.
+    // Background location and exact-alarm access can only be granted/revoked
+    // from system Settings (deep-linked below), not a dialog this app
+    // controls — re-check all three permissions whenever the user returns to
+    // this screen, same pattern as NotificationSettingsScreen's exact-alarm
+    // row.
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 hasForegroundPermission = hasForegroundLocationPermission(context)
                 hasBackgroundPermission = hasBackgroundLocationPermission(context)
+                hasExactAlarmPermission = viewModel.canScheduleExactAlarms()
+                viewModel.rearmIfNeeded()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -189,6 +194,47 @@ fun LocationHistorySettingsScreen(
                 onSelect = viewModel::setStationaryThresholdMeters,
                 modifier = Modifier.fillMaxWidth(),
             )
+
+            UrsCard(
+                radius = Radius.row,
+                contentPadding = PaddingValues(horizontal = Spacing.l, vertical = 14.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        UrsText(stringResource(R.string.location_history_precision_mode), style = UrsTheme.typography.body)
+                        UrsCheckbox(checked = precisionModeEnabled, onCheckedChange = viewModel::setPrecisionModeEnabled)
+                    }
+                    UrsText(
+                        stringResource(R.string.location_history_precision_mode_description),
+                        style = UrsTheme.typography.caption,
+                        color = colors.onSurfaceMuted,
+                        modifier = Modifier.padding(top = Spacing.s),
+                    )
+                }
+            }
+
+            if (precisionModeEnabled) {
+                // Exact alarms can only be granted/revoked from system
+                // Settings, not a dialog this app controls — same deep-link
+                // pattern as NotificationSettingsScreen's own row.
+                PermissionRow(
+                    label = stringResource(R.string.location_history_exact_alarm_permission_label),
+                    granted = hasExactAlarmPermission,
+                    onGrant = {
+                        context.startActivity(
+                            Intent(
+                                Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                                Uri.parse("package:${context.packageName}"),
+                            ),
+                        )
+                    },
+                )
+            }
         }
     }
 }
