@@ -27,11 +27,16 @@ class LocationHistorySettingsViewModel(
     private val _stationaryThresholdMeters = MutableStateFlow(settingsStore.stationaryThresholdMeters())
     val stationaryThresholdMeters: StateFlow<Long> = _stationaryThresholdMeters.asStateFlow()
 
+    private val _precisionModeEnabled = MutableStateFlow(settingsStore.isPrecisionModeEnabled())
+    val precisionModeEnabled: StateFlow<Boolean> = _precisionModeEnabled.asStateFlow()
+
+    fun canScheduleExactAlarms(): Boolean = LocationCaptureScheduler.canScheduleExactAlarms(context)
+
     fun setEnabled(enabled: Boolean) {
         settingsStore.setEnabled(enabled)
         _enabled.value = enabled
         if (enabled) {
-            LocationCaptureScheduler.reschedule(context, settingsStore.intervalMinutes())
+            LocationCaptureScheduler.reschedule(context, settingsStore.intervalMinutes(), settingsStore.isPrecisionModeEnabled())
         } else {
             LocationCaptureScheduler.cancel(context)
         }
@@ -43,13 +48,37 @@ class LocationHistorySettingsViewModel(
         // Only re-arms if capture is already running — picking an interval
         // while disabled just changes what setEnabled(true) will use later.
         if (settingsStore.isEnabled()) {
-            LocationCaptureScheduler.reschedule(context, minutes)
+            LocationCaptureScheduler.reschedule(context, minutes, settingsStore.isPrecisionModeEnabled())
         }
     }
 
     fun setStationaryThresholdMeters(meters: Long) {
         settingsStore.setStationaryThresholdMeters(meters)
         _stationaryThresholdMeters.value = meters
+    }
+
+    fun setPrecisionModeEnabled(enabled: Boolean) {
+        settingsStore.setPrecisionModeEnabled(enabled)
+        _precisionModeEnabled.value = enabled
+        // Same only-if-running rationale as setIntervalMinutes above.
+        if (settingsStore.isEnabled()) {
+            LocationCaptureScheduler.reschedule(context, settingsStore.intervalMinutes(), enabled)
+        }
+    }
+
+    /**
+     * Called on every screen resume while precision mode is on: armExact()
+     * silently no-ops without the exact-alarm permission (see its own doc
+     * comment), so turning the toggle on before granting that permission
+     * otherwise leaves nothing actually scheduled. This re-arms once the
+     * user comes back from granting it — safe to call redundantly (matches
+     * UrsApplication's own every-process-start re-arm), since reschedule()
+     * is idempotent.
+     */
+    fun rearmIfNeeded() {
+        if (settingsStore.isEnabled() && settingsStore.isPrecisionModeEnabled()) {
+            LocationCaptureScheduler.reschedule(context, settingsStore.intervalMinutes(), precisionModeEnabled = true)
+        }
     }
 
     companion object {

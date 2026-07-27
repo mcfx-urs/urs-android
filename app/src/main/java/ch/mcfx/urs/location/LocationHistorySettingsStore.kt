@@ -8,6 +8,7 @@ private const val KEY_INTERVAL_MINUTES = "interval_minutes"
 private const val DEFAULT_INTERVAL_MINUTES = 60L
 private const val KEY_STATIONARY_THRESHOLD_METERS = "stationary_threshold_meters"
 private const val DEFAULT_STATIONARY_THRESHOLD_METERS = 50L
+private const val KEY_PRECISION_MODE_ENABLED = "precision_mode_enabled"
 
 /**
  * Two-scalar settings store for the life map's periodic capture (enabled +
@@ -37,5 +38,12 @@ class LocationHistorySettingsStore(context: Context) {
 
     fun setStationaryThresholdMeters(meters: Long) {
         prefs.edit().putLong(KEY_STATIONARY_THRESHOLD_METERS, meters).apply()
+    }
+
+    /** Exact-alarm-based scheduling instead of WorkManager's inexact delay — off by default, see LocationCaptureScheduler. */
+    fun isPrecisionModeEnabled(): Boolean = prefs.getBoolean(KEY_PRECISION_MODE_ENABLED, false)
+
+    fun setPrecisionModeEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_PRECISION_MODE_ENABLED, enabled).apply()
     }
 }
