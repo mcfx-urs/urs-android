@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material.icons.filled.Watch
 import androidx.compose.runtime.Composable
@@ -21,6 +22,7 @@ private val GENERAL_TILES = listOf(
     SettingsTile(SettingsRoutes.LOCATION_HISTORY, R.string.settings_tile_location_history, Icons.Filled.LocationOn),
     SettingsTile(SettingsRoutes.PRODUCT_MANAGEMENT, R.string.settings_tile_product_management, Icons.Filled.Inventory),
     SettingsTile(SettingsRoutes.WATCH_RELAY, R.string.settings_tile_watch_relay, Icons.Filled.Watch),
+    SettingsTile(SettingsRoutes.THEME, R.string.settings_tile_theme, Icons.Filled.Palette),
 )
 
 @Composable

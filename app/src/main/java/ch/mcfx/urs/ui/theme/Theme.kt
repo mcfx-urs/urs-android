@@ -38,3 +38,13 @@ object UrsTheme {
         @Composable
         get() = LocalUrsTypography.current
 }
+
+/** User-facing override for [UrsTheme]'s `darkTheme` param — see [ThemePreference.resolveDarkTheme]. */
+enum class ThemePreference { SYSTEM, LIGHT, DARK }
+
+@Composable
+fun ThemePreference.resolveDarkTheme(): Boolean = when (this) {
+    ThemePreference.SYSTEM -> isSystemInDarkTheme()
+    ThemePreference.LIGHT -> false
+    ThemePreference.DARK -> true
+}

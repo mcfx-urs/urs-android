@@ -29,7 +29,6 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import ch.mcfx.urs.BuildConfig
 import ch.mcfx.urs.UrsApplication
-import ch.mcfx.urs.ui.theme.LightUrsColors
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Radius
 import ch.mcfx.urs.ui.tokens.Spacing
@@ -82,21 +81,20 @@ fun UrsSquareTile(
     topEndBadge: String? = null,
     hazardBorder: Boolean = false,
 ) {
-    val alpha = if (dimmed) UrsTheme.colors.disabledAlpha else 1f
+    val colors = UrsTheme.colors
+    val alpha = if (dimmed) colors.disabledAlpha else 1f
     val titleStrikethrough = dimmed || mutedTitle
-    val titleColor = if (mutedTitle && !dimmed) LightUrsColors.onSurfaceMuted else LightUrsColors.onSurface.copy(alpha = alpha)
+    val titleColor = if (mutedTitle && !dimmed) colors.onSurfaceMuted else colors.onSurface.copy(alpha = alpha)
 
     UrsCard(
         radius = Radius.row,
         contentPadding = PaddingValues(0.dp),
-        // Always the light palette's card color, regardless of the app's
-        // active theme — catalog product photos are studio shots on a
-        // white/cream backdrop (source data, not something this app
-        // controls), so the whole tile (photo *and* title) takes on that
-        // same light backdrop instead of only the image area. That's what
-        // makes the photo's own background read as intentional rather than
-        // a stray white patch dropped onto an otherwise dark tile.
-        backgroundColor = LightUrsColors.background,
+        // Follows the active theme (Settings → General → Theme) like every
+        // other surface — catalog product photos are transparent PNGs (see
+        // urs-backend's imagegen prompt, "transparent background, no drop
+        // shadow"), not baked onto a light backdrop, so there's no longer a
+        // reason to pin this tile to the light palette regardless of theme.
+        backgroundColor = colors.background,
         modifier = modifier
             .aspectRatio(1f)
             .then(if (hazardBorder) Modifier.border(HazardStripeWidth, hazardStripeBrush(), RoundedCornerShape(Radius.row)) else Modifier)
@@ -118,7 +116,7 @@ fun UrsSquareTile(
                     style = UrsTheme.typography.caption.copy(
                         textDecoration = if (titleStrikethrough) TextDecoration.LineThrough else TextDecoration.None,
                     ),
-                    // Dark by default, matching the tile's always-light background above;
+                    // Follows the active theme's onSurface color by default;
                     // muted grey instead when only the title (not the whole tile) is marked.
                     color = titleColor,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.s, vertical = Spacing.xs),
@@ -193,7 +191,7 @@ private fun PlaceholderIcon(alpha: Float = 1f) {
     UrsIcon(
         imageVector = Icons.Filled.ShoppingBasket,
         contentDescription = null,
-        tint = LightUrsColors.onSurfaceMuted.copy(alpha = alpha),
+        tint = UrsTheme.colors.onSurfaceMuted.copy(alpha = alpha),
         modifier = Modifier.size(32.dp),
     )
 }
