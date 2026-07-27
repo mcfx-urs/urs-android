@@ -36,6 +36,7 @@ import ch.mcfx.urs.notifications.NotificationSender
 import ch.mcfx.urs.notifications.ReminderScheduler
 import ch.mcfx.urs.notifications.ReminderStore
 import ch.mcfx.urs.obd.ObdManager
+import ch.mcfx.urs.settings.ThemeSettingsStore
 import ch.mcfx.urs.vpn.NetworkGate
 import ch.mcfx.urs.vpn.VpnConfigRepository
 import ch.mcfx.urs.vpn.WifiSsidReader
@@ -246,6 +247,7 @@ class AppContainer(context: Context) {
     val locationProvider = LocationProvider(context, locationCapture)
     val locationHistorySettingsStore = LocationHistorySettingsStore(context)
     val watchRelaySettingsStore = WatchRelaySettingsStore(context)
+    val themeSettingsStore = ThemeSettingsStore(context)
 
     // Not started here - connect()/disconnect() are driven by whatever
     // future UI surfaces this (a live-data screen). Constructed eagerly
