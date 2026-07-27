@@ -13,6 +13,7 @@ object SettingsRoutes {
     const val ABOUT = "settings/about"
     const val LOCATION_HISTORY = "settings/location-history"
     const val WATCH_RELAY = "settings/watch-relay"
+    const val THEME = "settings/theme"
     const val PRODUCT_MANAGEMENT = "settings/product-management"
     const val ADMIN = "settings/admin"
     const val IMAGE_REVIEW = "settings/image-review"

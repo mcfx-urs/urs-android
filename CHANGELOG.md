@@ -5,6 +5,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- New Settings → General → Theme screen: choose System default/Light/Dark app-wide appearance, independent of the device's own setting.
+
+### Changed
+
+- Catalog product tiles (Katalog search, product/category forms, Image Review, Shopping List) now follow the active theme instead of always rendering with a light background.
+
 ## [0.15.0] - 2026-07-27
 
 ### Added

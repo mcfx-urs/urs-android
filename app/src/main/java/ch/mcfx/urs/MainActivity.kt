@@ -4,10 +4,13 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.getValue
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import ch.mcfx.urs.navigation.AppNavigation
 import ch.mcfx.urs.ui.theme.UrsTheme
+import ch.mcfx.urs.ui.theme.resolveDarkTheme
 
 // FragmentActivity (a ComponentActivity subclass, so Compose's setContent
 // still works unchanged) instead of plain ComponentActivity — BiometricPrompt
@@ -23,7 +26,9 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            UrsTheme {
+            val app = applicationContext as UrsApplication
+            val themePreference by app.container.themeSettingsStore.themePreference.collectAsStateWithLifecycle()
+            UrsTheme(darkTheme = themePreference.resolveDarkTheme()) {
                 AppNavigation(
                     onNavControllerReady = { controller ->
                         navController = controller
