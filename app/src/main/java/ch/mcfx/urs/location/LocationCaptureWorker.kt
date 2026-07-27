@@ -45,8 +45,13 @@ class LocationCaptureWorker(context: Context, params: WorkerParameters) : Corout
         // cancellation lands in milliseconds), silently killing every
         // capture. APPEND_OR_REPLACE instead queues the next run to start
         // once this one finishes, without touching it.
+        //
+        // Precision mode () skips this entirely: LocationCaptureAlarmReceiver
+        // already re-arms the next exact alarm itself, and this worker only
+        // runs there as the alarm's immediate zero-delay payload — self-chaining
+        // here too would double-schedule the next run.
         val intervalMinutes = store.intervalMinutes()
-        if (intervalMinutes < LocationCaptureScheduler.PERIODIC_FLOOR_MINUTES) {
+        if (!store.isPrecisionModeEnabled() && intervalMinutes < LocationCaptureScheduler.PERIODIC_FLOOR_MINUTES) {
             LocationCaptureScheduler.scheduleNext(applicationContext, intervalMinutes, ExistingWorkPolicy.APPEND_OR_REPLACE)
         }
 

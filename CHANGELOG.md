@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Location History settings gained a "Precision mode" toggle: schedules Life Map captures via exact alarms instead of WorkManager's default battery-friendly (but drift-prone) scheduling.
+
 ## [0.14.0] - 2026-07-26
 
 ### Added

@@ -95,7 +95,11 @@ class UrsApplication : Application() {
         // covers the case where it was never enqueued in this process at
         // all (e.g. right after an app update).
         if (container.locationHistorySettingsStore.isEnabled()) {
-            LocationCaptureScheduler.reschedule(this, container.locationHistorySettingsStore.intervalMinutes())
+            LocationCaptureScheduler.reschedule(
+                this,
+                container.locationHistorySettingsStore.intervalMinutes(),
+                container.locationHistorySettingsStore.isPrecisionModeEnabled(),
+            )
         }
         // Same rationale — a killed-and-relaunched process (not a full
         // reboot, which BootCompletedReceiver covers) otherwise leaves the

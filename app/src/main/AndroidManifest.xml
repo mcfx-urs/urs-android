@@ -119,6 +119,13 @@
             android:name=".notifications.ReminderAlarmReceiver"
             android:exported="false" />
 
+        <!-- Life Map's "Precision mode" (, Settings → Location
+             history) — fired by AlarmManager.setExactAndAllowWhileIdle(),
+             see LocationCaptureScheduler. -->
+        <receiver
+            android:name=".location.LocationCaptureAlarmReceiver"
+            android:exported="false" />
+
         <!-- exported=true is required for BOOT_COMPLETED — the system, not
              another app, is what delivers this broadcast. -->
         <receiver
