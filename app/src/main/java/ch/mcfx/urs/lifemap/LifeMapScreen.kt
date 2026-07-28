@@ -34,11 +34,16 @@ import ch.mcfx.urs.ui.components.UrsDropdownField
 import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Spacing
+import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Polyline
 
+// Single-point fallback only — zoomToBoundingBox() is used whenever there's more than one point to fit.
 private const val DEFAULT_ZOOM = 12.0
+
+/** Extra margin around the fitted points' bounding box so the outermost points don't sit flush against the screen edge. */
+private const val BOUNDING_BOX_PADDING_SCALE = 1.25f
 
 /** Life Map track's age-gradient stops, oldest to newest — a "heat" scale rather than a plain two-color blend. */
 private val TrackGradientStops = listOf(
@@ -56,10 +61,17 @@ private fun blendGradientStops(stops: List<Int>, fraction: Float): Int {
 
 @Composable
 fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewModel.Factory)) {
+    // selectedRange drives only the dropdown label — it updates the instant
+    // the user taps an option, for immediate UI feedback. The map below
+    // must never read it directly: see LifeMapPointsState's doc comment for
+    // why the map needs range and points bundled from the same emission.
     val selectedRange by viewModel.selectedRange.collectAsStateWithLifecycle()
-    val points by viewModel.points.collectAsStateWithLifecycle()
+    val pointsState by viewModel.pointsState.collectAsStateWithLifecycle()
+    val points = pointsState.points
 
     val rangeLabels = mapOf(
+        TimeRange.LAST_DAY to stringResource(R.string.life_map_range_last_day),
+        TimeRange.LAST_WEEK to stringResource(R.string.life_map_range_last_week),
         TimeRange.LAST_MONTH to stringResource(R.string.life_map_range_last_month),
         TimeRange.LAST_3_MONTHS to stringResource(R.string.life_map_range_last_3_months),
         TimeRange.LAST_6_MONTHS to stringResource(R.string.life_map_range_last_6_months),
@@ -77,8 +89,11 @@ fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewM
     // top.
     Box(modifier = Modifier.fillMaxSize()) {
         LifeMapView(
-            points = points,
-            selectedRange = selectedRange,
+            points = pointsState.points,
+            // pointsState.range, not selectedRange — must always be the
+            // range these exact points were queried for, never the (possibly
+            // ahead-of-itself) dropdown selection. See LifeMapPointsState.
+            selectedRange = pointsState.range,
             modifier = Modifier.fillMaxSize(),
         )
 
@@ -156,26 +171,55 @@ private fun LifeMapView(
     // on first load once points arrive) — not on every points update. Room's
     // Flow re-emits on any location_history write, including a background
     // capture landing while this screen is open or the outbox marking a row
-    // synced; recentring on every one of those used to snap the map back to
-    // DEFAULT_ZOOM mid-interaction, which read as the map resetting itself
-    // whenever the user zoomed.
+    // synced; recentring on every one of those used to snap the map back
+    // mid-interaction, which read as the map resetting itself whenever the
+    // user zoomed.
     //
-    // The setZoom()/setCenter() calls are deferred via view.post() — calling
-    // them directly here can run before the MapView has a valid (non-zero)
-    // layout size (e.g. right on first load, before Room's Flow has had time
-    // to let the view settle), which computes the geo-to-screen projection
-    // against a zero-size rect and silently lands on the wrong spot — the
-    // same root cause fixed for FuelStationMapScreen's map-confirm step,
-    // confirmed on-device there to be off by a lot, not just a few pixels.
+    // Fits the camera to the currently-visible points' own bounding box
+    // (padded, see BOUNDING_BOX_PADDING_SCALE) rather than a fixed zoom
+    // level — a fixed zoom centered on just the newest point made switching
+    // to a narrower range (e.g. Last Day) look like nothing had changed
+    // whenever recent points sit in the same area as older ones, which is
+    // the common case for a route that mostly retraces the same streets.
+    // Falls back to a fixed zoom centered on the single point when there's
+    // only one (a bounding box over one point has zero area, nothing to fit
+    // to).
+    //
+    // The zoomToBoundingBox()/setZoom()/setCenter() calls are deferred via
+    // view.post() — calling them directly here can run before the MapView
+    // has a valid (non-zero) layout size (e.g. right on first load, before
+    // Room's Flow has had time to let the view settle), which computes the
+    // geo-to-screen projection against a zero-size rect and silently lands
+    // on the wrong spot — the same root cause fixed for
+    // FuelStationMapScreen's map-confirm step, confirmed on-device there to
+    // be off by a lot, not just a few pixels.
+    // selectedRange and points here are LifeMapScreen's pointsState.range/
+    // .points — always from the same LifeMapPointsState emission (see that
+    // class's doc comment). Never wire this composable's selectedRange
+    // param back to LifeMapViewModel.selectedRange directly: an earlier
+    // version did, and the instant-updating dropdown-label StateFlow
+    // reaching this effect one recomposition ahead of the matching points
+    // (labelled range vs. still-old points) raced mapView.post() against
+    // Room's coroutine dispatch with no ordering guarantee between them —
+    // confirmed via logcat, points.size flips 174→1661 across two
+    // AndroidView updates for one selection — which fit to whichever
+    // snapshot happened to run last, correct or stale depending on timing.
+    // With range and points now always paired, this effect only ever sees
+    // valid combinations, so a plain "already fit this range" guard is safe.
     var lastFitRange by remember { mutableStateOf<TimeRange?>(null) }
     LaunchedEffect(selectedRange, points) {
         if (points.isNotEmpty() && selectedRange != lastFitRange) {
-            val center = GeoPoint(points.last().latitude, points.last().longitude)
             mapView.post {
-                mapView.controller.setZoom(DEFAULT_ZOOM)
-                mapView.controller.setCenter(center)
+                if (points.size >= 2) {
+                    val boundingBox = BoundingBox.fromGeoPoints(points.map { GeoPoint(it.latitude, it.longitude) })
+                        .increaseByScale(BOUNDING_BOX_PADDING_SCALE)
+                    mapView.zoomToBoundingBox(boundingBox, false)
+                } else {
+                    mapView.controller.setZoom(DEFAULT_ZOOM)
+                    mapView.controller.setCenter(GeoPoint(points.last().latitude, points.last().longitude))
+                }
+                lastFitRange = selectedRange
             }
-            lastFitRange = selectedRange
         }
     }
 
@@ -194,16 +238,22 @@ private fun LifeMapView(
 
             // No native multi-color polyline in osmdroid — approximate the
             // black→orange→red age gradient with one short segment per
-            // consecutive point pair, each colored by that segment's
-            // position between the oldest and newest capturedAt in the
-            // current list (points is already ascending, per
-            // LocationHistoryDao.observeSince's ORDER BY capturedAt).
+            // consecutive point pair, each colored by that segment's index
+            // among the currently-loaded points (points is already
+            // ascending, per LocationHistoryDao.observeSince's ORDER BY
+            // capturedAt), not by elapsed wall-clock time. A time-based
+            // fraction collapsed to a near-solid color across an entire
+            // short trip whenever it sat far from the loaded set's other
+            // points on the clock (e.g. two separate trips either side of a
+            // long stationary gap, where capture briefly pauses — confirmed
+            // on-device as two flat black/red loops with no visible
+            // transition) — linear-by-point-count instead means every
+            // segment gets an equal share of the gradient regardless of how
+            // much real time passed since the previous fix.
             if (points.size >= 2) {
-                val oldestAt = points.first().capturedAt
-                val newestAt = points.last().capturedAt
-                val span = (newestAt - oldestAt).coerceAtLeast(1)
+                val lastIndex = points.size - 1
                 for (i in 1 until points.size) {
-                    val fraction = (points[i].capturedAt - oldestAt).toFloat() / span
+                    val fraction = i.toFloat() / lastIndex
                     view.overlays.add(
                         Polyline(view).apply {
                             setPoints(listOf(geoPoints[i - 1], geoPoints[i]))

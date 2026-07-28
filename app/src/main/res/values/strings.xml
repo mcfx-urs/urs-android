@@ -150,6 +150,8 @@
     <string name="watch_relay_notification_body">Listening for quick actions from your watch</string>
 
     <string name="life_map_range_label">Time range</string>
+    <string name="life_map_range_last_day">Last day</string>
+    <string name="life_map_range_last_week">Last week</string>
     <string name="life_map_range_last_month">Last month</string>
     <string name="life_map_range_last_3_months">Last 3 months</string>
     <string name="life_map_range_last_6_months">Last 6 months</string>
