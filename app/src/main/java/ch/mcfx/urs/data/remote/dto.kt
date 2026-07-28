@@ -480,6 +480,10 @@ data class WorkTimeEntryDto(
     // Empty string = no per-day override — mirrors the backend's
     // nullable-column-as-empty-string convention.
     @SerialName("work_time_entry_target_daily_hours") val targetDailyHours: String = "",
+    // "1"/"0", same string-typed-boolean convention as fill_is_full_tank —
+    // the almost-always-paid 15-minute morning break, added on top of the
+    // work span rather than logged as a break (see WorkTimeEntryEntity).
+    @SerialName("work_time_entry_paid_break") val paidBreak: String = "1",
     @SerialName("breaks") val breaks: List<WorkTimeBreakDto> = emptyList(),
     // Computed server-side (see urs-backend's computeDailyTotals) — the
     // client never reimplements this formula.
@@ -500,6 +504,11 @@ data class WorkTimeEntryPayload(
     @SerialName("work_time_entry_work_start") val workStart: String,
     @SerialName("work_time_entry_work_end") val workEnd: String,
     @SerialName("work_time_entry_target_daily_hours") val targetDailyHours: String = "",
+    // Always sent explicitly (no default) — unlike fill_is_full_tank this
+    // field's "on" state is the common case, so relying on
+    // encodeDefaults-omission would send nothing for most entries and the
+    // backend's Go zero value (false) would silently disagree with it.
+    @SerialName("work_time_entry_paid_break") val paidBreak: String,
     @SerialName("breaks") val breaks: List<WorkTimeBreakPayload> = emptyList(),
 )
 

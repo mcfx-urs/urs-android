@@ -40,6 +40,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
 import ch.mcfx.urs.ui.components.UrsButton
+import ch.mcfx.urs.ui.components.UrsCheckbox
 import ch.mcfx.urs.ui.components.UrsDateField
 import ch.mcfx.urs.ui.components.UrsIconButton
 import ch.mcfx.urs.ui.components.UrsOutlinedButton
@@ -170,6 +171,19 @@ private fun EntryForm(form: WorkTimeFormState, viewModel: WorkTimeViewModel) {
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            UrsText(
+                text = stringResource(R.string.worktime_paid_break),
+                style = UrsTheme.typography.body,
+                modifier = Modifier.weight(1f).padding(end = Spacing.m),
+            )
+            UrsCheckbox(checked = form.paidBreak, onCheckedChange = viewModel::setPaidBreak)
+        }
 
         UrsText(stringResource(R.string.worktime_breaks_title), style = UrsTheme.typography.cardTitle)
 

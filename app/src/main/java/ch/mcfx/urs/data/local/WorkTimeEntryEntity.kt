@@ -21,6 +21,12 @@ data class WorkTimeEntryEntity(
     // Empty string = no per-day override, falls back to the user's default —
     // mirrors the backend's nullable-column-as-empty-string convention.
     val targetDailyHours: String = "",
+    // The almost-always-paid 15-minute morning break — added on top of the
+    // work span in WorkTimeCalculations.dailyHoursWorked() rather than
+    // logged as a WorkTimeBreakEntity, since breaks subtract from the total
+    // and this must add to it. Defaults on since it applies most days;
+    // per-entry so a day without it can opt out.
+    val paidBreak: Boolean = true,
     val syncStatus: SyncStatus,
 )
 
