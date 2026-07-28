@@ -11,6 +11,7 @@ import ch.mcfx.urs.auth.AuthInterceptor
 import ch.mcfx.urs.auth.AuthRepository
 import ch.mcfx.urs.auth.AuthTokenStore
 import ch.mcfx.urs.auth.BiometricGate
+import ch.mcfx.urs.data.BakingRepository
 import ch.mcfx.urs.data.BeerRepository
 import ch.mcfx.urs.data.CatalogRepository
 import ch.mcfx.urs.data.FuelRepository
@@ -238,6 +239,8 @@ class AppContainer(context: Context) {
         listItemDao = database.listItemDao(),
         locationHistoryDao = database.locationHistoryDao(),
         vehicleServiceDao = database.vehicleServiceDao(),
+        bakePlanDao = database.bakePlanDao(),
+        bakePlanStepDao = database.bakePlanStepDao(),
         outboxDao = database.outboxDao(),
         reachabilityChecker = reachabilityChecker,
         syncStatusStore = syncStatusStore,
@@ -326,6 +329,15 @@ class AppContainer(context: Context) {
     val locationHistoryRepository = LocationHistoryRepository(
         api = ursApi,
         locationHistoryDao = database.locationHistoryDao(),
+    )
+    val bakingRepository = BakingRepository(
+        context = appContext,
+        bakePlanDao = database.bakePlanDao(),
+        bakePlanStepDao = database.bakePlanStepDao(),
+        outboxDao = database.outboxDao(),
+        syncManager = syncManager,
+        applicationScope = applicationScope,
+        json = json,
     )
 
     val reminderStore = ReminderStore(context)

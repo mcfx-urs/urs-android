@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- New Baking feature: backward-planned recipe schedules (starting with Sourdough Bread), per-step exact-alarm reminders with independent snooze, plan cancellation, multiple concurrent plans, and a bake history synced to the backend.
 - New Settings → General → Theme screen: choose System default/Light/Dark app-wide appearance, independent of the device's own setting.
 - Work Time entries gained a "Paid morning break (+15 min)" toggle, on by default, added on top of the logged work span instead of subtracted like a regular break.
 

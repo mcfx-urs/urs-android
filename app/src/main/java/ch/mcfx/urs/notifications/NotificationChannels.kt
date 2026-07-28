@@ -12,6 +12,7 @@ object NotificationChannels {
 
     const val INVENTORY = "inventory"
     const val WATCH_RELAY = "watch_relay"
+    const val BAKING = "baking"
 
     private data class ChannelDef(
         val id: String,
@@ -32,6 +33,12 @@ object NotificationChannels {
             name = "Watch relay",
             description = "Ongoing status notification while the watch relay is active",
             importance = NotificationManager.IMPORTANCE_LOW,
+        ),
+        ChannelDef(
+            id = BAKING,
+            name = "Baking",
+            description = "Per-step reminders for an active baking plan",
+            importance = NotificationManager.IMPORTANCE_DEFAULT,
         ),
     )
 
