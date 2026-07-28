@@ -446,6 +446,7 @@
     <string name="worktime_work_start">Start (HH:mm)</string>
     <string name="worktime_work_end">End (HH:mm)</string>
     <string name="worktime_target_hours">Target hours (optional)</string>
+    <string name="worktime_paid_break">Paid morning break (+15 min)</string>
     <string name="worktime_breaks_title">Breaks</string>
     <string name="worktime_break_start">Break start (HH:mm)</string>
     <string name="worktime_break_end">Break end (HH:mm)</string>

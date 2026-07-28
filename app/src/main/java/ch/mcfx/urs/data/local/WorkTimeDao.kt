@@ -72,8 +72,8 @@ interface WorkTimeDao {
 
     @Query(
         "UPDATE work_time_entry SET date = :date, workStart = :workStart, workEnd = :workEnd, " +
-            "targetDailyHours = :targetDailyHours, syncStatus = :syncStatus, outboxId = :outboxId " +
-            "WHERE id = :id",
+            "targetDailyHours = :targetDailyHours, paidBreak = :paidBreak, syncStatus = :syncStatus, " +
+            "outboxId = :outboxId WHERE id = :id",
     )
     suspend fun updateFields(
         id: Long,
@@ -81,6 +81,7 @@ interface WorkTimeDao {
         workStart: String,
         workEnd: String,
         targetDailyHours: String,
+        paidBreak: Boolean,
         syncStatus: SyncStatus,
         outboxId: Long?,
     )

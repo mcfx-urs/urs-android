@@ -284,6 +284,7 @@ class SyncManager(
                 workStart = payload.workStart,
                 workEnd = payload.workEnd,
                 targetDailyHours = payload.targetDailyHours,
+                paidBreak = if (payload.paidBreak) "1" else "0",
                 breaks = payload.breaks.map { WorkTimeBreakPayload(startTime = it.startTime, endTime = it.endTime) },
             ),
         )
@@ -315,6 +316,7 @@ class SyncManager(
                 workStart = payload.workStart,
                 workEnd = payload.workEnd,
                 targetDailyHours = payload.targetDailyHours,
+                paidBreak = if (payload.paidBreak) "1" else "0",
                 breaks = payload.breaks.map { WorkTimeBreakPayload(startTime = it.startTime, endTime = it.endTime) },
             ),
         )
