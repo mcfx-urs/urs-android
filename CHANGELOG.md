@@ -13,6 +13,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Catalog product tiles (Katalog search, product/category forms, Image Review, Shopping List) now follow the active theme instead of always rendering with a light background.
 
+### Fixed
+
+- Text field labels no longer jump from inside the field to above it on focus, which previously shifted the field's height and pushed the rest of the form down.
+
 ## [0.15.0] - 2026-07-27
 
 ### Added
