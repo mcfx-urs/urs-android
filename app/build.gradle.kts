@@ -60,7 +60,7 @@ android {
         minSdk = 26
         targetSdk = 37
         versionCode = 17
-        versionName = "0.15.0"
+        versionName = "0.16.0"
         buildConfigField(
             "String",
             "BUILD_TIME",

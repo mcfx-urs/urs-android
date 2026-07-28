@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-07-28
+
 ### Added
 
 - New Baking feature: backward-planned recipe schedules (starting with Sourdough Bread), per-step exact-alarm reminders with independent snooze, plan cancellation, multiple concurrent plans, and a bake history synced to the backend.
