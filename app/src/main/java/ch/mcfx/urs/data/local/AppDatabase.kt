@@ -24,6 +24,8 @@ import androidx.room.TypeConverters
         LocationHistoryEntity::class,
         VehicleServiceEntity::class,
         VehicleServiceTagEntity::class,
+        BakePlanEntity::class,
+        BakePlanStepEntity::class,
     ],
     // Bumped for the isFullTank column on FillEntity, the life map
     // feature's LocationHistoryEntity (local capture + sync fields), and
@@ -51,7 +53,9 @@ import androidx.room.TypeConverters
     //      user — same destructive-fallback handling as every bump above.
     // v18: paidBreak column added to WorkTimeEntryEntity — same
     //      destructive-fallback handling as every bump above.
-    version = 18,
+    // v19: new BakePlanEntity/BakePlanStepEntity tables (Baking) —
+    //      same destructive-fallback handling as every bump above.
+    version = 19,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -72,4 +76,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun listItemDao(): ListItemDao
     abstract fun locationHistoryDao(): LocationHistoryDao
     abstract fun vehicleServiceDao(): VehicleServiceDao
+    abstract fun bakePlanDao(): BakePlanDao
+    abstract fun bakePlanStepDao(): BakePlanStepDao
 }

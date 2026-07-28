@@ -1,6 +1,7 @@
 package ch.mcfx.urs.navigation
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cake
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Inventory2
@@ -15,6 +16,7 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.ui.graphics.vector.ImageVector
 import ch.mcfx.urs.R
+import ch.mcfx.urs.baking.BakingRoutes
 import ch.mcfx.urs.vehicle.VehicleHubRoutes
 import ch.mcfx.urs.fuel.FuelRoutes
 import ch.mcfx.urs.inventory.InventoryRoutes
@@ -51,6 +53,7 @@ enum class Destination(
     WORK_TIME(WorkTimeRoutes.HISTORY, R.string.nav_work_time, Icons.Filled.Schedule, isAvailable = true),
     LIFE_MAP("life-map", R.string.nav_life_map, Icons.Filled.Map, isAvailable = true),
     BEER("beer", R.string.nav_beer, Icons.Filled.SportsBar, isAvailable = true),
+    BAKING(BakingRoutes.PLANS, R.string.nav_baking, Icons.Filled.Cake, isAvailable = true),
     // Placeholder only — purpose not decided yet, reserves a Home grid slot
     // (see  in the shared tracker) the same way GOKART/PRICE_MONITOR
     // already do for their own not-yet-built features.

@@ -20,7 +20,27 @@
     <string name="nav_k">K</string>
     <string name="nav_work_time">Work Time</string>
     <string name="nav_life_map">Life Map</string>
+    <string name="nav_baking">Baking</string>
     <string name="nav_settings">Settings</string>
+
+    <string name="baking_step_alarm_body">Time for your next baking step</string>
+    <string name="baking_history">History</string>
+    <string name="baking_empty">No active baking plans</string>
+    <string name="baking_create_title">New baking plan</string>
+    <string name="baking_template_sourdough">Sourdough Bread</string>
+    <string name="baking_anchor_date">Bake date</string>
+    <string name="baking_anchor_time">Bake time</string>
+    <string name="baking_create_failed">Could not create plan</string>
+    <string name="baking_create_submit">Create plan</string>
+    <string name="baking_plan_not_found">Plan not found</string>
+    <string name="baking_cancel_plan">Cancel plan</string>
+    <string name="baking_snooze_title">Snooze \"%1$s\"</string>
+    <string name="baking_snooze_submit">Snooze</string>
+    <string name="baking_history_empty">No past bakes yet</string>
+    <string name="baking_status_completed">Completed</string>
+    <string name="baking_status_cancelled">Cancelled</string>
+    <string name="baking_plan_detail_title">Baking Plan</string>
+    <string name="baking_history_title">Baking History</string>
 
     <string name="settings_title">Settings</string>
     <string name="settings_tile_account">Account</string>
