@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /**
@@ -25,6 +26,8 @@ import kotlinx.coroutines.launch
  * convention nothing else here needs to care about.
  */
 enum class TimeRange(private val days: Long?) {
+    LAST_DAY(1),
+    LAST_WEEK(7),
     LAST_MONTH(30),
     LAST_3_MONTHS(90),
     LAST_6_MONTHS(180),
@@ -35,17 +38,39 @@ enum class TimeRange(private val days: Long?) {
     fun toSinceMillis(): Long = days?.let { Instant.now().minus(it, ChronoUnit.DAYS).toEpochMilli() } ?: 0L
 }
 
+/**
+ * [points] bundled together with the exact [range] they were queried for —
+ * never exposed as two independently-updating StateFlows. [selectedRange]
+ * (below) updates the instant the user picks a new range, so the dropdown
+ * label reacts immediately; but the Room query behind [observeSince] only
+ * resolves a Flow-dispatch-and-query round trip later. If the map read
+ * `selectedRange` and `points` as two separate StateFlows (as this used to
+ * do), Compose would recompose once with (new range, still-old points) —
+ * confirmed via logcat, e.g. `points.size` flipping 174→1661 across two
+ * consecutive recompositions for one selection — and the map's own
+ * zoom-to-bounding-box effect had no reliable way to tell that first,
+ * mismatched recomposition apart from the real one: it raced
+ * `mapView.post()` (UI message queue) against this Flow's coroutine
+ * dispatch, two independent async mechanisms with no ordering guarantee
+ * between them, so which one "won" and decided the final camera position
+ * was pure timing luck — worked in some runs, silently stuck on a stale,
+ * wrongly-zoomed viewport in others. Bundling them here means the map only
+ * ever observes a (range, points) pair that was already consistent at
+ * emission time — there is no intermediate mismatched state to race against.
+ */
+data class LifeMapPointsState(val range: TimeRange, val points: List<LocationHistoryEntity>)
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class LifeMapViewModel(
     private val locationHistoryDao: LocationHistoryDao,
     private val locationHistoryRepository: LocationHistoryRepository,
 ) : ViewModel() {
 
-    private val _selectedRange = MutableStateFlow(TimeRange.LAST_MONTH)
+    private val _selectedRange = MutableStateFlow(TimeRange.LAST_DAY)
     val selectedRange: StateFlow<TimeRange> = _selectedRange.asStateFlow()
 
-    private val _points = MutableStateFlow<List<LocationHistoryEntity>>(emptyList())
-    val points: StateFlow<List<LocationHistoryEntity>> = _points.asStateFlow()
+    private val _pointsState = MutableStateFlow(LifeMapPointsState(TimeRange.LAST_DAY, emptyList()))
+    val pointsState: StateFlow<LifeMapPointsState> = _pointsState.asStateFlow()
 
     init {
         // Pull the full server-side history down on load so points
@@ -54,8 +79,10 @@ class LifeMapViewModel(
         viewModelScope.launch { locationHistoryRepository.refreshFromBackend() }
         viewModelScope.launch {
             _selectedRange
-                .flatMapLatest { range -> locationHistoryDao.observeSince(range.toSinceMillis()) }
-                .collect { _points.value = it }
+                .flatMapLatest { range ->
+                    locationHistoryDao.observeSince(range.toSinceMillis()).map { LifeMapPointsState(range, it) }
+                }
+                .collect { _pointsState.value = it }
         }
     }
 
