@@ -126,6 +126,13 @@
             android:name=".location.LocationCaptureAlarmReceiver"
             android:exported="false" />
 
+        <!-- One per baking-plan step () — fired by
+             AlarmManager.setExactAndAllowWhileIdle(), see
+             BakingStepAlarmScheduler. -->
+        <receiver
+            android:name=".notifications.BakingStepAlarmReceiver"
+            android:exported="false" />
+
         <!-- exported=true is required for BOOT_COMPLETED — the system, not
              another app, is what delivers this broadcast. -->
         <receiver

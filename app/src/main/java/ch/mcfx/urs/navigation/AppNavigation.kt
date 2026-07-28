@@ -42,6 +42,10 @@ import ch.mcfx.urs.R
 import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.auth.BiometricUnlockScreen
 import ch.mcfx.urs.auth.LoginScreen
+import ch.mcfx.urs.baking.BakePlanDetailScreen
+import ch.mcfx.urs.baking.BakingHistoryScreen
+import ch.mcfx.urs.baking.BakingHubScreen
+import ch.mcfx.urs.baking.BakingRoutes
 import ch.mcfx.urs.beer.BeerScreen
 import ch.mcfx.urs.fuel.FuelAddScreen
 import ch.mcfx.urs.fuel.FuelHubScreen
@@ -382,6 +386,22 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                         val listId = backStackEntry.arguments?.getString("listId") ?: return@composable
                         ListDetailScreen(listId = listId)
                     }
+                    composable(Destination.BAKING.route) {
+                        BakingHubScreen(
+                            onOpenPlan = { plan -> navController.navigate(BakingRoutes.planDetail(plan.publicId)) },
+                            onOpenHistory = { navController.navigate(BakingRoutes.HISTORY) },
+                        )
+                    }
+                    composable(
+                        route = BakingRoutes.PLAN_DETAIL,
+                        arguments = listOf(navArgument("planId") { type = NavType.StringType }),
+                        // Reached by BakingStepAlarmReceiver's fired notification.
+                        deepLinks = listOf(navDeepLink { uriPattern = "urs://${BakingRoutes.PLAN_DETAIL}" }),
+                    ) { backStackEntry ->
+                        val planId = backStackEntry.arguments?.getString("planId") ?: return@composable
+                        BakePlanDetailScreen(planId = planId)
+                    }
+                    composable(BakingRoutes.HISTORY) { BakingHistoryScreen() }
                     composable(Destination.BEER.route) { BeerScreen() }
                     composable(Destination.WORK_TIME.route) {
                         WorkTimeScreen(
@@ -522,6 +542,11 @@ private val SHOPPING_LIST_ROUTE_LABELS = mapOf(
     ShoppingListRoutes.LIST_DETAIL to R.string.shoppinglist_list_detail_title,
 )
 
+private val BAKING_ROUTE_LABELS = mapOf(
+    BakingRoutes.PLAN_DETAIL to R.string.baking_plan_detail_title,
+    BakingRoutes.HISTORY to R.string.baking_history_title,
+)
+
 // Home, Fuel, Inventory and Shopping List currently get the accent-colored
 // top-bar/drawer-icon treatment; every Fuel/Inventory/Shopping List subpage
 // route is prefixed accordingly, so a prefix check covers those too without
@@ -543,4 +568,5 @@ private fun currentScreenLabel(route: String): Int =
         ?: SETTINGS_ROUTE_LABELS[route]
         ?: INVENTORY_ROUTE_LABELS[route]
         ?: SHOPPING_LIST_ROUTE_LABELS[route]
+        ?: BAKING_ROUTE_LABELS[route]
         ?: R.string.app_name

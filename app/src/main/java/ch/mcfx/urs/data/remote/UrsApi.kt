@@ -4,6 +4,7 @@ import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
@@ -280,6 +281,18 @@ interface UrsApi {
         @Query("limit") limit: String,
         @Query("order") order: String,
     ): List<LocationHistoryDto>
+
+    @POST("api/v1/baking/plans")
+    suspend fun createBakePlan(@Body payload: BakePlanCreatePayload): BakePlanDto
+
+    @GET("api/v1/baking/plans")
+    suspend fun getBakePlans(@Query("status") status: String? = null): List<BakePlanDto>
+
+    @PATCH("api/v1/baking/plans/{id}")
+    suspend fun cancelBakePlan(@Path("id") id: String)
+
+    @PATCH("api/v1/baking/plans/{id}/steps/{stepId}")
+    suspend fun updateBakePlanStep(@Path("id") id: String, @Path("stepId") stepId: String, @Body payload: BakePlanStepPatchPayload)
 
     @POST("api/v1/admin/restart")
     suspend fun restartServer()

@@ -668,3 +668,47 @@ data class VehicleServicePayload(
     @SerialName("vehicle_service_currency_code") val currencyCode: String = "CHF",
     val tags: List<VehicleServiceTagDto> = emptyList(),
 )
+
+@Serializable
+data class BakePlanStepDto(
+    @SerialName("bake_plan_step_id") val id: String,
+    @SerialName("bake_plan_step_index") val index: String,
+    @SerialName("bake_plan_step_label") val label: String,
+    @SerialName("bake_plan_step_planned_at") val plannedAt: String,
+    @SerialName("bake_plan_step_snoozed_at") val snoozedAt: String = "",
+    @SerialName("bake_plan_step_done_at") val doneAt: String = "",
+)
+
+@Serializable
+data class BakePlanDto(
+    @SerialName("bake_plan_id") val id: String,
+    @SerialName("bake_plan_user_id") val userId: String = "",
+    @SerialName("bake_plan_template_key") val templateKey: String,
+    @SerialName("bake_plan_anchor_at") val anchorAt: String,
+    @SerialName("bake_plan_status") val status: String,
+    @SerialName("bake_plan_completed_at") val completedAt: String = "",
+    val steps: List<BakePlanStepDto> = emptyList(),
+)
+
+@Serializable
+data class BakePlanStepCreatePayload(
+    val index: String,
+    val label: String,
+    @SerialName("planned_at") val plannedAt: String,
+)
+
+@Serializable
+data class BakePlanCreatePayload(
+    @SerialName("template_key") val templateKey: String,
+    @SerialName("anchor_at") val anchorAt: String,
+    val steps: List<BakePlanStepCreatePayload>,
+)
+
+// Both fields optional — a client sends whichever it wants to change
+// (done, snoozed_at, or both) in one request, matching the backend's single
+// PATCH .../steps/{stepId} endpoint (web.BakePlanStepPatchRequest).
+@Serializable
+data class BakePlanStepPatchPayload(
+    val done: Boolean? = null,
+    @SerialName("snoozed_at") val snoozedAt: String? = null,
+)

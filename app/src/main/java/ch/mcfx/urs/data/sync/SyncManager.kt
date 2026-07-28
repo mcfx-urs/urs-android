@@ -1,5 +1,7 @@
 package ch.mcfx.urs.data.sync
 
+import ch.mcfx.urs.data.local.BakePlanDao
+import ch.mcfx.urs.data.local.BakePlanStepDao
 import ch.mcfx.urs.data.local.FillDao
 import ch.mcfx.urs.data.local.FillingStationDao
 import ch.mcfx.urs.data.local.FillingStationEntity
@@ -8,6 +10,9 @@ import ch.mcfx.urs.data.local.InventoryProductDao
 import ch.mcfx.urs.data.local.ListDao
 import ch.mcfx.urs.data.local.ListItemDao
 import ch.mcfx.urs.data.local.LocationHistoryDao
+import ch.mcfx.urs.data.local.OutboxBakePlanCancelPayload
+import ch.mcfx.urs.data.local.OutboxBakePlanPayload
+import ch.mcfx.urs.data.local.OutboxBakePlanStepUpdatePayload
 import ch.mcfx.urs.data.local.OutboxDao
 import ch.mcfx.urs.data.local.OutboxFillDeletePayload
 import ch.mcfx.urs.data.local.OutboxFillPayload
@@ -36,6 +41,10 @@ import ch.mcfx.urs.data.local.WorkTimeBreakEntity
 import ch.mcfx.urs.data.local.WorkTimeDao
 import ch.mcfx.urs.data.local.localInventoryId
 import ch.mcfx.urs.data.local.localListId
+import ch.mcfx.urs.data.local.publicId
+import ch.mcfx.urs.data.remote.BakePlanCreatePayload
+import ch.mcfx.urs.data.remote.BakePlanStepCreatePayload
+import ch.mcfx.urs.data.remote.BakePlanStepPatchPayload
 import ch.mcfx.urs.data.remote.FillPayload
 import ch.mcfx.urs.data.remote.FillUpdatePayload
 import ch.mcfx.urs.data.remote.InventoryPayload
@@ -81,6 +90,8 @@ class SyncManager(
     private val listItemDao: ListItemDao,
     private val locationHistoryDao: LocationHistoryDao,
     private val vehicleServiceDao: VehicleServiceDao,
+    private val bakePlanDao: BakePlanDao,
+    private val bakePlanStepDao: BakePlanStepDao,
     private val outboxDao: OutboxDao,
     private val reachabilityChecker: ReachabilityChecker,
     private val syncStatusStore: SyncStatusStore,
@@ -90,7 +101,10 @@ class SyncManager(
 
     // Same "yyyy-MM-dd HH:mm:ss", device-local-time convention as
     // BeerStats.DATE_FORMAT — the backend parses location_history_captured_at
-    // with Go's matching "2006-01-02 15:04:05" layout.
+    // (and every bake_plan/bake_plan_step DATETIME column) with Go's matching
+    // "2006-01-02 15:04:05" layout. Reused for baking's millis<->string
+    // conversion too, not just location history — same format, no reason
+    // for a second identical formatter.
     private val locationHistoryDateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
     /** @return `true` if the backend was reachable and every queued mutation replayed cleanly. */
@@ -137,6 +151,9 @@ class SyncManager(
                 OutboxMutationEntity.TYPE_CREATE_VEHICLE_SERVICE -> replayCreateVehicleService(mutation)
                 OutboxMutationEntity.TYPE_UPDATE_VEHICLE_SERVICE -> replayUpdateVehicleService(mutation)
                 OutboxMutationEntity.TYPE_DELETE_VEHICLE_SERVICE -> replayDeleteVehicleService(mutation)
+                OutboxMutationEntity.TYPE_CREATE_BAKE_PLAN -> replayCreateBakePlan(mutation)
+                OutboxMutationEntity.TYPE_UPDATE_BAKE_PLAN_STEP -> replayUpdateBakePlanStep(mutation)
+                OutboxMutationEntity.TYPE_CANCEL_BAKE_PLAN -> replayCancelBakePlan(mutation)
                 else -> {
                     // Forward-compat placeholder — nothing else is queued today.
                     outboxDao.markFailed(mutation.id, "unknown outbox mutation type: ${mutation.type}")
@@ -624,6 +641,94 @@ class SyncManager(
         outboxDao.delete(mutation.id)
         return true
     }
+
+    // Steps ride along in the single plan-create payload — no per-step
+    // outbox row, unlike list/list-item's separate child-mutation pattern
+    // (see OutboxBakePlanPayload's doc comment), so this is the only place
+    // a plan's steps ever get reconciled with their server ids.
+    private suspend fun replayCreateBakePlan(mutation: OutboxMutationEntity): Boolean {
+        val localPlan = bakePlanDao.getByOutboxId(mutation.id) ?: run {
+            outboxDao.delete(mutation.id)
+            return true
+        }
+        val payload = json.decodeFromString(OutboxBakePlanPayload.serializer(), mutation.payloadJson)
+        // Read before markSynced below changes localPlan's publicId out from
+        // under this lookup.
+        val localSteps = bakePlanStepDao.getByPlanId(localPlan.publicId)
+
+        val response = api.createBakePlan(
+            BakePlanCreatePayload(
+                templateKey = payload.templateKey,
+                anchorAt = payload.anchorAtMillis.toBakingDateString(),
+                steps = payload.steps.map { step ->
+                    BakePlanStepCreatePayload(
+                        index = step.index.toString(),
+                        label = step.label,
+                        plannedAt = step.plannedAtMillis.toBakingDateString(),
+                    )
+                },
+            ),
+        )
+
+        bakePlanDao.markSynced(localPlan.id, response.id)
+        // Matched by index order — both lists were built/inserted in the
+        // same template order, and InsertBakePlan (urs-backend) returns
+        // steps in the same insertion order it received them in.
+        localSteps.sortedBy { it.stepIndex }
+            .zip(response.steps.sortedBy { it.index.toIntOrNull() ?: 0 })
+            .forEach { (local, remote) -> bakePlanStepDao.markSyncedWithServerId(local.id, remote.id, response.id) }
+
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    private suspend fun replayUpdateBakePlanStep(mutation: OutboxMutationEntity): Boolean {
+        val payload = json.decodeFromString(OutboxBakePlanStepUpdatePayload.serializer(), mutation.payloadJson)
+        val step = bakePlanStepDao.getById(payload.localStepId) ?: run {
+            outboxDao.delete(mutation.id)
+            return true
+        }
+        val serverId = step.serverId ?: run {
+            // markSyncedWithServerId stamps both serverId and the real planId
+            // together in the same replayCreateBakePlan call, so a null
+            // serverId here always means the parent plan isn't synced yet
+            // either — retried on the next sync pass once that mutation goes
+            // through, same "not yet synced, retry later" shape as
+            // replayCreateListItem's still-pending-parent case.
+            outboxDao.markFailed(mutation.id, "bake plan step not yet synced")
+            return false
+        }
+
+        api.updateBakePlanStep(
+            step.planId,
+            serverId,
+            BakePlanStepPatchPayload(
+                done = payload.done,
+                snoozedAt = payload.snoozedAtMillis?.toBakingDateString(),
+            ),
+        )
+        bakePlanStepDao.markSynced(step.id)
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    private suspend fun replayCancelBakePlan(mutation: OutboxMutationEntity): Boolean {
+        val payload = json.decodeFromString(OutboxBakePlanCancelPayload.serializer(), mutation.payloadJson)
+        val plan = bakePlanDao.getById(payload.localPlanId) ?: run {
+            outboxDao.delete(mutation.id)
+            return true
+        }
+        val serverId = plan.serverId ?: run {
+            outboxDao.markFailed(mutation.id, "bake plan not yet synced")
+            return false
+        }
+        api.cancelBakePlan(serverId)
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    private fun Long.toBakingDateString(): String =
+        Instant.ofEpochMilli(this).atZone(ZoneId.systemDefault()).format(locationHistoryDateFormat)
 
     private suspend fun resolveListId(value: String): String? {
         val localId = localListId(value) ?: return value
