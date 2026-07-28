@@ -49,7 +49,9 @@ import androidx.room.TypeConverters
     // v17: RecentlyUsedProductEntity re-keyed to (catalogProductId, listId)
     //      — "recently used" is now scoped per list instead of global per
     //      user — same destructive-fallback handling as every bump above.
-    version = 17,
+    // v18: paidBreak column added to WorkTimeEntryEntity — same
+    //      destructive-fallback handling as every bump above.
+    version = 18,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)

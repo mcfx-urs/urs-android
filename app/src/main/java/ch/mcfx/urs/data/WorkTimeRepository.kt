@@ -55,6 +55,7 @@ class WorkTimeRepository(
         workStart: String,
         workEnd: String,
         targetDailyHours: String,
+        paidBreak: Boolean,
         breaks: List<Pair<String, String>>,
     ) {
         val userId = tokenStore.currentUserId ?: return
@@ -64,6 +65,7 @@ class WorkTimeRepository(
             workStart = workStart,
             workEnd = workEnd,
             targetDailyHours = targetDailyHours,
+            paidBreak = paidBreak,
             breaks = breaks.map { (start, end) -> OutboxWorkTimeBreakPayload(startTime = start, endTime = end) },
         )
 
@@ -82,6 +84,7 @@ class WorkTimeRepository(
                 workStart = workStart,
                 workEnd = workEnd,
                 targetDailyHours = targetDailyHours,
+                paidBreak = paidBreak,
                 syncStatus = SyncStatus.PENDING,
             ),
         )
@@ -110,6 +113,7 @@ class WorkTimeRepository(
         workStart: String,
         workEnd: String,
         targetDailyHours: String,
+        paidBreak: Boolean,
         breaks: List<Pair<String, String>>,
     ) {
         val current = workTimeDao.getById(localId) ?: return
@@ -123,6 +127,7 @@ class WorkTimeRepository(
                 workStart = workStart,
                 workEnd = workEnd,
                 targetDailyHours = targetDailyHours,
+                paidBreak = paidBreak,
                 breaks = breakPayloads,
             )
             current.outboxId?.let { outboxDao.updatePayload(it, json.encodeToString(payload)) }
@@ -136,6 +141,7 @@ class WorkTimeRepository(
                 workStart = workStart,
                 workEnd = workEnd,
                 targetDailyHours = targetDailyHours,
+                paidBreak = paidBreak,
                 breaks = breakPayloads,
             )
             outboxDao.insert(
@@ -147,7 +153,7 @@ class WorkTimeRepository(
             )
         }
 
-        workTimeDao.updateFields(localId, date, workStart, workEnd, targetDailyHours, SyncStatus.PENDING, outboxId)
+        workTimeDao.updateFields(localId, date, workStart, workEnd, targetDailyHours, paidBreak, SyncStatus.PENDING, outboxId)
         workTimeDao.replaceBreaks(
             localId,
             breaks.map { (start, end) -> WorkTimeBreakEntity(entryId = localId, startTime = start, endTime = end) },
@@ -245,6 +251,7 @@ private fun WorkTimeEntryDto.toEntity() = WorkTimeEntryEntity(
     workStart = workStart,
     workEnd = workEnd,
     targetDailyHours = targetDailyHours,
+    paidBreak = paidBreak == "1",
     syncStatus = SyncStatus.SYNCED,
 )
 

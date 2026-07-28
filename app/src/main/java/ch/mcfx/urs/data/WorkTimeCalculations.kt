@@ -14,9 +14,12 @@ private fun rangeHours(start: String, end: String): Float? {
     return java.time.Duration.between(t1, t2).toMinutes() / 60f
 }
 
+private const val PaidBreakHours = 0.25f
+
 private fun WorkTimeEntryWithBreaks.dailyHoursWorked(): Float? =
     rangeHours(entry.workStart, entry.workEnd)?.let { workSpan ->
-        breaks.fold(workSpan) { acc, b -> acc - (rangeHours(b.startTime, b.endTime) ?: 0f) }
+        val withoutBreaks = breaks.fold(workSpan) { acc, b -> acc - (rangeHours(b.startTime, b.endTime) ?: 0f) }
+        if (entry.paidBreak) withoutBreaks + PaidBreakHours else withoutBreaks
     }
 
 /**

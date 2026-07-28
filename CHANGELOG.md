@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - New Settings → General → Theme screen: choose System default/Light/Dark app-wide appearance, independent of the device's own setting.
+- Work Time entries gained a "Paid morning break (+15 min)" toggle, on by default, added on top of the logged work span instead of subtracted like a regular break.
 
 ### Changed
 
