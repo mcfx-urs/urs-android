@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - New Baking feature: backward-planned recipe schedules (starting with Sourdough Bread), per-step exact-alarm reminders with independent snooze, plan cancellation, multiple concurrent plans, and a bake history synced to the backend.
 - New Settings → General → Theme screen: choose System default/Light/Dark app-wide appearance, independent of the device's own setting.
 - Work Time entries gained a "Paid morning break (+15 min)" toggle, on by default, added on top of the logged work span instead of subtracted like a regular break.
+- Life Map time-range filter gained "Last day" and "Last week" options.
 
 ### Changed
 
@@ -18,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 
 - Text field labels no longer jump from inside the field to above it on focus, which previously shifted the field's height and pushed the rest of the form down.
+- Life Map now reliably reflects the selected time range: the map's zoom and rendered track could previously stay stuck on a stale range after a fast filter change.
 
 ## [0.15.0] - 2026-07-27
 
