@@ -30,11 +30,10 @@ import ch.mcfx.urs.ui.tokens.Spacing
  * Bordered text input — replacement for `material3.OutlinedTextField`, built
  * directly on [BasicTextField] rather than `material3.TextField`.
  *
- * The label is a basic two-state affordance, not Material's full floating-
- * label animation: once there's a value or the field is focused, [label]
- * renders as a small caption above the input; while empty and unfocused, it
- * renders inline as placeholder-style text instead. Correctness of showing
- * the label matters here, not motion polish.
+ * [label] always renders as a small caption above the field, regardless of
+ * focus or value — deliberately not Material's floating-label animation,
+ * which shifts the label between an inline and an above-field position and
+ * changes the field's height when it does.
  */
 @Composable
 fun UrsTextField(
@@ -55,7 +54,6 @@ fun UrsTextField(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     UrsTextFieldChrome(
-        hasValue = value.isNotEmpty(),
         label = label,
         modifier = modifier,
         supportingText = supportingText,
@@ -102,7 +100,6 @@ fun UrsTextField(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     UrsTextFieldChrome(
-        hasValue = value.text.isNotEmpty(),
         label = label,
         modifier = modifier,
         supportingText = supportingText,
@@ -127,7 +124,6 @@ fun UrsTextField(
 // they differ only in the value type they hand to BasicTextField.
 @Composable
 private fun UrsTextFieldChrome(
-    hasValue: Boolean,
     label: String,
     modifier: Modifier,
     supportingText: String?,
@@ -136,28 +132,22 @@ private fun UrsTextFieldChrome(
 ) {
     val colors = UrsTheme.colors
     val focused by interactionSource.collectIsFocusedAsState()
-    val labelAbove = focused || hasValue
     val borderColor = if (focused) colors.accent else colors.onSurfaceMuted.copy(alpha = 0.3f)
     val shape = RoundedCornerShape(Radius.row)
 
     Column(modifier = modifier) {
-        if (labelAbove) {
-            UrsText(
-                text = label,
-                style = UrsTheme.typography.caption,
-                color = colors.onSurfaceMuted,
-                modifier = Modifier.padding(start = Spacing.m, bottom = Spacing.xs),
-            )
-        }
+        UrsText(
+            text = label,
+            style = UrsTheme.typography.caption,
+            color = colors.onSurfaceMuted,
+            modifier = Modifier.padding(start = Spacing.m, bottom = Spacing.xs),
+        )
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .border(1.dp, borderColor, shape)
                 .padding(horizontal = Spacing.l, vertical = Spacing.m),
         ) {
-            if (!labelAbove) {
-                UrsText(text = label, style = UrsTheme.typography.body, color = colors.onSurfaceMuted)
-            }
             field(colors)
         }
         if (supportingText != null) {
