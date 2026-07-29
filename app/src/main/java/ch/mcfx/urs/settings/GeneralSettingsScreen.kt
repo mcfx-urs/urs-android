@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Inventory
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
@@ -23,6 +24,7 @@ private val GENERAL_TILES = listOf(
     SettingsTile(SettingsRoutes.PRODUCT_MANAGEMENT, R.string.settings_tile_product_management, Icons.Filled.Inventory),
     SettingsTile(SettingsRoutes.WATCH_RELAY, R.string.settings_tile_watch_relay, Icons.Filled.Watch),
     SettingsTile(SettingsRoutes.THEME, R.string.settings_tile_theme, Icons.Filled.Palette),
+    SettingsTile(SettingsRoutes.LANGUAGE, R.string.settings_tile_language, Icons.Filled.Language),
 )
 
 @Composable

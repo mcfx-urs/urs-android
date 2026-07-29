@@ -57,7 +57,7 @@ android {
 
     defaultConfig {
         applicationId = "ch.mcfx.urs"
-        minSdk = 26
+        minSdk = 34
         targetSdk = 37
         versionCode = 17
         versionName = "0.16.0"
