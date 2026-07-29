@@ -40,6 +40,7 @@ import ch.mcfx.urs.ui.components.UrsOutlinedButton
 import ch.mcfx.urs.ui.components.UrsPill
 import ch.mcfx.urs.ui.components.UrsProgressIndicator
 import ch.mcfx.urs.ui.components.UrsText
+import ch.mcfx.urs.ui.components.ursScreenContentPadding
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Radius
 import ch.mcfx.urs.ui.tokens.Spacing
@@ -114,7 +115,7 @@ private fun VehicleList(vehicles: List<VehicleEntity>, onLongPress: (VehicleEnti
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(Spacing.l),
+        contentPadding = ursScreenContentPadding(),
         verticalArrangement = Arrangement.spacedBy(Spacing.s),
     ) {
         items(vehicles, key = { it.id }) { vehicle ->

@@ -34,6 +34,7 @@ import ch.mcfx.urs.ui.components.UrsDivider
 import ch.mcfx.urs.ui.components.UrsIconButton
 import ch.mcfx.urs.ui.components.UrsProgressIndicator
 import ch.mcfx.urs.ui.components.UrsText
+import ch.mcfx.urs.ui.components.ursScreenContentPadding
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Radius
 import ch.mcfx.urs.ui.tokens.Spacing
@@ -75,7 +76,7 @@ private fun BeerContent(entries: List<BeerLogDto>, viewModel: BeerViewModel) {
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(Spacing.l),
+        contentPadding = ursScreenContentPadding(),
         verticalArrangement = Arrangement.spacedBy(Spacing.l),
     ) {
         item { LogButtonsRow(onLog = viewModel::logBeer) }

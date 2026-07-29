@@ -24,6 +24,7 @@ import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsPill
 import ch.mcfx.urs.ui.components.UrsProgressIndicator
 import ch.mcfx.urs.ui.components.UrsText
+import ch.mcfx.urs.ui.components.ursScreenContentPadding
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Spacing
 import java.time.Instant
@@ -57,7 +58,7 @@ private fun HistoryList(plans: List<BakePlanEntity>) {
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(Spacing.l),
+        contentPadding = ursScreenContentPadding(),
         verticalArrangement = Arrangement.spacedBy(Spacing.s),
     ) {
         items(plans, key = { it.id }) { plan ->

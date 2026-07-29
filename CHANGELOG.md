@@ -5,9 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-### Changed
+### Fixed
 
-- Removed the navigation drawer; every screen now has a Home icon instead of a hamburger menu or back arrow, always jumping straight to the Home screen.
+- Screens with a long scrollable list could end up with their last row (and, in a couple of cases, a floating add button) resting behind the system navigation bar.
 
 ## [0.16.0] - 2026-07-28
 
