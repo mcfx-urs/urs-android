@@ -1,35 +1,20 @@
 package ch.mcfx.urs.navigation
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -70,6 +55,7 @@ import ch.mcfx.urs.settings.AccountSettingsScreen
 import ch.mcfx.urs.settings.AdminScreen
 import ch.mcfx.urs.settings.GeneralSettingsScreen
 import ch.mcfx.urs.settings.ImageReviewScreen
+import ch.mcfx.urs.settings.LanguageSettingsScreen
 import ch.mcfx.urs.settings.LocationHistorySettingsScreen
 import ch.mcfx.urs.settings.NotificationSettingsScreen
 import ch.mcfx.urs.settings.ProductManagementScreen
@@ -84,17 +70,10 @@ import ch.mcfx.urs.service.ServiceScreen
 import ch.mcfx.urs.shoppinglist.ListDetailScreen
 import ch.mcfx.urs.shoppinglist.ShoppingListRoutes
 import ch.mcfx.urs.shoppinglist.ShoppingListsScreen
-import ch.mcfx.urs.ui.components.UrsDrawerValue
 import ch.mcfx.urs.ui.components.UrsIconButton
-import ch.mcfx.urs.ui.components.UrsNavigationDrawer
-import ch.mcfx.urs.ui.components.UrsDrawerState
-import ch.mcfx.urs.ui.components.UrsNavigationDrawerItem
-import ch.mcfx.urs.ui.components.UrsPill
 import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.components.UrsTopBar
-import ch.mcfx.urs.ui.components.rememberUrsDrawerState
 import ch.mcfx.urs.ui.theme.UrsTheme
-import ch.mcfx.urs.ui.tokens.Spacing
 import ch.mcfx.urs.vehicle.VehicleAddScreen
 import ch.mcfx.urs.vehicle.VehicleHubScreen
 import ch.mcfx.urs.vehicle.VehicleRoutes
@@ -102,8 +81,6 @@ import ch.mcfx.urs.vehicle.VehicleScreen
 import ch.mcfx.urs.worktime.WorkTimeAddScreen
 import ch.mcfx.urs.worktime.WorkTimeRoutes
 import ch.mcfx.urs.worktime.WorkTimeScreen
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 
 @Composable
 fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
@@ -152,8 +129,6 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
     }
 
     val navController = rememberNavController()
-    val drawerState = rememberUrsDrawerState(initialValue = UrsDrawerValue.Closed)
-    val coroutineScope = rememberCoroutineScope()
 
     // Hands the controller back to MainActivity so a notification tap can
     // deep-link while the app is already running (onNewIntent) as well as
@@ -162,109 +137,38 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route ?: Destination.HOME.route
-    // showInDrawer, not just membership in the enum: FUEL is a Destination
-    // (routing target for HomeScreen's direct tile) but, like OBD, is really
-    // a sub-screen of VEHICLE now — it needs a back arrow to VEHICLE, not a
-    // hamburger, same as any other non-drawer sub-route.
-    val isTopLevel = Destination.entries.any { it.route == currentRoute && it.showInDrawer }
 
-    UrsNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(Spacing.s),
-                modifier = Modifier.padding(Spacing.l),
-            ) {
-                Image(
-                    painter = painterResource(R.drawable.urs_bear_logo),
-                    contentDescription = null,
-                    modifier = Modifier.size(28.dp),
-                )
-                UrsText(
-                    stringResource(R.string.app_name),
-                    style = UrsTheme.typography.brand,
-                    color = UrsTheme.colors.accent,
-                )
-            }
-            val drawerDestinations = Destination.entries.filter { it.showInDrawer }
-            val (mainDestinations, settingsDestination) = drawerDestinations.partition { it != Destination.SETTINGS }
-
-            mainDestinations.forEach { destination -> DrawerItem(destination, currentRoute, navController, drawerState, coroutineScope) }
-            // Pins Settings to the true bottom edge of the panel (not just
-            // "last in the list", which — with this few items — would still
-            // land partway up the screen) — a Spacer eating the remaining
-            // ColumnScope weight in this fillMaxHeight() Column pushes
-            // anything after it all the way down.
-            Spacer(modifier = Modifier.weight(1f))
-            // Settings + a direct About shortcut share this bottom row —
-            // About is otherwise three taps deep (drawer → Settings →
-            // About). Icons.Filled.Info matches the same icon the Settings
-            // hub's own About tile already uses, not a new one.
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                settingsDestination.forEach { destination ->
-                    DrawerItem(destination, currentRoute, navController, drawerState, coroutineScope, modifier = Modifier.weight(1f))
-                }
-                UrsIconButton(
-                    onClick = {
-                        navController.navigate(SettingsRoutes.ABOUT)
-                        coroutineScope.launch { drawerState.close() }
-                    },
-                    contentDescription = stringResource(R.string.settings_tile_about),
-                    imageVector = Icons.Filled.Info,
-                    tint = UrsTheme.colors.accent,
-                )
-            }
-            Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
-        },
-    ) {
-        Column(modifier = Modifier.fillMaxSize().background(UrsTheme.colors.background)) {
+    Column(modifier = Modifier.fillMaxSize().background(UrsTheme.colors.background)) {
+        // Home renders its own header (logo/gear + collapsing welcome/hero
+        // row) inline as part of its scrollable content instead of this
+        // shared bar — see HomeScreen's HomeHeader.
+        if (currentRoute != Destination.HOME.route) {
             val topBarTint = if (isAccentTopBarRoute(currentRoute)) UrsTheme.colors.accent else UrsTheme.colors.onSurface
             UrsTopBar(
                 navigationIcon = {
-                    if (isTopLevel) {
-                        UrsIconButton(
-                            onClick = { coroutineScope.launch { drawerState.open() } },
-                            contentDescription = stringResource(R.string.open_menu),
-                            imageVector = Icons.Filled.Menu,
-                            tint = topBarTint,
-                        )
-                    } else {
-                        UrsIconButton(
-                            onClick = { navController.popBackStack() },
-                            contentDescription = stringResource(R.string.back),
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            tint = topBarTint,
-                        )
-                    }
+                    // The only in-app "back" affordance anywhere below Home:
+                    // always jumps straight to Home, never one level up.
+                    UrsIconButton(
+                        onClick = { navController.navigateHome() },
+                        contentDescription = stringResource(R.string.nav_home),
+                        imageVector = Icons.Filled.Home,
+                        tint = topBarTint,
+                    )
                 },
                 title = {
-                    if (currentRoute == Destination.HOME.route) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(Spacing.s),
-                        ) {
-                            Image(
-                                painter = painterResource(R.drawable.urs_bear_logo),
-                                contentDescription = null,
-                                modifier = Modifier.size(28.dp),
-                            )
-                            UrsText(stringResource(R.string.app_name), style = UrsTheme.typography.brand, color = topBarTint)
-                        }
-                    } else {
-                        UrsText(
-                            stringResource(currentScreenLabel(currentRoute)),
-                            style = UrsTheme.typography.screenTitle,
-                            color = topBarTint,
-                        )
-                    }
+                    UrsText(
+                        stringResource(currentScreenLabel(currentRoute)),
+                        style = UrsTheme.typography.screenTitle,
+                        color = topBarTint,
+                    )
                 },
             )
-            Box(modifier = Modifier.fillMaxSize()) {
-                NavHost(
-                    navController = navController,
-                    startDestination = Destination.HOME.route,
-                ) {
+        }
+        Box(modifier = Modifier.fillMaxSize()) {
+            NavHost(
+                navController = navController,
+                startDestination = Destination.HOME.route,
+            ) {
                     composable(Destination.HOME.route) {
                         HomeScreen(
                             onNavigate = { navController.navigateToDestination(it) },
@@ -440,6 +344,7 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                     composable(SettingsRoutes.LOCATION_HISTORY) { LocationHistorySettingsScreen() }
                     composable(SettingsRoutes.WATCH_RELAY) { WatchRelaySettingsScreen() }
                     composable(SettingsRoutes.THEME) { ThemeSettingsScreen() }
+                    composable(SettingsRoutes.LANGUAGE) { LanguageSettingsScreen() }
                     composable(SettingsRoutes.PRODUCT_MANAGEMENT) {
                         ProductManagementScreen(
                             isSuperUser = app.container.authTokenStore.isSuperUser,
@@ -452,7 +357,6 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
             }
         }
     }
-}
 
 private fun NavHostController.navigateToDestination(destination: Destination) {
     navigate(destination.route) {
@@ -462,38 +366,21 @@ private fun NavHostController.navigateToDestination(destination: Destination) {
     }
 }
 
-@Composable
-private fun DrawerItem(
-    destination: Destination,
-    currentRoute: String,
-    navController: NavHostController,
-    drawerState: UrsDrawerState,
-    coroutineScope: CoroutineScope,
-    modifier: Modifier = Modifier,
-) {
-    UrsNavigationDrawerItem(
-        modifier = modifier,
-        label = stringResource(destination.labelRes),
-        icon = destination.icon,
-        selected = destination.route == currentRoute,
-        enabled = destination.isAvailable,
-        trailing = if (destination.isAvailable) {
-            null
-        } else {
-            {
-                UrsPill(
-                    text = stringResource(R.string.coming_soon).uppercase(),
-                    containerColor = UrsTheme.colors.surface,
-                    contentColor = UrsTheme.colors.onSurfaceMuted,
-                    style = UrsTheme.typography.tag,
-                )
-            }
-        },
-        onClick = {
-            navController.navigateToDestination(destination)
-            coroutineScope.launch { drawerState.close() }
-        },
-    )
+/**
+ * The Home-icon's "jump straight to Home" action, used from every non-Home
+ * screen regardless of nesting depth — deliberately simpler than
+ * [navigateToDestination]'s save/restoreState (that pattern is for
+ * switching between Home's own top-level tiles and preserving each one's
+ * scroll position; jumping home from a deeply nested screen, e.g. three
+ * levels into Settings, doesn't need any of that, and save/restoreState
+ * silently failed to actually navigate at all from that depth — confirmed
+ * on-device, not just a theoretical concern).
+ */
+private fun NavHostController.navigateHome() {
+    navigate(Destination.HOME.route) {
+        popUpTo(graph.startDestinationId)
+        launchSingleTop = true
+    }
 }
 
 private val FUEL_ROUTE_LABELS = mapOf(
@@ -514,6 +401,7 @@ private val SETTINGS_ROUTE_LABELS = mapOf(
     SettingsRoutes.LOCATION_HISTORY to R.string.settings_tile_location_history,
     SettingsRoutes.WATCH_RELAY to R.string.settings_tile_watch_relay,
     SettingsRoutes.THEME to R.string.settings_tile_theme,
+    SettingsRoutes.LANGUAGE to R.string.settings_tile_language,
     SettingsRoutes.PRODUCT_MANAGEMENT to R.string.settings_tile_product_management,
     SettingsRoutes.ADMIN to R.string.settings_tile_admin,
     SettingsRoutes.IMAGE_REVIEW to R.string.settings_tile_image_review,
@@ -552,8 +440,7 @@ private val BAKING_ROUTE_LABELS = mapOf(
 // route is prefixed accordingly, so a prefix check covers those too without
 // listing each one.
 private fun isAccentTopBarRoute(route: String): Boolean =
-    route == Destination.HOME.route ||
-        route.startsWith("fuel/") ||
+    route.startsWith("fuel/") ||
         route.startsWith("inventory/") ||
         route.startsWith("shoppinglist/") ||
         route.startsWith("vehicle/") ||

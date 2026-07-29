@@ -56,18 +56,16 @@ private enum class UrsSheetValue { Closed, Open }
 
 /**
  * The sheet's fallback height used only for the handful of frames before the
- * panel has been measured (see [UrsNavigationDrawer]'s `PanelWidth` for the
- * same fallback-before-measurement reasoning, mirrored here) — never the
- * actual rendered size, which is `wrapContentHeight` based on [content].
+ * panel has been measured — never the actual rendered size, which is
+ * `wrapContentHeight` based on [content].
  */
 private val FallbackSheetHeight = 400.dp
 
 /**
- * Bottom sheet overlay — replacement for `material3.ModalBottomSheet`. Same
- * layered-[Box]-with-scrim-and-`AnchoredDraggableState` technique as
- * [UrsNavigationDrawer], just anchored to the bottom of the screen and
- * dragged vertically instead of horizontally, and sized to its own content
- * (`wrapContentHeight`) rather than the drawer's fixed panel width.
+ * Bottom sheet overlay — replacement for `material3.ModalBottomSheet`. A
+ * layered-[Box]-with-scrim-and-`AnchoredDraggableState` technique, anchored
+ * to the bottom of the screen and dragged vertically, sized to its own
+ * content (`wrapContentHeight`) rather than a fixed panel width.
  *
  * There is no "closed but present" state to model here — call sites only
  * place this composable in the tree while it should be visible (`if

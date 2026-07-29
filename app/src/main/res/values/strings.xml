@@ -2,12 +2,10 @@
 <resources>
     <string name="app_name">urs</string>
 
-    <string name="open_menu">Open menu</string>
-    <string name="back">Back</string>
     <string name="coming_soon">soon</string>
 
     <string name="nav_home">Home</string>
-    <string name="home_welcome_back">Welcome back 👋</string>
+    <string name="home_welcome_eyebrow">Welcome</string>
     <string name="home_new_fuel_fill">New Fuel Fill</string>
     <string name="home_days_since_beer">Last beer: %1$d days ago</string>
     <string name="nav_fuel">Fuel</string>
@@ -58,6 +56,13 @@
     <string name="theme_option_system">System default</string>
     <string name="theme_option_light">Light</string>
     <string name="theme_option_dark">Dark</string>
+
+    <string name="settings_tile_language">Language</string>
+    <string name="language_settings_title">Language</string>
+    <string name="language_settings_description">Sets the app\'s own display language, independent of your device\'s system language.</string>
+    <string name="language_settings_label">Language</string>
+    <string name="language_option_english">English</string>
+    <string name="language_option_schwiizerdutsch">Schwiizerdütsch</string>
 
     <string name="about_org">mcfx</string>
     <string name="about_version_build_type">%1$s %2$s</string>
