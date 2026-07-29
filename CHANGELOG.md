@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- New Settings → General → Language screen: choose English or Schwiizerdütsch for the app's own display language, independent of the device's system language.
+
 ### Changed
 
 - Redesigned the Home screen: glass-style cards, a collapsing header (logo/settings row stays, welcome/hero row collapses on scroll), and real illustrated tile icons instead of emoji.
