@@ -47,6 +47,7 @@ import ch.mcfx.urs.ui.components.UrsOutlinedButton
 import ch.mcfx.urs.ui.components.UrsPill
 import ch.mcfx.urs.ui.components.UrsProgressIndicator
 import ch.mcfx.urs.ui.components.UrsText
+import ch.mcfx.urs.ui.components.ursScreenContentPadding
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Radius
 import ch.mcfx.urs.ui.tokens.Spacing
@@ -147,7 +148,7 @@ private fun ServiceList(state: ServiceUiState.Data, onLongPress: (VehicleService
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(Spacing.l),
+        contentPadding = ursScreenContentPadding(),
         verticalArrangement = Arrangement.spacedBy(Spacing.s),
     ) {
         items(state.services, key = { it.service.id }) { entry ->

@@ -20,6 +20,7 @@ import ch.mcfx.urs.obd.ObdRoutes
 import ch.mcfx.urs.service.ServiceRoutes
 import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsText
+import ch.mcfx.urs.ui.components.ursScreenContentPadding
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Spacing
 
@@ -37,7 +38,7 @@ private enum class VehicleTile(val route: String, val labelRes: Int, val emoji: 
 fun VehicleHubScreen(onNavigate: (route: String) -> Unit) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
-        contentPadding = PaddingValues(Spacing.l),
+        contentPadding = ursScreenContentPadding(),
         horizontalArrangement = Arrangement.spacedBy(Spacing.m),
         verticalArrangement = Arrangement.spacedBy(Spacing.m),
         modifier = Modifier.fillMaxSize(),

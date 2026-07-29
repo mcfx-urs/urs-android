@@ -39,6 +39,7 @@ import ch.mcfx.urs.ui.components.UrsOutlinedButton
 import ch.mcfx.urs.ui.components.UrsSquareTile
 import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.components.UrsTextField
+import ch.mcfx.urs.ui.components.ursNavigationBarsBottomPadding
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Spacing
 
@@ -203,6 +204,7 @@ private fun ProductGrid(products: List<CatalogProductEntity>, onLongPress: (Cata
     }
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
+        contentPadding = ursNavigationBarsBottomPadding(),
         verticalArrangement = Arrangement.spacedBy(Spacing.s),
         horizontalArrangement = Arrangement.spacedBy(Spacing.s),
     ) {
@@ -229,6 +231,7 @@ private fun CategoryGrid(categories: List<CatalogCategoryEntity>, onLongPress: (
     }
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
+        contentPadding = ursNavigationBarsBottomPadding(),
         verticalArrangement = Arrangement.spacedBy(Spacing.s),
         horizontalArrangement = Arrangement.spacedBy(Spacing.s),
     ) {
@@ -276,6 +279,7 @@ private fun CatalogSearchTab(
             )
             else -> LazyVerticalGrid(
                 columns = GridCells.Fixed(3),
+                contentPadding = ursNavigationBarsBottomPadding(),
                 verticalArrangement = Arrangement.spacedBy(Spacing.s),
                 horizontalArrangement = Arrangement.spacedBy(Spacing.s),
             ) {
