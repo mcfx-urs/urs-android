@@ -1,5 +1,6 @@
 package ch.mcfx.urs.home
 
+import android.location.Location
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
@@ -7,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import ch.mcfx.urs.UrsApplication
+import ch.mcfx.urs.auth.AuthTokenStore
 import ch.mcfx.urs.beer.BeerStats
 import ch.mcfx.urs.data.BeerRepository
 import ch.mcfx.urs.data.FuelRepository
@@ -32,10 +34,20 @@ class HomeViewModel(
     private val fuelRepository: FuelRepository,
     private val beerRepository: BeerRepository,
     private val locationProvider: LocationProvider,
+    private val authTokenStore: AuthTokenStore,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+
+    // The username last used to log in (see AuthTokenStore's own doc comment)
+    // — read once, not observed: it only ever changes on a fresh login, which
+    // always recreates this ViewModel along with the rest of the logged-in UI.
+    val username: String? = authTokenStore.userName
+
+    // Home's own mini-map preview tile reuses the same ambient value every
+    // other screen warms up via refreshLocation() below — no separate fetch.
+    val currentLocation: StateFlow<Location?> = locationProvider.currentLocation
 
     init {
         viewModelScope.launch {
@@ -65,7 +77,12 @@ class HomeViewModel(
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as UrsApplication
-                HomeViewModel(app.container.fuelRepository, app.container.beerRepository, app.container.locationProvider)
+                HomeViewModel(
+                    app.container.fuelRepository,
+                    app.container.beerRepository,
+                    app.container.locationProvider,
+                    app.container.authTokenStore,
+                )
             }
         }
     }

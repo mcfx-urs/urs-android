@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- Redesigned the Home screen: glass-style cards, a collapsing header (logo/settings row stays, welcome/hero row collapses on scroll), and real illustrated tile icons instead of emoji.
+- Life Map's Home tile is now a larger, full-width card with a live map preview centered on the last known location.
+
 ### Fixed
 
 - Screens with a long scrollable list could end up with their last row (and, in a couple of cases, a floating add button) resting behind the system navigation bar.

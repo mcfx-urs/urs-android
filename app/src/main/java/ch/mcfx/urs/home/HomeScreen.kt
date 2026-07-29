@@ -1,34 +1,61 @@
 package ch.mcfx.urs.home
 
+import android.location.Location
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
@@ -36,19 +63,28 @@ import ch.mcfx.urs.fuel.FuelRoutes
 import ch.mcfx.urs.location.LOCATION_PERMISSIONS
 import ch.mcfx.urs.location.hasLocationPermission
 import ch.mcfx.urs.navigation.Destination
-import ch.mcfx.urs.ui.components.UrsCard
+import ch.mcfx.urs.settings.SettingsRoutes
+import ch.mcfx.urs.ui.components.UrsGlassCard
+import ch.mcfx.urs.ui.components.UrsIconButton
 import ch.mcfx.urs.ui.components.UrsPill
 import ch.mcfx.urs.ui.components.UrsText
+import ch.mcfx.urs.ui.components.ursScreenContentPadding
 import ch.mcfx.urs.ui.theme.UrsTheme
+import ch.mcfx.urs.ui.tokens.Radius
 import ch.mcfx.urs.ui.tokens.Spacing
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Marker
 
 // WORK_TIME leads the list on purpose: it's the day-to-day recurring entry
 // (unlike an occasional fuel fill-up), so it takes over the featured,
-// two-column top slot — see FeaturedCard below, which always renders
+// full-width top slot — see WorkTimeCard below, which always renders
 // whichever destination is first here. The "New Fuel Fill" shortcut right
 // below it is a separate, non-Destination full-width row (see
 // NewFuelFillCard) since it navigates straight to FuelRoutes.ADD rather
-// than a Destination's own route — it isn't part of this list.
+// than a Destination's own route — it isn't part of this list. LIFE_MAP is
+// pulled out of the plain tile grid entirely (see LifeMapCard) for its own
+// larger, full-width slot with a live location preview.
 private val FEATURE_TILES = listOf(
     Destination.WORK_TIME,
     Destination.SHOPPING_LIST,
@@ -62,39 +98,30 @@ private val FEATURE_TILES = listOf(
     Destination.GOKART,
 )
 
-// The mockup uses raw emoji as tile icons (colorful, not tinted vectors) —
-// a deliberate style choice, confirmed against the finalized artifact
-// rather than treated as a placeholder. `Destination.icon` (an ImageVector)
-// stays as-is for contexts that still want a single-tone icon (e.g. the
-// nav drawer once it's rebuilt); this is a separate, Home-only mapping.
-// Android's emoji glyphs render with noticeably more internal padding than
-// the mockup's browser-rendered ones at the same nominal font-size, so
-// these are bumped well past the mockup's literal 30px/22px CSS values to
-// match visually rather than numerically.
-private val FeaturedIconStyle = TextStyle(fontSize = 42.sp)
-private val TileIconStyle = TextStyle(fontSize = 32.sp)
-
-// LazyVerticalGrid doesn't stretch a row's shorter cells to match its
-// tallest one — each tile's card would otherwise size to only its own
-// content (a subtitle/"SOON" pill makes a tile taller than one with just a
-// title), so two tiles side by side in the same row could end up visibly
-// different heights. Fixing every FeatureTile to this height, regardless
-// of which of the three content shapes below it renders, keeps the whole
-// grid visually even.
-private val TileHeight = 116.dp
-
-private val TILE_EMOJI = mapOf(
-    Destination.WORK_TIME to "🕒",
-    Destination.SHOPPING_LIST to "🛒",
-    Destination.VEHICLE to "🚗",
-    Destination.INVENTORY to "📦",
-    Destination.BEER to "🍺",
-    Destination.LIFE_MAP to "🗺️",
-    Destination.BAKING to "🍞",
-    Destination.GOKART to "🏁",
-    Destination.PRICE_MONITOR to "📷",
-    Destination.K to "❓",
+// Interim placeholder art cropped from the owner's own design mockup —
+// swap these drawables for the final commissioned icons once ready, no
+// other code changes needed.
+private val TILE_IMAGE = mapOf(
+    Destination.SHOPPING_LIST to R.drawable.tile_shopping_list,
+    Destination.VEHICLE to R.drawable.tile_vehicle,
+    Destination.INVENTORY to R.drawable.tile_inventory,
+    Destination.BEER to R.drawable.tile_beer,
+    Destination.BAKING to R.drawable.tile_baking,
+    Destination.PRICE_MONITOR to R.drawable.tile_price_monitor,
+    Destination.K to R.drawable.tile_k,
+    Destination.GOKART to R.drawable.tile_gokart,
 )
+
+private val TileHeight = 112.dp
+private val TileBleedImageSize = 92.dp
+private val WideTileHeight = 80.dp
+private val LifeMapCardHeight = 190.dp
+private val MiniMapZoom = 15.0
+
+// Header collapses once the grid has scrolled past this many pixels of its
+// first item — not just "scrollOffset > 0", so a tiny accidental drag
+// doesn't immediately snap the header shut.
+private const val HeaderCollapseThresholdPx = 12
 
 @Composable
 fun HomeScreen(
@@ -103,8 +130,9 @@ fun HomeScreen(
     viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val location by viewModel.currentLocation.collectAsStateWithLifecycle()
     val featured = FEATURE_TILES.first()
-    val tiles = FEATURE_TILES.drop(1)
+    val tiles = FEATURE_TILES.drop(1).filter { it != Destination.LIFE_MAP }
 
     val context = LocalContext.current
     val locationPermissionLauncher = rememberLauncherForActivityResult(
@@ -122,97 +150,148 @@ fun HomeScreen(
         }
     }
 
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
-        // Edge-to-edge (MainActivity's enableEdgeToEdge()) means the grid
-        // draws behind the system nav bar unless told otherwise — the last
-        // tile row would otherwise sit partly underneath/obscured by it,
-        // same class of bug UrsFab/FuelStationMapScreen already work around
-        // for their own floating controls.
-        contentPadding = PaddingValues(
-            start = Spacing.l,
-            end = Spacing.l,
-            top = Spacing.l,
-            bottom = Spacing.l + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
-        ),
-        horizontalArrangement = Arrangement.spacedBy(Spacing.m),
-        verticalArrangement = Arrangement.spacedBy(Spacing.m),
-        modifier = Modifier.fillMaxSize(),
-    ) {
-        item(span = { GridItemSpan(maxLineSpan) }) { WelcomeLede() }
-        item(span = { GridItemSpan(maxLineSpan) }) {
-            FeaturedCard(
-                destination = featured,
-                subtitle = quickStat(featured, uiState),
-                onClick = { onNavigate(featured) },
-            )
+    val gridState = rememberLazyGridState()
+    val isHeaderCollapsed by remember {
+        derivedStateOf {
+            gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > HeaderCollapseThresholdPx
         }
-        item(span = { GridItemSpan(maxLineSpan) }) {
-            NewFuelFillCard(
-                subtitle = uiState.fuelAvgConsumptionL100Km?.let {
-                    stringResource(R.string.fuel_avg_consumption_6mo, it)
-                },
-                onClick = { onNavigateRoute(FuelRoutes.ADD) },
-            )
-        }
-        items(tiles) { destination ->
-            FeatureTile(
-                destination = destination,
-                subtitle = quickStat(destination, uiState),
-                onClick = { onNavigate(destination) },
-            )
+    }
+
+    Column(modifier = Modifier.fillMaxSize().background(UrsTheme.colors.background)) {
+        HomeHeader(
+            username = viewModel.username,
+            isCollapsed = isHeaderCollapsed,
+            onSettingsClick = { onNavigateRoute(SettingsRoutes.HUB) },
+            onAboutClick = { onNavigateRoute(SettingsRoutes.ABOUT) },
+        )
+        LazyVerticalGrid(
+            state = gridState,
+            columns = GridCells.Fixed(2),
+            contentPadding = ursScreenContentPadding(),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.m),
+            verticalArrangement = Arrangement.spacedBy(Spacing.m),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                WorkTimeCard(onClick = { onNavigate(featured) })
+            }
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                NewFuelFillCard(
+                    subtitle = uiState.fuelAvgConsumptionL100Km?.let {
+                        stringResource(R.string.fuel_avg_consumption_6mo, it)
+                    },
+                    onClick = { onNavigateRoute(FuelRoutes.ADD) },
+                )
+            }
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                LifeMapCard(location = location, onClick = { onNavigate(Destination.LIFE_MAP) })
+            }
+            items(
+                items = tiles,
+                span = { destination -> if (destination == Destination.GOKART) GridItemSpan(maxLineSpan) else GridItemSpan(1) },
+            ) { destination ->
+                if (destination == Destination.GOKART) {
+                    WideBleedTile(destination = destination, onClick = { onNavigate(destination) })
+                } else {
+                    CornerBleedTile(
+                        destination = destination,
+                        subtitle = quickStat(destination, uiState),
+                        onClick = { onNavigate(destination) },
+                    )
+                }
+            }
         }
     }
 }
 
-// The "urs" wordmark + bear logo live in the real TopAppBar for Home
-// (AppNavigation.kt) — matching the mockup's `.topbar`, which is the
-// screen's actual app bar, not a second in-content header. Only the
-// greeting line (`.lede`) belongs to the screen content itself.
 @Composable
-private fun WelcomeLede() {
-    UrsText(
-        text = stringResource(R.string.home_welcome_back),
-        style = UrsTheme.typography.body,
-        color = UrsTheme.colors.onSurfaceMuted,
-    )
-}
-
-// Full-width shortcut straight to FuelRoutes.ADD, skipping the Fuel hub —
-// not Destination-backed (unlike FeaturedCard/FeatureTile) since it
-// navigates to a plain sub-route, not a top-level Destination.
-@Composable
-private fun NewFuelFillCard(subtitle: String?, onClick: () -> Unit) {
+private fun HomeHeader(
+    username: String?,
+    isCollapsed: Boolean,
+    onSettingsClick: () -> Unit,
+    onAboutClick: () -> Unit,
+) {
     val colors = UrsTheme.colors
 
-    UrsCard(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .background(colors.background)
+            .windowInsetsPadding(WindowInsets.statusBars)
+            .padding(horizontal = Spacing.l)
+            .padding(top = Spacing.m),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                UrsText(
-                    text = stringResource(R.string.home_new_fuel_fill),
-                    style = UrsTheme.typography.cardTitle,
-                    color = colors.accent,
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
+                Image(
+                    painter = painterResource(R.drawable.urs_bear_logo),
+                    contentDescription = null,
+                    modifier = Modifier.size(28.dp),
                 )
-                if (subtitle != null) {
-                    UrsText(text = subtitle, style = UrsTheme.typography.statAccent, color = colors.accent)
+                UrsText(stringResource(R.string.app_name), style = UrsTheme.typography.brand, color = colors.accent)
+            }
+            UrsIconButton(
+                onClick = onSettingsClick,
+                contentDescription = stringResource(R.string.nav_settings),
+                imageVector = Icons.Filled.Settings,
+                tint = colors.accent,
+            )
+        }
+
+        AnimatedVisibility(
+            visible = !isCollapsed,
+            enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
+            exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = Spacing.m)
+                    .height(150.dp)
+                    .clip(RoundedCornerShape(Radius.card)),
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.home_hero),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(colors.background.copy(alpha = 0f), colors.background.copy(alpha = 0.85f)),
+                                startY = 40f,
+                            ),
+                        ),
+                )
+                UrsIconButton(
+                    onClick = onAboutClick,
+                    contentDescription = stringResource(R.string.settings_tile_about),
+                    imageVector = Icons.Filled.Info,
+                    tint = colors.accent,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(Spacing.s),
+                )
+                Column(modifier = Modifier.align(Alignment.BottomStart).padding(Spacing.m)) {
+                    UrsText(
+                        stringResource(R.string.home_welcome_eyebrow),
+                        style = UrsTheme.typography.body,
+                        color = colors.onSurfaceMuted,
+                    )
+                    if (username != null) {
+                        UrsText(username, style = UrsTheme.typography.brand, color = colors.onSurface)
+                    }
                 }
             }
-            UrsText(text = "⛽", style = FeaturedIconStyle)
         }
     }
 }
 
-// Fuel's average-consumption stat now lives on the New Fuel Fill shortcut
-// (see NewFuelFillCard), not a Destination tile — other tiles simply show
-// none until they have data worth surfacing here too.
 @Composable
 private fun quickStat(destination: Destination, state: HomeUiState): String? = when (destination) {
     Destination.BEER -> state.daysSinceLastBeer?.let {
@@ -222,51 +301,188 @@ private fun quickStat(destination: Destination, state: HomeUiState): String? = w
 }
 
 @Composable
-private fun FeaturedCard(destination: Destination, subtitle: String?, onClick: () -> Unit) {
-    val colors = UrsTheme.colors
-
-    UrsCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = destination.isAvailable, onClick = onClick),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                UrsText(
-                    text = stringResource(destination.labelRes),
-                    style = UrsTheme.typography.cardTitle,
-                    color = colors.accent,
-                )
-                if (subtitle != null) {
-                    UrsText(text = subtitle, style = UrsTheme.typography.statAccent, color = colors.accent)
-                }
-            }
-            UrsText(text = TILE_EMOJI.getValue(destination), style = FeaturedIconStyle)
+private fun WorkTimeCard(onClick: () -> Unit) {
+    UrsGlassCard(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.m)) {
+            Image(
+                painter = painterResource(R.drawable.tile_work_time),
+                contentDescription = null,
+                modifier = Modifier.size(52.dp).clip(CircleShape),
+            )
+            UrsText(
+                text = stringResource(Destination.WORK_TIME.labelRes),
+                style = UrsTheme.typography.cardTitle,
+                color = UrsTheme.colors.accent,
+            )
         }
     }
 }
 
 @Composable
-private fun FeatureTile(destination: Destination, subtitle: String?, onClick: () -> Unit) {
+private fun NewFuelFillCard(subtitle: String?, onClick: () -> Unit) {
     val colors = UrsTheme.colors
 
-    if (!destination.isAvailable) {
-        UrsCard(
-            elevated = false,
-            backgroundColor = lerp(colors.background, colors.surface, 0.7f),
-            modifier = Modifier.fillMaxWidth().height(TileHeight),
+    UrsGlassCard(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(
-                modifier = Modifier.alpha(colors.disabledAlpha),
-                verticalArrangement = Arrangement.spacedBy(Spacing.s),
-            ) {
-                UrsText(text = TILE_EMOJI.getValue(destination), style = TileIconStyle)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.m)) {
+                Image(
+                    painter = painterResource(R.drawable.tile_fuel),
+                    contentDescription = null,
+                    modifier = Modifier.size(46.dp).clip(CircleShape),
+                )
                 Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                    UrsText(text = stringResource(destination.labelRes), style = UrsTheme.typography.cardTitle)
+                    UrsText(text = stringResource(R.string.home_new_fuel_fill), style = UrsTheme.typography.cardTitle, color = colors.accent)
+                    if (subtitle != null) {
+                        UrsText(text = subtitle, style = UrsTheme.typography.statAccent, color = colors.accent)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Life Map's Home tile: a real, non-interactive preview of the last known
+ * location (osmdroid — the same library `LifeMapScreen` already uses),
+ * centered on [location]. Falls back to a plain illustration only until a
+ * location is available (no permission yet, or the very first app launch
+ * before a fix has landed) — never a fake/placeholder coordinate.
+ */
+@Composable
+private fun LifeMapCard(location: Location?, onClick: () -> Unit) {
+    val colors = UrsTheme.colors
+
+    UrsGlassCard(
+        contentPadding = PaddingValues(0.dp),
+        modifier = Modifier.fillMaxWidth().height(LifeMapCardHeight),
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                UrsText(
+                    text = stringResource(Destination.LIFE_MAP.labelRes),
+                    style = UrsTheme.typography.cardTitle,
+                    color = colors.accent,
+                    modifier = Modifier.padding(Spacing.m),
+                )
+                Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                    if (location != null) {
+                        MiniMapView(location = location, modifier = Modifier.fillMaxSize())
+                    } else {
+                        Image(
+                            painter = painterResource(R.drawable.tile_life_map),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                }
+            }
+            // Transparent tap target drawn last (on top of the map), so the
+            // whole tile navigates to the full Life Map screen and the
+            // embedded preview never intercepts the tap as a pan/zoom gesture.
+            Box(modifier = Modifier.fillMaxSize().clickable(onClick = onClick))
+        }
+    }
+}
+
+@Composable
+private fun MiniMapView(location: Location, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val mapView = remember {
+        MapView(context).apply {
+            setMultiTouchControls(false)
+            setBuiltInZoomControls(false)
+            isClickable = false
+        }
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, mapView) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> mapView.onResume()
+                Lifecycle.Event.ON_PAUSE -> mapView.onPause()
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            mapView.onDetach()
+        }
+    }
+
+    AndroidView(
+        factory = { mapView },
+        modifier = modifier.clipToBounds(),
+        update = { view ->
+            val point = GeoPoint(location.latitude, location.longitude)
+            // Deferred via view.post() — centering before the view has a
+            // valid (non-zero) layout size computes the geo-to-screen
+            // projection against a zero-size rect and silently lands on the
+            // wrong spot (same root cause LifeMapScreen already works around).
+            view.post {
+                view.controller.setZoom(MiniMapZoom)
+                view.controller.setCenter(point)
+                view.overlays.clear()
+                view.overlays.add(Marker(view).apply { position = point })
+                view.invalidate()
+            }
+        },
+    )
+}
+
+@Composable
+private fun CornerBleedTile(destination: Destination, subtitle: String?, onClick: () -> Unit) {
+    val colors = UrsTheme.colors
+
+    UrsGlassCard(
+        contentPadding = PaddingValues(0.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(TileHeight)
+            .alpha(if (destination.isAvailable) 1f else colors.disabledAlpha)
+            .clickable(enabled = destination.isAvailable, onClick = onClick),
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Image(
+                painter = painterResource(TILE_IMAGE.getValue(destination)),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .offset(x = 10.dp, y = 10.dp)
+                    .size(TileBleedImageSize),
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.linearGradient(
+                            colorStops = arrayOf(
+                                0f to colors.surface,
+                                0.42f to colors.surface,
+                                0.78f to colors.surface.copy(alpha = 0f),
+                            ),
+                        ),
+                    ),
+            )
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(Spacing.m)
+                    .fillMaxWidth(0.62f),
+                verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+            ) {
+                UrsText(text = stringResource(destination.labelRes), style = UrsTheme.typography.cardTitle, color = colors.accent)
+                if (subtitle != null) {
+                    UrsText(text = subtitle, style = UrsTheme.typography.statAccent, color = colors.accent)
+                }
+                if (!destination.isAvailable) {
                     UrsPill(
                         text = stringResource(R.string.coming_soon).uppercase(),
                         containerColor = colors.surface,
@@ -276,21 +492,53 @@ private fun FeatureTile(destination: Destination, subtitle: String?, onClick: ()
                 }
             }
         }
-        return
     }
+}
 
-    UrsCard(
+@Composable
+private fun WideBleedTile(destination: Destination, onClick: () -> Unit) {
+    val colors = UrsTheme.colors
+
+    UrsGlassCard(
+        contentPadding = PaddingValues(0.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .height(TileHeight)
-            .clickable(onClick = onClick),
+            .height(WideTileHeight)
+            .alpha(if (destination.isAvailable) 1f else colors.disabledAlpha)
+            .clickable(enabled = destination.isAvailable, onClick = onClick),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(Spacing.s)) {
-            UrsText(text = TILE_EMOJI.getValue(destination), style = TileIconStyle)
-            Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Image(
+                painter = painterResource(TILE_IMAGE.getValue(destination)),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.align(Alignment.CenterEnd).fillMaxWidth(0.55f).fillMaxSize(),
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.horizontalGradient(
+                            colorStops = arrayOf(
+                                0f to colors.surface,
+                                0.5f to colors.surface,
+                                0.85f to colors.surface.copy(alpha = 0f),
+                            ),
+                        ),
+                    ),
+            )
+            Column(
+                modifier = Modifier.align(Alignment.CenterStart).padding(Spacing.m),
+                verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+            ) {
                 UrsText(text = stringResource(destination.labelRes), style = UrsTheme.typography.cardTitle, color = colors.accent)
-                if (subtitle != null) {
-                    UrsText(text = subtitle, style = UrsTheme.typography.statAccent, color = colors.accent)
+                if (!destination.isAvailable) {
+                    UrsPill(
+                        text = stringResource(R.string.coming_soon).uppercase(),
+                        containerColor = colors.surface,
+                        contentColor = colors.onSurfaceMuted,
+                        style = UrsTheme.typography.tag,
+                    )
                 }
             }
         }
