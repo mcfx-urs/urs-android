@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- Removed the navigation drawer; every screen now has a Home icon instead of a hamburger menu or back arrow, always jumping straight to the Home screen.
+
 ## [0.16.0] - 2026-07-28
 
 ### Added
