@@ -34,6 +34,7 @@ import ch.mcfx.urs.ui.components.UrsOutlinedButton
 import ch.mcfx.urs.ui.components.UrsProgressIndicator
 import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.components.UrsTextField
+import ch.mcfx.urs.ui.components.ursScreenContentPadding
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Radius
 import ch.mcfx.urs.ui.tokens.Spacing
@@ -120,7 +121,7 @@ private fun StationList(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(Spacing.l),
+        contentPadding = ursScreenContentPadding(),
         verticalArrangement = Arrangement.spacedBy(Spacing.s),
     ) {
         items(stations, key = { it.id }) { station ->
