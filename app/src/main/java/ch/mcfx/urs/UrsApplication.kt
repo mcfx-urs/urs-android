@@ -151,14 +151,15 @@ class AppContainer(context: Context) {
         .fallbackToDestructiveMigration(dropAllTables = true)
         .build()
 
-    val vpnConfigRepository = VpnConfigRepository(context)
+    val authTokenStore = AuthTokenStore(context)
+
+    val vpnConfigRepository = VpnConfigRepository(context, authTokenStore)
     val wireGuardManager = WireGuardManager(context, vpnConfigRepository)
     val networkGate = NetworkGate(
         context, WifiSsidReader(context), vpnConfigRepository, wireGuardManager,
         onConnectivityAvailable = { SyncWorker.enqueueOneTime(appContext) },
     )
 
-    val authTokenStore = AuthTokenStore(context)
     val biometricGate = BiometricGate(context)
 
     private fun baseHttpClientBuilder() = OkHttpClient.Builder()
@@ -224,7 +225,7 @@ class AppContainer(context: Context) {
 
     private val ursApi = retrofit.create(UrsApi::class.java)
 
-    val authRepository = AuthRepository(ursApi, authTokenStore, database)
+    val authRepository = AuthRepository(ursApi, authTokenStore, database, wireGuardManager)
 
     val reachabilityChecker = ReachabilityChecker()
     val syncStatusStore = SyncStatusStore(context)
