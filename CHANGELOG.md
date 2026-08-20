@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Screens with a long scrollable list could end up with their last row (and, in a couple of cases, a floating add button) resting behind the system navigation bar.
 - The VPN settings tile was visible to every logged-in user; it's now gated to super users, same as the Admin tile.
 - Logging out no longer leaves the previous user's inventories cached locally — the local database is now cleared on logout, and inventories are additionally filtered by the logged-in user.
+- The WireGuard VPN config was stored device-wide, so every app user shared and could use the same tunnel/private key; it's now stored per logged-in user, and an active tunnel is disconnected on logout instead of staying up across a user switch.
 
 ## [0.16.0] - 2026-07-28
 
