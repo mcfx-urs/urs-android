@@ -224,7 +224,7 @@ class AppContainer(context: Context) {
 
     private val ursApi = retrofit.create(UrsApi::class.java)
 
-    val authRepository = AuthRepository(ursApi, authTokenStore)
+    val authRepository = AuthRepository(ursApi, authTokenStore, database)
 
     val reachabilityChecker = ReachabilityChecker()
     val syncStatusStore = SyncStatusStore(context)
@@ -296,6 +296,7 @@ class AppContainer(context: Context) {
         syncManager = syncManager,
         applicationScope = applicationScope,
         json = json,
+        authTokenStore = authTokenStore,
     )
     val catalogRepository = CatalogRepository(
         api = ursApi,

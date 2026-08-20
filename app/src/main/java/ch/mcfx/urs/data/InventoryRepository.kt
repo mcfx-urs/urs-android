@@ -1,5 +1,6 @@
 package ch.mcfx.urs.data
 
+import ch.mcfx.urs.auth.AuthTokenStore
 import ch.mcfx.urs.data.local.InventoryDao
 import ch.mcfx.urs.data.local.InventoryEntity
 import ch.mcfx.urs.data.local.InventoryProductDao
@@ -50,10 +51,15 @@ class InventoryRepository(
     private val syncManager: SyncManager,
     private val applicationScope: CoroutineScope,
     private val json: Json,
+    private val authTokenStore: AuthTokenStore,
 ) {
 
     fun observeInventories(): Flow<List<InventoryEntity>> =
-        inventoryDao.observeAll().map { it.sortedBy { i -> i.name.alphabeticSortKey() } }
+        inventoryDao.observeAll(currentUserId()).map { it.sortedBy { i -> i.name.alphabeticSortKey() } }
+
+    // Empty string never matches a stored userId, so a (shouldn't-happen)
+    // logged-out call just observes/writes nothing rather than crashing.
+    private fun currentUserId(): String = authTokenStore.currentUserId.orEmpty()
 
     suspend fun getInventory(localId: Long): InventoryEntity? = inventoryDao.getById(localId)
 
@@ -76,7 +82,9 @@ class InventoryRepository(
                 createdAt = System.currentTimeMillis(),
             ),
         )
-        inventoryDao.upsert(InventoryEntity(outboxId = outboxId, name = name, syncStatus = SyncStatus.PENDING))
+        inventoryDao.upsert(
+            InventoryEntity(outboxId = outboxId, name = name, userId = currentUserId(), syncStatus = SyncStatus.PENDING),
+        )
         applicationScope.launch { syncManager.syncNow() }
     }
 
@@ -262,9 +270,9 @@ class InventoryRepository(
     suspend fun refreshFromBackend() {
         refreshQuietly {
             val inventories = emptyAsNull { api.getInventories() }
-            inventoryDao.upsertFromServer(inventories.map { it.toEntity() })
+            inventoryDao.upsertFromServer(inventories.map { it.toEntity(currentUserId()) })
         }
-        inventoryDao.observeAll().first().mapNotNull { it.serverId }.forEach { inventoryId ->
+        inventoryDao.observeAll(currentUserId()).first().mapNotNull { it.serverId }.forEach { inventoryId ->
             refreshQuietly {
                 val products = emptyAsNull { api.getInventoryProducts(inventoryId) }
                 inventoryProductDao.upsertFromServer(products.map { it.toEntity() })
@@ -291,10 +299,11 @@ class InventoryRepository(
         }
 }
 
-private fun InventoryDto.toEntity() = InventoryEntity(
+private fun InventoryDto.toEntity(userId: String) = InventoryEntity(
     serverId = id,
     outboxId = null,
     name = name,
+    userId = userId,
     syncStatus = SyncStatus.SYNCED,
 )
 

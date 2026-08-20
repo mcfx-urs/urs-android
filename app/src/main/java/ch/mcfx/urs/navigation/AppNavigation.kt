@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Modifier
@@ -43,6 +44,7 @@ import ch.mcfx.urs.fuel.FuelStatsScreen
 import ch.mcfx.urs.fuel.StationsViewModel
 import ch.mcfx.urs.home.HomeScreen
 import ch.mcfx.urs.data.local.publicId
+import kotlinx.coroutines.launch
 import ch.mcfx.urs.inventory.InventoriesScreen
 import ch.mcfx.urs.inventory.InventoryRoutes
 import ch.mcfx.urs.inventory.ProductListScreen
@@ -124,7 +126,11 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
     val biometricGate = app.container.biometricGate
     val isBiometricUnlocked by biometricGate.isUnlocked.collectAsStateWithLifecycle()
     if (biometricGate.isEnabled && !isBiometricUnlocked && biometricGate.needsUnlock()) {
-        BiometricUnlockScreen(gate = biometricGate, onUsePasswordInstead = app.container.authRepository::logout)
+        val coroutineScope = rememberCoroutineScope()
+        BiometricUnlockScreen(
+            gate = biometricGate,
+            onUsePasswordInstead = { coroutineScope.launch { app.container.authRepository.logout() } },
+        )
         return
     }
 
@@ -335,7 +341,10 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                         )
                     }
                     composable(SettingsRoutes.GENERAL) {
-                        GeneralSettingsScreen(onNavigate = { route -> navController.navigate(route) })
+                        GeneralSettingsScreen(
+                            isSuperUser = app.container.authTokenStore.isSuperUser,
+                            onNavigate = { route -> navController.navigate(route) },
+                        )
                     }
                     composable(SettingsRoutes.VPN) { VpnSettingsScreen() }
                     composable(SettingsRoutes.NOTIFICATIONS) { NotificationSettingsScreen() }
