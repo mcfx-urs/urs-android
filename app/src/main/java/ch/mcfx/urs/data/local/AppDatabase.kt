@@ -55,7 +55,11 @@ import androidx.room.TypeConverters
     //      destructive-fallback handling as every bump above.
     // v19: new BakePlanEntity/BakePlanStepEntity tables (Baking) —
     //      same destructive-fallback handling as every bump above.
-    version = 19,
+    // v20: userId added to InventoryEntity, InventoryDao.observeAll() now
+    //      filters by it — a previous user's synced inventories no longer
+    //      show up after switching the logged-in user on one device
+    //      — same destructive-fallback handling as every bump above.
+    version = 20,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)

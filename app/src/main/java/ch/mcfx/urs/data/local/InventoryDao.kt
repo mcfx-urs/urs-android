@@ -11,8 +11,11 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface InventoryDao {
 
-    @Query("SELECT * FROM inventory")
-    fun observeAll(): Flow<List<InventoryEntity>>
+    // See InventoryEntity's doc comment on [InventoryEntity.userId] — this
+    // filter is what stops a previous user's synced inventories from
+    // showing up after switching the logged-in user on one device.
+    @Query("SELECT * FROM inventory WHERE userId = :userId")
+    fun observeAll(userId: String): Flow<List<InventoryEntity>>
 
     @Query("SELECT * FROM inventory WHERE id = :id LIMIT 1")
     suspend fun getById(id: Long): InventoryEntity?

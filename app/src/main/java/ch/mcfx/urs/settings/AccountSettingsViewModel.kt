@@ -3,12 +3,14 @@ package ch.mcfx.urs.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.auth.AuthRepository
 import ch.mcfx.urs.auth.AuthTokenStore
 import ch.mcfx.urs.auth.BiometricGate
+import kotlinx.coroutines.launch
 
 class AccountSettingsViewModel(
     private val authRepository: AuthRepository,
@@ -21,7 +23,9 @@ class AccountSettingsViewModel(
 
     val userName: String? = tokenStore.userName
 
-    fun logout() = authRepository.logout()
+    fun logout() {
+        viewModelScope.launch { authRepository.logout() }
+    }
 
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {

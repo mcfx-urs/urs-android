@@ -13,6 +13,16 @@ import androidx.room.PrimaryKey
  * category shape this replaces, an inventory can be renamed/deleted
  * offline-first too, mirroring [ListEntity] exactly rather than the
  * create-only shape `InventoryCategoryEntity` used to have.
+ *
+ * [userId] is the locally logged-in user this row was written under (backend
+ * `user_id`, not necessarily the inventory's owner — a shared inventory is
+ * stamped with whichever user's session pulled it). The backend already
+ * scopes `GET /api/v1/inventory` to inventories visible to the caller, but
+ * the local Room cache previously had no user concept at all and simply
+ * accumulated every synced inventory forever, regardless of who was
+ * currently logged in — [InventoryDao.observeAll] filters on this column so
+ * switching the logged-in user on one device can't show a previous user's
+ * inventory.
  */
 @Entity(tableName = "inventory")
 data class InventoryEntity(
@@ -23,6 +33,7 @@ data class InventoryEntity(
     // inventory's sync, null once synced.
     val outboxId: Long? = null,
     val name: String,
+    val userId: String,
     val syncStatus: SyncStatus,
 )
 
