@@ -393,6 +393,8 @@
     <string name="inventory_product_remove">Remove %1$s</string>
     <string name="inventory_settings_title">%1$s settings</string>
     <string name="inventory_settings_quantity">Quantity</string>
+    <string name="inventory_settings_quantity_minus_seven">-7</string>
+    <string name="inventory_settings_quantity_plus_seven">+7</string>
     <string name="inventory_settings_first_threshold">First warning at or below</string>
     <string name="inventory_settings_second_threshold">Second warning at or below</string>
     <string name="inventory_settings_reminder_enable">Daily low-stock reminder</string>
