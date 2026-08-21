@@ -111,6 +111,18 @@
     <string name="worktime_settings_target_hours_label">Default daily target hours</string>
     <string name="worktime_settings_hourly_wage_label">Hourly wage</string>
     <string name="worktime_settings_saved">Saved</string>
+    <string name="worktime_settings_wage_rules_link">Surcharges &amp; deductions</string>
+
+    <string name="worktime_wage_rules_title">Surcharges &amp; deductions</string>
+    <string name="worktime_wage_rules_description">Configures how the monthly net wage is derived from the gross figure — each rate applies automatically to every month\'s summary. A rate of 0 disables that surcharge or deduction.</string>
+    <string name="worktime_wage_rules_vacation_pay_label">Vacation pay surcharge % (Feriengeldanspruch)</string>
+    <string name="worktime_wage_rules_holiday_label">Holiday compensation surcharge % (Feiertagsentschädigung)</string>
+    <string name="worktime_wage_rules_thirteenth_month_label">13th-month salary surcharge % (13. Monatslohnanspruch)</string>
+    <string name="worktime_wage_rules_ahv_iv_eo_label">AHV/IV/EO deduction %</string>
+    <string name="worktime_wage_rules_alv_label">ALV deduction %</string>
+    <string name="worktime_wage_rules_suva_nbu_label">SUVA/NBU deduction %</string>
+    <string name="worktime_wage_rules_ktg_label">KTG deduction %</string>
+    <string name="worktime_wage_rules_bvg_label">BVG deduction (fixed amount)</string>
 
     <string name="notifications_title">Notifications</string>
     <string name="notifications_description">Reminders and other alerts need both permissions below. Notification access shows the alert itself; exact-alarm access makes sure a scheduled reminder fires at the exact time you set, not sometime nearby.</string>
@@ -489,6 +501,8 @@
     <string name="worktime_stat_hours">Hours</string>
     <string name="worktime_stat_plus_minus">Plus/Minus</string>
     <string name="worktime_stat_earnings">Earnings</string>
+    <string name="worktime_stat_gross">Gross</string>
+    <string name="worktime_stat_net">Net</string>
     <string name="worktime_stat_percent_of_soll">% of monthly Soll</string>
     <string name="worktime_override_title">Override days worked — %1$s %2$s</string>
     <string name="worktime_override_label">Days worked this month</string>

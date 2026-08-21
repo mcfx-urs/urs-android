@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - The work-time entry form now shows the daily hours worked and the deviation from the daily target live, updating as start time, end time, breaks, or the target change (#7).
+- New Settings → Work Settings → Surcharges & deductions screen: configurable vacation pay, holiday, and 13th-month surcharge percentages, AHV/IV/EO, ALV, SUVA/NBU, and KTG deduction percentages, and a fixed BVG deduction amount. The monthly Earnings tile now shows gross and net wage stacked, decimal-aligned (#11).
 
 ## [0.17.0] - 2026-08-21
 

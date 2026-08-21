@@ -6,12 +6,14 @@ import ch.mcfx.urs.data.remote.UserDefaultDailyTargetHoursPayload
 import ch.mcfx.urs.data.remote.UserDto
 import ch.mcfx.urs.data.remote.UserEmploymentPercentPayload
 import ch.mcfx.urs.data.remote.UserHourlyWagePayload
+import ch.mcfx.urs.data.remote.UserWageRulesPayload
 import kotlinx.serialization.SerializationException
 
 data class WorkSettings(
     val defaultDailyTargetHours: String,
     val employmentPercent: String,
     val hourlyWage: String,
+    val wageRules: WageRules,
 )
 
 // The work-time endpoints below still take an explicit user_id path segment
@@ -48,6 +50,16 @@ class UserRepository(
             defaultDailyTargetHours = user?.defaultDailyTargetHours.orEmpty(),
             employmentPercent = user?.employmentPercent.orEmpty(),
             hourlyWage = user?.hourlyWage.orEmpty(),
+            wageRules = WageRules(
+                vacationPaySurchargePercent = user?.vacationPaySurchargePercent.orEmpty(),
+                holidaySurchargePercent = user?.holidaySurchargePercent.orEmpty(),
+                thirteenthMonthSurchargePercent = user?.thirteenthMonthSurchargePercent.orEmpty(),
+                ahvIvEoDeductionPercent = user?.ahvIvEoDeductionPercent.orEmpty(),
+                alvDeductionPercent = user?.alvDeductionPercent.orEmpty(),
+                suvaNbuDeductionPercent = user?.suvaNbuDeductionPercent.orEmpty(),
+                ktgDeductionPercent = user?.ktgDeductionPercent.orEmpty(),
+                bvgDeductionAmount = user?.bvgDeductionAmount.orEmpty(),
+            ),
         )
     }
 
@@ -64,6 +76,23 @@ class UserRepository(
     suspend fun setHourlyWage(wage: String) {
         val userId = tokenStore.currentUserId ?: return
         api.updateUserHourlyWage(userId, UserHourlyWagePayload(hourlyWage = wage))
+    }
+
+    suspend fun setWageRules(rules: WageRules) {
+        val userId = tokenStore.currentUserId ?: return
+        api.updateUserWageRules(
+            userId,
+            UserWageRulesPayload(
+                vacationPaySurchargePercent = rules.vacationPaySurchargePercent.orEmpty(),
+                holidaySurchargePercent = rules.holidaySurchargePercent.orEmpty(),
+                thirteenthMonthSurchargePercent = rules.thirteenthMonthSurchargePercent.orEmpty(),
+                ahvIvEoDeductionPercent = rules.ahvIvEoDeductionPercent.orEmpty(),
+                alvDeductionPercent = rules.alvDeductionPercent.orEmpty(),
+                suvaNbuDeductionPercent = rules.suvaNbuDeductionPercent.orEmpty(),
+                ktgDeductionPercent = rules.ktgDeductionPercent.orEmpty(),
+                bvgDeductionAmount = rules.bvgDeductionAmount.orEmpty(),
+            ),
+        )
     }
 
     // Super-user only — the backend itself rejects this with

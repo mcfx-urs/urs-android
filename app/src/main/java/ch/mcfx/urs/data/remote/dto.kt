@@ -525,6 +525,14 @@ data class UserDto(
     @SerialName("user_default_daily_target_hours") val defaultDailyTargetHours: String = "",
     @SerialName("user_employment_percent") val employmentPercent: String = "",
     @SerialName("user_hourly_wage") val hourlyWage: String = "",
+    @SerialName("user_vacation_pay_surcharge_percent") val vacationPaySurchargePercent: String = "",
+    @SerialName("user_holiday_surcharge_percent") val holidaySurchargePercent: String = "",
+    @SerialName("user_thirteenth_month_surcharge_percent") val thirteenthMonthSurchargePercent: String = "",
+    @SerialName("user_ahv_iv_eo_deduction_percent") val ahvIvEoDeductionPercent: String = "",
+    @SerialName("user_alv_deduction_percent") val alvDeductionPercent: String = "",
+    @SerialName("user_suva_nbu_deduction_percent") val suvaNbuDeductionPercent: String = "",
+    @SerialName("user_ktg_deduction_percent") val ktgDeductionPercent: String = "",
+    @SerialName("user_bvg_deduction_amount") val bvgDeductionAmount: String = "",
 )
 
 @Serializable
@@ -540,6 +548,18 @@ data class UserEmploymentPercentPayload(
 @Serializable
 data class UserHourlyWagePayload(
     @SerialName("user_hourly_wage") val hourlyWage: String,
+)
+
+@Serializable
+data class UserWageRulesPayload(
+    @SerialName("user_vacation_pay_surcharge_percent") val vacationPaySurchargePercent: String,
+    @SerialName("user_holiday_surcharge_percent") val holidaySurchargePercent: String,
+    @SerialName("user_thirteenth_month_surcharge_percent") val thirteenthMonthSurchargePercent: String,
+    @SerialName("user_ahv_iv_eo_deduction_percent") val ahvIvEoDeductionPercent: String,
+    @SerialName("user_alv_deduction_percent") val alvDeductionPercent: String,
+    @SerialName("user_suva_nbu_deduction_percent") val suvaNbuDeductionPercent: String,
+    @SerialName("user_ktg_deduction_percent") val ktgDeductionPercent: String,
+    @SerialName("user_bvg_deduction_amount") val bvgDeductionAmount: String,
 )
 
 @Serializable

@@ -10,6 +10,7 @@ object SettingsRoutes {
     const val VPN = "settings/vpn"
     const val NOTIFICATIONS = "settings/notifications"
     const val ACCOUNT = "settings/account"
+    const val WAGE_RULES = "settings/wage-rules"
     const val ABOUT = "settings/about"
     const val LOCATION_HISTORY = "settings/location-history"
     const val WATCH_RELAY = "settings/watch-relay"
