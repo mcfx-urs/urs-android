@@ -5,6 +5,7 @@ import ch.mcfx.urs.baking.BakingRoutes
 import ch.mcfx.urs.vehicle.VehicleHubRoutes
 import ch.mcfx.urs.fuel.FuelRoutes
 import ch.mcfx.urs.inventory.InventoryRoutes
+import ch.mcfx.urs.notes.NotesRoutes
 import ch.mcfx.urs.settings.SettingsRoutes
 import ch.mcfx.urs.shoppinglist.ShoppingListRoutes
 import ch.mcfx.urs.worktime.WorkTimeRoutes
@@ -29,6 +30,7 @@ enum class Destination(
     LIFE_MAP("life-map", R.string.nav_life_map, isAvailable = true),
     BEER("beer", R.string.nav_beer, isAvailable = true),
     BAKING(BakingRoutes.PLANS, R.string.nav_baking, isAvailable = true),
+    NOTES(NotesRoutes.LIST, R.string.nav_notes, isAvailable = true),
     // Placeholder only — purpose not decided yet, reserves a Home grid slot
     // the same way GOKART/PRICE_MONITOR already do for their own
     // not-yet-built features.

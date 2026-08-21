@@ -10,6 +10,7 @@ import ch.mcfx.urs.data.local.InventoryProductDao
 import ch.mcfx.urs.data.local.ListDao
 import ch.mcfx.urs.data.local.ListItemDao
 import ch.mcfx.urs.data.local.LocationHistoryDao
+import ch.mcfx.urs.data.local.NoteDao
 import ch.mcfx.urs.data.local.OutboxBakePlanCancelPayload
 import ch.mcfx.urs.data.local.OutboxBakePlanPayload
 import ch.mcfx.urs.data.local.OutboxBakePlanStepUpdatePayload
@@ -29,6 +30,10 @@ import ch.mcfx.urs.data.local.OutboxListPayload
 import ch.mcfx.urs.data.local.OutboxListUpdatePayload
 import ch.mcfx.urs.data.local.OutboxLocationHistoryPayload
 import ch.mcfx.urs.data.local.OutboxMutationEntity
+import ch.mcfx.urs.data.local.OutboxNoteCreatePayload
+import ch.mcfx.urs.data.local.OutboxNoteDeletePayload
+import ch.mcfx.urs.data.local.OutboxNoteStatusPayload
+import ch.mcfx.urs.data.local.OutboxNoteUpdatePayload
 import ch.mcfx.urs.data.local.OutboxVehicleServiceDeletePayload
 import ch.mcfx.urs.data.local.OutboxVehicleServicePayload
 import ch.mcfx.urs.data.local.OutboxVehicleServiceUpdatePayload
@@ -53,6 +58,8 @@ import ch.mcfx.urs.data.remote.ListItemPayload
 import ch.mcfx.urs.data.remote.ListItemUpdatePayload
 import ch.mcfx.urs.data.remote.ListPayload
 import ch.mcfx.urs.data.remote.LocationHistoryPayload
+import ch.mcfx.urs.data.remote.NoteCreatePayload
+import ch.mcfx.urs.data.remote.NoteStatusPatchPayload
 import ch.mcfx.urs.data.remote.UrsApi
 import ch.mcfx.urs.data.remote.VehicleServicePayload
 import ch.mcfx.urs.data.remote.VehicleServiceTagDto
@@ -92,6 +99,7 @@ class SyncManager(
     private val vehicleServiceDao: VehicleServiceDao,
     private val bakePlanDao: BakePlanDao,
     private val bakePlanStepDao: BakePlanStepDao,
+    private val noteDao: NoteDao,
     private val outboxDao: OutboxDao,
     private val reachabilityChecker: ReachabilityChecker,
     private val syncStatusStore: SyncStatusStore,
@@ -154,6 +162,10 @@ class SyncManager(
                 OutboxMutationEntity.TYPE_CREATE_BAKE_PLAN -> replayCreateBakePlan(mutation)
                 OutboxMutationEntity.TYPE_UPDATE_BAKE_PLAN_STEP -> replayUpdateBakePlanStep(mutation)
                 OutboxMutationEntity.TYPE_CANCEL_BAKE_PLAN -> replayCancelBakePlan(mutation)
+                OutboxMutationEntity.TYPE_CREATE_NOTE -> replayCreateNote(mutation)
+                OutboxMutationEntity.TYPE_UPDATE_NOTE -> replayUpdateNote(mutation)
+                OutboxMutationEntity.TYPE_UPDATE_NOTE_STATUS -> replayUpdateNoteStatus(mutation)
+                OutboxMutationEntity.TYPE_DELETE_NOTE -> replayDeleteNote(mutation)
                 else -> {
                     // Forward-compat placeholder — nothing else is queued today.
                     outboxDao.markFailed(mutation.id, "unknown outbox mutation type: ${mutation.type}")
@@ -723,6 +735,79 @@ class SyncManager(
             return false
         }
         api.cancelBakePlan(serverId)
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    private suspend fun replayCreateNote(mutation: OutboxMutationEntity): Boolean {
+        val localNote = noteDao.getByOutboxId(mutation.id) ?: run {
+            outboxDao.delete(mutation.id)
+            return true
+        }
+        val payload = json.decodeFromString(OutboxNoteCreatePayload.serializer(), mutation.payloadJson)
+        val response = api.createNote(
+            NoteCreatePayload(
+                title = payload.title,
+                content = payload.content,
+                reminderAt = payload.reminderAtMillis?.toBakingDateString(),
+                tags = payload.tags,
+            ),
+        )
+        noteDao.markSynced(localNote.id, response.id)
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    // Identifies its target by localNoteId (payload.localNoteId), resolved to
+    // a serverId here at replay time — same "not yet synced, retry later"
+    // shape as replayUpdateBakePlanStep, since a note can be edited before
+    // its own create mutation has synced.
+    private suspend fun replayUpdateNote(mutation: OutboxMutationEntity): Boolean {
+        val payload = json.decodeFromString(OutboxNoteUpdatePayload.serializer(), mutation.payloadJson)
+        val note = noteDao.getById(payload.localNoteId) ?: run {
+            outboxDao.delete(mutation.id)
+            return true
+        }
+        val serverId = note.serverId ?: run {
+            outboxDao.markFailed(mutation.id, "note not yet synced")
+            return false
+        }
+        api.updateNote(
+            serverId,
+            NoteCreatePayload(
+                title = payload.title,
+                content = payload.content,
+                reminderAt = payload.reminderAtMillis?.toBakingDateString(),
+                tags = payload.tags,
+            ),
+        )
+        noteDao.clearPending(note.id)
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    private suspend fun replayUpdateNoteStatus(mutation: OutboxMutationEntity): Boolean {
+        val payload = json.decodeFromString(OutboxNoteStatusPayload.serializer(), mutation.payloadJson)
+        val note = noteDao.getById(payload.localNoteId) ?: run {
+            outboxDao.delete(mutation.id)
+            return true
+        }
+        val serverId = note.serverId ?: run {
+            outboxDao.markFailed(mutation.id, "note not yet synced")
+            return false
+        }
+        api.updateNoteStatus(serverId, NoteStatusPatchPayload(status = payload.status))
+        noteDao.clearPending(note.id)
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    // Unlike update/status above, the local row is already gone by replay
+    // time (offline-first delete) — the payload already carries the
+    // serverId captured at queue time, nothing left to resolve here.
+    private suspend fun replayDeleteNote(mutation: OutboxMutationEntity): Boolean {
+        val payload = json.decodeFromString(OutboxNoteDeletePayload.serializer(), mutation.payloadJson)
+        api.deleteNote(payload.serverId)
         outboxDao.delete(mutation.id)
         return true
     }

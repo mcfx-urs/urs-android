@@ -32,6 +32,10 @@ import ch.mcfx.urs.baking.BakePlanDetailScreen
 import ch.mcfx.urs.baking.BakingHistoryScreen
 import ch.mcfx.urs.baking.BakingHubScreen
 import ch.mcfx.urs.baking.BakingRoutes
+import ch.mcfx.urs.notes.NoteDetailScreen
+import ch.mcfx.urs.notes.NotesHistoryScreen
+import ch.mcfx.urs.notes.NotesHubScreen
+import ch.mcfx.urs.notes.NotesRoutes
 import ch.mcfx.urs.beer.BeerScreen
 import ch.mcfx.urs.fuel.FuelAddScreen
 import ch.mcfx.urs.fuel.FuelHubScreen
@@ -313,6 +317,28 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                         BakePlanDetailScreen(planId = planId)
                     }
                     composable(BakingRoutes.HISTORY) { BakingHistoryScreen() }
+                    composable(Destination.NOTES.route) {
+                        NotesHubScreen(
+                            onOpenNote = { noteId -> navController.navigate(NotesRoutes.detail(noteId)) },
+                            onNewNote = { navController.navigate(NotesRoutes.NEW) },
+                            onOpenHistory = { navController.navigate(NotesRoutes.HISTORY) },
+                        )
+                    }
+                    composable(NotesRoutes.NEW) {
+                        NoteDetailScreen(onDone = { navController.popBackStack() })
+                    }
+                    composable(
+                        route = NotesRoutes.DETAIL,
+                        arguments = listOf(navArgument("noteId") { type = NavType.StringType }),
+                        // Reached by NoteAlarmReceiver's fired reminder notification.
+                        deepLinks = listOf(navDeepLink { uriPattern = "urs://${NotesRoutes.DETAIL}" }),
+                    ) { backStackEntry ->
+                        val noteId = backStackEntry.arguments?.getString("noteId") ?: return@composable
+                        NoteDetailScreen(noteId = noteId, onDone = { navController.popBackStack() })
+                    }
+                    composable(NotesRoutes.HISTORY) {
+                        NotesHistoryScreen(onOpenNote = { noteId -> navController.navigate(NotesRoutes.detail(noteId)) })
+                    }
                     composable(Destination.BEER.route) { BeerScreen() }
                     composable(Destination.WORK_TIME.route) {
                         WorkTimeScreen(
@@ -450,6 +476,12 @@ private val BAKING_ROUTE_LABELS = mapOf(
     BakingRoutes.HISTORY to R.string.baking_history_title,
 )
 
+private val NOTES_ROUTE_LABELS = mapOf(
+    NotesRoutes.NEW to R.string.note_detail_title_new,
+    NotesRoutes.DETAIL to R.string.note_detail_title_edit,
+    NotesRoutes.HISTORY to R.string.notes_history_title,
+)
+
 // Home, Fuel, Inventory and Shopping List currently get the accent-colored
 // top-bar/drawer-icon treatment; every Fuel/Inventory/Shopping List subpage
 // route is prefixed accordingly, so a prefix check covers those too without
@@ -471,4 +503,5 @@ private fun currentScreenLabel(route: String): Int =
         ?: INVENTORY_ROUTE_LABELS[route]
         ?: SHOPPING_LIST_ROUTE_LABELS[route]
         ?: BAKING_ROUTE_LABELS[route]
+        ?: NOTES_ROUTE_LABELS[route]
         ?: R.string.app_name
