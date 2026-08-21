@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- The monthly Earnings tile's Net figure now applies the built-in default surcharge/deduction rates when the user has never opened Settings → Work Settings → Surcharges & deductions, instead of silently treating every rate as 0% (Net equaling Gross).
+
 ### Added
 
 - The work-time entry form now shows the daily hours worked and the deviation from the daily target live, updating as start time, end time, breaks, or the target change (#7).
