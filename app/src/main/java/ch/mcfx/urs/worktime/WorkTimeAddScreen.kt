@@ -39,6 +39,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
+import ch.mcfx.urs.data.computeTotals
+import ch.mcfx.urs.data.dailyHoursWorked
 import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsCheckbox
 import ch.mcfx.urs.ui.components.UrsDateField
@@ -63,6 +65,8 @@ fun WorkTimeAddScreen(
 ) {
     val formState by viewModel.formState.collectAsStateWithLifecycle()
     val showForm by viewModel.showForm.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val userDefaultTargetHours = (uiState as? WorkTimeUiState.Data)?.userDefaultTargetHours
 
     LaunchedEffect(Unit) { if (entryId != null) viewModel.openFormForEdit(entryId) else viewModel.openForm() }
 
@@ -77,7 +81,7 @@ fun WorkTimeAddScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (showForm) {
-            EntryForm(form = formState, viewModel = viewModel)
+            EntryForm(form = formState, userDefaultTargetHours = userDefaultTargetHours, viewModel = viewModel)
         } else {
             UrsProgressIndicator(Modifier.align(Alignment.Center))
         }
@@ -85,7 +89,7 @@ fun WorkTimeAddScreen(
 }
 
 @Composable
-private fun EntryForm(form: WorkTimeFormState, viewModel: WorkTimeViewModel) {
+private fun EntryForm(form: WorkTimeFormState, userDefaultTargetHours: String?, viewModel: WorkTimeViewModel) {
     val focusManager = LocalFocusManager.current
     // "Next" on every field's IME action, instead of the default tick/done —
     // one shared instance since the behavior (move to the next field) is
@@ -237,6 +241,44 @@ private fun EntryForm(form: WorkTimeFormState, viewModel: WorkTimeViewModel) {
             onClick = { pendingFocusBreakId = viewModel.addBreak() },
             modifier = Modifier.fillMaxWidth(),
         )
+
+        // Live preview of the same totals the monthly overview shows after
+        // saving — reuses dailyHoursWorked()/computeTotals() unchanged
+        // (WorkTimeCalculations.kt), just fed from the in-progress form
+        // instead of a saved entity. Hidden until both times parse as a full
+        // "HH:mm" (dailyHoursWorked returns null otherwise) rather than
+        // showing a partial/misleading number while typing.
+        val totals = remember(form.workStart, form.workEnd, form.paidBreak, form.breaks, form.targetDailyHours, userDefaultTargetHours) {
+            computeTotals(
+                dailyHoursWorked(
+                    workStart = "${form.workStart}:00",
+                    workEnd = "${form.workEnd}:00",
+                    paidBreak = form.paidBreak,
+                    breaks = form.breaks.map { "${it.startTime}:00" to "${it.endTime}:00" },
+                ),
+                form.targetDailyHours,
+                userDefaultTargetHours,
+            )
+        }
+        totals.dailyTotalHours?.let { dailyTotal ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                UrsText(
+                    stringResource(R.string.worktime_daily_total, formatHours(dailyTotal)),
+                    style = UrsTheme.typography.cardTitle,
+                )
+                totals.overUndertimeHours?.let {
+                    UrsText(
+                        formatSignedHours(it),
+                        style = UrsTheme.typography.body,
+                        color = if (it < 0) FormErrorColor else UrsTheme.colors.onSurfaceMuted,
+                    )
+                }
+            }
+        }
 
         if (form.submitFailed) {
             UrsText(
