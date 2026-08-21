@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-08-21
+
 ### Added
 
 - The work-time entry form now shows the daily hours worked and the deviation from the daily target live, updating as start time, end time, breaks, or the target change (#7).
