@@ -17,6 +17,7 @@ import ch.mcfx.urs.data.CatalogRepository
 import ch.mcfx.urs.data.FuelRepository
 import ch.mcfx.urs.data.InventoryRepository
 import ch.mcfx.urs.data.LocationHistoryRepository
+import ch.mcfx.urs.data.NoteRepository
 import ch.mcfx.urs.data.ServiceRepository
 import ch.mcfx.urs.data.ShoppingListRepository
 import ch.mcfx.urs.data.VehicleRepository
@@ -242,6 +243,7 @@ class AppContainer(context: Context) {
         vehicleServiceDao = database.vehicleServiceDao(),
         bakePlanDao = database.bakePlanDao(),
         bakePlanStepDao = database.bakePlanStepDao(),
+        noteDao = database.noteDao(),
         outboxDao = database.outboxDao(),
         reachabilityChecker = reachabilityChecker,
         syncStatusStore = syncStatusStore,
@@ -338,6 +340,16 @@ class AppContainer(context: Context) {
         bakePlanStepDao = database.bakePlanStepDao(),
         outboxDao = database.outboxDao(),
         syncManager = syncManager,
+        applicationScope = applicationScope,
+        json = json,
+    )
+    val noteRepository = NoteRepository(
+        context = appContext,
+        noteDao = database.noteDao(),
+        noteTagDao = database.noteTagDao(),
+        outboxDao = database.outboxDao(),
+        syncManager = syncManager,
+        tokenStore = authTokenStore,
         applicationScope = applicationScope,
         json = json,
     )

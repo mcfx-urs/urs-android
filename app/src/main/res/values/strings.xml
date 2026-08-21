@@ -19,6 +19,7 @@
     <string name="nav_work_time">Work Time</string>
     <string name="nav_life_map">Life Map</string>
     <string name="nav_baking">Baking</string>
+    <string name="nav_notes">Notes</string>
     <string name="nav_settings">Settings</string>
 
     <string name="baking_step_alarm_body">Time for your next baking step</string>
@@ -39,6 +40,30 @@
     <string name="baking_status_cancelled">Cancelled</string>
     <string name="baking_plan_detail_title">Baking Plan</string>
     <string name="baking_history_title">Baking History</string>
+
+    <string name="note_reminder_body">Reminder</string>
+    <string name="notes_empty">No notes yet</string>
+    <string name="notes_new">New note</string>
+    <string name="notes_history_link">Archive</string>
+    <string name="notes_history_title">Archive</string>
+    <string name="notes_history_empty">No completed notes</string>
+    <string name="notes_filter_all_tags">All tags</string>
+    <string name="note_detail_title_new">New note</string>
+    <string name="note_detail_title_edit">Edit note</string>
+    <string name="note_field_title">Title</string>
+    <string name="note_field_content">Content</string>
+    <string name="note_field_tags">Tags</string>
+    <string name="note_remove_tag">Remove tag %1$s</string>
+    <string name="note_tags_add_hint">Add a tag</string>
+    <string name="note_reminder_enable">Set a reminder</string>
+    <string name="note_reminder_date">Date</string>
+    <string name="note_reminder_time">Time</string>
+    <string name="note_complete">Complete</string>
+    <string name="note_reopen">Reopen</string>
+    <string name="note_delete">Delete</string>
+    <string name="note_delete_confirm_title">Delete this note?</string>
+    <string name="note_delete_confirm_body">This can\'t be undone.</string>
+    <string name="note_not_found">Note not found</string>
 
     <string name="settings_title">Settings</string>
     <string name="settings_tile_account">Account</string>

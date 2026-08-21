@@ -297,6 +297,21 @@ interface UrsApi {
     @PATCH("api/v1/baking/plans/{id}/steps/{stepId}")
     suspend fun updateBakePlanStep(@Path("id") id: String, @Path("stepId") stepId: String, @Body payload: BakePlanStepPatchPayload)
 
+    @POST("api/v1/note")
+    suspend fun createNote(@Body payload: NoteCreatePayload): NoteDto
+
+    @GET("api/v1/note")
+    suspend fun getNotes(@Query("status") status: String? = null): List<NoteDto>
+
+    @PUT("api/v1/note/{id}")
+    suspend fun updateNote(@Path("id") id: String, @Body payload: NoteCreatePayload): NoteDto
+
+    @PATCH("api/v1/note/{id}/status")
+    suspend fun updateNoteStatus(@Path("id") id: String, @Body payload: NoteStatusPatchPayload)
+
+    @DELETE("api/v1/note/{id}")
+    suspend fun deleteNote(@Path("id") id: String)
+
     @POST("api/v1/admin/restart")
     suspend fun restartServer()
 
