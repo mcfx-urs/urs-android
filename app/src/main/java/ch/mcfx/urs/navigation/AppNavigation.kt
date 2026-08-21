@@ -342,7 +342,6 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                     }
                     composable(SettingsRoutes.GENERAL) {
                         GeneralSettingsScreen(
-                            isSuperUser = app.container.authTokenStore.isSuperUser,
                             onNavigate = { route -> navController.navigate(route) },
                         )
                     }
