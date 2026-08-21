@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-08-21
+
 ### Added
 
 - New Settings → General → Language screen: choose English or Schwiizerdütsch for the app's own display language, independent of the device's system language.
