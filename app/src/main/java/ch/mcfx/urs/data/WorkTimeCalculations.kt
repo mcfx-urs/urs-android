@@ -16,11 +16,18 @@ private fun rangeHours(start: String, end: String): Float? {
 
 private const val PaidBreakHours = 0.25f
 
-private fun WorkTimeEntryWithBreaks.dailyHoursWorked(): Float? =
-    rangeHours(entry.workStart, entry.workEnd)?.let { workSpan ->
-        val withoutBreaks = breaks.fold(workSpan) { acc, b -> acc - (rangeHours(b.startTime, b.endTime) ?: 0f) }
-        if (entry.paidBreak) withoutBreaks + PaidBreakHours else withoutBreaks
+// Primitive-parameter core so it can be shared between a saved entry
+// (WorkTimeEntryWithBreaks below) and the add/edit form's live preview
+// (WorkTimeFormState, in the worktime package) without either depending on
+// the other's type.
+fun dailyHoursWorked(workStart: String, workEnd: String, paidBreak: Boolean, breaks: List<Pair<String, String>>): Float? =
+    rangeHours(workStart, workEnd)?.let { workSpan ->
+        val withoutBreaks = breaks.fold(workSpan) { acc, (start, end) -> acc - (rangeHours(start, end) ?: 0f) }
+        if (paidBreak) withoutBreaks + PaidBreakHours else withoutBreaks
     }
+
+private fun WorkTimeEntryWithBreaks.dailyHoursWorked(): Float? =
+    dailyHoursWorked(entry.workStart, entry.workEnd, entry.paidBreak, breaks.map { it.startTime to it.endTime })
 
 /**
  * Client-side mirror of urs-backend's `computeDailyTotals` — kept so a
@@ -30,12 +37,14 @@ private fun WorkTimeEntryWithBreaks.dailyHoursWorked(): Float? =
  */
 data class WorkTimeTotals(val dailyTotalHours: Float?, val overUndertimeHours: Float?)
 
-fun WorkTimeEntryWithBreaks.computeTotals(userDefaultTargetHours: String?): WorkTimeTotals {
-    val total = dailyHoursWorked() ?: return WorkTimeTotals(null, null)
-    val target = entry.targetDailyHours.toFloatOrNull() ?: userDefaultTargetHours?.toFloatOrNull()
-    val overUndertime = target?.let { total - it }
-    return WorkTimeTotals(total, overUndertime)
+fun computeTotals(dailyTotalHours: Float?, targetDailyHours: String, userDefaultTargetHours: String?): WorkTimeTotals {
+    dailyTotalHours ?: return WorkTimeTotals(null, null)
+    val target = targetDailyHours.toFloatOrNull() ?: userDefaultTargetHours?.toFloatOrNull()
+    return WorkTimeTotals(dailyTotalHours, target?.let { dailyTotalHours - it })
 }
+
+fun WorkTimeEntryWithBreaks.computeTotals(userDefaultTargetHours: String?): WorkTimeTotals =
+    computeTotals(dailyHoursWorked(), entry.targetDailyHours, userDefaultTargetHours)
 
 /** Number of Monday–Friday calendar days in a given month — the exact "how many days could theoretically be worked" count. */
 fun possibleWeekdaysInMonth(year: Int, month: Int): Int {

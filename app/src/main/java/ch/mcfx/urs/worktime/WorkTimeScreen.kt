@@ -452,7 +452,8 @@ private fun DeleteConfirmSheet(onConfirm: () -> Unit, onCancel: () -> Unit) {
     }
 }
 
-private fun formatHours(hours: Float): String = String.format(Locale.US, "%.2f", hours)
+// Not private: also used by WorkTimeAddScreen's live daily-total preview.
+fun formatHours(hours: Float): String = String.format(Locale.US, "%.2f", hours)
 
-private fun formatSignedHours(hours: Float): String =
+fun formatSignedHours(hours: Float): String =
     if (hours >= 0) "+${formatHours(hours)}" else formatHours(hours)
