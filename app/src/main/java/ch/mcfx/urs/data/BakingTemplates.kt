@@ -50,7 +50,7 @@ val sourdoughBreadTemplate = RecipeTemplate(
         IngredientAmount("Salz", 10),
     ),
     steps = listOf(
-        RecipeStepTemplate(1, "Starter füttern (3g Anstellgut + 83g Mehl + 83g Wasser)", Duration.ofMinutes(-(45 * 60 + 35).toLong())),
+        RecipeStepTemplate(1, "Starter füttern (4g Anstellgut + 100g Mehl + 100g Wasser)", Duration.ofMinutes(-(45 * 60 + 35).toLong())),
         RecipeStepTemplate(2, "Mischen (Starter + Wasser verrühren, dann Mehl)", Duration.ofMinutes(-(21 * 60 + 35).toLong())),
         RecipeStepTemplate(3, "Salzen + Stretch&Fold (Start Bulk Fermentation)", Duration.ofMinutes(-(20 * 60 + 35).toLong())),
         RecipeStepTemplate(4, "Coil Fold 2", Duration.ofMinutes(-(19 * 60 + 35).toLong())),
