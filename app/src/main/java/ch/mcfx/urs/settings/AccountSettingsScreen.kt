@@ -64,6 +64,7 @@ private val FormErrorColor = Color(0xFFD64545)
  */
 @Composable
 fun AccountSettingsScreen(
+    onNavigateToWageRules: () -> Unit = {},
     viewModel: AccountSettingsViewModel = viewModel(factory = AccountSettingsViewModel.Factory),
     workTimeViewModel: WorkTimeSettingsViewModel = viewModel(factory = WorkTimeSettingsViewModel.Factory),
     changePasswordViewModel: ChangePasswordViewModel = viewModel(factory = ChangePasswordViewModel.Factory),
@@ -192,6 +193,12 @@ fun AccountSettingsScreen(
         UrsButton(
             text = stringResource(R.string.save),
             onClick = workTimeViewModel::save,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        UrsOutlinedButton(
+            text = stringResource(R.string.worktime_settings_wage_rules_link),
+            onClick = onNavigateToWageRules,
             modifier = Modifier.fillMaxWidth(),
         )
 

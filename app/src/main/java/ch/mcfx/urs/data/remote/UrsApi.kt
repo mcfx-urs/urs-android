@@ -223,6 +223,9 @@ interface UrsApi {
     @PUT("api/v1/user/{id}/hourly-wage")
     suspend fun updateUserHourlyWage(@Path("id") id: String, @Body payload: UserHourlyWagePayload)
 
+    @PUT("api/v1/user/{id}/wage-rules")
+    suspend fun updateUserWageRules(@Path("id") id: String, @Body payload: UserWageRulesPayload)
+
     @GET("api/v1/work-time-month-override/{userId}")
     suspend fun getWorkTimeMonthOverrides(@Path("userId") userId: String): List<WorkTimeMonthOverrideDto>
 
