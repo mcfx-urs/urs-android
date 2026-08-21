@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import ch.mcfx.urs.UrsApplication
+import ch.mcfx.urs.data.DefaultWageRules
 import ch.mcfx.urs.data.UserRepository
 import ch.mcfx.urs.data.WageRules
 import ch.mcfx.urs.data.WorkSettings
@@ -37,7 +38,7 @@ sealed interface WorkTimeUiState {
 
 private val breakDraftIds = AtomicLong()
 
-private val EmptyWageRules = WageRules(null, null, null, null, null, null, null, null)
+private val FallbackWageRules = DefaultWageRules
 
 // Form times are entered as "HH:mm" (no seconds picker in this simple text
 // form) and normalized to "HH:mm:ss" only at submit time, matching what the
@@ -117,7 +118,7 @@ class WorkTimeViewModel(
                     userDefaultTargetHours = settings?.defaultDailyTargetHours ?: "",
                     employmentPercent = settings?.employmentPercent ?: "",
                     hourlyWage = settings?.hourlyWage ?: "",
-                    wageRules = settings?.wageRules ?: EmptyWageRules,
+                    wageRules = settings?.wageRules ?: FallbackWageRules,
                     monthOverrides = overrides,
                 )
             }.collect { _uiState.value = it }
@@ -133,7 +134,7 @@ class WorkTimeViewModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
-                WorkSettings("", "", "", EmptyWageRules) // best-effort hint, not critical
+                WorkSettings("", "", "", FallbackWageRules) // best-effort hint, not critical
             }
         }
     }
