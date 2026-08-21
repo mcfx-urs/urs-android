@@ -83,6 +83,34 @@ data class WageRules(
     val bvgDeductionAmount: String?,
 )
 
+// Pre-filled the first time a user's wage rules are loaded (backend value
+// blank), so the feature works out of the box and only needs adjusting, not
+// filling in from scratch — see GitHub issue #11's worked example. AHV/ALV
+// match current official Swiss employee-share rates; BVG has no sensible
+// default (varies per pension plan/coordinated salary), so it starts at 0.
+val DefaultWageRules = WageRules(
+    vacationPaySurchargePercent = "10.6",
+    holidaySurchargePercent = "3.8",
+    thirteenthMonthSurchargePercent = "8.33",
+    ahvIvEoDeductionPercent = "5.3",
+    alvDeductionPercent = "1.1",
+    suvaNbuDeductionPercent = "1.76",
+    ktgDeductionPercent = "1.621",
+    bvgDeductionAmount = "0",
+)
+
+/** Substitutes the built-in default for any field the caller left blank/unset. */
+fun WageRules.withDefaults(): WageRules = WageRules(
+    vacationPaySurchargePercent = vacationPaySurchargePercent?.takeIf { it.isNotBlank() } ?: DefaultWageRules.vacationPaySurchargePercent,
+    holidaySurchargePercent = holidaySurchargePercent?.takeIf { it.isNotBlank() } ?: DefaultWageRules.holidaySurchargePercent,
+    thirteenthMonthSurchargePercent = thirteenthMonthSurchargePercent?.takeIf { it.isNotBlank() } ?: DefaultWageRules.thirteenthMonthSurchargePercent,
+    ahvIvEoDeductionPercent = ahvIvEoDeductionPercent?.takeIf { it.isNotBlank() } ?: DefaultWageRules.ahvIvEoDeductionPercent,
+    alvDeductionPercent = alvDeductionPercent?.takeIf { it.isNotBlank() } ?: DefaultWageRules.alvDeductionPercent,
+    suvaNbuDeductionPercent = suvaNbuDeductionPercent?.takeIf { it.isNotBlank() } ?: DefaultWageRules.suvaNbuDeductionPercent,
+    ktgDeductionPercent = ktgDeductionPercent?.takeIf { it.isNotBlank() } ?: DefaultWageRules.ktgDeductionPercent,
+    bvgDeductionAmount = bvgDeductionAmount?.takeIf { it.isNotBlank() } ?: DefaultWageRules.bvgDeductionAmount,
+)
+
 data class WageBreakdown(val gross: Float, val net: Float)
 
 private fun applyPercent(base: Float, percent: String?): Float = base * (percent?.toFloatOrNull() ?: 0f) / 100f

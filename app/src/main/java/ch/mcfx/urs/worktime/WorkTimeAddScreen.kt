@@ -4,18 +4,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.union
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.Composable
@@ -49,6 +42,7 @@ import ch.mcfx.urs.ui.components.UrsOutlinedButton
 import ch.mcfx.urs.ui.components.UrsProgressIndicator
 import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.components.UrsTextField
+import ch.mcfx.urs.ui.components.ursFormScrollPadding
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Spacing
 
@@ -108,21 +102,7 @@ private fun EntryForm(form: WorkTimeFormState, userDefaultTargetHours: String?, 
 
     Column(
         modifier = Modifier
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = Spacing.xl)
-            .padding(top = Spacing.xl)
-            // Edge-to-edge means this screen draws behind the system nav bar
-            // and (while a field is focused) the on-screen keyboard, unless
-            // told otherwise — union rather than a separate imePadding() so
-            // the two inset paddings don't stack additively while the
-            // keyboard covers the nav bar (same reasoning as UrsBottomSheet).
-            // Without this, the scrollable area's bottom never grows to
-            // account for the keyboard, so fields/the Save button below the
-            // focused field stay hidden behind it with no way to scroll them
-            // into view — matches the fix already applied to
-            // VehicleAddScreen/ServiceAddScreen/FuelAddScreen.
-            .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime))
-            .padding(bottom = Spacing.xl),
+            .ursFormScrollPadding(),
         verticalArrangement = Arrangement.spacedBy(Spacing.m),
     ) {
         val isEditing = form.editingEntryId != null
