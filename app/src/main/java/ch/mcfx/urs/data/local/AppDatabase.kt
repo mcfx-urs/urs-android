@@ -26,6 +26,8 @@ import androidx.room.TypeConverters
         VehicleServiceTagEntity::class,
         BakePlanEntity::class,
         BakePlanStepEntity::class,
+        NoteEntity::class,
+        NoteTagEntity::class,
     ],
     // Bumped for the isFullTank column on FillEntity, the life map
     // feature's LocationHistoryEntity (local capture + sync fields), and
@@ -59,7 +61,9 @@ import androidx.room.TypeConverters
     //      filters by it — a previous user's synced inventories no longer
     //      show up after switching the logged-in user on one device
     //      () — same destructive-fallback handling as every bump above.
-    version = 20,
+    // v21: new NoteEntity/NoteTagEntity tables (GitHub issue #10, Notes) —
+    //      same destructive-fallback handling as every bump above.
+    version = 21,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -82,4 +86,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun vehicleServiceDao(): VehicleServiceDao
     abstract fun bakePlanDao(): BakePlanDao
     abstract fun bakePlanStepDao(): BakePlanStepDao
+    abstract fun noteDao(): NoteDao
+    abstract fun noteTagDao(): NoteTagDao
 }

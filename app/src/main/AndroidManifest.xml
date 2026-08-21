@@ -133,6 +133,10 @@
             android:name=".notifications.BakingStepAlarmReceiver"
             android:exported="false" />
 
+        <receiver
+            android:name=".notifications.NoteAlarmReceiver"
+            android:exported="false" />
+
         <!-- exported=true is required for BOOT_COMPLETED — the system, not
              another app, is what delivers this broadcast. -->
         <receiver

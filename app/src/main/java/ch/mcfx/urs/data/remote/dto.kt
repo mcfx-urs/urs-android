@@ -732,3 +732,30 @@ data class BakePlanStepPatchPayload(
     val done: Boolean? = null,
     @SerialName("snoozed_at") val snoozedAt: String? = null,
 )
+
+@Serializable
+data class NoteDto(
+    @SerialName("note_id") val id: String,
+    @SerialName("note_user_id") val userId: String = "",
+    @SerialName("note_title") val title: String,
+    @SerialName("note_content") val content: String = "",
+    @SerialName("note_reminder_at") val reminderAt: String = "",
+    @SerialName("note_status") val status: String,
+    @SerialName("note_completed_at") val completedAt: String = "",
+    val tags: List<String> = emptyList(),
+)
+
+// Shared by POST /api/v1/note (create) and PUT /api/v1/note/{id} (update) —
+// same body shape both ways (web.NoteCreateRequest).
+@Serializable
+data class NoteCreatePayload(
+    val title: String,
+    val content: String,
+    @SerialName("reminder_at") val reminderAt: String? = null,
+    val tags: List<String> = emptyList(),
+)
+
+@Serializable
+data class NoteStatusPatchPayload(
+    val status: String,
+)
