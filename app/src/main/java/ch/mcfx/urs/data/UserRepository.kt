@@ -59,7 +59,7 @@ class UserRepository(
                 suvaNbuDeductionPercent = user?.suvaNbuDeductionPercent.orEmpty(),
                 ktgDeductionPercent = user?.ktgDeductionPercent.orEmpty(),
                 bvgDeductionAmount = user?.bvgDeductionAmount.orEmpty(),
-            ),
+            ).withDefaults(),
         )
     }
 
