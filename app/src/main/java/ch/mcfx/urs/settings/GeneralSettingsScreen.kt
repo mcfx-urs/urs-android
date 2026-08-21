@@ -27,18 +27,13 @@ private val GENERAL_TILES = listOf(
     SettingsTile(SettingsRoutes.LANGUAGE, R.string.settings_tile_language, Icons.Filled.Language),
 )
 
-// VPN grants access to the home network via a device-wide WireGuard config
-// (VpnConfigRepository has no user concept at all) — gated the same way as
-// SettingsScreen's Admin tile, so a non-super user (e.g. the dev/test user)
-// never sees it.
 @Composable
-fun GeneralSettingsScreen(isSuperUser: Boolean, onNavigate: (route: String) -> Unit) {
-    val tiles = if (isSuperUser) GENERAL_TILES else GENERAL_TILES.filterNot { it.route == SettingsRoutes.VPN }
+fun GeneralSettingsScreen(onNavigate: (route: String) -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize().padding(Spacing.l),
         verticalArrangement = Arrangement.spacedBy(Spacing.s),
     ) {
-        tiles.forEach { tile ->
+        GENERAL_TILES.forEach { tile ->
             SettingsRow(tile = tile, onClick = { onNavigate(tile.route) })
         }
     }
