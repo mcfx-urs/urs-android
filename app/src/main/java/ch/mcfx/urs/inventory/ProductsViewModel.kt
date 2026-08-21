@@ -188,15 +188,34 @@ class ProductsViewModel(
         }
         if (newQuantity == currentQuantity) return
 
+        persistQuantity(serverId, newQuantity)
+    }
+
+    private fun persistQuantity(serverId: String, newQuantity: Int?) {
         viewModelScope.launch {
             try {
                 inventoryRepository.updateProductQuantity(productId = serverId, newQuantity = newQuantity)
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
-                // Best-effort: the row simply keeps showing the last-known quantity if this failed server-side.
+                // Best-effort: the row/sheet simply keeps showing the last-known quantity if this failed server-side.
             }
         }
+    }
+
+    // +7/-7 quick-adjust in the settings sheet (weekly-batch products, e.g.
+    // medication prepared once a week) — independent of, and in addition to,
+    // the row's own −/+1 buttons above. Fixed step of 7 for every product,
+    // not configurable. Acts on (and updates) the sheet's own quantity
+    // field rather than the tile's live value, so it composes with a
+    // not-yet-submitted manual edit to that same field instead of
+    // discarding it.
+    fun adjustSettingsQuantityBySeven(delta: Int) {
+        val form = _settingsForm.value
+        val serverId = form.product?.product?.serverId ?: return
+        val newQuantity = ((form.quantity.toIntOrNull() ?: 0) + delta).coerceAtLeast(0)
+        _settingsForm.update { it.copy(quantity = newQuantity.toString(), error = null) }
+        persistQuantity(serverId, newQuantity)
     }
 
     fun deleteProduct(tile: InventoryProductTile) {

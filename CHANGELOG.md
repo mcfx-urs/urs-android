@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The work-time entry form now shows the daily hours worked and the deviation from the daily target live, updating as start time, end time, breaks, or the target change (#7).
 - New Settings → Work Settings → Surcharges & deductions screen: configurable vacation pay, holiday, and 13th-month surcharge percentages, AHV/IV/EO, ALV, SUVA/NBU, and KTG deduction percentages, and a fixed BVG deduction amount. The monthly Earnings tile now shows gross and net wage stacked, decimal-aligned (#11).
 - Tapping −/+ on an inventory product now shows a quick color-sweep across the row confirming the change: red left-to-right on decrease, blue right-to-left on increase (a plain opacity flash instead when the system's reduce-motion setting is on) (#8).
+- The inventory product settings sheet gained "+7"/"-7" quick-adjust buttons for weekly-batch products (e.g. medication prepared once a week), independent of the row's own −/+1 buttons (#9).
 
 ## [0.17.0] - 2026-08-21
 

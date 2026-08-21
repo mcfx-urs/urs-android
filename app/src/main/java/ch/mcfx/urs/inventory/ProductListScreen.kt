@@ -53,6 +53,7 @@ import ch.mcfx.urs.data.local.CatalogProductEntity
 import ch.mcfx.urs.data.local.SyncStatus
 import ch.mcfx.urs.ui.components.UrsBottomSheet
 import ch.mcfx.urs.ui.components.UrsButton
+import ch.mcfx.urs.ui.components.UrsOutlinedButton
 import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsCheckbox
 import ch.mcfx.urs.ui.components.UrsFab
@@ -412,6 +413,20 @@ private fun ProductSettingsForm(form: ProductSettingsFormState, viewModel: Produ
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
+        // Weekly-batch quick-adjust (e.g. medication prepared once a week,
+        // always 7 units) — fixed step, independent of the row's own −/+1.
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.m)) {
+            UrsOutlinedButton(
+                text = stringResource(R.string.inventory_settings_quantity_minus_seven),
+                onClick = { viewModel.adjustSettingsQuantityBySeven(-7) },
+                modifier = Modifier.weight(1f),
+            )
+            UrsOutlinedButton(
+                text = stringResource(R.string.inventory_settings_quantity_plus_seven),
+                onClick = { viewModel.adjustSettingsQuantityBySeven(7) },
+                modifier = Modifier.weight(1f),
+            )
+        }
         UrsTextField(
             value = form.firstThreshold,
             onValueChange = viewModel::setFirstThreshold,
