@@ -1,17 +1,26 @@
 package ch.mcfx.urs.inventory
 
+import android.provider.Settings
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,10 +30,17 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
@@ -57,6 +73,18 @@ private val FirstWarningColor = Color(0xFFE0813F)
 private val SecondWarningColor = Color(0xFFD64545)
 
 private val FabIconStyle = TextStyle(fontSize = 28.sp)
+
+// Quantity-change sweep (GitHub issue #8) — confirms a −/+ tap landed, since
+// the number and the buttons sit close together. Fixed colors regardless of
+// theme/row background, same reasoning as the warning tones above.
+private val SweepDecreaseColor = Color(0xFFE5484D)
+private val SweepIncreaseColor = Color(0xFF2E6BFF)
+private const val SweepWidthFraction = 0.4f
+private const val SweepDurationMillis = 450
+private const val SweepReducedMotionDurationMillis = 150
+private const val SweepPeakAlpha = 0.55f
+
+private enum class SweepDirection { DECREASE, INCREASE }
 
 @Composable
 fun ProductListScreen(
@@ -162,6 +190,28 @@ private fun ProductList(
             // The stepper/settings/delete actions all need a real backend id.
             val synced = product.serverId != null
 
+            var sweepDirection by remember { mutableStateOf(SweepDirection.INCREASE) }
+            // 0 = never triggered (no overlay at all yet); LaunchedEffect keyed
+            // on this restarts the animation on every tap, including repeated
+            // taps in the same direction, which a value/enum key wouldn't.
+            var sweepTriggerId by remember { mutableIntStateOf(0) }
+            val sweepProgress = remember { Animatable(0f) }
+            val context = LocalContext.current
+            val reduceMotion = remember {
+                Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+            }
+            LaunchedEffect(sweepTriggerId) {
+                if (sweepTriggerId == 0) return@LaunchedEffect
+                sweepProgress.snapTo(0f)
+                sweepProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(
+                        durationMillis = if (reduceMotion) SweepReducedMotionDurationMillis else SweepDurationMillis,
+                        easing = FastOutSlowInEasing,
+                    ),
+                )
+            }
+
             UrsCard(
                 radius = Radius.row,
                 contentPadding = PaddingValues(horizontal = Spacing.l, vertical = Spacing.s),
@@ -170,48 +220,91 @@ private fun ProductList(
                     .fillMaxWidth()
                     .combinedClickable(onClick = {}, onLongClick = { onLongPress(tile) }),
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    UrsText(
-                        tile.name,
-                        style = UrsTheme.typography.cardTitle,
-                        color = contentColor,
-                        modifier = Modifier.weight(1f),
-                    )
-                    ProductSyncStatusPill(product.syncStatus)
-                    UrsIconButton(
-                        onClick = { onDecrement(tile) },
-                        enabled = synced && quantity != null,
-                        contentDescription = stringResource(R.string.inventory_product_decrement),
-                        imageVector = Icons.Filled.Remove,
-                        tint = contentColor,
-                    )
-                    UrsText(
-                        quantity?.toString() ?: stringResource(R.string.inventory_product_not_tracked),
-                        style = UrsTheme.typography.cardTitle.copy(textAlign = TextAlign.Center),
-                        color = contentColor,
-                        modifier = Modifier.width(32.dp),
-                    )
-                    UrsIconButton(
-                        onClick = { onIncrement(tile) },
-                        enabled = synced,
-                        contentDescription = stringResource(R.string.inventory_product_increment),
-                        imageVector = Icons.Filled.Add,
-                        tint = contentColor,
-                    )
-                    UrsIconButton(
-                        onClick = { onDeleteProduct(tile) },
-                        enabled = synced,
-                        contentDescription = stringResource(R.string.inventory_product_remove, tile.name),
-                        imageVector = Icons.Filled.Close,
-                        tint = contentColor,
-                    )
+                Box(Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        UrsText(
+                            tile.name,
+                            style = UrsTheme.typography.cardTitle,
+                            color = contentColor,
+                            modifier = Modifier.weight(1f),
+                        )
+                        ProductSyncStatusPill(product.syncStatus)
+                        UrsIconButton(
+                            onClick = {
+                                onDecrement(tile)
+                                sweepDirection = SweepDirection.DECREASE
+                                sweepTriggerId++
+                            },
+                            enabled = synced && quantity != null,
+                            contentDescription = stringResource(R.string.inventory_product_decrement),
+                            imageVector = Icons.Filled.Remove,
+                            tint = contentColor,
+                        )
+                        UrsText(
+                            quantity?.toString() ?: stringResource(R.string.inventory_product_not_tracked),
+                            style = UrsTheme.typography.cardTitle.copy(textAlign = TextAlign.Center),
+                            color = contentColor,
+                            modifier = Modifier.width(32.dp),
+                        )
+                        UrsIconButton(
+                            onClick = {
+                                onIncrement(tile)
+                                sweepDirection = SweepDirection.INCREASE
+                                sweepTriggerId++
+                            },
+                            enabled = synced,
+                            contentDescription = stringResource(R.string.inventory_product_increment),
+                            imageVector = Icons.Filled.Add,
+                            tint = contentColor,
+                        )
+                        UrsIconButton(
+                            onClick = { onDeleteProduct(tile) },
+                            enabled = synced,
+                            contentDescription = stringResource(R.string.inventory_product_remove, tile.name),
+                            imageVector = Icons.Filled.Close,
+                            tint = contentColor,
+                        )
+                    }
+                    if (sweepTriggerId != 0 && sweepProgress.value < 1f) {
+                        QuantitySweepOverlay(direction = sweepDirection, progress = sweepProgress.value, reduceMotion = reduceMotion)
+                    }
                 }
             }
         }
+    }
+}
+
+// Solid gradient block, ~40% of the row's width, soft feathered edges via
+// the transparent-to-color-to-transparent gradient — decrease sweeps left to
+// right, increase sweeps right to left. With reduce-motion on, no
+// translation at all: a plain opacity flash across the full row instead.
+@Composable
+private fun BoxScope.QuantitySweepOverlay(direction: SweepDirection, progress: Float, reduceMotion: Boolean) {
+    val color = if (direction == SweepDirection.DECREASE) SweepDecreaseColor else SweepIncreaseColor
+    // Rises and falls smoothly across the animation instead of an abrupt cut.
+    val alpha = kotlin.math.sin(progress * Math.PI).toFloat().coerceIn(0f, 1f) * SweepPeakAlpha
+
+    if (reduceMotion) {
+        Box(Modifier.matchParentSize().background(color.copy(alpha = alpha)))
+        return
+    }
+
+    BoxWithConstraints(Modifier.matchParentSize()) {
+        val leftToRight = direction == SweepDirection.DECREASE
+        val startFraction = if (leftToRight) -SweepWidthFraction else 1f
+        val endFraction = if (leftToRight) 1f else -SweepWidthFraction
+        val currentFraction = startFraction + (endFraction - startFraction) * progress
+        Box(
+            Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(SweepWidthFraction)
+                .offset(x = maxWidth * currentFraction)
+                .background(Brush.horizontalGradient(listOf(Color.Transparent, color.copy(alpha = alpha), Color.Transparent))),
+        )
     }
 }
 
