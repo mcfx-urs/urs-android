@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.18.1] - 2026-08-21
+
 ### Fixed
 
 - The monthly Earnings tile's Net figure now applies the built-in default surcharge/deduction rates when the user has never opened Settings → Work Settings → Surcharges & deductions, instead of silently treating every rate as 0% (Net equaling Gross).
