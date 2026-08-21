@@ -2,15 +2,9 @@ package ch.mcfx.urs.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -23,6 +17,7 @@ import ch.mcfx.urs.R
 import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.components.UrsTextField
+import ch.mcfx.urs.ui.components.ursFormScrollPadding
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Spacing
 
@@ -48,10 +43,7 @@ fun WageRulesSettingsScreen(viewModel: WageRulesViewModel = viewModel(factory = 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = Spacing.xl)
-            .padding(top = Spacing.xl)
-            .padding(bottom = Spacing.xl + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()),
+            .ursFormScrollPadding(),
         verticalArrangement = Arrangement.spacedBy(Spacing.m),
     ) {
         UrsText(stringResource(R.string.worktime_wage_rules_description), style = UrsTheme.typography.body, color = UrsTheme.colors.onSurfaceMuted)
