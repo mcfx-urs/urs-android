@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import ch.mcfx.urs.UrsApplication
+import ch.mcfx.urs.data.DefaultWageRules
 import ch.mcfx.urs.data.UserRepository
 import ch.mcfx.urs.data.WageRules
 import kotlinx.coroutines.CancellationException
@@ -15,44 +16,30 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-// Pre-filled the first time a user opens this screen (backend value blank),
-// so the feature works out of the box and only needs adjusting, not filling
-// in from scratch — see GitHub issue #11's worked example. AHV/ALV match
-// current official Swiss employee-share rates; BVG has no sensible default
-// (varies per pension plan/coordinated salary), so it starts at 0.
-private val DefaultVacationPaySurchargePercent = "10.6"
-private val DefaultHolidaySurchargePercent = "3.8"
-private val DefaultThirteenthMonthSurchargePercent = "8.33"
-private val DefaultAhvIvEoDeductionPercent = "5.3"
-private val DefaultAlvDeductionPercent = "1.1"
-private val DefaultSuvaNbuDeductionPercent = "1.76"
-private val DefaultKtgDeductionPercent = "1.621"
-private val DefaultBvgDeductionAmount = "0"
-
 class WageRulesViewModel(private val userRepository: UserRepository) : ViewModel() {
 
-    private val _vacationPaySurchargePercent = MutableStateFlow(DefaultVacationPaySurchargePercent)
+    private val _vacationPaySurchargePercent = MutableStateFlow(DefaultWageRules.vacationPaySurchargePercent!!)
     val vacationPaySurchargePercent: StateFlow<String> = _vacationPaySurchargePercent.asStateFlow()
 
-    private val _holidaySurchargePercent = MutableStateFlow(DefaultHolidaySurchargePercent)
+    private val _holidaySurchargePercent = MutableStateFlow(DefaultWageRules.holidaySurchargePercent!!)
     val holidaySurchargePercent: StateFlow<String> = _holidaySurchargePercent.asStateFlow()
 
-    private val _thirteenthMonthSurchargePercent = MutableStateFlow(DefaultThirteenthMonthSurchargePercent)
+    private val _thirteenthMonthSurchargePercent = MutableStateFlow(DefaultWageRules.thirteenthMonthSurchargePercent!!)
     val thirteenthMonthSurchargePercent: StateFlow<String> = _thirteenthMonthSurchargePercent.asStateFlow()
 
-    private val _ahvIvEoDeductionPercent = MutableStateFlow(DefaultAhvIvEoDeductionPercent)
+    private val _ahvIvEoDeductionPercent = MutableStateFlow(DefaultWageRules.ahvIvEoDeductionPercent!!)
     val ahvIvEoDeductionPercent: StateFlow<String> = _ahvIvEoDeductionPercent.asStateFlow()
 
-    private val _alvDeductionPercent = MutableStateFlow(DefaultAlvDeductionPercent)
+    private val _alvDeductionPercent = MutableStateFlow(DefaultWageRules.alvDeductionPercent!!)
     val alvDeductionPercent: StateFlow<String> = _alvDeductionPercent.asStateFlow()
 
-    private val _suvaNbuDeductionPercent = MutableStateFlow(DefaultSuvaNbuDeductionPercent)
+    private val _suvaNbuDeductionPercent = MutableStateFlow(DefaultWageRules.suvaNbuDeductionPercent!!)
     val suvaNbuDeductionPercent: StateFlow<String> = _suvaNbuDeductionPercent.asStateFlow()
 
-    private val _ktgDeductionPercent = MutableStateFlow(DefaultKtgDeductionPercent)
+    private val _ktgDeductionPercent = MutableStateFlow(DefaultWageRules.ktgDeductionPercent!!)
     val ktgDeductionPercent: StateFlow<String> = _ktgDeductionPercent.asStateFlow()
 
-    private val _bvgDeductionAmount = MutableStateFlow(DefaultBvgDeductionAmount)
+    private val _bvgDeductionAmount = MutableStateFlow(DefaultWageRules.bvgDeductionAmount!!)
     val bvgDeductionAmount: StateFlow<String> = _bvgDeductionAmount.asStateFlow()
 
     private val _justSaved = MutableStateFlow(false)
