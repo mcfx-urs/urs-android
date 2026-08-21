@@ -58,10 +58,57 @@ fun possibleWeekdaysInMonth(year: Int, month: Int): Int {
 data class MonthlySummary(
     val actualHours: Float,
     val overUndertimeHours: Float?,
-    val earnings: Float?,
+    val grossEarnings: Float?,
+    val netEarnings: Float?,
     /** Null while [year]/[month] (see [computeMonthlySummary]) is the current, still-active month. */
     val percentOfContractSoll: Float?,
 )
+
+/**
+ * The fixed, built-in set of wage-rule rates a user configures once
+ * (Settings → Work Settings → Surcharges & deductions) — mirrors
+ * urs-backend's `UserWageRules`. All percentages as plain strings (e.g.
+ * `"10.6"`), same convention as every other user-editable numeric setting
+ * in this app; a blank/unparseable rate contributes nothing (0), so an
+ * unconfigured rule simply doesn't affect the total rather than blocking it.
+ */
+data class WageRules(
+    val vacationPaySurchargePercent: String?,
+    val holidaySurchargePercent: String?,
+    val thirteenthMonthSurchargePercent: String?,
+    val ahvIvEoDeductionPercent: String?,
+    val alvDeductionPercent: String?,
+    val suvaNbuDeductionPercent: String?,
+    val ktgDeductionPercent: String?,
+    val bvgDeductionAmount: String?,
+)
+
+data class WageBreakdown(val gross: Float, val net: Float)
+
+private fun applyPercent(base: Float, percent: String?): Float = base * (percent?.toFloatOrNull() ?: 0f) / 100f
+
+private fun Float.roundToNearestFiveRappen(): Float = Math.round(this * 20f) / 20f
+
+/**
+ * Chained surcharges (each a % of a running subtotal, order matters) then
+ * chained deductions (each a % of the resulting gross, plus BVG's fixed
+ * amount) — see the worked example in GitHub issue #11 this mirrors.
+ */
+fun computeWage(baseWage: Float, rules: WageRules): WageBreakdown {
+    val vacationPay = applyPercent(baseWage, rules.vacationPaySurchargePercent)
+    val holidayPay = applyPercent(baseWage, rules.holidaySurchargePercent)
+    val beforeThirteenthMonth = baseWage + vacationPay + holidayPay
+    val thirteenthMonth = applyPercent(beforeThirteenthMonth, rules.thirteenthMonthSurchargePercent)
+    val gross = beforeThirteenthMonth + thirteenthMonth
+
+    val totalDeductions = applyPercent(gross, rules.ahvIvEoDeductionPercent) +
+        applyPercent(gross, rules.alvDeductionPercent) +
+        applyPercent(gross, rules.suvaNbuDeductionPercent) +
+        applyPercent(gross, rules.ktgDeductionPercent) +
+        (rules.bvgDeductionAmount?.toFloatOrNull() ?: 0f)
+
+    return WageBreakdown(gross = gross, net = (gross - totalDeductions).roundToNearestFiveRappen())
+}
 
 /**
  * Aggregates a calendar month's entries into two deliberately independent
@@ -91,6 +138,7 @@ fun computeMonthlySummary(
     employmentPercent: String?,
     targetHoursPerDay: String?,
     hourlyWage: String?,
+    wageRules: WageRules,
     overrideDaysWorked: String?,
     isCurrentMonth: Boolean,
 ): MonthlySummary {
@@ -114,10 +162,13 @@ fun computeMonthlySummary(
         contractSollHours?.takeIf { it != 0f }?.let { actualHours / it * 100f }
     }
 
+    val wage = hourlyWage?.toFloatOrNull()?.let { computeWage(actualHours * it, wageRules) }
+
     return MonthlySummary(
         actualHours = actualHours,
         overUndertimeHours = plusMinusSoll?.let { actualHours - it },
-        earnings = hourlyWage?.toFloatOrNull()?.let { actualHours * it },
+        grossEarnings = wage?.gross,
+        netEarnings = wage?.net,
         percentOfContractSoll = percentOfContractSoll,
     )
 }

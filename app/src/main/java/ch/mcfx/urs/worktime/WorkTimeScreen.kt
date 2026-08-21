@@ -30,7 +30,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -164,6 +166,7 @@ private fun MonthContent(
         employmentPercent = state.employmentPercent,
         targetHoursPerDay = state.userDefaultTargetHours,
         hourlyWage = state.hourlyWage,
+        wageRules = state.wageRules,
         overrideDaysWorked = override,
         isCurrentMonth = isCurrentMonth,
     )
@@ -244,9 +247,9 @@ private fun MonthSummaryTiles(summary: MonthlySummary, onEditOverride: () -> Uni
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
-            MonthStatTile(
-                label = stringResource(R.string.worktime_stat_earnings),
-                value = summary.earnings?.let { formatHours(it) } ?: "–",
+            EarningsTile(
+                grossEarnings = summary.grossEarnings,
+                netEarnings = summary.netEarnings,
                 modifier = Modifier.weight(1f),
             )
             MonthStatTile(
@@ -256,6 +259,35 @@ private fun MonthSummaryTiles(summary: MonthlySummary, onEditOverride: () -> Uni
                 modifier = Modifier.weight(1f),
             )
         }
+    }
+}
+
+// Two stacked rows (gross/net) instead of MonthStatTile's single value —
+// same card shell, but right-aligned tabular-figure values so the decimal
+// points of both figures line up vertically regardless of digit count.
+@Composable
+private fun EarningsTile(grossEarnings: Float?, netEarnings: Float?, modifier: Modifier = Modifier) {
+    UrsCard(radius = Radius.row, modifier = modifier) {
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+            UrsText(
+                stringResource(R.string.worktime_stat_earnings),
+                style = UrsTheme.typography.caption,
+                color = UrsTheme.colors.onSurfaceMuted,
+            )
+            EarningsRow(stringResource(R.string.worktime_stat_gross), grossEarnings)
+            EarningsRow(stringResource(R.string.worktime_stat_net), netEarnings)
+        }
+    }
+}
+
+@Composable
+private fun EarningsRow(label: String, amount: Float?) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        UrsText(label, style = UrsTheme.typography.body, color = UrsTheme.colors.onSurfaceMuted)
+        UrsText(
+            amount?.let { formatHours(it) } ?: "–",
+            style = UrsTheme.typography.cardTitle.copy(fontFamily = FontFamily.Monospace, textAlign = TextAlign.End),
+        )
     }
 }
 

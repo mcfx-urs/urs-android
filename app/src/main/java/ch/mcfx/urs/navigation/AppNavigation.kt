@@ -65,6 +65,7 @@ import ch.mcfx.urs.settings.SettingsRoutes
 import ch.mcfx.urs.settings.SettingsScreen
 import ch.mcfx.urs.settings.ThemeSettingsScreen
 import ch.mcfx.urs.settings.VpnSettingsScreen
+import ch.mcfx.urs.settings.WageRulesSettingsScreen
 import ch.mcfx.urs.settings.WatchRelaySettingsScreen
 import ch.mcfx.urs.service.ServiceAddScreen
 import ch.mcfx.urs.service.ServiceRoutes
@@ -347,7 +348,12 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                     }
                     composable(SettingsRoutes.VPN) { VpnSettingsScreen() }
                     composable(SettingsRoutes.NOTIFICATIONS) { NotificationSettingsScreen() }
-                    composable(SettingsRoutes.ACCOUNT) { AccountSettingsScreen() }
+                    composable(SettingsRoutes.ACCOUNT) {
+                        AccountSettingsScreen(
+                            onNavigateToWageRules = { navController.navigate(SettingsRoutes.WAGE_RULES) },
+                        )
+                    }
+                    composable(SettingsRoutes.WAGE_RULES) { WageRulesSettingsScreen() }
                     composable(SettingsRoutes.ABOUT) { AboutScreen() }
                     composable(SettingsRoutes.LOCATION_HISTORY) { LocationHistorySettingsScreen() }
                     composable(SettingsRoutes.WATCH_RELAY) { WatchRelaySettingsScreen() }
@@ -405,6 +411,7 @@ private val SETTINGS_ROUTE_LABELS = mapOf(
     SettingsRoutes.VPN to R.string.settings_tile_vpn,
     SettingsRoutes.NOTIFICATIONS to R.string.settings_tile_notifications,
     SettingsRoutes.ACCOUNT to R.string.settings_tile_account,
+    SettingsRoutes.WAGE_RULES to R.string.worktime_wage_rules_title,
     SettingsRoutes.ABOUT to R.string.settings_tile_about,
     SettingsRoutes.LOCATION_HISTORY to R.string.settings_tile_location_history,
     SettingsRoutes.WATCH_RELAY to R.string.settings_tile_watch_relay,
