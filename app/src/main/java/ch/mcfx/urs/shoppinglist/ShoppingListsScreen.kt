@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -51,6 +52,11 @@ import ch.mcfx.urs.ui.tokens.Spacing
 // palette yet.
 private val FabIconStyle = TextStyle(fontSize = 28.sp)
 private val FormErrorColor = Color(0xFFD64545)
+
+// Scoped to this screen's ListRow only (see GitHub issue #19) — deliberately
+// not a bump to the shared cardTitle token, which is used at ~74 other call
+// sites app-wide.
+private val ListRowTitleStyle = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold)
 
 @Composable
 fun ShoppingListsScreen(
@@ -139,7 +145,7 @@ private fun ListsList(
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = ursScreenContentPadding(),
-        verticalArrangement = Arrangement.spacedBy(Spacing.s),
+        verticalArrangement = Arrangement.spacedBy(Spacing.m),
     ) {
         items(lists, key = { it.id }) { list ->
             ListRow(list = list, onOpenList = onOpenList, onLongPress = onLongPress)
@@ -152,7 +158,7 @@ private fun ListsList(
 private fun ListRow(list: ListEntity, onOpenList: (ListEntity) -> Unit, onLongPress: (ListEntity) -> Unit) {
     UrsCard(
         radius = Radius.row,
-        contentPadding = PaddingValues(horizontal = Spacing.l, vertical = Spacing.l),
+        contentPadding = PaddingValues(horizontal = Spacing.l, vertical = Spacing.xl),
         modifier = Modifier
             .fillMaxWidth()
             .combinedClickable(onClick = { onOpenList(list) }, onLongClick = { onLongPress(list) }),
@@ -164,7 +170,7 @@ private fun ListRow(list: ListEntity, onOpenList: (ListEntity) -> Unit, onLongPr
         ) {
             UrsText(
                 list.name,
-                style = UrsTheme.typography.cardTitle,
+                style = ListRowTitleStyle,
                 color = UrsTheme.colors.accent,
                 modifier = Modifier.weight(1f),
             )

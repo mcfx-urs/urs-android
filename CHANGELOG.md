@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - Screen transitions use a short fade instead of Navigation Compose's default slide.
+- Shopping-lists overview rows use a larger title and more vertical padding for easier scanning (#19).
 
 ## [0.18.1] - 2026-08-21
 
