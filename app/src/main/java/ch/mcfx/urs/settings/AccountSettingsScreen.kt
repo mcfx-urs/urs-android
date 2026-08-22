@@ -5,15 +5,9 @@ import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,6 +31,7 @@ import ch.mcfx.urs.ui.components.UrsCheckbox
 import ch.mcfx.urs.ui.components.UrsOutlinedButton
 import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.components.UrsTextField
+import ch.mcfx.urs.ui.components.ursFormScrollPadding
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Spacing
 
@@ -90,16 +85,7 @@ fun AccountSettingsScreen(
     val saveFailed by workTimeViewModel.saveFailed.collectAsStateWithLifecycle()
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = Spacing.xl)
-            .padding(top = Spacing.xl)
-            // Edge-to-edge means this screen draws behind the system nav
-            // bar unless told otherwise — the "Log out" button would
-            // otherwise sit partly underneath/obscured by it, same class of
-            // bug HomeScreen/UrsFab/FuelStationMapScreen already work around.
-            .padding(bottom = Spacing.xl + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()),
+        modifier = Modifier.ursFormScrollPadding(),
         verticalArrangement = Arrangement.spacedBy(Spacing.l),
     ) {
         UrsText(

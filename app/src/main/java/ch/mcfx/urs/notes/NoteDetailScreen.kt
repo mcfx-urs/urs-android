@@ -8,10 +8,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.Composable
@@ -41,6 +39,7 @@ import ch.mcfx.urs.ui.components.UrsProgressIndicator
 import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.components.UrsTextField
 import ch.mcfx.urs.ui.components.UrsTimeField
+import ch.mcfx.urs.ui.components.ursFormScrollPadding
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Spacing
 
@@ -97,11 +96,7 @@ private fun NoteForm(form: NoteDetailFormState, viewModel: NoteDetailViewModel, 
     val isEditing = form.localId != null
 
     Column(
-        modifier = Modifier
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = Spacing.xl)
-            .padding(top = Spacing.xl)
-            .padding(bottom = Spacing.xl),
+        modifier = Modifier.ursFormScrollPadding(),
         verticalArrangement = Arrangement.spacedBy(Spacing.m),
     ) {
         UrsText(
