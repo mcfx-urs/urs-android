@@ -140,7 +140,17 @@ class AppContainer(context: Context) {
     // Not private — LocationCaptureWorker also needs this to encode its own
     // outbox payload directly (it has no repository of its own to hide that
     // behind, unlike every other outbox producer in this app).
-    val json = Json { ignoreUnknownKeys = true }
+    // coerceInputValues: a Go `nil` slice/map with no `omitempty` tag
+    // serializes as JSON `null`, not `[]`/`{}` — confirmed 2026-08-22 for
+    // note.Tags (an omitted request field left the backend's tagNames nil,
+    // echoed straight into the create/update response). Decoding `null`
+    // into a non-nullable Kotlin collection field otherwise throws even
+    // though the field has an empty-collection default, permanently
+    // stranding that outbox mutation (see SyncManager's replay catch block)
+    // and duplicating the row itself, since the backend already completed
+    // the write before the client-side response parse failed. This makes
+    // every such field fall back to its declared default instead.
+    val json = Json { ignoreUnknownKeys = true; coerceInputValues = true }
 
     val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
