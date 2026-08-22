@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- The new/edit note form no longer traps its bottom fields behind the on-screen keyboard with no way to scroll them into view.
+- Settings → Account no longer traps its bottom fields (including the change-password fields) behind the on-screen keyboard with no way to scroll them into view.
+
 ## [0.18.1] - 2026-08-21
 
 ### Fixed
