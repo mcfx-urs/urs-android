@@ -71,14 +71,17 @@ fun UrsDateField(
     val hasValue = value.isNotEmpty()
 
     Column(modifier = modifier) {
-        if (hasValue) {
-            UrsText(
-                text = label,
-                style = UrsTheme.typography.caption,
-                color = colors.onSurfaceMuted,
-                modifier = Modifier.padding(start = Spacing.m, bottom = Spacing.xs),
-            )
-        }
+        // Always rendered, regardless of value — same reasoning as
+        // UrsTextField's own label (see its doc comment): a label that only
+        // appears once there's a value changes this field's height,
+        // desyncing it from a same-row neighbor in a different fill state
+        // (e.g. an empty UrsTimeField next to a filled UrsDateField).
+        UrsText(
+            text = label,
+            style = UrsTheme.typography.caption,
+            color = colors.onSurfaceMuted,
+            modifier = Modifier.padding(start = Spacing.m, bottom = Spacing.xs),
+        )
         Box(
             modifier = Modifier
                 .fillMaxWidth()

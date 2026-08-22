@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Settings → Account no longer traps its bottom fields (including the change-password fields) behind the on-screen keyboard with no way to scroll them into view.
 - A note saved without tags no longer permanently fails to sync and re-create itself as a duplicate on the server on every later note sync.
 - The top bar no longer pops in/out in a single frame when navigating to/from Home, shoving the still-transitioning screen below it down/up abruptly.
+- A Date field and a Time field next to each other no longer misalign when one is empty and the other has a value.
 
 ### Changed
 
