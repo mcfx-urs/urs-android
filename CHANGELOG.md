@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - The new/edit note form no longer traps its bottom fields behind the on-screen keyboard with no way to scroll them into view.
 - Settings → Account no longer traps its bottom fields (including the change-password fields) behind the on-screen keyboard with no way to scroll them into view.
+- A note saved without tags no longer permanently fails to sync and re-create itself as a duplicate on the server on every later note sync.
 
 ## [0.18.1] - 2026-08-21
 
