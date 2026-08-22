@@ -3,6 +3,7 @@ package ch.mcfx.urs.worktime
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,11 +29,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -67,6 +71,11 @@ import java.util.Locale
 // "error" role in its palette yet (see Color.kt).
 private val FabIconStyle = TextStyle(fontSize = 28.sp)
 private val FormErrorColor = Color(0xFFD64545)
+
+// Deliberately not a Spacing token — this is a gesture-recognition
+// threshold, not a layout distance, and needs to be large enough that an
+// off-axis wobble mid vertical-scroll can't trip it (GitHub issue #6).
+private val MonthSwipeThreshold = 96.dp
 
 @Composable
 fun WorkTimeScreen(
@@ -171,8 +180,42 @@ private fun MonthContent(
         isCurrentMonth = isCurrentMonth,
     )
 
+    // Complements MonthYearPicker's dropdowns (GitHub issue #6) rather than
+    // replacing them — same year bound as its own yearOptions
+    // (currentYear downTo currentYear - 3) so a swipe can never reach a
+    // month the dropdowns themselves wouldn't offer. Discrete switch, no
+    // drag-follows-finger animation: this list's own content is already
+    // fully re-derived per selected month (entries/summary), so there's no
+    // single scrollable "next month" content to visually drag in — a
+    // HorizontalPager would need to pre-build neighboring pages for that.
+    val minYear = today.year - 3
+    val maxYear = today.year
+    val density = LocalDensity.current
+    var dragAccumulatorPx by remember { mutableStateOf(0f) }
+
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(selectedYear, selectedMonth, minYear, maxYear) {
+                val thresholdPx = with(density) { MonthSwipeThreshold.toPx() }
+                detectHorizontalDragGestures(
+                    onDragStart = { dragAccumulatorPx = 0f },
+                    onDragEnd = {
+                        if (dragAccumulatorPx <= -thresholdPx) {
+                            val (year, month) = nextMonth(selectedYear, selectedMonth)
+                            if (year <= maxYear) onSelectMonth(year, month)
+                        } else if (dragAccumulatorPx >= thresholdPx) {
+                            val (year, month) = previousMonth(selectedYear, selectedMonth)
+                            if (year >= minYear) onSelectMonth(year, month)
+                        }
+                        dragAccumulatorPx = 0f
+                    },
+                    onDragCancel = { dragAccumulatorPx = 0f },
+                ) { change, dragAmount ->
+                    change.consume()
+                    dragAccumulatorPx += dragAmount
+                }
+            },
         contentPadding = ursScreenContentPadding(),
         verticalArrangement = Arrangement.spacedBy(Spacing.s),
     ) {
@@ -228,6 +271,12 @@ private fun MonthYearPicker(selectedYear: Int, selectedMonth: Int, onSelect: (ye
 
 private fun monthName(month: Int): String =
     Month.of(month).getDisplayName(JavaTimeTextStyle.FULL, Locale.getDefault())
+
+private fun nextMonth(year: Int, month: Int): Pair<Int, Int> =
+    if (month == 12) (year + 1) to 1 else year to (month + 1)
+
+private fun previousMonth(year: Int, month: Int): Pair<Int, Int> =
+    if (month == 1) (year - 1) to 12 else year to (month - 1)
 
 @Composable
 private fun MonthSummaryTiles(summary: MonthlySummary, onEditOverride: () -> Unit) {

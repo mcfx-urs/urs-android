@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Swipe left/right on the Work Time monthly overview to step to the next/previous month (#6).
+
 ### Fixed
 
 - The new/edit note form no longer traps its bottom fields behind the on-screen keyboard with no way to scroll them into view.
