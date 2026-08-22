@@ -1,5 +1,11 @@
 package ch.mcfx.urs.navigation
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -152,8 +158,21 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
     Column(modifier = Modifier.fillMaxSize().background(UrsTheme.colors.background)) {
         // Home renders its own header (logo/gear + collapsing welcome/hero
         // row) inline as part of its scrollable content instead of this
-        // shared bar — see HomeScreen's HomeHeader.
-        if (currentRoute != Destination.HOME.route) {
+        // shared bar — see HomeScreen's HomeHeader. Since currentRoute (and
+        // so this bar's presence) flips the instant navigate() is called —
+        // one frame ahead of NavHost's own crossfade of the body below,
+        // which takes the same 150ms as the enter/exitTransitions on
+        // NavHost — an unanimated `if` here used to pop this bar in/out
+        // instantly, shoving the still-transitioning body down/up in a
+        // single frame instead of together with it. expandVertically/
+        // shrinkVertically animate the height change itself (not just
+        // opacity), so the body is pushed gradually in step with the same
+        // 150ms window instead of snapping.
+        AnimatedVisibility(
+            visible = currentRoute != Destination.HOME.route,
+            enter = expandVertically(tween(150)) + fadeIn(tween(150)),
+            exit = shrinkVertically(tween(150)) + fadeOut(tween(150)),
+        ) {
             val topBarTint = if (isAccentTopBarRoute(currentRoute)) UrsTheme.colors.accent else UrsTheme.colors.onSurface
             UrsTopBar(
                 navigationIcon = {
@@ -179,6 +198,14 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
             NavHost(
                 navController = navController,
                 startDestination = Destination.HOME.route,
+                // Navigation Compose's own default (since 2.8) is a slide,
+                // not the "no animation" it used to be — noticeably slower
+                // than a plain fade and animates more properties per frame.
+                // A short fade reads as snappier and is cheaper to render.
+                enterTransition = { fadeIn(animationSpec = tween(150)) },
+                exitTransition = { fadeOut(animationSpec = tween(150)) },
+                popEnterTransition = { fadeIn(animationSpec = tween(150)) },
+                popExitTransition = { fadeOut(animationSpec = tween(150)) },
             ) {
                     composable(Destination.HOME.route) {
                         HomeScreen(
