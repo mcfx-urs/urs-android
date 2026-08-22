@@ -22,6 +22,7 @@ import ch.mcfx.urs.data.ServiceRepository
 import ch.mcfx.urs.data.ShoppingListRepository
 import ch.mcfx.urs.data.VehicleRepository
 import ch.mcfx.urs.data.UserRepository
+import ch.mcfx.urs.data.WorkSettingsStore
 import ch.mcfx.urs.data.WorkTimeRepository
 import ch.mcfx.urs.data.local.AppDatabase
 import ch.mcfx.urs.data.remote.UrsApi
@@ -236,7 +237,9 @@ class AppContainer(context: Context) {
 
     private val ursApi = retrofit.create(UrsApi::class.java)
 
-    val authRepository = AuthRepository(ursApi, authTokenStore, database, wireGuardManager)
+    val workSettingsStore = WorkSettingsStore(context)
+
+    val authRepository = AuthRepository(ursApi, authTokenStore, database, wireGuardManager, workSettingsStore)
 
     val reachabilityChecker = ReachabilityChecker()
     val syncStatusStore = SyncStatusStore(context)

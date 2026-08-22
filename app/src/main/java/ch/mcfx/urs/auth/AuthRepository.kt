@@ -1,5 +1,6 @@
 package ch.mcfx.urs.auth
 
+import ch.mcfx.urs.data.WorkSettingsStore
 import ch.mcfx.urs.data.local.AppDatabase
 import ch.mcfx.urs.data.remote.ChangePasswordPayload
 import ch.mcfx.urs.data.remote.LoginPayload
@@ -19,6 +20,7 @@ class AuthRepository(
     private val tokenStore: AuthTokenStore,
     private val database: AppDatabase,
     private val wireGuardManager: WireGuardManager,
+    private val workSettingsStore: WorkSettingsStore,
 ) {
     suspend fun login(userName: String, password: String) {
         val tokens = api.login(LoginPayload(userName = userName, password = password))
@@ -26,19 +28,21 @@ class AuthRepository(
     }
 
     /**
-     * Tears down any active VPN tunnel and wipes the local Room cache before
-     * clearing the token store — otherwise a previous user's still-running
-     * tunnel, or their synced rows (lists, inventories, ...), simply stay in
-     * place and, since neither carried a user identity before, would keep
-     * being used/shown verbatim by whoever logs in next on this device.
-     * Deliberately calls [WireGuardManager.disconnect] directly rather than
-     * [ch.mcfx.urs.vpn.NetworkGate.userDisconnect] — the latter also flips a
-     * "user disabled" flag that would incorrectly suppress the *next* user's
-     * own automatic reconnect too.
+     * Tears down any active VPN tunnel and wipes the local Room cache (plus
+     * WorkSettingsStore, the one per-user cache that lives outside Room)
+     * before clearing the token store — otherwise a previous user's
+     * still-running tunnel, or their synced rows (lists, inventories, ...),
+     * simply stay in place and, since neither carried a user identity
+     * before, would keep being used/shown verbatim by whoever logs in next
+     * on this device. Deliberately calls [WireGuardManager.disconnect]
+     * directly rather than [ch.mcfx.urs.vpn.NetworkGate.userDisconnect] —
+     * the latter also flips a "user disabled" flag that would incorrectly
+     * suppress the *next* user's own automatic reconnect too.
      */
     suspend fun logout() {
         wireGuardManager.disconnect()
         withContext(Dispatchers.IO) { database.clearAllTables() }
+        workSettingsStore.clear()
         tokenStore.clear()
     }
 

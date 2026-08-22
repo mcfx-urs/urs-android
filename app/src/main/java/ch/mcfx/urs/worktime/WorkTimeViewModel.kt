@@ -10,7 +10,7 @@ import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.data.DefaultWageRules
 import ch.mcfx.urs.data.UserRepository
 import ch.mcfx.urs.data.WageRules
-import ch.mcfx.urs.data.WorkSettings
+import ch.mcfx.urs.data.WorkSettingsStore
 import ch.mcfx.urs.data.WorkTimeRepository
 import ch.mcfx.urs.data.local.WorkTimeEntryWithBreaks
 import ch.mcfx.urs.data.local.WorkTimeMonthOverrideEntity
@@ -68,6 +68,7 @@ data class WorkTimeFormState(
 class WorkTimeViewModel(
     private val repository: WorkTimeRepository,
     private val userRepository: UserRepository,
+    private val workSettingsStore: WorkSettingsStore,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<WorkTimeUiState>(WorkTimeUiState.Loading)
@@ -101,7 +102,11 @@ class WorkTimeViewModel(
     // Not Room-backed like entries/overrides — a one-shot REST fetch (see
     // UserRepository.getWorkSettings), so held as plain state here and
     // merged into uiState via combine() below, same as those two Flows.
-    private val _workSettings = MutableStateFlow<WorkSettings?>(null)
+    // Seeded from WorkSettingsStore's last-known-value cache (not null) so
+    // the wage summary already has real numbers on a cold start instead of
+    // computing from empty target hours / 0% deduction rates until the
+    // network fetch below resolves — see load()'s write-through.
+    private val _workSettings = MutableStateFlow(workSettingsStore.read())
 
     init {
         // Entries/overrides are Room-backed Flows so the history screen has
@@ -129,12 +134,15 @@ class WorkTimeViewModel(
     fun load() {
         viewModelScope.launch { repository.refreshFromBackend() }
         viewModelScope.launch {
-            _workSettings.value = try {
-                userRepository.getWorkSettings()
+            try {
+                val settings = userRepository.getWorkSettings()
+                _workSettings.value = settings
+                workSettingsStore.write(settings)
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
-                WorkSettings("", "", "", FallbackWageRules) // best-effort hint, not critical
+                // Best-effort refresh — on failure, keep showing whatever
+                // was already cached/loaded rather than blanking it out.
             }
         }
     }
@@ -311,7 +319,7 @@ class WorkTimeViewModel(
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as UrsApplication
-                WorkTimeViewModel(app.container.workTimeRepository, app.container.userRepository)
+                WorkTimeViewModel(app.container.workTimeRepository, app.container.userRepository, app.container.workSettingsStore)
             }
         }
     }
