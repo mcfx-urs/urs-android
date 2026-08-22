@@ -59,8 +59,8 @@ android {
         applicationId = "ch.mcfx.urs"
         minSdk = 34
         targetSdk = 37
-        versionCode = 20
-        versionName = "0.18.1"
+        versionCode = 21
+        versionName = "0.19.0"
         buildConfigField(
             "String",
             "BUILD_TIME",

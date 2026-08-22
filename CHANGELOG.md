@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-08-22
+
 ### Added
 
 - Swipe left/right on the Work Time monthly overview to step to the next/previous month (#6).
