@@ -9,6 +9,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Notes support rich text formatting: bold, italic, underline, links, and nested bullet/numbered lists, with a formatting toolbar on the content field.
 
+### Fixed
+
+- Notes are now pulled down from the server every time the notes screen is opened, not just once per app launch, so notes created or edited on one device/install appear on others without a full app restart.
+
 ## [0.19.0] - 2026-08-22
 
 ### Added

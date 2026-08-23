@@ -2,6 +2,7 @@ package ch.mcfx.urs.data
 
 import android.content.Context
 import ch.mcfx.urs.auth.AuthTokenStore
+import ch.mcfx.urs.beer.BeerStats
 import ch.mcfx.urs.data.local.NoteDao
 import ch.mcfx.urs.data.local.NoteEntity
 import ch.mcfx.urs.data.local.NoteTagDao
@@ -17,8 +18,12 @@ import ch.mcfx.urs.data.local.SyncStatus
 import ch.mcfx.urs.data.local.localIdStandIn
 import ch.mcfx.urs.data.local.localNoteId
 import ch.mcfx.urs.data.local.publicId
+import ch.mcfx.urs.data.remote.NoteDto
+import ch.mcfx.urs.data.remote.UrsApi
 import ch.mcfx.urs.data.sync.SyncManager
 import ch.mcfx.urs.notifications.NoteAlarmScheduler
+import java.time.ZoneId
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
@@ -34,6 +39,7 @@ import kotlinx.serialization.json.Json
  */
 class NoteRepository(
     private val context: Context,
+    private val api: UrsApi,
     private val noteDao: NoteDao,
     private val noteTagDao: NoteTagDao,
     private val outboxDao: OutboxDao,
@@ -171,6 +177,30 @@ class NoteRepository(
         }
     }
 
+    /**
+     * Pulls the authenticated user's notes down into Room — the outbox
+     * above only ever pushes local changes up, same gap
+     * [LocationHistoryRepository.refreshFromBackend] closed for location
+     * history. Without this, a note created on one device/install never
+     * appears on another.
+     */
+    suspend fun refreshFromBackend() {
+        try {
+            api.getNotes().forEach { dto ->
+                val localId = noteDao.upsertFromServer(dto.toEntity(currentUserId()))
+                if (localId >= 0) {
+                    noteTagDao.deleteByNoteId(localId)
+                    noteTagDao.insertAll(dto.tags.map { NoteTagEntity(noteId = localId, tagName = it) })
+                }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // Best-effort only, same shape as ServiceRepository.refreshFromBackend
+            // — stale cached data beats an empty or error screen.
+        }
+    }
+
     private fun currentUserId(): String = tokenStore.currentUserId.orEmpty()
 
     // Reserved id range — see BakingRepository.BAKING_STEP_ALARM_ID_BASE's
@@ -183,3 +213,18 @@ class NoteRepository(
         private const val NOTE_REMINDER_ID_BASE = 300_000
     }
 }
+
+private fun String.toMillisOrNull(): Long? =
+    BeerStats.parseDateTime(this)?.atZone(ZoneId.systemDefault())?.toInstant()?.toEpochMilli()
+
+private fun NoteDto.toEntity(userId: String) = NoteEntity(
+    serverId = id,
+    outboxId = null,
+    userId = userId,
+    title = title,
+    content = content,
+    reminderAtMillis = reminderAt.toMillisOrNull(),
+    status = status,
+    completedAtMillis = completedAt.toMillisOrNull(),
+    syncStatus = SyncStatus.SYNCED,
+)

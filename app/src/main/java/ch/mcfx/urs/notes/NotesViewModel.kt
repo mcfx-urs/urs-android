@@ -34,6 +34,17 @@ class NotesViewModel(private val repository: NoteRepository) : ViewModel() {
         }
     }
 
+    /**
+     * Called from [NotesHubScreen] on every entry, not just once from
+     * [init] — the ViewModel survives bottom-nav tab switches
+     * (restoreState/saveState), so an init-only fetch never re-runs and
+     * edits made on another device stay invisible until a full app
+     * restart creates a fresh ViewModel.
+     */
+    fun refresh() {
+        viewModelScope.launch { repository.refreshFromBackend() }
+    }
+
     fun setTagFilter(tag: String?) {
         _tagFilter.value = tag
     }

@@ -358,6 +358,7 @@ class AppContainer(context: Context) {
     )
     val noteRepository = NoteRepository(
         context = appContext,
+        api = ursApi,
         noteDao = database.noteDao(),
         noteTagDao = database.noteTagDao(),
         outboxDao = database.outboxDao(),
