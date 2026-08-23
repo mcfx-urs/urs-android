@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Notes support rich text formatting: bold, italic, underline, links, and nested bullet/numbered lists, with a formatting toolbar on the content field.
+
 ## [0.19.0] - 2026-08-22
 
 ### Added

@@ -64,6 +64,21 @@
     <string name="note_delete_confirm_title">Delete this note?</string>
     <string name="note_delete_confirm_body">This can\'t be undone.</string>
     <string name="note_not_found">Note not found</string>
+    <string name="note_richtext_bold">Bold</string>
+    <string name="note_richtext_italic">Italic</string>
+    <string name="note_richtext_underline">Underline</string>
+    <string name="note_richtext_link">Link</string>
+    <string name="note_richtext_bullet_list">Bullet list</string>
+    <string name="note_richtext_numbered_list">Numbered list</string>
+    <string name="note_richtext_indent">Indent</string>
+    <string name="note_richtext_outdent">Outdent</string>
+    <string name="note_richtext_link_insert_title">Add link</string>
+    <string name="note_richtext_link_edit_title">Edit link</string>
+    <string name="note_richtext_link_text_label">Link text</string>
+    <string name="note_richtext_link_url_label">URL</string>
+    <string name="note_richtext_link_open">Open link</string>
+    <string name="note_richtext_link_remove">Remove link</string>
+    <string name="note_richtext_link_save">Save</string>
 
     <string name="settings_title">Settings</string>
     <string name="settings_tile_account">Account</string>

@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -27,6 +30,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
 import ch.mcfx.urs.data.NoteRepository
+import ch.mcfx.urs.notes.richtext.RichTextField
+import ch.mcfx.urs.notes.richtext.RichTextFieldState
+import ch.mcfx.urs.notes.richtext.RichTextLinkSheetHost
+import ch.mcfx.urs.notes.richtext.rememberRichTextFieldState
 import ch.mcfx.urs.ui.components.UrsBottomSheet
 import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsCard
@@ -60,6 +67,7 @@ fun NoteDetailScreen(
     LaunchedEffect(form.finished) { if (form.finished) onDone() }
 
     var confirmingDelete by remember { mutableStateOf(false) }
+    val richTextState = rememberRichTextFieldState(form.content)
 
     Box(modifier = Modifier.fillMaxSize()) {
         when {
@@ -72,6 +80,7 @@ fun NoteDetailScreen(
             else -> NoteForm(
                 form = form,
                 viewModel = viewModel,
+                richTextState = richTextState,
                 onRequestDelete = { confirmingDelete = true },
             )
         }
@@ -88,15 +97,26 @@ fun NoteDetailScreen(
             )
         }
     }
+
+    // Same screen-top-level placement reasoning as the delete-confirmation
+    // sheet above — see RichTextLinkSheetHost's own doc comment for why this
+    // can't live nested inside RichTextField/NoteForm instead.
+    RichTextLinkSheetHost(state = richTextState, onValueChange = viewModel::setContent)
 }
 
 @Composable
-private fun NoteForm(form: NoteDetailFormState, viewModel: NoteDetailViewModel, onRequestDelete: () -> Unit) {
+private fun NoteForm(
+    form: NoteDetailFormState,
+    viewModel: NoteDetailViewModel,
+    richTextState: RichTextFieldState,
+    onRequestDelete: () -> Unit,
+) {
     val nextFieldAction = KeyboardActions(onNext = {})
     val isEditing = form.localId != null
+    val formScrollState = rememberScrollState()
 
     Column(
-        modifier = Modifier.ursFormScrollPadding(),
+        modifier = Modifier.ursFormScrollPadding(scrollState = formScrollState),
         verticalArrangement = Arrangement.spacedBy(Spacing.m),
     ) {
         UrsText(
@@ -114,12 +134,11 @@ private fun NoteForm(form: NoteDetailFormState, viewModel: NoteDetailViewModel, 
             modifier = Modifier.fillMaxWidth(),
         )
 
-        UrsTextField(
-            value = form.content,
+        RichTextField(
+            state = richTextState,
             onValueChange = viewModel::setContent,
             label = stringResource(R.string.note_field_content),
-            singleLine = false,
-            minLines = 4,
+            formScrollState = formScrollState,
             modifier = Modifier.fillMaxWidth(),
         )
 
@@ -182,6 +201,15 @@ private fun NoteForm(form: NoteDetailFormState, viewModel: NoteDetailViewModel, 
 
 @Composable
 private fun TagsEditor(form: NoteDetailFormState, viewModel: NoteDetailViewModel) {
+    // The suggestion cards render below the tag input as a sibling, appearing only once
+    // `tagSuggestions` becomes non-empty — nothing about the input field itself changes
+    // when they show up, so the field's own focus-driven scroll doesn't know to reveal
+    // them; ask explicitly once they're actually part of the layout.
+    val suggestionsBringIntoViewRequester = remember { BringIntoViewRequester() }
+    LaunchedEffect(form.tagSuggestions) {
+        if (form.tagSuggestions.isNotEmpty()) suggestionsBringIntoViewRequester.bringIntoView()
+    }
+
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.s)) {
         if (form.tags.isNotEmpty()) {
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
@@ -208,7 +236,10 @@ private fun TagsEditor(form: NoteDetailFormState, viewModel: NoteDetailViewModel
             modifier = Modifier.fillMaxWidth(),
         )
         if (form.tagSuggestions.isNotEmpty()) {
-            Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+                modifier = Modifier.bringIntoViewRequester(suggestionsBringIntoViewRequester),
+            ) {
                 form.tagSuggestions.forEach { suggestion ->
                     UrsCard(modifier = Modifier.fillMaxWidth().clickable { viewModel.addTag(suggestion) }) {
                         UrsText(suggestion, style = UrsTheme.typography.body)
