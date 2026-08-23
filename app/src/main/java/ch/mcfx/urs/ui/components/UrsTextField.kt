@@ -121,9 +121,12 @@ fun UrsTextField(
 }
 
 // Shared label/border/box chrome for both UrsTextField overloads above —
-// they differ only in the value type they hand to BasicTextField.
+// they differ only in the value type they hand to BasicTextField. Internal
+// (not private) so other bespoke fields built directly on BasicTextField,
+// e.g. the notes rich-text editor, can reuse the same visual chrome instead
+// of duplicating it.
 @Composable
-private fun UrsTextFieldChrome(
+internal fun UrsTextFieldChrome(
     label: String,
     modifier: Modifier,
     supportingText: String?,
