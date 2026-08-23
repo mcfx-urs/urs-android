@@ -100,6 +100,17 @@ android {
                 signingConfig = signingConfigs.getByName("release")
             }
         }
+        // Same package id, prod backend and signing as `release` — the only
+        // difference is `isDebuggable = true`. Exists solely for rare
+        // production smoke tests that need `run-as` access to the on-device
+        // database (real phones are normally not rooted, and `run-as`
+        // requires the installed build to be debuggable). Never used for
+        // real distribution.
+        create("releaseDebuggable") {
+            initWith(getByName("release"))
+            isDebuggable = true
+            matchingFallbacks += listOf("release")
+        }
     }
 
     compileOptions {
