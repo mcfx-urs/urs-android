@@ -41,6 +41,23 @@ interface NoteDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(note: NoteEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun replace(note: NoteEntity): Long
+
+    /**
+     * Backend-refresh write path — see [ListDao.upsertFromServer]. Returns
+     * the resolved local id so [ch.mcfx.urs.data.NoteRepository.refreshFromBackend]
+     * can reconcile that note's tags against it (tags live in the separate
+     * [NoteTagDao], so that part can't happen inside this single-Dao
+     * [Transaction] the way [VehicleServiceDao.upsertFromServer] does it).
+     */
+    @Transaction
+    suspend fun upsertFromServer(note: NoteEntity): Long {
+        val serverId = note.serverId ?: return -1
+        val existingLocalId = findLocalIdByServerId(serverId)
+        return replace(note.copy(id = existingLocalId ?: 0))
+    }
+
     @Query("UPDATE note SET syncStatus = 'SYNCED', serverId = :serverId, outboxId = NULL WHERE id = :id")
     suspend fun markSynced(id: Long, serverId: String)
 
