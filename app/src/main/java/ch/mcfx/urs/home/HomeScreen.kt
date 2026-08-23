@@ -99,9 +99,6 @@ private val FEATURE_TILES = listOf(
     Destination.GOKART,
 )
 
-// Interim placeholder art cropped from the owner's own design mockup —
-// swap these drawables for the final commissioned icons once ready, no
-// other code changes needed.
 private val TILE_IMAGE = mapOf(
     Destination.SHOPPING_LIST to R.drawable.tile_shopping_list,
     Destination.VEHICLE to R.drawable.tile_vehicle,
