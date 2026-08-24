@@ -11,6 +11,7 @@ data class OutboxWorkTimeEntryPayload(
     val workEnd: String,
     val targetDailyHours: String = "",
     val paidBreak: Boolean = true,
+    val mealAllowance: Boolean = false,
     val breaks: List<OutboxWorkTimeBreakPayload> = emptyList(),
 )
 
@@ -34,6 +35,7 @@ data class OutboxWorkTimeEntryUpdatePayload(
     val workEnd: String,
     val targetDailyHours: String = "",
     val paidBreak: Boolean = true,
+    val mealAllowance: Boolean = false,
     val breaks: List<OutboxWorkTimeBreakPayload> = emptyList(),
 )
 

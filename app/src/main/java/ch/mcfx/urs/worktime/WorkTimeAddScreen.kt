@@ -169,6 +169,19 @@ private fun EntryForm(form: WorkTimeFormState, userDefaultTargetHours: String?, 
             UrsCheckbox(checked = form.paidBreak, onCheckedChange = viewModel::setPaidBreak)
         }
 
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            UrsText(
+                text = stringResource(R.string.worktime_meal_allowance),
+                style = UrsTheme.typography.body,
+                modifier = Modifier.weight(1f).padding(end = Spacing.m),
+            )
+            UrsCheckbox(checked = form.mealAllowance, onCheckedChange = viewModel::setMealAllowance)
+        }
+
         UrsText(stringResource(R.string.worktime_breaks_title), style = UrsTheme.typography.cardTitle)
 
         form.breaks.forEach { breakDraft ->

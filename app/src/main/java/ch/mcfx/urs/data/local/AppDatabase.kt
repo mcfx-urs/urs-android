@@ -63,7 +63,9 @@ import androidx.room.TypeConverters
     //      — same destructive-fallback handling as every bump above.
     // v21: new NoteEntity/NoteTagEntity tables (GitHub issue #10, Notes) —
     //      same destructive-fallback handling as every bump above.
-    version = 21,
+    // v22: mealAllowance column added to WorkTimeEntryEntity (GitHub issue
+    //      #24) — same destructive-fallback handling as every bump above.
+    version = 22,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)

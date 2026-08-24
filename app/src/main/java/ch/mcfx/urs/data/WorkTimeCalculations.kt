@@ -58,8 +58,8 @@ fun possibleWeekdaysInMonth(year: Int, month: Int): Int {
 data class MonthlySummary(
     val actualHours: Float,
     val overUndertimeHours: Float?,
-    val grossEarnings: Float?,
-    val netEarnings: Float?,
+    /** Null whenever [WageRules.withDefaults]-independent inputs (e.g. hourly wage) aren't configured — see [computeWage]. */
+    val wageBreakdown: WageBreakdown?,
     /** Null while [year]/[month] (see [computeMonthlySummary]) is the current, still-active month. */
     val percentOfContractSoll: Float?,
 )
@@ -111,7 +111,26 @@ fun WageRules.withDefaults(): WageRules = WageRules(
     bvgDeductionAmount = bvgDeductionAmount?.takeIf { it.isNotBlank() } ?: DefaultWageRules.bvgDeductionAmount,
 )
 
-data class WageBreakdown(val gross: Float, val net: Float)
+/** One row of [WageBreakdown]'s surcharge/deduction chain — [percent] is null for BVG, the chain's only flat-amount item. */
+enum class WageLineItemType { VACATION_PAY, HOLIDAY_PAY, THIRTEENTH_MONTH, AHV_IV_EO, ALV, SUVA_NBU, KTG, BVG }
+
+data class WageLineItem(val type: WageLineItemType, val percent: Float?, val amount: Float)
+
+/** CHF meal allowance owed per calendar day a work-time entry flags via [ch.mcfx.urs.data.local.WorkTimeEntryEntity.mealAllowance]. */
+const val MealAllowancePerDay = 18f
+
+data class WageBreakdown(
+    val baseWage: Float,
+    val surcharges: List<WageLineItem>,
+    val gross: Float,
+    val deductions: List<WageLineItem>,
+    val net: Float,
+    /** Distinct calendar days in the month with the meal-allowance flag set — see [computeMonthlySummary]'s dedup. */
+    val mealAllowanceDays: Int,
+    val mealAllowanceAmount: Float,
+    /** [net] plus [mealAllowanceAmount] — the figure shown as the month's actual net earnings. */
+    val netTotal: Float,
+)
 
 private fun applyPercent(base: Float, percent: String?): Float = base * (percent?.toFloatOrNull() ?: 0f) / 100f
 
@@ -120,22 +139,44 @@ private fun Float.roundToNearestFiveRappen(): Float = Math.round(this * 20f) / 2
 /**
  * Chained surcharges (each a % of a running subtotal, order matters) then
  * chained deductions (each a % of the resulting gross, plus BVG's fixed
- * amount) — see the worked example in GitHub issue #11 this mirrors.
+ * amount) — see the worked example in GitHub issue #11 this mirrors. The
+ * meal allowance ([mealAllowanceDays] × [MealAllowancePerDay]) is added on
+ * top of [net] as [netTotal] rather than folded into the chain itself — it's
+ * a flat per-diem, not a wage-derived surcharge/deduction.
  */
-fun computeWage(baseWage: Float, rules: WageRules): WageBreakdown {
-    val vacationPay = applyPercent(baseWage, rules.vacationPaySurchargePercent)
-    val holidayPay = applyPercent(baseWage, rules.holidaySurchargePercent)
-    val beforeThirteenthMonth = baseWage + vacationPay + holidayPay
-    val thirteenthMonth = applyPercent(beforeThirteenthMonth, rules.thirteenthMonthSurchargePercent)
-    val gross = beforeThirteenthMonth + thirteenthMonth
+fun computeWage(baseWage: Float, rules: WageRules, mealAllowanceDays: Int = 0): WageBreakdown {
+    fun surcharge(type: WageLineItemType, percent: String?, base: Float) =
+        WageLineItem(type, percent?.toFloatOrNull() ?: 0f, applyPercent(base, percent))
 
-    val totalDeductions = applyPercent(gross, rules.ahvIvEoDeductionPercent) +
-        applyPercent(gross, rules.alvDeductionPercent) +
-        applyPercent(gross, rules.suvaNbuDeductionPercent) +
-        applyPercent(gross, rules.ktgDeductionPercent) +
-        (rules.bvgDeductionAmount?.toFloatOrNull() ?: 0f)
+    val vacationPay = surcharge(WageLineItemType.VACATION_PAY, rules.vacationPaySurchargePercent, baseWage)
+    val holidayPay = surcharge(WageLineItemType.HOLIDAY_PAY, rules.holidaySurchargePercent, baseWage)
+    val beforeThirteenthMonth = baseWage + vacationPay.amount + holidayPay.amount
+    val thirteenthMonth = surcharge(WageLineItemType.THIRTEENTH_MONTH, rules.thirteenthMonthSurchargePercent, beforeThirteenthMonth)
+    val gross = beforeThirteenthMonth + thirteenthMonth.amount
 
-    return WageBreakdown(gross = gross, net = (gross - totalDeductions).roundToNearestFiveRappen())
+    fun deduction(type: WageLineItemType, percent: String?) =
+        WageLineItem(type, percent?.toFloatOrNull() ?: 0f, applyPercent(gross, percent))
+
+    val ahv = deduction(WageLineItemType.AHV_IV_EO, rules.ahvIvEoDeductionPercent)
+    val alv = deduction(WageLineItemType.ALV, rules.alvDeductionPercent)
+    val suva = deduction(WageLineItemType.SUVA_NBU, rules.suvaNbuDeductionPercent)
+    val ktg = deduction(WageLineItemType.KTG, rules.ktgDeductionPercent)
+    val bvg = WageLineItem(WageLineItemType.BVG, percent = null, amount = rules.bvgDeductionAmount?.toFloatOrNull() ?: 0f)
+
+    val totalDeductions = ahv.amount + alv.amount + suva.amount + ktg.amount + bvg.amount
+    val net = (gross - totalDeductions).roundToNearestFiveRappen()
+    val mealAllowanceAmount = mealAllowanceDays * MealAllowancePerDay
+
+    return WageBreakdown(
+        baseWage = baseWage,
+        surcharges = listOf(vacationPay, holidayPay, thirteenthMonth),
+        gross = gross,
+        deductions = listOf(ahv, alv, suva, ktg, bvg),
+        net = net,
+        mealAllowanceDays = mealAllowanceDays,
+        mealAllowanceAmount = mealAllowanceAmount,
+        netTotal = net + mealAllowanceAmount,
+    )
 }
 
 /**
@@ -190,13 +231,16 @@ fun computeMonthlySummary(
         contractSollHours?.takeIf { it != 0f }?.let { actualHours / it * 100f }
     }
 
-    val wage = hourlyWage?.toFloatOrNull()?.let { computeWage(actualHours * it, wageRules) }
+    // Capped at one flagged day per calendar date, not per entry — a split
+    // shift logged as two entries the same day must not double the
+    // allowance (GitHub issue #24).
+    val mealAllowanceDays = monthEntries.filter { it.entry.mealAllowance }.map { it.entry.date }.distinct().size
+    val wage = hourlyWage?.toFloatOrNull()?.let { computeWage(actualHours * it, wageRules, mealAllowanceDays) }
 
     return MonthlySummary(
         actualHours = actualHours,
         overUndertimeHours = plusMinusSoll?.let { actualHours - it },
-        grossEarnings = wage?.gross,
-        netEarnings = wage?.net,
+        wageBreakdown = wage,
         percentOfContractSoll = percentOfContractSoll,
     )
 }

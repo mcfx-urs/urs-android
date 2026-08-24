@@ -56,6 +56,9 @@ data class WorkTimeFormState(
     // Default on since the paid morning break applies almost every day —
     // see WorkTimeEntryEntity.paidBreak.
     val paidBreak: Boolean = true,
+    // Default off — most days don't require eating out, see
+    // WorkTimeEntryEntity.mealAllowance.
+    val mealAllowance: Boolean = false,
     val breaks: List<BreakDraft> = emptyList(),
     val submitting: Boolean = false,
     val submitFailed: Boolean = false,
@@ -209,6 +212,7 @@ class WorkTimeViewModel(
                 workEnd = entry.entry.workEnd.take(5),
                 targetDailyHours = entry.entry.targetDailyHours,
                 paidBreak = entry.entry.paidBreak,
+                mealAllowance = entry.entry.mealAllowance,
                 breaks = entry.breaks.map { BreakDraft(startTime = it.startTime.take(5), endTime = it.endTime.take(5)) },
             )
             _showForm.value = true
@@ -256,6 +260,8 @@ class WorkTimeViewModel(
 
     fun setPaidBreak(value: Boolean) = _formState.update { it.copy(paidBreak = value) }
 
+    fun setMealAllowance(value: Boolean) = _formState.update { it.copy(mealAllowance = value) }
+
     /** @return the new break's id, so the caller can move keyboard focus onto its start-time field. */
     fun addBreak(): Long {
         val draft = BreakDraft()
@@ -290,6 +296,7 @@ class WorkTimeViewModel(
                         workEnd = form.workEnd.withSeconds(),
                         targetDailyHours = form.targetDailyHours,
                         paidBreak = form.paidBreak,
+                        mealAllowance = form.mealAllowance,
                         breaks = breaksArg,
                     )
                 } else {
@@ -299,6 +306,7 @@ class WorkTimeViewModel(
                         workEnd = form.workEnd.withSeconds(),
                         targetDailyHours = form.targetDailyHours,
                         paidBreak = form.paidBreak,
+                        mealAllowance = form.mealAllowance,
                         breaks = breaksArg,
                     )
                 }
