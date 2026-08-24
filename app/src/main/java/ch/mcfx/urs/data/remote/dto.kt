@@ -484,6 +484,9 @@ data class WorkTimeEntryDto(
     // the almost-always-paid 15-minute morning break, added on top of the
     // work span rather than logged as a break (see WorkTimeEntryEntity).
     @SerialName("work_time_entry_paid_break") val paidBreak: String = "1",
+    // "1"/"0" — CHF 18.- meal allowance owed for the day, see
+    // WorkTimeCalculations.computeWage.
+    @SerialName("work_time_entry_meal_allowance") val mealAllowance: String = "0",
     @SerialName("breaks") val breaks: List<WorkTimeBreakDto> = emptyList(),
     // Computed server-side (see urs-backend's computeDailyTotals) — the
     // client never reimplements this formula.
@@ -509,6 +512,7 @@ data class WorkTimeEntryPayload(
     // encodeDefaults-omission would send nothing for most entries and the
     // backend's Go zero value (false) would silently disagree with it.
     @SerialName("work_time_entry_paid_break") val paidBreak: String,
+    @SerialName("work_time_entry_meal_allowance") val mealAllowance: String,
     @SerialName("breaks") val breaks: List<WorkTimeBreakPayload> = emptyList(),
 )
 

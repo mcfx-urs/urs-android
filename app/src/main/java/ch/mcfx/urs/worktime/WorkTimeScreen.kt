@@ -42,6 +42,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
 import ch.mcfx.urs.data.MonthlySummary
+import ch.mcfx.urs.data.WageBreakdown
+import ch.mcfx.urs.data.WageLineItem
+import ch.mcfx.urs.data.WageLineItemType
 import ch.mcfx.urs.data.computeMonthlySummary
 import ch.mcfx.urs.data.computeTotals
 import ch.mcfx.urs.data.local.SyncStatus
@@ -90,6 +93,15 @@ fun WorkTimeScreen(
     val selectedMonth by viewModel.selectedMonth.collectAsStateWithLifecycle()
     val overrideSheetOpen by viewModel.showOverrideSheet.collectAsStateWithLifecycle()
     val overrideSaveFailed by viewModel.overrideSaveFailed.collectAsStateWithLifecycle()
+    // Holds the tapped tile's breakdown itself (not just an open/closed
+    // flag) since MonthContent recomputes summary internally — bundling the
+    // data here avoids a second computeMonthlySummary call at this level
+    // just to re-derive it. Rendered as a sibling of the Box below (like
+    // the other three sheets), never nested inside it — nesting it under
+    // MonthContent (inside the Box) previously let the FAB, declared after
+    // MonthContent in the same Box, draw on top of the sheet instead of
+    // being covered by it.
+    var wageBreakdownRequest by remember { mutableStateOf<WageBreakdownRequest?>(null) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         when (val state = uiState) {
@@ -101,6 +113,9 @@ fun WorkTimeScreen(
                 onSelectMonth = viewModel::selectMonth,
                 onEditOverride = viewModel::openOverrideSheet,
                 onLongPress = viewModel::openActionSheet,
+                onShowWageBreakdown = { breakdown, hourlyWage, actualHours ->
+                    wageBreakdownRequest = WageBreakdownRequest(breakdown, hourlyWage, actualHours)
+                },
             )
         }
 
@@ -151,7 +166,15 @@ fun WorkTimeScreen(
             )
         }
     }
+
+    wageBreakdownRequest?.let { request ->
+        UrsBottomSheet(onDismissRequest = { wageBreakdownRequest = null }) {
+            WageBreakdownSheet(breakdown = request.breakdown, hourlyWage = request.hourlyWage, actualHours = request.actualHours)
+        }
+    }
 }
+
+private data class WageBreakdownRequest(val breakdown: WageBreakdown, val hourlyWage: String, val actualHours: Float)
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -162,6 +185,7 @@ private fun MonthContent(
     onSelectMonth: (year: Int, month: Int) -> Unit,
     onEditOverride: () -> Unit,
     onLongPress: (WorkTimeEntryWithBreaks) -> Unit,
+    onShowWageBreakdown: (breakdown: WageBreakdown, hourlyWage: String, actualHours: Float) -> Unit,
 ) {
     val monthPrefix = "%04d-%02d".format(selectedYear, selectedMonth)
     val monthEntries = state.entries.filter { it.entry.date.startsWith(monthPrefix) }
@@ -222,7 +246,13 @@ private fun MonthContent(
         item {
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
                 MonthYearPicker(selectedYear, selectedMonth, onSelectMonth)
-                MonthSummaryTiles(summary, onEditOverride)
+                MonthSummaryTiles(
+                    summary = summary,
+                    onEditOverride = onEditOverride,
+                    onShowWageBreakdown = {
+                        summary.wageBreakdown?.let { onShowWageBreakdown(it, state.hourlyWage, summary.actualHours) }
+                    },
+                )
             }
             Spacer(Modifier.height(Spacing.s))
         }
@@ -279,7 +309,7 @@ private fun previousMonth(year: Int, month: Int): Pair<Int, Int> =
     if (month == 1) (year - 1) to 12 else year to (month - 1)
 
 @Composable
-private fun MonthSummaryTiles(summary: MonthlySummary, onEditOverride: () -> Unit) {
+private fun MonthSummaryTiles(summary: MonthlySummary, onEditOverride: () -> Unit, onShowWageBreakdown: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.s)) {
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
             MonthStatTile(
@@ -297,8 +327,8 @@ private fun MonthSummaryTiles(summary: MonthlySummary, onEditOverride: () -> Uni
         }
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
             EarningsTile(
-                grossEarnings = summary.grossEarnings,
-                netEarnings = summary.netEarnings,
+                wageBreakdown = summary.wageBreakdown,
+                onClick = onShowWageBreakdown,
                 modifier = Modifier.weight(1f),
             )
             MonthStatTile(
@@ -314,17 +344,22 @@ private fun MonthSummaryTiles(summary: MonthlySummary, onEditOverride: () -> Uni
 // Two stacked rows (gross/net) instead of MonthStatTile's single value —
 // same card shell, but right-aligned tabular-figure values so the decimal
 // points of both figures line up vertically regardless of digit count.
+// Clickable (opens WageBreakdownSheet) only once there's a breakdown to
+// show — same null-guard the "–" placeholder below already relies on.
 @Composable
-private fun EarningsTile(grossEarnings: Float?, netEarnings: Float?, modifier: Modifier = Modifier) {
-    UrsCard(radius = Radius.row, modifier = modifier) {
+private fun EarningsTile(wageBreakdown: WageBreakdown?, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    UrsCard(
+        radius = Radius.row,
+        modifier = modifier.let { if (wageBreakdown != null) it.clickable(onClick = onClick) else it },
+    ) {
         Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
             UrsText(
                 stringResource(R.string.worktime_stat_earnings),
                 style = UrsTheme.typography.caption,
                 color = UrsTheme.colors.onSurfaceMuted,
             )
-            EarningsRow(stringResource(R.string.worktime_stat_gross), grossEarnings)
-            EarningsRow(stringResource(R.string.worktime_stat_net), netEarnings)
+            EarningsRow(stringResource(R.string.worktime_stat_gross), wageBreakdown?.gross)
+            EarningsRow(stringResource(R.string.worktime_stat_net), wageBreakdown?.netTotal)
         }
     }
 }
@@ -432,6 +467,9 @@ private fun EntryCard(entryWithBreaks: WorkTimeEntryWithBreaks, userDefaultTarge
                 horizontalArrangement = Arrangement.spacedBy(Spacing.s),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                if (entryWithBreaks.entry.mealAllowance) {
+                    UrsPill(text = stringResource(R.string.worktime_meal_allowance_badge))
+                }
                 SyncStatusPill(entryWithBreaks.entry.syncStatus)
                 totals.dailyTotalHours?.let {
                     UrsText(
@@ -495,6 +533,83 @@ private fun EntryActionSheet(onEdit: () -> Unit, onDelete: () -> Unit) {
             icon = Icons.Filled.Delete,
             onClick = onDelete,
             tint = FormErrorColor,
+        )
+    }
+}
+
+@Composable
+private fun WageBreakdownSheet(breakdown: WageBreakdown, hourlyWage: String, actualHours: Float) {
+    Column(
+        modifier = Modifier.padding(horizontal = Spacing.l).padding(bottom = Spacing.l),
+        verticalArrangement = Arrangement.spacedBy(Spacing.s),
+    ) {
+        UrsText(stringResource(R.string.worktime_wage_breakdown_title), style = UrsTheme.typography.cardTitle)
+
+        WageBreakdownRow(
+            label = stringResource(R.string.worktime_wage_breakdown_base_wage),
+            detail = stringResource(R.string.worktime_wage_breakdown_base_wage_detail, formatHours(actualHours), hourlyWage),
+            amount = breakdown.baseWage,
+        )
+        breakdown.surcharges.forEach { WageLineItemRow(it) }
+        WageBreakdownTotalRow(stringResource(R.string.worktime_stat_gross), breakdown.gross)
+        breakdown.deductions.forEach { WageLineItemRow(it, isDeduction = true) }
+        WageBreakdownTotalRow(stringResource(R.string.worktime_stat_net), breakdown.net)
+        if (breakdown.mealAllowanceDays > 0) {
+            WageBreakdownRow(
+                label = stringResource(R.string.worktime_wage_breakdown_meal_allowance, breakdown.mealAllowanceDays),
+                detail = null,
+                amount = breakdown.mealAllowanceAmount,
+            )
+            WageBreakdownTotalRow(stringResource(R.string.worktime_wage_breakdown_net_total), breakdown.netTotal)
+        }
+    }
+}
+
+@Composable
+private fun WageLineItemRow(item: WageLineItem, isDeduction: Boolean = false) {
+    WageBreakdownRow(
+        label = stringResource(item.type.labelRes()),
+        detail = item.percent?.let { "${formatHours(it)}%" },
+        amount = if (isDeduction) -item.amount else item.amount,
+    )
+}
+
+private fun WageLineItemType.labelRes(): Int = when (this) {
+    WageLineItemType.VACATION_PAY -> R.string.worktime_wage_breakdown_vacation_pay
+    WageLineItemType.HOLIDAY_PAY -> R.string.worktime_wage_breakdown_holiday_pay
+    WageLineItemType.THIRTEENTH_MONTH -> R.string.worktime_wage_breakdown_thirteenth_month
+    WageLineItemType.AHV_IV_EO -> R.string.worktime_wage_breakdown_ahv
+    WageLineItemType.ALV -> R.string.worktime_wage_breakdown_alv
+    WageLineItemType.SUVA_NBU -> R.string.worktime_wage_breakdown_suva
+    WageLineItemType.KTG -> R.string.worktime_wage_breakdown_ktg
+    WageLineItemType.BVG -> R.string.worktime_wage_breakdown_bvg
+}
+
+@Composable
+private fun WageBreakdownRow(label: String, detail: String?, amount: Float) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f).padding(end = Spacing.m)) {
+            UrsText(label, style = UrsTheme.typography.body)
+            detail?.let { UrsText(it, style = UrsTheme.typography.caption, color = UrsTheme.colors.onSurfaceMuted) }
+        }
+        UrsText(
+            formatHours(amount),
+            style = UrsTheme.typography.body.copy(fontFamily = FontFamily.Monospace, textAlign = TextAlign.End),
+        )
+    }
+}
+
+@Composable
+private fun WageBreakdownTotalRow(label: String, amount: Float) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        UrsText(label, style = UrsTheme.typography.cardTitle)
+        UrsText(
+            formatHours(amount),
+            style = UrsTheme.typography.cardTitle.copy(fontFamily = FontFamily.Monospace, textAlign = TextAlign.End),
         )
     }
 }

@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - Notes support rich text formatting: bold, italic, underline, links, and nested bullet/numbered lists, with a formatting toolbar on the content field.
+- Meal allowance checkbox on work-time entries: flags a day as requiring a CHF 18.- meal allowance, shown as a badge in the month overview and added into the month's net wage (#24).
+- Tapping the Earnings tile in the Work Time month overview opens a detailed wage-calculation breakdown (#25).
 
 ### Fixed
 

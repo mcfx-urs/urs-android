@@ -27,6 +27,10 @@ data class WorkTimeEntryEntity(
     // and this must add to it. Defaults on since it applies most days;
     // per-entry so a day without it can opt out.
     val paidBreak: Boolean = true,
+    // CHF 18.- meal allowance owed for a day requiring eating out — added
+    // as a flat amount into the month's net wage rather than run through
+    // the surcharge/deduction chain, see WorkTimeCalculations.computeWage.
+    val mealAllowance: Boolean = false,
     val syncStatus: SyncStatus,
 )
 
