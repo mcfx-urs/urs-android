@@ -52,6 +52,15 @@
     <string name="chores_icon_tab_emoji">Emoji</string>
     <string name="chores_icon_custom_emoji">Or type an emoji</string>
     <string name="chores_archive_type">Archive type</string>
+    <string name="chores_type_calendar_label">Calendar (optional)</string>
+    <string name="chores_type_calendar_hint">Groups this type\'s events into one .ics file on export. Types without a calendar share one file.</string>
+    <string name="chores_export_calendar">Export to calendar</string>
+    <string name="chores_export_title">Export to calendar</string>
+    <string name="chores_export_body">Creates one .ics file per calendar label and opens the share sheet. Import it into your calendar app.</string>
+    <string name="chores_export_new_only">New events only</string>
+    <string name="chores_export_everything">Export everything again</string>
+    <string name="chores_export_nothing">Nothing new to export.</string>
+    <string name="chores_export_no_app">No app can receive the export.</string>
 
     <string name="baking_step_alarm_body">Time for your next baking step</string>
     <string name="baking_history">History</string>

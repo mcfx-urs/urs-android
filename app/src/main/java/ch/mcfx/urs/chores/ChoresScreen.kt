@@ -22,10 +22,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import android.content.Context
+import android.content.Intent
+import android.widget.Toast
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,9 +40,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
@@ -46,10 +52,12 @@ import ch.mcfx.urs.data.local.TrackerEventEntity
 import ch.mcfx.urs.data.local.TrackerTypeEntity
 import ch.mcfx.urs.data.local.publicId
 import ch.mcfx.urs.ui.components.UrsBottomSheet
+import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsDropdownField
 import ch.mcfx.urs.ui.components.UrsIcon
 import ch.mcfx.urs.ui.components.UrsIconButton
+import ch.mcfx.urs.ui.components.UrsOutlinedButton
 import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Radius
@@ -57,6 +65,7 @@ import ch.mcfx.urs.ui.tokens.Spacing
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.Month
+import java.io.File
 import java.time.YearMonth
 import java.time.format.TextStyle as JavaTextStyle
 import java.time.temporal.ChronoUnit
@@ -70,10 +79,12 @@ fun ChoresScreen(viewModel: ChoresViewModel = viewModel(factory = ChoresViewMode
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val month by viewModel.month.collectAsStateWithLifecycle()
     val hiddenTypeIds by viewModel.hiddenTypeIds.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     var daySheet by remember { mutableStateOf<LocalDate?>(null) }
     var typeEditor by remember { mutableStateOf<TypeEditorTarget?>(null) }
     var eventEditor by remember { mutableStateOf<EventEditorTarget?>(null) }
+    var exportSheet by remember { mutableStateOf(false) }
 
     val typesByPublicId = state.typesByPublicId
     val eventsByDate = remember(state.events) {
@@ -98,7 +109,13 @@ fun ChoresScreen(viewModel: ChoresViewModel = viewModel(factory = ChoresViewMode
                 .padding(horizontal = Spacing.l, vertical = Spacing.m),
             verticalArrangement = Arrangement.spacedBy(Spacing.m),
         ) {
-            MonthHeader(month = month, onPrev = viewModel::previousMonth, onNext = viewModel::nextMonth, onPick = viewModel::showMonth)
+            MonthHeader(
+                month = month,
+                onPrev = viewModel::previousMonth,
+                onNext = viewModel::nextMonth,
+                onPick = viewModel::showMonth,
+                onExport = { exportSheet = true },
+            )
 
             TypeFilterRow(
                 types = state.activeTypes,
@@ -139,16 +156,30 @@ fun ChoresScreen(viewModel: ChoresViewModel = viewModel(factory = ChoresViewMode
             UrsBottomSheet(onDismissRequest = { typeEditor = null }) {
                 TypeEditorSheet(
                     target = target,
-                    onSave = { name, color, icon ->
+                    onSave = { name, color, icon, calendar ->
                         when (target) {
-                            TypeEditorTarget.New -> viewModel.createType(name, color, icon)
-                            is TypeEditorTarget.Edit -> viewModel.updateType(target.type.id, name, color, icon)
+                            TypeEditorTarget.New -> viewModel.createType(name, color, icon, calendar)
+                            is TypeEditorTarget.Edit -> viewModel.updateType(target.type.id, name, color, icon, calendar)
                         }
                         typeEditor = null
                     },
                     onArchive = {
                         (target as? TypeEditorTarget.Edit)?.let { viewModel.archiveType(it.type.id) }
                         typeEditor = null
+                    },
+                )
+            }
+        }
+
+        if (exportSheet) {
+            UrsBottomSheet(onDismissRequest = { exportSheet = false }) {
+                ExportSheet(
+                    onExport = { exportAll ->
+                        exportSheet = false
+                        val export = viewModel.buildIcsExport(exportAll)
+                        if (shareIcsExport(context, export)) {
+                            viewModel.markExported(export.exportedTypeLocalIds)
+                        }
                     },
                 )
             }
@@ -173,7 +204,13 @@ fun ChoresScreen(viewModel: ChoresViewModel = viewModel(factory = ChoresViewMode
 }
 
 @Composable
-private fun MonthHeader(month: YearMonth, onPrev: () -> Unit, onNext: () -> Unit, onPick: (YearMonth) -> Unit) {
+private fun MonthHeader(
+    month: YearMonth,
+    onPrev: () -> Unit,
+    onNext: () -> Unit,
+    onPick: (YearMonth) -> Unit,
+    onExport: () -> Unit,
+) {
     var picking by remember { mutableStateOf(false) }
     val label = "${month.month.getDisplayName(JavaTextStyle.FULL, Locale.getDefault())} ${month.year}"
     val yearNow = LocalDate.now().year
@@ -200,6 +237,11 @@ private fun MonthHeader(month: YearMonth, onPrev: () -> Unit, onNext: () -> Unit
                 onClick = onNext,
                 contentDescription = stringResource(R.string.chores_next_month),
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            )
+            UrsIconButton(
+                onClick = onExport,
+                contentDescription = stringResource(R.string.chores_export_calendar),
+                imageVector = Icons.Filled.Share,
             )
         }
         if (picking) {
@@ -383,6 +425,67 @@ private fun DayCell(
             UrsText("+${dotColors.size - MAX_DOTS}", style = UrsTheme.typography.caption, color = colors.onSurfaceMuted)
         }
     }
+}
+
+@Composable
+private fun ExportSheet(onExport: (exportAll: Boolean) -> Unit) {
+    Column(
+        modifier = Modifier.padding(horizontal = Spacing.l).padding(bottom = Spacing.l),
+        verticalArrangement = Arrangement.spacedBy(Spacing.m),
+    ) {
+        UrsText(stringResource(R.string.chores_export_title), style = UrsTheme.typography.cardTitle)
+        UrsText(
+            stringResource(R.string.chores_export_body),
+            style = UrsTheme.typography.body,
+            color = UrsTheme.colors.onSurfaceMuted,
+        )
+        UrsButton(
+            text = stringResource(R.string.chores_export_new_only),
+            onClick = { onExport(false) },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        UrsOutlinedButton(
+            text = stringResource(R.string.chores_export_everything),
+            onClick = { onExport(true) },
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+// Writes each .ics into cacheDir/chores-ics/ and hands it to the share
+// sheet through the app's FileProvider. Returns true once the chooser is
+// launched, so the caller only then marks the types exported.
+private fun shareIcsExport(context: Context, export: IcsExport): Boolean {
+    if (export.files.isEmpty()) {
+        Toast.makeText(context, R.string.chores_export_nothing, Toast.LENGTH_SHORT).show()
+        return false
+    }
+    val dir = File(context.cacheDir, "chores-ics").apply { mkdirs() }
+    dir.listFiles()?.forEach { it.delete() }
+
+    val uris = ArrayList<android.net.Uri>()
+    for (file in export.files) {
+        val out = File(dir, file.fileName)
+        out.writeText(file.content)
+        uris += FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", out)
+    }
+
+    val intent = if (uris.size == 1) {
+        Intent(Intent.ACTION_SEND).apply {
+            type = "text/calendar"
+            putExtra(Intent.EXTRA_STREAM, uris.first())
+        }
+    } else {
+        Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+            type = "text/calendar"
+            putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+        }
+    }
+    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+
+    return runCatching { context.startActivity(Intent.createChooser(intent, null)) }
+        .onFailure { Toast.makeText(context, R.string.chores_export_no_app, Toast.LENGTH_SHORT).show() }
+        .isSuccess
 }
 
 @Composable
