@@ -23,7 +23,7 @@ import kotlinx.coroutines.runBlocking
 private const val RELAY_PORT = 8787
 private const val BEER_FILL_PATH = "/api/watch/beer-fill"
 private const val TOKEN_HEADER = "x-relay-token"
-private const val BEER_FILL_VOLUME_ML = 500
+private const val VOLUME_PARAM = "volume"
 private const val NOTIFICATION_ID = 1
 
 /**
@@ -45,8 +45,8 @@ class WatchRelayService : Service() {
         super.onCreate()
         startForegroundWithNotification()
         val container = (application as UrsApplication).container
-        server = RelayHttpServer(container.networkGate) {
-            container.beerRepository.logBeer(BEER_FILL_VOLUME_ML, LocalDateTime.now().format(BeerStats.DATE_FORMAT))
+        server = RelayHttpServer(container.networkGate) { volumeMl ->
+            container.beerRepository.logBeer(volumeMl, LocalDateTime.now().format(BeerStats.DATE_FORMAT))
         }.also { it.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false) }
     }
 
@@ -110,7 +110,7 @@ class WatchRelayService : Service() {
  */
 private class RelayHttpServer(
     private val networkGate: NetworkGate,
-    private val onBeerFill: suspend () -> Unit,
+    private val onBeerFill: suspend (volumeMl: Int) -> Unit,
 ) : NanoHTTPD("127.0.0.1", RELAY_PORT) {
 
     override fun serve(session: IHTTPSession): Response {
@@ -119,6 +119,10 @@ private class RelayHttpServer(
         }
         if (session.headers[TOKEN_HEADER] != WATCH_RELAY_TOKEN) {
             return newFixedLengthResponse(Response.Status.UNAUTHORIZED, MIME_PLAINTEXT, "unauthorized")
+        }
+        val volumeMl = session.parameters[VOLUME_PARAM]?.firstOrNull()?.toIntOrNull()
+        if (volumeMl == null || volumeMl <= 0) {
+            return newFixedLengthResponse(Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "invalid volume")
         }
         return runBlocking {
             val reachable = when (networkGate.ensureReachable()) {
@@ -129,7 +133,7 @@ private class RelayHttpServer(
                 return@runBlocking newFixedLengthResponse(Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "backend unreachable")
             }
             try {
-                onBeerFill()
+                onBeerFill(volumeMl)
                 newFixedLengthResponse(Response.Status.OK, MIME_PLAINTEXT, "ok")
             } catch (e: Exception) {
                 newFixedLengthResponse(Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "failed: ${e.message}")
