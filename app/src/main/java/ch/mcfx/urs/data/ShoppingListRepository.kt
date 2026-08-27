@@ -323,10 +323,23 @@ class ShoppingListRepository(
      * [InventoryRepository.refreshFromBackend]: run when reachable, never
      * blocking the caller or surfacing an error on failure. Items are only
      * refreshed per list already known locally, matching the backend's own
-     * per-list endpoint granularity. Never touches PENDING/FAILED rows,
-     * which exist solely via the outbox replay path above.
+     * per-list endpoint granularity.
+     *
+     * Drains the outbox first ([SyncManager.syncNow]) so any still-queued
+     * delete has actually landed server-side before the pull runs —
+     * otherwise the pull would return, and [ListItemDao.upsertFromServer]
+     * would re-insert, the very row that delete is about to remove (the
+     * item/list "reappears after offline deletion" bug). `syncNow()` is
+     * `mutex.withLock { replayOutbox() }` — idempotent on an empty outbox
+     * and never throwing — so calling it unconditionally here is safe.
+     * The pull then also removes local SYNCED rows the server no longer
+     * returns, reconciling away a delete made on another device (or one
+     * that slipped through before this ordering existed) rather than
+     * letting it linger forever. PENDING/FAILED rows are never touched —
+     * they exist solely via the outbox replay path above.
      */
     suspend fun refreshFromBackend() {
+        syncManager.syncNow()
         refreshQuietly {
             val lists = emptyAsNull { api.getLists() }
             listDao.upsertFromServer(lists.map { it.toEntity() })
@@ -334,7 +347,7 @@ class ShoppingListRepository(
         listDao.observeAll().first().mapNotNull { it.serverId }.forEach { listId ->
             refreshQuietly {
                 val items = emptyAsNull { api.getListItems(listId) }
-                listItemDao.upsertFromServer(items.map { it.toEntity() })
+                listItemDao.upsertFromServer(listId, items.map { it.toEntity() })
             }
         }
     }

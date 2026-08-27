@@ -9,11 +9,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - The watch relay's beer-fill endpoint logs the volume passed in the request rather than a fixed 500 ml, and rejects a missing or invalid volume (#26).
 
+### Fixed
+
+- Shopping-list items and lists deleted while offline (or on another device) no longer reappear on the next sync (#15).
+
 ## [0.20.0] - 2026-08-24
 
 ### Added
 
-- Notes support rich text formatting: bold, italic, underline, links, and nested bullet/numbered lists, with a formatting toolbar on the content field.
+- Notes support rich text formatting: bold, italic, underline, links, and nested bullet/numbered lists, with a formatting toolbar on the content field (#21).
 - Meal allowance checkbox on work-time entries: flags a day as requiring a CHF 18.- meal allowance, shown as a badge in the month overview and added into the month's net wage (#24).
 - Tapping the Earnings tile in the Work Time month overview opens a detailed wage-calculation breakdown (#25).
 

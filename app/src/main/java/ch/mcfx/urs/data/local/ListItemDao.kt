@@ -34,13 +34,29 @@ interface ListItemDao {
 
     /** Backend-refresh write path — see [ListDao.upsertFromServer]. */
     @Transaction
-    suspend fun upsertFromServer(items: List<ListItemEntity>) {
+    suspend fun upsertFromServer(listId: String, items: List<ListItemEntity>) {
         items.forEach { item ->
             val serverId = item.serverId ?: return@forEach
             val existingLocalId = findLocalIdByServerId(serverId)
             replace(item.copy(id = existingLocalId ?: 0))
         }
+        deleteSyncedAbsentFromServer(listId, items.mapNotNull { it.serverId })
     }
+
+    // Reconciliation half of [upsertFromServer]: drop local SYNCED rows the
+    // server no longer returns for this list, so an item deleted on another
+    // device — or one that slipped through before
+    // ShoppingListRepository.refreshFromBackend started draining the outbox
+    // ahead of the pull — doesn't linger locally forever with no outbox
+    // link. PENDING/FAILED rows are never touched: they belong to the
+    // outbox and aren't on the server yet by definition. An empty
+    // serverIds list (whole list emptied server-side) correctly clears
+    // every SYNCED row for the list.
+    @Query(
+        "DELETE FROM list_item WHERE listId = :listId AND syncStatus = 'SYNCED' " +
+            "AND serverId NOT IN (:serverIds)",
+    )
+    suspend fun deleteSyncedAbsentFromServer(listId: String, serverIds: List<String>)
 
     // listId is corrected here too (not just carried over from the queued
     // payload) — see ListItemEntity's doc comment: an item queued while its
