@@ -30,6 +30,7 @@ import ch.mcfx.urs.data.UserRepository
 import ch.mcfx.urs.data.WorkSettingsStore
 import ch.mcfx.urs.data.WorkTimeRepository
 import ch.mcfx.urs.data.local.AppDatabase
+import ch.mcfx.urs.home.HomeLayoutStore
 import ch.mcfx.urs.data.remote.UrsApi
 import ch.mcfx.urs.data.sync.ReachabilityChecker
 import ch.mcfx.urs.data.sync.SyncManager
@@ -279,6 +280,11 @@ class AppContainer(context: Context) {
     val locationHistorySettingsStore = LocationHistorySettingsStore(context)
     val watchRelaySettingsStore = WatchRelaySettingsStore(context)
     val themeSettingsStore = ThemeSettingsStore(context)
+
+    // Launcher-style Home layout persistence (GitHub issue #12). The
+    // edit-mode UI on top of this is not built yet — HomeScreen still
+    // renders its fixed layout for now.
+    val homeLayoutStore = HomeLayoutStore(context, json)
 
     // Not started here - connect()/disconnect() are driven by whatever
     // future UI surfaces this (a live-data screen). Constructed eagerly
