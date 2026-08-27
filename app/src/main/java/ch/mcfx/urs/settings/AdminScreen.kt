@@ -14,6 +14,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
 import ch.mcfx.urs.ui.components.UrsButton
+import ch.mcfx.urs.ui.components.UrsDropdownField
 import ch.mcfx.urs.ui.components.UrsOutlinedButton
 import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.theme.UrsTheme
@@ -34,6 +35,8 @@ fun AdminScreen(viewModel: AdminViewModel = viewModel(factory = AdminViewModel.F
     val restartFailed by viewModel.restartFailed.collectAsStateWithLifecycle()
     val serverBackUp by viewModel.serverBackUp.collectAsStateWithLifecycle()
     val checkTimedOut by viewModel.checkTimedOut.collectAsStateWithLifecycle()
+    val currentLogLevel by viewModel.currentLogLevel.collectAsStateWithLifecycle()
+    val logLevelUpdateFailed by viewModel.logLevelUpdateFailed.collectAsStateWithLifecycle()
 
     Column(
         modifier = Modifier.fillMaxSize().padding(Spacing.xl),
@@ -74,5 +77,20 @@ fun AdminScreen(viewModel: AdminViewModel = viewModel(factory = AdminViewModel.F
         if (restartFailed) {
             UrsText(stringResource(R.string.admin_restart_failed), color = FormErrorColor)
         }
+
+        UrsDropdownField(
+            label = stringResource(R.string.admin_log_level_label),
+            options = LogLevels,
+            selectedLabel = currentLogLevel,
+            optionLabel = { it },
+            onSelect = viewModel::setLogLevel,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (logLevelUpdateFailed) {
+            UrsText(stringResource(R.string.admin_log_level_failed), color = FormErrorColor)
+        }
     }
 }
+
+// The backend's accepted slog levels, low to high verbosity.
+private val LogLevels = listOf("debug", "info", "warn", "error")

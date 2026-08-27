@@ -1,6 +1,7 @@
 package ch.mcfx.urs.data
 
 import ch.mcfx.urs.auth.AuthTokenStore
+import ch.mcfx.urs.data.remote.LogLevelDto
 import ch.mcfx.urs.data.remote.UrsApi
 import ch.mcfx.urs.data.remote.UserDefaultDailyTargetHoursPayload
 import ch.mcfx.urs.data.remote.UserDto
@@ -125,4 +126,9 @@ class UserRepository(
     // Throws if unreachable, returns normally once the backend responds —
     // used to poll for the server coming back up after restartServer().
     suspend fun ping() = api.ping()
+
+    // Super-user only — reads/retunes the backend's runtime log level.
+    suspend fun getLogLevel() = api.getLogLevel().level
+
+    suspend fun setLogLevel(level: String) = api.setLogLevel(LogLevelDto(level))
 }

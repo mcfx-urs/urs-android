@@ -39,6 +39,42 @@ class AdminViewModel(private val userRepository: UserRepository) : ViewModel() {
     private val _checkTimedOut = MutableStateFlow(false)
     val checkTimedOut: StateFlow<Boolean> = _checkTimedOut.asStateFlow()
 
+    // Current backend log level, null until the initial load resolves.
+    private val _currentLogLevel = MutableStateFlow<String?>(null)
+    val currentLogLevel: StateFlow<String?> = _currentLogLevel.asStateFlow()
+
+    private val _logLevelUpdateFailed = MutableStateFlow(false)
+    val logLevelUpdateFailed: StateFlow<Boolean> = _logLevelUpdateFailed.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            try {
+                _currentLogLevel.value = userRepository.getLogLevel()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // Leave it null — the dropdown just shows no selection until
+                // the user picks one, which still applies fine.
+            }
+        }
+    }
+
+    // No two-step confirm, unlike restart: a log-level change doesn't
+    // interrupt the service, so the inline-confirm pattern doesn't apply.
+    fun setLogLevel(level: String) {
+        _logLevelUpdateFailed.value = false
+        viewModelScope.launch {
+            try {
+                userRepository.setLogLevel(level)
+                _currentLogLevel.value = level
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                _logLevelUpdateFailed.value = true
+            }
+        }
+    }
+
     fun requestRestart() {
         _confirmingRestart.value = true
     }
