@@ -62,8 +62,9 @@ object FuelStats {
     // an average of per-span ratios — a naive average would let a short,
     // high-consumption span skew the result disproportionately relative to
     // how much fuel it actually used.
-    fun averageConsumptionL100Km(fills: List<FillDto>, since: LocalDate? = null): Float? {
-        val samples = consumptionSamples(fills).filter { since == null || !it.date.isBefore(since) }
+    fun averageConsumptionL100Km(fills: List<FillDto>, since: LocalDate? = null, vehicleId: String? = null): Float? {
+        val scopedFills = if (vehicleId == null) fills else fills.filter { it.vehicleId == vehicleId }
+        val samples = consumptionSamples(scopedFills).filter { since == null || !it.date.isBefore(since) }
         if (samples.isEmpty()) return null
         val totalKm = samples.sumOf { it.kmDriven.toDouble() }
         val totalLiters = samples.sumOf { it.liters.toDouble() }

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.AdminPanelSettings
+import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.runtime.Composable
@@ -18,6 +19,7 @@ private val SETTINGS_TILES = listOf(
     SettingsTile(SettingsRoutes.ABOUT, R.string.settings_tile_about, Icons.Filled.Info),
     SettingsTile(SettingsRoutes.ACCOUNT, R.string.settings_tile_account, Icons.Filled.AccountCircle),
     SettingsTile(SettingsRoutes.GENERAL, R.string.settings_tile_general, Icons.Filled.Tune),
+    SettingsTile(SettingsRoutes.DEFAULT_VEHICLE, R.string.settings_tile_default_vehicle, Icons.Filled.DirectionsCar),
 )
 
 private val ADMIN_TILE =
