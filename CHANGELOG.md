@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Note editor can export the open note: share it as plain text via the Android share sheet, or open a pre-filled calendar event built from its title, content, and reminder time (#22).
 - The About screen's Sync row opens a detail sheet listing every queued or failed change with its error, plus a manual "Sync now" trigger (#23).
 - Default vehicle per user: set it in Settings or via a quick-switch chip row on the Fuel hub; drives the Home consumption stat, the Statistics filter, and the pre-selected vehicle when adding a fill-up, and syncs across devices (#13).
+- New "Chores and Stuff" section: a generic per-user activity tracker with a month calendar view — log recurring tasks per day (past or future, optional time and note), filter the calendar by type, and see how long since each type was last done. Types carry a colour and a Material or emoji icon and can be archived (#27).
 
 ### Changed
 
