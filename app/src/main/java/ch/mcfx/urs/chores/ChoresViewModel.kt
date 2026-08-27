@@ -66,12 +66,23 @@ class ChoresViewModel(private val repository: ChoreRepository) : ViewModel() {
         _hiddenTypeIds.update { if (typeId in it) it - typeId else it + typeId }
     }
 
-    fun createType(name: String, color: String, icon: String) {
-        viewModelScope.launch { repository.createType(name.trim(), color, icon) }
+    fun createType(name: String, color: String, icon: String, calendar: String?) {
+        viewModelScope.launch { repository.createType(name.trim(), color, icon, calendar?.trim()?.ifBlank { null }) }
     }
 
-    fun updateType(localId: Long, name: String, color: String, icon: String) {
-        viewModelScope.launch { repository.updateType(localId, name.trim(), color, icon) }
+    fun updateType(localId: Long, name: String, color: String, icon: String, calendar: String?) {
+        viewModelScope.launch { repository.updateType(localId, name.trim(), color, icon, calendar?.trim()?.ifBlank { null }) }
+    }
+
+    /** Builds the .ics file(s) from the currently loaded types and events. */
+    fun buildIcsExport(exportAll: Boolean): IcsExport {
+        val state = uiState.value
+        return buildChoresIcs(types = state.types, events = state.events, exportAll = exportAll)
+    }
+
+    fun markExported(localIds: List<Long>) {
+        if (localIds.isEmpty()) return
+        viewModelScope.launch { repository.markExported(localIds) }
     }
 
     fun archiveType(localId: Long) {

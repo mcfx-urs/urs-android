@@ -58,11 +58,13 @@ class ChoreRepository(
 
     // --- Types ---
 
-    suspend fun createType(name: String, color: String, icon: String) {
+    suspend fun createType(name: String, color: String, icon: String, calendar: String?) {
         val outboxId = outboxDao.insert(
             OutboxMutationEntity(
                 type = OutboxMutationEntity.TYPE_CREATE_TRACKER_TYPE,
-                payloadJson = json.encodeToString(OutboxTrackerTypeCreatePayload(name = name, color = color, icon = icon)),
+                payloadJson = json.encodeToString(
+                    OutboxTrackerTypeCreatePayload(name = name, color = color, icon = icon, calendar = calendar),
+                ),
                 createdAt = System.currentTimeMillis(),
             ),
         )
@@ -73,18 +75,22 @@ class ChoreRepository(
                 name = name,
                 color = color,
                 icon = icon,
+                calendar = calendar,
                 syncStatus = SyncStatus.PENDING,
             ),
         )
         applicationScope.launch { syncManager.syncNow() }
     }
 
-    suspend fun updateType(localId: Long, name: String, color: String, icon: String) {
+    suspend fun updateType(localId: Long, name: String, color: String, icon: String, calendar: String?) {
         val current = trackerTypeDao.getById(localId) ?: return
 
         val outboxId = if (current.serverId == null) {
             current.outboxId?.let {
-                outboxDao.updatePayload(it, json.encodeToString(OutboxTrackerTypeCreatePayload(name = name, color = color, icon = icon)))
+                outboxDao.updatePayload(
+                    it,
+                    json.encodeToString(OutboxTrackerTypeCreatePayload(name = name, color = color, icon = icon, calendar = calendar)),
+                )
             }
             current.outboxId
         } else {
@@ -93,14 +99,35 @@ class ChoreRepository(
                 OutboxMutationEntity(
                     type = OutboxMutationEntity.TYPE_UPDATE_TRACKER_TYPE,
                     payloadJson = json.encodeToString(
-                        OutboxTrackerTypeUpdatePayload(serverId = current.serverId, name = name, color = color, icon = icon),
+                        OutboxTrackerTypeUpdatePayload(serverId = current.serverId, name = name, color = color, icon = icon, calendar = calendar),
                     ),
                     createdAt = System.currentTimeMillis(),
                 ),
             )
         }
-        trackerTypeDao.updateFields(localId, name, color, icon, SyncStatus.PENDING, outboxId)
+        trackerTypeDao.updateFields(localId, name, color, icon, calendar, SyncStatus.PENDING, outboxId)
         applicationScope.launch { syncManager.syncNow() }
+    }
+
+    /**
+     * Stamps the given types as exported — locally right away, and
+     * best-effort on the backend for the ones that have synced. A failed
+     * server call is harmless: the next "only new" export re-includes a few
+     * events, which a calendar app dedupes on their stable UID.
+     */
+    suspend fun markExported(localIds: List<Long>) {
+        val now = System.currentTimeMillis()
+        for (localId in localIds) {
+            trackerTypeDao.updateLastExported(localId, now)
+            val serverId = trackerTypeDao.getById(localId)?.serverId ?: continue
+            try {
+                api.markTrackerTypeExported(serverId)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // Best-effort — see doc comment.
+            }
+        }
     }
 
     /** Soft-archive: hide from pickers, keep the type and its events for history. */
@@ -253,7 +280,9 @@ private fun TrackerTypeDto.toEntity(userId: String) = TrackerTypeEntity(
     name = name,
     color = color,
     icon = icon,
+    calendar = calendar.ifBlank { null },
     archivedAtMillis = archivedAt.ifBlank { null }?.toArchivedMillisOrNull(),
+    lastExportedAtMillis = lastExportedAt.ifBlank { null }?.toArchivedMillisOrNull(),
     syncStatus = SyncStatus.SYNCED,
 )
 

@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - New "Chores and Stuff" section: a generic per-user activity tracker with a month calendar view — log recurring tasks per day (past or future, optional time and note), filter the calendar by type, and see how long since each type was last done. Types carry a colour and a Material or emoji icon and can be archived (#27).
 - The gas station edit list now shows a super-user-only "Ad-hoc stations to review" section listing GPS-located stations auto-created on fill-up, so their name and address can be filled in from the same edit form (#17).
 - Admin screen can view and change the backend log level (debug/info/warn/error) at runtime, applied immediately with no server restart (#16).
+- Chores calendar export: an action in the Chores screen builds one `.ics` file per calendar label from local data and shares it via the Android share sheet, scoped to new events since the last export or everything again; types gain an optional calendar label in the type editor (#28).
 - Super-user-only Image Generator screen: generate an image from a free-text prompt with adjustable size/quality/background, preview it, then save it to the device gallery, share it, or delete it. Nothing is stored server-side (#20).
 
 ### Changed

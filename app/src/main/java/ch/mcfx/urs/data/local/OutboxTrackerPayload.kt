@@ -7,6 +7,7 @@ data class OutboxTrackerTypeCreatePayload(
     val name: String,
     val color: String,
     val icon: String,
+    val calendar: String? = null,
 )
 
 // serverId identifies the target directly (rename/recolour only happens
@@ -18,6 +19,7 @@ data class OutboxTrackerTypeUpdatePayload(
     val name: String,
     val color: String,
     val icon: String,
+    val calendar: String? = null,
 )
 
 @Serializable

@@ -224,13 +224,14 @@ private data class EventDraft(val typeId: String, val date: String, val time: St
 @Composable
 fun TypeEditorSheet(
     target: TypeEditorTarget,
-    onSave: (name: String, color: String, icon: String) -> Unit,
+    onSave: (name: String, color: String, icon: String, calendar: String) -> Unit,
     onArchive: () -> Unit,
 ) {
     val editing = target as? TypeEditorTarget.Edit
     var name by remember { mutableStateOf(editing?.type?.name.orEmpty()) }
     var color by remember { mutableStateOf(editing?.type?.color?.takeIf { it.isNotBlank() } ?: defaultChoreColor) }
     var icon by remember { mutableStateOf(editing?.type?.icon?.takeIf { it.isNotBlank() } ?: defaultChoreIcon) }
+    var calendar by remember { mutableStateOf(editing?.type?.calendar.orEmpty()) }
     var emojiTab by remember { mutableStateOf(trackerIconMaterialVector(icon) == null) }
     var typedEmoji by remember { mutableStateOf(if (trackerIconMaterialVector(icon) == null) icon else "") }
     val colors = UrsTheme.colors
@@ -245,6 +246,17 @@ fun TypeEditorSheet(
         )
 
         UrsTextField(value = name, onValueChange = { name = it }, label = stringResource(R.string.chores_type_name_label))
+
+        UrsTextField(
+            value = calendar,
+            onValueChange = { calendar = it },
+            label = stringResource(R.string.chores_type_calendar_label),
+        )
+        UrsText(
+            stringResource(R.string.chores_type_calendar_hint),
+            style = UrsTheme.typography.caption,
+            color = colors.onSurfaceMuted,
+        )
 
         UrsText(stringResource(R.string.chores_color_label), style = UrsTheme.typography.caption, color = colors.onSurfaceMuted)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.s), verticalArrangement = Arrangement.spacedBy(Spacing.s)) {
@@ -316,7 +328,7 @@ fun TypeEditorSheet(
 
         UrsButton(
             text = stringResource(R.string.save),
-            onClick = { onSave(name, color, icon) },
+            onClick = { onSave(name, color, icon, calendar) },
             enabled = name.isNotBlank(),
             modifier = Modifier.fillMaxWidth(),
         )

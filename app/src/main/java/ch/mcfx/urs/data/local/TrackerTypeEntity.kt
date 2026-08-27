@@ -13,6 +13,10 @@ import androidx.room.PrimaryKey
  * how to render. [archivedAtMillis] non-null = soft-archived: hidden from
  * pickers, but its past events still render in the calendar.
  *
+ * [calendar] is an optional label that groups this type's events into one
+ * `.ics` file on export (GitHub issue #28); [lastExportedAtMillis] marks
+ * how far the last "only new events" export got.
+ *
  * [userId] filters [TrackerTypeDao]'s observe queries, same per-user
  * privacy defense-in-depth as [NoteEntity.userId].
  */
@@ -25,7 +29,9 @@ data class TrackerTypeEntity(
     val name: String,
     val color: String,
     val icon: String,
+    val calendar: String? = null,
     val archivedAtMillis: Long? = null,
+    val lastExportedAtMillis: Long? = null,
     val syncStatus: SyncStatus,
 )
 

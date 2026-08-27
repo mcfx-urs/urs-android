@@ -50,8 +50,11 @@ interface TrackerTypeDao {
     )
     suspend fun deleteSyncedAbsentFromServer(userId: String, serverIds: List<String>)
 
-    @Query("UPDATE tracker_type SET name = :name, color = :color, icon = :icon, syncStatus = :syncStatus, outboxId = :outboxId WHERE id = :id")
-    suspend fun updateFields(id: Long, name: String, color: String, icon: String, syncStatus: SyncStatus, outboxId: Long?)
+    @Query("UPDATE tracker_type SET name = :name, color = :color, icon = :icon, calendar = :calendar, syncStatus = :syncStatus, outboxId = :outboxId WHERE id = :id")
+    suspend fun updateFields(id: Long, name: String, color: String, icon: String, calendar: String?, syncStatus: SyncStatus, outboxId: Long?)
+
+    @Query("UPDATE tracker_type SET lastExportedAtMillis = :millis WHERE id = :id")
+    suspend fun updateLastExported(id: Long, millis: Long)
 
     @Query("UPDATE tracker_type SET archivedAtMillis = :archivedAtMillis, syncStatus = :syncStatus, outboxId = :outboxId WHERE id = :id")
     suspend fun updateArchived(id: Long, archivedAtMillis: Long?, syncStatus: SyncStatus, outboxId: Long?)

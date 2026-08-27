@@ -70,7 +70,10 @@ import androidx.room.TypeConverters
     // v23: new TrackerTypeEntity/TrackerEventEntity tables (GitHub issue
     //      #27, Chores and Stuff) — same destructive-fallback handling as
     //      every bump above.
-    version = 23,
+    // v24: calendar + lastExportedAtMillis columns added to
+    //      TrackerTypeEntity (GitHub issue #28, ICS export) — same
+    //      destructive-fallback handling as every bump above.
+    version = 24,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)

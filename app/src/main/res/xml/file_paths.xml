@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Chores ICS export writes here before handing files to the share sheet. -->
+    <cache-path name="chores-ics" path="chores-ics/" />
+</paths>
