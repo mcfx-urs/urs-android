@@ -14,6 +14,7 @@ import ch.mcfx.urs.auth.BiometricGate
 import ch.mcfx.urs.data.BakingRepository
 import ch.mcfx.urs.data.BeerRepository
 import ch.mcfx.urs.data.CatalogRepository
+import ch.mcfx.urs.data.ChoreRepository
 import ch.mcfx.urs.data.FuelRepository
 import ch.mcfx.urs.data.DefaultVehicleStore
 import ch.mcfx.urs.data.InventoryRepository
@@ -259,6 +260,8 @@ class AppContainer(context: Context) {
         bakePlanDao = database.bakePlanDao(),
         bakePlanStepDao = database.bakePlanStepDao(),
         noteDao = database.noteDao(),
+        trackerTypeDao = database.trackerTypeDao(),
+        trackerEventDao = database.trackerEventDao(),
         outboxDao = database.outboxDao(),
         reachabilityChecker = reachabilityChecker,
         syncStatusStore = syncStatusStore,
@@ -363,6 +366,16 @@ class AppContainer(context: Context) {
         api = ursApi,
         noteDao = database.noteDao(),
         noteTagDao = database.noteTagDao(),
+        outboxDao = database.outboxDao(),
+        syncManager = syncManager,
+        tokenStore = authTokenStore,
+        applicationScope = applicationScope,
+        json = json,
+    )
+    val choreRepository = ChoreRepository(
+        api = ursApi,
+        trackerTypeDao = database.trackerTypeDao(),
+        trackerEventDao = database.trackerEventDao(),
         outboxDao = database.outboxDao(),
         syncManager = syncManager,
         tokenStore = authTokenStore,

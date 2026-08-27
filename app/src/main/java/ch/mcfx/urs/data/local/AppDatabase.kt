@@ -28,6 +28,8 @@ import androidx.room.TypeConverters
         BakePlanStepEntity::class,
         NoteEntity::class,
         NoteTagEntity::class,
+        TrackerTypeEntity::class,
+        TrackerEventEntity::class,
     ],
     // Bumped for the isFullTank column on FillEntity, the life map
     // feature's LocationHistoryEntity (local capture + sync fields), and
@@ -65,7 +67,10 @@ import androidx.room.TypeConverters
     //      same destructive-fallback handling as every bump above.
     // v22: mealAllowance column added to WorkTimeEntryEntity (GitHub issue
     //      #24) — same destructive-fallback handling as every bump above.
-    version = 22,
+    // v23: new TrackerTypeEntity/TrackerEventEntity tables (GitHub issue
+    //      #27, Chores and Stuff) — same destructive-fallback handling as
+    //      every bump above.
+    version = 23,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -90,4 +95,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun bakePlanStepDao(): BakePlanStepDao
     abstract fun noteDao(): NoteDao
     abstract fun noteTagDao(): NoteTagDao
+    abstract fun trackerTypeDao(): TrackerTypeDao
+    abstract fun trackerEventDao(): TrackerEventDao
 }

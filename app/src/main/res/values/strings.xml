@@ -20,7 +20,10 @@
     <string name="nav_life_map">Life Map</string>
     <string name="nav_baking">Baking</string>
     <string name="nav_notes">Notes</string>
+    <string name="nav_chores">Chores and Stuff</string>
     <string name="nav_settings">Settings</string>
+
+    <string name="chores_placeholder_summary">%1$d types, %2$d events logged. The month view is coming next.</string>
 
     <string name="baking_step_alarm_body">Time for your next baking step</string>
     <string name="baking_history">History</string>
