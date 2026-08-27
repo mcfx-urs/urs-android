@@ -17,6 +17,7 @@ import ch.mcfx.urs.beer.BeerStats
 import ch.mcfx.urs.notifications.NotificationChannels
 import ch.mcfx.urs.vpn.NetworkGate
 import fi.iki.elonen.NanoHTTPD
+import java.io.File
 import java.time.LocalDate
 import java.time.LocalDateTime
 import kotlinx.coroutines.runBlocking
@@ -24,9 +25,11 @@ import kotlinx.coroutines.runBlocking
 private const val RELAY_PORT = 8787
 private const val BEER_FILL_PATH = "/api/watch/beer-fill"
 private const val CHORE_EVENT_PATH = "/api/watch/chore-event"
+private const val AUDIO_NOTE_PATH = "/api/watch/audio-note"
 private const val TOKEN_HEADER = "x-relay-token"
 private const val VOLUME_PARAM = "volume"
 private const val TYPE_ID_PARAM = "typeId"
+private const val AUDIO_NOTE_MAX_BYTES = 8 * 1024 * 1024
 private const val NOTIFICATION_ID = 1
 
 /**
@@ -48,6 +51,7 @@ class WatchRelayService : Service() {
         super.onCreate()
         startForegroundWithNotification()
         val container = (application as UrsApplication).container
+        val audioNotesDir = File(filesDir, "audio-notes")
         server = RelayHttpServer(
             networkGate = container.networkGate,
             onBeerFill = { volumeMl ->
@@ -61,6 +65,14 @@ class WatchRelayService : Service() {
                     note = null,
                     source = "watch",
                 )
+            },
+            // PoC only (urs-zepp#4): land the transferred .opus in app storage
+            // and log it. No Room entity, no UI, no sync.
+            onAudioNote = { bytes ->
+                audioNotesDir.mkdirs()
+                val out = File(audioNotesDir, "note-${System.currentTimeMillis()}.opus")
+                out.writeBytes(bytes)
+                android.util.Log.i("WatchRelay", "audio note saved: ${out.absolutePath} (${bytes.size} bytes)")
             },
         ).also { it.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false) }
     }
@@ -127,10 +139,13 @@ private class RelayHttpServer(
     private val networkGate: NetworkGate,
     private val onBeerFill: suspend (volumeMl: Int) -> Unit,
     private val onChoreEvent: suspend (typeId: String) -> Unit,
+    private val onAudioNote: suspend (bytes: ByteArray) -> Unit,
 ) : NanoHTTPD("127.0.0.1", RELAY_PORT) {
 
+    private val knownPaths = setOf(BEER_FILL_PATH, CHORE_EVENT_PATH, AUDIO_NOTE_PATH)
+
     override fun serve(session: IHTTPSession): Response {
-        if (session.method != Method.POST || (session.uri != BEER_FILL_PATH && session.uri != CHORE_EVENT_PATH)) {
+        if (session.method != Method.POST || session.uri !in knownPaths) {
             return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "not found")
         }
         if (session.headers[TOKEN_HEADER] != WATCH_RELAY_TOKEN) {
@@ -145,22 +160,49 @@ private class RelayHttpServer(
                 }
                 { onBeerFill(volumeMl) }
             }
-            else -> {
+            CHORE_EVENT_PATH -> {
                 val typeId = session.parameters[TYPE_ID_PARAM]?.firstOrNull()?.trim()
                 if (typeId.isNullOrEmpty()) {
                     return newFixedLengthResponse(Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "invalid typeId")
                 }
                 { onChoreEvent(typeId) }
             }
+            else -> {
+                // NanoHTTPD 2.3.1 leaves session.inputStream positioned exactly
+                // at the body start (mark/reset in decodeHeader), so reading
+                // Content-Length raw bytes here is safe for binary — unlike
+                // parseBody(), which would UTF-8-decode and trim() the body.
+                val length = session.headers["content-length"]?.toIntOrNull() ?: -1
+                if (length <= 0 || length > AUDIO_NOTE_MAX_BYTES) {
+                    return newFixedLengthResponse(Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "invalid body length")
+                }
+                val body = ByteArray(length)
+                var read = 0
+                while (read < length) {
+                    val r = session.inputStream.read(body, read, length - read)
+                    if (r < 0) break
+                    read += r
+                }
+                if (read != length) {
+                    return newFixedLengthResponse(Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "truncated body")
+                }
+                { onAudioNote(body) }
+            }
         }
 
+        // The audio-note PoC only writes to local disk, so it doesn't need
+        // the backend to be reachable; the beer/chore paths do.
+        val needsBackend = session.uri != AUDIO_NOTE_PATH
+
         return runBlocking {
-            val reachable = when (networkGate.ensureReachable()) {
-                NetworkGate.Result.OnHomeNetwork, NetworkGate.Result.Connected -> true
-                else -> false
-            }
-            if (!reachable) {
-                return@runBlocking newFixedLengthResponse(Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "backend unreachable")
+            if (needsBackend) {
+                val reachable = when (networkGate.ensureReachable()) {
+                    NetworkGate.Result.OnHomeNetwork, NetworkGate.Result.Connected -> true
+                    else -> false
+                }
+                if (!reachable) {
+                    return@runBlocking newFixedLengthResponse(Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "backend unreachable")
+                }
             }
             try {
                 action()
