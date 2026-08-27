@@ -37,6 +37,7 @@ data class OutboxTrackerEventCreatePayload(
     val occurredOn: String,
     val occurredAt: String? = null,
     val note: String? = null,
+    val source: String = "manual",
 )
 
 @Serializable
