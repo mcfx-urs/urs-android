@@ -79,6 +79,10 @@
     <string name="note_richtext_link_open">Open link</string>
     <string name="note_richtext_link_remove">Remove link</string>
     <string name="note_richtext_link_save">Save</string>
+    <string name="note_share">Share</string>
+    <string name="note_export_share_text">Share as text</string>
+    <string name="note_export_calendar_event">Create calendar event</string>
+    <string name="note_export_no_app">No app available for this</string>
 
     <string name="settings_title">Settings</string>
     <string name="settings_tile_account">Account</string>
