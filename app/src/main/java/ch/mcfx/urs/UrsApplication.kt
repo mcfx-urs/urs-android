@@ -374,4 +374,14 @@ class AppContainer(context: Context) {
         context, reminderStore, notificationSender,
         quantityLookup = { inventoryId, productId -> inventoryRepository.getProductQuantity(inventoryId, productId) },
     )
+
+    init {
+        // SyncManager is constructed before ShoppingListRepository, so the
+        // list-conflict refresh hook is late-bound here. Wrapped in
+        // applicationScope.launch so it never re-enters syncNow() from
+        // inside a replay pass — see SyncManager.onListConflictResolved.
+        syncManager.onListConflictResolved = {
+            applicationScope.launch { shoppingListRepository.refreshFromBackend() }
+        }
+    }
 }
