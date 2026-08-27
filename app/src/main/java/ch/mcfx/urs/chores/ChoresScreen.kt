@@ -74,11 +74,16 @@ import java.util.Locale
 private const val MAX_DOTS = 4
 private const val MonthSwipeThresholdPx = 64f
 
+// The design system has no "error"/"warning" colour role yet — same local
+// constant approach as AdminScreen's FormErrorColor.
+private val OverdueBadgeColor = Color(0xFFD64545)
+
 @Composable
 fun ChoresScreen(viewModel: ChoresViewModel = viewModel(factory = ChoresViewModel.Factory)) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val month by viewModel.month.collectAsStateWithLifecycle()
     val hiddenTypeIds by viewModel.hiddenTypeIds.collectAsStateWithLifecycle()
+    val notifyTypeIds by viewModel.notifyTypeIds.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     var daySheet by remember { mutableStateOf<LocalDate?>(null) }
@@ -154,18 +159,23 @@ fun ChoresScreen(viewModel: ChoresViewModel = viewModel(factory = ChoresViewMode
 
         typeEditor?.let { target ->
             UrsBottomSheet(onDismissRequest = { typeEditor = null }) {
+                val editingType = (target as? TypeEditorTarget.Edit)?.type
                 TypeEditorSheet(
                     target = target,
-                    onSave = { name, color, icon, calendar ->
+                    onSave = { name, color, icon, calendar, interval ->
                         when (target) {
-                            TypeEditorTarget.New -> viewModel.createType(name, color, icon, calendar)
-                            is TypeEditorTarget.Edit -> viewModel.updateType(target.type.id, name, color, icon, calendar)
+                            TypeEditorTarget.New -> viewModel.createType(name, color, icon, calendar, interval)
+                            is TypeEditorTarget.Edit -> viewModel.updateType(target.type.id, name, color, icon, calendar, interval)
                         }
                         typeEditor = null
                     },
                     onArchive = {
                         (target as? TypeEditorTarget.Edit)?.let { viewModel.archiveType(it.type.id) }
                         typeEditor = null
+                    },
+                    notifyOverdueEnabled = editingType?.let { it.publicId in notifyTypeIds } ?: false,
+                    onNotifyOverdueChange = editingType?.let { type ->
+                        { on: Boolean -> viewModel.setTypeNotifyEnabled(type.publicId, on) }
                     },
                 )
             }
@@ -503,6 +513,7 @@ private fun StatsStrip(types: List<TrackerTypeEntity>, lastDoneByType: Map<Strin
                 last == today -> stringResource(R.string.chores_stat_today)
                 else -> stringResource(R.string.chores_stat_days_ago, ChronoUnit.DAYS.between(last, today))
             }
+            val overdue = isChoreOverdue(type.expectedIntervalDays, last, today)
             UrsCard {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
@@ -511,6 +522,17 @@ private fun StatsStrip(types: List<TrackerTypeEntity>, lastDoneByType: Map<Strin
                         UrsText(type.name, style = UrsTheme.typography.body)
                     }
                     UrsText(text, style = UrsTheme.typography.caption, color = UrsTheme.colors.onSurfaceMuted)
+                    if (overdue) {
+                        UrsText(
+                            text = stringResource(R.string.chores_stat_overdue),
+                            style = UrsTheme.typography.caption,
+                            color = UrsTheme.colors.onAccent,
+                            modifier = Modifier
+                                .clip(Radius.pill)
+                                .background(OverdueBadgeColor)
+                                .padding(horizontal = Spacing.s, vertical = 2.dp),
+                        )
+                    }
                 }
             }
         }

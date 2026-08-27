@@ -58,12 +58,18 @@ class ChoreRepository(
 
     // --- Types ---
 
-    suspend fun createType(name: String, color: String, icon: String, calendar: String?) {
+    suspend fun createType(name: String, color: String, icon: String, calendar: String?, expectedIntervalDays: Int?) {
         val outboxId = outboxDao.insert(
             OutboxMutationEntity(
                 type = OutboxMutationEntity.TYPE_CREATE_TRACKER_TYPE,
                 payloadJson = json.encodeToString(
-                    OutboxTrackerTypeCreatePayload(name = name, color = color, icon = icon, calendar = calendar),
+                    OutboxTrackerTypeCreatePayload(
+                        name = name,
+                        color = color,
+                        icon = icon,
+                        calendar = calendar,
+                        expectedIntervalDays = expectedIntervalDays,
+                    ),
                 ),
                 createdAt = System.currentTimeMillis(),
             ),
@@ -76,20 +82,36 @@ class ChoreRepository(
                 color = color,
                 icon = icon,
                 calendar = calendar,
+                expectedIntervalDays = expectedIntervalDays,
                 syncStatus = SyncStatus.PENDING,
             ),
         )
         applicationScope.launch { syncManager.syncNow() }
     }
 
-    suspend fun updateType(localId: Long, name: String, color: String, icon: String, calendar: String?) {
+    suspend fun updateType(
+        localId: Long,
+        name: String,
+        color: String,
+        icon: String,
+        calendar: String?,
+        expectedIntervalDays: Int?,
+    ) {
         val current = trackerTypeDao.getById(localId) ?: return
 
         val outboxId = if (current.serverId == null) {
             current.outboxId?.let {
                 outboxDao.updatePayload(
                     it,
-                    json.encodeToString(OutboxTrackerTypeCreatePayload(name = name, color = color, icon = icon, calendar = calendar)),
+                    json.encodeToString(
+                        OutboxTrackerTypeCreatePayload(
+                            name = name,
+                            color = color,
+                            icon = icon,
+                            calendar = calendar,
+                            expectedIntervalDays = expectedIntervalDays,
+                        ),
+                    ),
                 )
             }
             current.outboxId
@@ -99,13 +121,20 @@ class ChoreRepository(
                 OutboxMutationEntity(
                     type = OutboxMutationEntity.TYPE_UPDATE_TRACKER_TYPE,
                     payloadJson = json.encodeToString(
-                        OutboxTrackerTypeUpdatePayload(serverId = current.serverId, name = name, color = color, icon = icon, calendar = calendar),
+                        OutboxTrackerTypeUpdatePayload(
+                            serverId = current.serverId,
+                            name = name,
+                            color = color,
+                            icon = icon,
+                            calendar = calendar,
+                            expectedIntervalDays = expectedIntervalDays,
+                        ),
                     ),
                     createdAt = System.currentTimeMillis(),
                 ),
             )
         }
-        trackerTypeDao.updateFields(localId, name, color, icon, calendar, SyncStatus.PENDING, outboxId)
+        trackerTypeDao.updateFields(localId, name, color, icon, calendar, expectedIntervalDays, SyncStatus.PENDING, outboxId)
         applicationScope.launch { syncManager.syncNow() }
     }
 
@@ -281,6 +310,7 @@ private fun TrackerTypeDto.toEntity(userId: String) = TrackerTypeEntity(
     color = color,
     icon = icon,
     calendar = calendar.ifBlank { null },
+    expectedIntervalDays = expectedIntervalDays.toIntOrNull(),
     archivedAtMillis = archivedAt.ifBlank { null }?.toArchivedMillisOrNull(),
     lastExportedAtMillis = lastExportedAt.ifBlank { null }?.toArchivedMillisOrNull(),
     syncStatus = SyncStatus.SYNCED,

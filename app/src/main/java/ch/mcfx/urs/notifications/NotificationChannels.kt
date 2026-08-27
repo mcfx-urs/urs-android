@@ -14,6 +14,7 @@ object NotificationChannels {
     const val WATCH_RELAY = "watch_relay"
     const val BAKING = "baking"
     const val NOTES = "notes"
+    const val CHORES = "chores"
 
     private data class ChannelDef(
         val id: String,
@@ -45,6 +46,12 @@ object NotificationChannels {
             id = NOTES,
             name = "Notes",
             description = "Reminders for your own notes",
+            importance = NotificationManager.IMPORTANCE_DEFAULT,
+        ),
+        ChannelDef(
+            id = CHORES,
+            name = "Chores",
+            description = "Reminders when a recurring chore is overdue",
             importance = NotificationManager.IMPORTANCE_DEFAULT,
         ),
     )

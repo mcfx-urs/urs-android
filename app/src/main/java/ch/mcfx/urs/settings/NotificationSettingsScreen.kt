@@ -31,9 +31,11 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
 import ch.mcfx.urs.ui.components.UrsCard
+import ch.mcfx.urs.ui.components.UrsCheckbox
 import ch.mcfx.urs.ui.components.UrsOutlinedButton
 import ch.mcfx.urs.ui.components.UrsPill
 import ch.mcfx.urs.ui.components.UrsText
@@ -110,6 +112,31 @@ fun NotificationSettingsScreen(
             enabled = hasNotificationPermission,
             onClick = viewModel::sendTestNotification,
         )
+
+        val choreRemindersEnabled by viewModel.choreRemindersEnabled.collectAsStateWithLifecycle()
+        ToggleRow(
+            label = stringResource(R.string.notifications_chore_overdue_label),
+            checked = choreRemindersEnabled,
+            onCheckedChange = viewModel::setChoreRemindersEnabled,
+        )
+    }
+}
+
+@Composable
+private fun ToggleRow(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    UrsCard(
+        radius = Radius.row,
+        contentPadding = PaddingValues(horizontal = Spacing.l, vertical = 14.dp),
+        modifier = Modifier.fillMaxWidth().clickable { onCheckedChange(!checked) },
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            UrsText(label, style = UrsTheme.typography.body)
+            UrsCheckbox(checked = checked, onCheckedChange = onCheckedChange)
+        }
     }
 }
 

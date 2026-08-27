@@ -11,6 +11,8 @@ import ch.mcfx.urs.auth.AuthInterceptor
 import ch.mcfx.urs.auth.AuthRepository
 import ch.mcfx.urs.auth.AuthTokenStore
 import ch.mcfx.urs.auth.BiometricGate
+import ch.mcfx.urs.chores.ChoreOverdueWorker
+import ch.mcfx.urs.chores.ChoreReminderSettingsStore
 import ch.mcfx.urs.data.BakingRepository
 import ch.mcfx.urs.data.BeerRepository
 import ch.mcfx.urs.data.CatalogRepository
@@ -97,6 +99,9 @@ class UrsApplication : Application() {
         // a much faster connectivity-triggered path also exists via
         // NetworkGate's own callback, see AppContainer.networkGate below.
         SyncWorker.enqueuePeriodic(this)
+        // Twice-a-day overdue-chore check; the worker itself no-ops unless
+        // the Settings toggle is on (GitHub issue #29).
+        ChoreOverdueWorker.enqueuePeriodic(this)
         // Re-arms the life map's periodic capture across process restarts —
         // WorkManager itself persists periodic work across reboot, but this
         // covers the case where it was never enqueued in this process at
@@ -385,6 +390,8 @@ class AppContainer(context: Context) {
         applicationScope = applicationScope,
         json = json,
     )
+
+    val choreReminderSettingsStore = ChoreReminderSettingsStore(context)
 
     val reminderStore = ReminderStore(context)
     val notificationSender = NotificationSender(context)

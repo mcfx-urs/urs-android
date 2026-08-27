@@ -17,6 +17,10 @@ import androidx.room.PrimaryKey
  * `.ics` file on export (GitHub issue #28); [lastExportedAtMillis] marks
  * how far the last "only new events" export got.
  *
+ * [expectedIntervalDays] is an optional cadence in days (GitHub issue
+ * #29): when set, the stats strip flags the type overdue once it has been
+ * that long since the last event, and an opt-in reminder can fire.
+ *
  * [userId] filters [TrackerTypeDao]'s observe queries, same per-user
  * privacy defense-in-depth as [NoteEntity.userId].
  */
@@ -30,6 +34,7 @@ data class TrackerTypeEntity(
     val color: String,
     val icon: String,
     val calendar: String? = null,
+    val expectedIntervalDays: Int? = null,
     val archivedAtMillis: Long? = null,
     val lastExportedAtMillis: Long? = null,
     val syncStatus: SyncStatus,
