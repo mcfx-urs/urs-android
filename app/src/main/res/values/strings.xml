@@ -653,6 +653,8 @@
     <string name="admin_restart_back_up">The server is back up.</string>
     <string name="admin_restart_check_timeout">Still not reachable. It may need more time, or something went wrong.</string>
     <string name="admin_restart_failed">Restart failed. Please try again.</string>
+    <string name="admin_log_level_label">Log level</string>
+    <string name="admin_log_level_failed">Could not change the log level. Please try again.</string>
     <string name="settings_tile_image_generator">Image Generator</string>
     <string name="image_generator_title">Image Generator</string>
     <string name="image_generator_description">Generates an image from a free-text prompt via gpt-image-1. Nothing is stored on the server; save a result to your gallery to keep it.</string>

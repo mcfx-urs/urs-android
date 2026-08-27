@@ -789,6 +789,13 @@ data class NoteStatusPatchPayload(
     val status: String,
 )
 
+// Body/response shape for the admin log-level endpoints. The JSON key
+// already matches the field name, so no @SerialName is needed.
+@Serializable
+data class LogLevelDto(
+    val level: String,
+)
+
 @Serializable
 data class TrackerTypeDto(
     @SerialName("tracker_type_id") val id: String,
