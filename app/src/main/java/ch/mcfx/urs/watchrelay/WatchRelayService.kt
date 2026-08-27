@@ -17,13 +17,16 @@ import ch.mcfx.urs.beer.BeerStats
 import ch.mcfx.urs.notifications.NotificationChannels
 import ch.mcfx.urs.vpn.NetworkGate
 import fi.iki.elonen.NanoHTTPD
+import java.time.LocalDate
 import java.time.LocalDateTime
 import kotlinx.coroutines.runBlocking
 
 private const val RELAY_PORT = 8787
 private const val BEER_FILL_PATH = "/api/watch/beer-fill"
+private const val CHORE_EVENT_PATH = "/api/watch/chore-event"
 private const val TOKEN_HEADER = "x-relay-token"
 private const val VOLUME_PARAM = "volume"
+private const val TYPE_ID_PARAM = "typeId"
 private const val NOTIFICATION_ID = 1
 
 /**
@@ -45,9 +48,21 @@ class WatchRelayService : Service() {
         super.onCreate()
         startForegroundWithNotification()
         val container = (application as UrsApplication).container
-        server = RelayHttpServer(container.networkGate) { volumeMl ->
-            container.beerRepository.logBeer(volumeMl, LocalDateTime.now().format(BeerStats.DATE_FORMAT))
-        }.also { it.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false) }
+        server = RelayHttpServer(
+            networkGate = container.networkGate,
+            onBeerFill = { volumeMl ->
+                container.beerRepository.logBeer(volumeMl, LocalDateTime.now().format(BeerStats.DATE_FORMAT))
+            },
+            onChoreEvent = { typeId ->
+                container.choreRepository.logEvent(
+                    typeId = typeId,
+                    occurredOn = LocalDate.now().toString(),
+                    occurredAt = null,
+                    note = null,
+                    source = "watch",
+                )
+            },
+        ).also { it.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false) }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
@@ -111,19 +126,34 @@ class WatchRelayService : Service() {
 private class RelayHttpServer(
     private val networkGate: NetworkGate,
     private val onBeerFill: suspend (volumeMl: Int) -> Unit,
+    private val onChoreEvent: suspend (typeId: String) -> Unit,
 ) : NanoHTTPD("127.0.0.1", RELAY_PORT) {
 
     override fun serve(session: IHTTPSession): Response {
-        if (session.method != Method.POST || session.uri != BEER_FILL_PATH) {
+        if (session.method != Method.POST || (session.uri != BEER_FILL_PATH && session.uri != CHORE_EVENT_PATH)) {
             return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "not found")
         }
         if (session.headers[TOKEN_HEADER] != WATCH_RELAY_TOKEN) {
             return newFixedLengthResponse(Response.Status.UNAUTHORIZED, MIME_PLAINTEXT, "unauthorized")
         }
-        val volumeMl = session.parameters[VOLUME_PARAM]?.firstOrNull()?.toIntOrNull()
-        if (volumeMl == null || volumeMl <= 0) {
-            return newFixedLengthResponse(Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "invalid volume")
+
+        val action: (suspend () -> Unit) = when (session.uri) {
+            BEER_FILL_PATH -> {
+                val volumeMl = session.parameters[VOLUME_PARAM]?.firstOrNull()?.toIntOrNull()
+                if (volumeMl == null || volumeMl <= 0) {
+                    return newFixedLengthResponse(Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "invalid volume")
+                }
+                { onBeerFill(volumeMl) }
+            }
+            else -> {
+                val typeId = session.parameters[TYPE_ID_PARAM]?.firstOrNull()?.trim()
+                if (typeId.isNullOrEmpty()) {
+                    return newFixedLengthResponse(Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "invalid typeId")
+                }
+                { onChoreEvent(typeId) }
+            }
         }
+
         return runBlocking {
             val reachable = when (networkGate.ensureReachable()) {
                 NetworkGate.Result.OnHomeNetwork, NetworkGate.Result.Connected -> true
@@ -133,7 +163,7 @@ private class RelayHttpServer(
                 return@runBlocking newFixedLengthResponse(Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "backend unreachable")
             }
             try {
-                onBeerFill(volumeMl)
+                action()
                 newFixedLengthResponse(Response.Status.OK, MIME_PLAINTEXT, "ok")
             } catch (e: Exception) {
                 newFixedLengthResponse(Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "failed: ${e.message}")

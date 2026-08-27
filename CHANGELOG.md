@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Admin screen can view and change the backend log level (debug/info/warn/error) at runtime, applied immediately with no server restart (#16).
 - Chores calendar export: an action in the Chores screen builds one `.ics` file per calendar label from local data and shares it via the Android share sheet, scoped to new events since the last export or everything again; types gain an optional calendar label in the type editor (#28).
 - Chores overdue tracking: types can set an expected interval in days; the stats strip shows an "overdue" badge once that long has passed since the last entry, and an opt-in per-type reminder fires via a periodic check, gated by a new "Chore overdue reminders" toggle in notification settings (#29).
+- Watch relay: new `POST /api/watch/chore-event` endpoint logs a chore entry for a given tracker-type id with `source = watch` and today's date, using the same token and network-gate checks as the beer-fill path (urs-zepp#3).
 - Super-user-only Image Generator screen: generate an image from a free-text prompt with adjustable size/quality/background, preview it, then save it to the device gallery, share it, or delete it. Nothing is stored server-side (#20).
 
 ### Changed

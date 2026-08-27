@@ -942,6 +942,7 @@ class SyncManager(
                 occurredOn = payload.occurredOn,
                 occurredAt = payload.occurredAt.orEmpty(),
                 note = payload.note.orEmpty(),
+                source = payload.source,
             ),
         )
         trackerEventDao.markSynced(localEvent.id, response.id, resolvedTypeId)

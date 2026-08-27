@@ -186,12 +186,18 @@ class ChoreRepository(
 
     // --- Events ---
 
-    suspend fun logEvent(typeId: String, occurredOn: String, occurredAt: String?, note: String?) {
+    suspend fun logEvent(typeId: String, occurredOn: String, occurredAt: String?, note: String?, source: String = "manual") {
         val outboxId = outboxDao.insert(
             OutboxMutationEntity(
                 type = OutboxMutationEntity.TYPE_CREATE_TRACKER_EVENT,
                 payloadJson = json.encodeToString(
-                    OutboxTrackerEventCreatePayload(trackerTypeId = typeId, occurredOn = occurredOn, occurredAt = occurredAt, note = note),
+                    OutboxTrackerEventCreatePayload(
+                        trackerTypeId = typeId,
+                        occurredOn = occurredOn,
+                        occurredAt = occurredAt,
+                        note = note,
+                        source = source,
+                    ),
                 ),
                 createdAt = System.currentTimeMillis(),
             ),
@@ -204,6 +210,7 @@ class ChoreRepository(
                 occurredOn = occurredOn,
                 occurredAt = occurredAt,
                 note = note,
+                source = source,
                 syncStatus = SyncStatus.PENDING,
             ),
         )
