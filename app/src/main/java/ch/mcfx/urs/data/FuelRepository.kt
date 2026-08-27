@@ -75,6 +75,11 @@ class FuelRepository(
     // tolerate a plain network error via their own existing UI state.
     suspend fun getStations(): List<FillingStationDto> = emptyAsNull { api.getFillingStations() }
 
+    // Super-user-only review queue of ad-hoc (gps_auto) stations. No Room
+    // caching (same as CatalogRepository's pending images) — always a fresh
+    // fetch, since a stale queue would show already-completed stations.
+    suspend fun getPendingStations(): List<FillingStationDto> = emptyAsNull { api.getPendingFillingStations() }
+
     suspend fun createStation(name: String, address: String = "", latitude: String? = null, longitude: String? = null) {
         api.createFillingStation(
             FillingStationPayload(

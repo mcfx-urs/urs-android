@@ -52,6 +52,11 @@ interface UrsApi {
     @GET("api/v1/get-filling-station")
     suspend fun getFillingStations(): List<FillingStationDto>
 
+    // Super-user-gated server-side — lists the ad-hoc (gps_auto) stations
+    // awaiting review, which getFillingStations() deliberately excludes.
+    @GET("api/v1/admin/filling-station/pending")
+    suspend fun getPendingFillingStations(): List<FillingStationDto>
+
     @POST("api/v1/filling-station")
     suspend fun createFillingStation(@Body payload: FillingStationPayload): FillingStationDto
 
