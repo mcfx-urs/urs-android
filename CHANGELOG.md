@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Note editor can export the open note: share it as plain text via the Android share sheet, or open a pre-filled calendar event built from its title, content, and reminder time (#22).
 - The About screen's Sync row opens a detail sheet listing every queued or failed change with its error, plus a manual "Sync now" trigger (#23).
 - Default vehicle per user: set it in Settings or via a quick-switch chip row on the Fuel hub; drives the Home consumption stat, the Statistics filter, and the pre-selected vehicle when adding a fill-up, and syncs across devices (#13).
+- The gas station edit list now shows a super-user-only "Ad-hoc stations to review" section listing GPS-located stations auto-created on fill-up, so their name and address can be filled in from the same edit form (#17).
 
 ### Changed
 

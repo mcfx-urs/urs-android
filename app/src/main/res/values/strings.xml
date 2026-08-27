@@ -424,6 +424,8 @@
     <string name="station_map_title">Confirm position</string>
     <string name="station_map_instructions">Drag the pin or tap the map to adjust the position.</string>
     <string name="station_map_confirm">Use this position</string>
+    <string name="stations_pending_review_title">Ad-hoc stations to review</string>
+    <string name="stations_all_title">All stations</string>
 
     <string name="fuel_price_fuel_type">Fuel type</string>
 
