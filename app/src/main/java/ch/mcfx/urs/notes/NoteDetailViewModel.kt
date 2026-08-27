@@ -45,6 +45,10 @@ data class NoteDetailFormState(
 ) {
     val isValid: Boolean
         get() = title.isNotBlank() && (!reminderEnabled || (reminderDate.isNotBlank() && reminderTime.isNotBlank()))
+
+    /** The reminder as epoch millis when it's enabled and both fields parse, else null — used by the note export actions. */
+    val reminderMillis: Long?
+        get() = if (reminderEnabled) dateAndTimeToMillis(reminderDate, reminderTime) else null
 }
 
 class NoteDetailViewModel(private val repository: NoteRepository) : ViewModel() {

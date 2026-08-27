@@ -1,5 +1,11 @@
 package ch.mcfx.urs.notes
 
+import android.content.Context
+import android.content.Intent
+import android.provider.CalendarContract
+import android.widget.Toast
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,10 +17,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -23,9 +31,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
@@ -48,7 +63,11 @@ import ch.mcfx.urs.ui.components.UrsTextField
 import ch.mcfx.urs.ui.components.UrsTimeField
 import ch.mcfx.urs.ui.components.ursFormScrollPadding
 import ch.mcfx.urs.ui.theme.UrsTheme
+import ch.mcfx.urs.ui.tokens.Radius
 import ch.mcfx.urs.ui.tokens.Spacing
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 
 // No "error" role in the design system's palette yet — same local-constant
 // pattern already used elsewhere (e.g. WorkTimeAddScreen).
@@ -114,15 +133,26 @@ private fun NoteForm(
     val nextFieldAction = KeyboardActions(onNext = {})
     val isEditing = form.localId != null
     val formScrollState = rememberScrollState()
+    val context = LocalContext.current
 
     Column(
         modifier = Modifier.ursFormScrollPadding(scrollState = formScrollState),
         verticalArrangement = Arrangement.spacedBy(Spacing.m),
     ) {
-        UrsText(
-            stringResource(if (isEditing) R.string.note_detail_title_edit else R.string.note_detail_title_new),
-            style = UrsTheme.typography.screenTitle,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            UrsText(
+                stringResource(if (isEditing) R.string.note_detail_title_edit else R.string.note_detail_title_new),
+                style = UrsTheme.typography.screenTitle,
+                modifier = Modifier.weight(1f),
+            )
+            NoteExportMenu(
+                onShareAsText = { shareNoteAsText(context, form) },
+                onCreateCalendarEvent = { createNoteCalendarEvent(context, form) },
+            )
+        }
 
         UrsTextField(
             value = form.title,
@@ -267,4 +297,109 @@ private fun DeleteConfirmSheet(onConfirm: () -> Unit, onCancel: () -> Unit) {
             UrsButton(text = stringResource(R.string.note_delete), onClick = onConfirm, modifier = Modifier.weight(1f))
         }
     }
+}
+
+/**
+ * Share icon that drops a two-item menu below itself. Built on [Popup] with
+ * the same elevated-surface treatment as [ch.mcfx.urs.ui.components.UrsDropdownField]'s
+ * option list rather than `material3.DropdownMenu`, which this app
+ * deliberately doesn't pull in outside the date/time pickers.
+ */
+@Composable
+private fun NoteExportMenu(
+    onShareAsText: () -> Unit,
+    onCreateCalendarEvent: () -> Unit,
+) {
+    val colors = UrsTheme.colors
+    val shape = RoundedCornerShape(Radius.row)
+    var expanded by remember { mutableStateOf(false) }
+    val dropBelowPx = with(LocalDensity.current) { 48.dp.roundToPx() }
+
+    Box {
+        UrsIconButton(
+            onClick = { expanded = true },
+            contentDescription = stringResource(R.string.note_share),
+            imageVector = Icons.Filled.Share,
+        )
+        if (expanded) {
+            Popup(
+                alignment = Alignment.TopEnd,
+                offset = IntOffset(0, dropBelowPx),
+                onDismissRequest = { expanded = false },
+            ) {
+                Column(
+                    modifier = Modifier
+                        .shadow(
+                            elevation = 10.dp,
+                            shape = shape,
+                            ambientColor = colors.shadowColor.copy(alpha = colors.shadowAlpha),
+                            spotColor = colors.shadowColor.copy(alpha = colors.shadowAlpha),
+                        )
+                        .clip(shape)
+                        .background(colors.surface)
+                        .then(if (colors.border.alpha > 0f) Modifier.border(1.dp, colors.border, shape) else Modifier)
+                        .padding(vertical = Spacing.xs),
+                ) {
+                    NoteExportMenuItem(stringResource(R.string.note_export_share_text)) {
+                        expanded = false
+                        onShareAsText()
+                    }
+                    NoteExportMenuItem(stringResource(R.string.note_export_calendar_event)) {
+                        expanded = false
+                        onCreateCalendarEvent()
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NoteExportMenuItem(text: String, onClick: () -> Unit) {
+    UrsText(
+        text = text,
+        style = UrsTheme.typography.body,
+        color = UrsTheme.colors.onSurface,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = Spacing.l, vertical = Spacing.m),
+    )
+}
+
+/** Builds title + blank line + plain-text content and hands it to the system share sheet. */
+private fun shareNoteAsText(context: Context, form: NoteDetailFormState) {
+    val send = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_SUBJECT, form.title)
+        putExtra(Intent.EXTRA_TEXT, form.title + "\n\n" + noteMarkupToPlainText(form.content))
+    }
+    context.startExportActivity(Intent.createChooser(send, null))
+}
+
+/**
+ * Opens the calendar app's unsaved "new event" editor pre-filled from the
+ * note. Begins at the reminder time when one is set, otherwise the next full
+ * hour, and runs for one hour.
+ */
+private fun createNoteCalendarEvent(context: Context, form: NoteDetailFormState) {
+    val begin = form.reminderMillis ?: LocalDateTime.now()
+        .truncatedTo(ChronoUnit.HOURS)
+        .plusHours(1)
+        .atZone(ZoneId.systemDefault())
+        .toInstant()
+        .toEpochMilli()
+    val insert = Intent(Intent.ACTION_INSERT).apply {
+        data = CalendarContract.Events.CONTENT_URI
+        putExtra(CalendarContract.Events.TITLE, form.title)
+        putExtra(CalendarContract.Events.DESCRIPTION, noteMarkupToPlainText(form.content))
+        putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, begin)
+        putExtra(CalendarContract.EXTRA_EVENT_END_TIME, begin + 60L * 60L * 1000L)
+    }
+    context.startExportActivity(insert)
+}
+
+private fun Context.startExportActivity(intent: Intent) {
+    runCatching { startActivity(intent) }
+        .onFailure { Toast.makeText(this, R.string.note_export_no_app, Toast.LENGTH_SHORT).show() }
 }
