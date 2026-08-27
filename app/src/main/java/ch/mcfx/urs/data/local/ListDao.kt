@@ -37,7 +37,16 @@ interface ListDao {
             val existingLocalId = findLocalIdByServerId(serverId)
             replace(list.copy(id = existingLocalId ?: 0))
         }
+        deleteSyncedAbsentFromServer(lists.mapNotNull { it.serverId })
     }
+
+    // Reconciliation half of [upsertFromServer] — same rationale as
+    // [ListItemDao.deleteSyncedAbsentFromServer], scoped globally since a
+    // list is the top-level entity with no parent to scope by: a list
+    // deleted (or unshared) on another device stops reappearing on the
+    // next pull instead of sitting there permanently with no outbox link.
+    @Query("DELETE FROM list WHERE syncStatus = 'SYNCED' AND serverId NOT IN (:serverIds)")
+    suspend fun deleteSyncedAbsentFromServer(serverIds: List<String>)
 
     @Query(
         "UPDATE list SET name = :name, syncStatus = :syncStatus, outboxId = :outboxId WHERE id = :id",
