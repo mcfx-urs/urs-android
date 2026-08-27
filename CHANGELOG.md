@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- The watch relay's beer-fill endpoint logs the volume passed in the request rather than a fixed 500 ml, and rejects a missing or invalid volume (#26).
+
 ## [0.20.0] - 2026-08-24
 
 ### Added
