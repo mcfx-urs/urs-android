@@ -20,4 +20,5 @@ object SettingsRoutes {
     const val PRODUCT_MANAGEMENT = "settings/product-management"
     const val ADMIN = "settings/admin"
     const val IMAGE_REVIEW = "settings/image-review"
+    const val IMAGE_GENERATOR = "settings/image-generator"
 }

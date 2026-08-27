@@ -57,6 +57,16 @@ class StationsViewModel(
     private val _showForm = MutableStateFlow(false)
     val showForm: StateFlow<Boolean> = _showForm.asStateFlow()
 
+    // Ad-hoc (gps_auto) stations awaiting a super user completing them.
+    // Kept separate from [uiState] and never fetched from [init] — this
+    // ViewModel serves every user, so the fetch only runs once the screen
+    // confirms the caller is a super user (see FuelStationsScreen).
+    private val _pendingStations = MutableStateFlow<List<FillingStationDto>>(emptyList())
+    val pendingStations: StateFlow<List<FillingStationDto>> = _pendingStations.asStateFlow()
+
+    private val _pendingLoadFailed = MutableStateFlow(false)
+    val pendingLoadFailed: StateFlow<Boolean> = _pendingLoadFailed.asStateFlow()
+
     // One-shot event: fires once a geocode search succeeds, so
     // FuelStationsScreen can navigate to the map-confirm step exactly once,
     // not on every recomposition of the form state it also just updated.
@@ -76,6 +86,20 @@ class StationsViewModel(
                 throw e
             } catch (e: Exception) {
                 _uiState.value = StationsUiState.Error(e.message ?: "unknown")
+            }
+        }
+    }
+
+    // Called from FuelStationsScreen only when the caller is a super user.
+    fun loadPendingStations() {
+        viewModelScope.launch {
+            try {
+                _pendingStations.value = repository.getPendingStations()
+                _pendingLoadFailed.value = false
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                _pendingLoadFailed.value = true
             }
         }
     }
@@ -166,6 +190,9 @@ class StationsViewModel(
                 }
                 _showForm.value = false
                 load()
+                // Keep the super-user pending section in sync with the edit
+                // that just landed (only ever populated for a super user).
+                if (_pendingStations.value.isNotEmpty()) loadPendingStations()
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
