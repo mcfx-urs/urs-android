@@ -38,6 +38,7 @@ import ch.mcfx.urs.baking.BakePlanDetailScreen
 import ch.mcfx.urs.baking.BakingHistoryScreen
 import ch.mcfx.urs.baking.BakingHubScreen
 import ch.mcfx.urs.baking.BakingRoutes
+import ch.mcfx.urs.chores.ChoresScreen
 import ch.mcfx.urs.notes.NoteDetailScreen
 import ch.mcfx.urs.notes.NotesHistoryScreen
 import ch.mcfx.urs.notes.NotesHubScreen
@@ -367,6 +368,7 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                     composable(NotesRoutes.HISTORY) {
                         NotesHistoryScreen(onOpenNote = { noteId -> navController.navigate(NotesRoutes.detail(noteId)) })
                     }
+                    composable(Destination.CHORES.route) { ChoresScreen() }
                     composable(Destination.BEER.route) { BeerScreen() }
                     composable(Destination.WORK_TIME.route) {
                         WorkTimeScreen(

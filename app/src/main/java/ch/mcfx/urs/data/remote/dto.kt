@@ -777,3 +777,42 @@ data class NoteCreatePayload(
 data class NoteStatusPatchPayload(
     val status: String,
 )
+
+@Serializable
+data class TrackerTypeDto(
+    @SerialName("tracker_type_id") val id: String,
+    @SerialName("tracker_type_user_id") val userId: String = "",
+    @SerialName("tracker_type_name") val name: String,
+    @SerialName("tracker_type_color") val color: String,
+    @SerialName("tracker_type_icon") val icon: String,
+    @SerialName("tracker_type_archived_at") val archivedAt: String = "",
+)
+
+// Shared by POST and PUT /api/v1/tracker-type — same body shape both ways.
+@Serializable
+data class TrackerTypePayload(
+    @SerialName("tracker_type_name") val name: String,
+    @SerialName("tracker_type_color") val color: String,
+    @SerialName("tracker_type_icon") val icon: String,
+)
+
+@Serializable
+data class TrackerEventDto(
+    @SerialName("tracker_event_id") val id: String,
+    @SerialName("tracker_event_user_id") val userId: String = "",
+    @SerialName("tracker_event_tracker_type_id") val trackerTypeId: String,
+    @SerialName("tracker_event_occurred_on") val occurredOn: String,
+    @SerialName("tracker_event_occurred_at") val occurredAt: String = "",
+    @SerialName("tracker_event_note") val note: String = "",
+    @SerialName("tracker_event_source") val source: String = "manual",
+)
+
+// Shared by POST and PUT /api/v1/tracker-event.
+@Serializable
+data class TrackerEventPayload(
+    @SerialName("tracker_event_tracker_type_id") val trackerTypeId: String,
+    @SerialName("tracker_event_occurred_on") val occurredOn: String,
+    @SerialName("tracker_event_occurred_at") val occurredAt: String = "",
+    @SerialName("tracker_event_note") val note: String = "",
+    @SerialName("tracker_event_source") val source: String = "manual",
+)

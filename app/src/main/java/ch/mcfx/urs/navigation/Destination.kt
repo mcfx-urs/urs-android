@@ -2,6 +2,7 @@ package ch.mcfx.urs.navigation
 
 import ch.mcfx.urs.R
 import ch.mcfx.urs.baking.BakingRoutes
+import ch.mcfx.urs.chores.ChoresRoutes
 import ch.mcfx.urs.vehicle.VehicleHubRoutes
 import ch.mcfx.urs.fuel.FuelRoutes
 import ch.mcfx.urs.inventory.InventoryRoutes
@@ -31,6 +32,7 @@ enum class Destination(
     BEER("beer", R.string.nav_beer, isAvailable = true),
     BAKING(BakingRoutes.PLANS, R.string.nav_baking, isAvailable = true),
     NOTES(NotesRoutes.LIST, R.string.nav_notes, isAvailable = true),
+    CHORES(ChoresRoutes.MONTH, R.string.nav_chores, isAvailable = true),
     // Placeholder only — purpose not decided yet, reserves a Home grid slot
     // the same way GOKART/PRICE_MONITOR already do for their own
     // not-yet-built features.

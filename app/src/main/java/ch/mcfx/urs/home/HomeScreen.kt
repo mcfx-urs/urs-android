@@ -94,6 +94,7 @@ private val FEATURE_TILES = listOf(
     Destination.LIFE_MAP,
     Destination.BAKING,
     Destination.NOTES,
+    Destination.CHORES,
     Destination.PRICE_MONITOR,
     Destination.K,
     Destination.GOKART,
@@ -106,6 +107,9 @@ private val TILE_IMAGE = mapOf(
     Destination.BEER to R.drawable.tile_beer,
     Destination.BAKING to R.drawable.tile_baking,
     Destination.NOTES to R.drawable.tile_notes,
+    // Interim: reuses the K tile art until Chores gets its own commissioned
+    // piece (GitHub issue #27, part B).
+    Destination.CHORES to R.drawable.tile_k,
     Destination.PRICE_MONITOR to R.drawable.tile_price_monitor,
     Destination.K to R.drawable.tile_k,
     Destination.GOKART to R.drawable.tile_gokart,

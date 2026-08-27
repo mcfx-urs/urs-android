@@ -315,6 +315,33 @@ interface UrsApi {
     @DELETE("api/v1/note/{id}")
     suspend fun deleteNote(@Path("id") id: String)
 
+    @POST("api/v1/tracker-type")
+    suspend fun createTrackerType(@Body payload: TrackerTypePayload): TrackerTypeDto
+
+    @GET("api/v1/tracker-type")
+    suspend fun getTrackerTypes(): List<TrackerTypeDto>
+
+    @PUT("api/v1/tracker-type/{id}")
+    suspend fun updateTrackerType(@Path("id") id: String, @Body payload: TrackerTypePayload)
+
+    @DELETE("api/v1/tracker-type/{id}")
+    suspend fun archiveTrackerType(@Path("id") id: String)
+
+    @POST("api/v1/tracker-event")
+    suspend fun createTrackerEvent(@Body payload: TrackerEventPayload): TrackerEventDto
+
+    @GET("api/v1/tracker-event")
+    suspend fun getTrackerEvents(
+        @Query("from") from: String? = null,
+        @Query("to") to: String? = null,
+    ): List<TrackerEventDto>
+
+    @PUT("api/v1/tracker-event/{id}")
+    suspend fun updateTrackerEvent(@Path("id") id: String, @Body payload: TrackerEventPayload)
+
+    @DELETE("api/v1/tracker-event/{id}")
+    suspend fun deleteTrackerEvent(@Path("id") id: String)
+
     @POST("api/v1/admin/restart")
     suspend fun restartServer()
 
