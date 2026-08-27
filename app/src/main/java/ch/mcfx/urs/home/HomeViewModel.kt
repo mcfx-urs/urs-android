@@ -12,12 +12,16 @@ import ch.mcfx.urs.auth.AuthTokenStore
 import ch.mcfx.urs.beer.BeerStats
 import ch.mcfx.urs.data.BeerRepository
 import ch.mcfx.urs.data.FuelRepository
+import ch.mcfx.urs.data.UserRepository
+import ch.mcfx.urs.data.VehicleRepository
+import ch.mcfx.urs.data.resolveDefaultVehicleId
 import ch.mcfx.urs.fuel.FuelStats
 import ch.mcfx.urs.location.LocationProvider
 import java.time.LocalDate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 private const val QUICK_STAT_WINDOW_MONTHS = 6L
@@ -35,6 +39,8 @@ class HomeViewModel(
     private val beerRepository: BeerRepository,
     private val locationProvider: LocationProvider,
     private val authTokenStore: AuthTokenStore,
+    private val userRepository: UserRepository,
+    private val vehicleRepository: VehicleRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -54,8 +60,15 @@ class HomeViewModel(
             val fills = runCatching { fuelRepository.getFills() }.getOrDefault(emptyList())
             val since = LocalDate.now().minusMonths(QUICK_STAT_WINDOW_MONTHS)
             val beerEntries = runCatching { beerRepository.getEntries() }.getOrDefault(emptyList())
+            // The quick-stat tracks the user's default vehicle rather than a
+            // blended figure across the whole fleet — meaningless when the
+            // vehicles run on different fuels.
+            runCatching { userRepository.refreshDefaultVehicleId() }
+            val vehicleIds = runCatching { vehicleRepository.observeVehicles().first().map { it.id } }
+                .getOrDefault(emptyList())
+            val defaultVehicleId = resolveDefaultVehicleId(userRepository.defaultVehicleId.value, vehicleIds)
             _uiState.value = HomeUiState(
-                fuelAvgConsumptionL100Km = FuelStats.averageConsumptionL100Km(fills, since = since),
+                fuelAvgConsumptionL100Km = FuelStats.averageConsumptionL100Km(fills, since = since, vehicleId = defaultVehicleId),
                 daysSinceLastBeer = BeerStats.daysSinceLast(beerEntries),
             )
         }
@@ -82,6 +95,8 @@ class HomeViewModel(
                     app.container.beerRepository,
                     app.container.locationProvider,
                     app.container.authTokenStore,
+                    app.container.userRepository,
+                    app.container.vehicleRepository,
                 )
             }
         }

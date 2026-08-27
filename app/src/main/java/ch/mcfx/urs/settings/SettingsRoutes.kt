@@ -7,6 +7,7 @@ package ch.mcfx.urs.settings
 object SettingsRoutes {
     const val HUB = "settings/hub"
     const val GENERAL = "settings/general"
+    const val DEFAULT_VEHICLE = "settings/default-vehicle"
     const val VPN = "settings/vpn"
     const val NOTIFICATIONS = "settings/notifications"
     const val ACCOUNT = "settings/account"

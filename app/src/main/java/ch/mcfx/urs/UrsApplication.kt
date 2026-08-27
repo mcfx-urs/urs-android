@@ -15,6 +15,7 @@ import ch.mcfx.urs.data.BakingRepository
 import ch.mcfx.urs.data.BeerRepository
 import ch.mcfx.urs.data.CatalogRepository
 import ch.mcfx.urs.data.FuelRepository
+import ch.mcfx.urs.data.DefaultVehicleStore
 import ch.mcfx.urs.data.InventoryRepository
 import ch.mcfx.urs.data.LocationHistoryRepository
 import ch.mcfx.urs.data.NoteRepository
@@ -238,8 +239,9 @@ class AppContainer(context: Context) {
     private val ursApi = retrofit.create(UrsApi::class.java)
 
     val workSettingsStore = WorkSettingsStore(context)
+    val defaultVehicleStore = DefaultVehicleStore(context)
 
-    val authRepository = AuthRepository(ursApi, authTokenStore, database, wireGuardManager, workSettingsStore)
+    val authRepository = AuthRepository(ursApi, authTokenStore, database, wireGuardManager, workSettingsStore, defaultVehicleStore)
 
     val reachabilityChecker = ReachabilityChecker()
     val syncStatusStore = SyncStatusStore(context)
@@ -342,7 +344,7 @@ class AppContainer(context: Context) {
         json = json,
         tokenStore = authTokenStore,
     )
-    val userRepository = UserRepository(retrofit.create(UrsApi::class.java), authTokenStore)
+    val userRepository = UserRepository(retrofit.create(UrsApi::class.java), authTokenStore, defaultVehicleStore)
     val locationHistoryRepository = LocationHistoryRepository(
         api = ursApi,
         locationHistoryDao = database.locationHistoryDao(),
