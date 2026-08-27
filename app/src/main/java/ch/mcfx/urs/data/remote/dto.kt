@@ -300,6 +300,17 @@ data class GenerateCatalogImagePayload(
     @SerialName("description") val description: String = "",
 )
 
+// Body for the generic (non-catalog) image generator — the prompt is sent
+// verbatim, no style wrapper. Values must match the backend's accepted sets
+// (see web/imagegen.go).
+@Serializable
+data class GenerateImagePayload(
+    @SerialName("prompt") val prompt: String,
+    @SerialName("size") val size: String,
+    @SerialName("quality") val quality: String,
+    @SerialName("background") val background: String,
+)
+
 // 204 No Content (untracked anywhere the caller can access) maps to this
 // simply not being decoded at all — see UrsApi.getQuantityOnHand's own
 // Response<...> wrapping.

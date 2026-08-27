@@ -455,6 +455,8 @@
     <string name="station_map_title">Confirm position</string>
     <string name="station_map_instructions">Drag the pin or tap the map to adjust the position.</string>
     <string name="station_map_confirm">Use this position</string>
+    <string name="stations_pending_review_title">Ad-hoc stations to review</string>
+    <string name="stations_all_title">All stations</string>
 
     <string name="fuel_price_fuel_type">Fuel type</string>
 
@@ -651,4 +653,19 @@
     <string name="admin_restart_back_up">The server is back up.</string>
     <string name="admin_restart_check_timeout">Still not reachable. It may need more time, or something went wrong.</string>
     <string name="admin_restart_failed">Restart failed. Please try again.</string>
+    <string name="settings_tile_image_generator">Image Generator</string>
+    <string name="image_generator_title">Image Generator</string>
+    <string name="image_generator_description">Generates an image from a free-text prompt via gpt-image-1. Nothing is stored on the server; save a result to your gallery to keep it.</string>
+    <string name="image_generator_prompt_label">Prompt</string>
+    <string name="image_generator_size_label">Size</string>
+    <string name="image_generator_quality_label">Quality</string>
+    <string name="image_generator_background_label">Background</string>
+    <string name="image_generator_generate">Generate</string>
+    <string name="image_generator_generating">Generating…</string>
+    <string name="image_generator_failed">Generation failed. Please try again.</string>
+    <string name="image_generator_save">Save to gallery</string>
+    <string name="image_generator_saved">Saved to gallery.</string>
+    <string name="image_generator_save_failed">Couldn\'t save the image.</string>
+    <string name="image_generator_share">Share</string>
+    <string name="image_generator_delete">Delete</string>
 </resources>

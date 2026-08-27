@@ -60,9 +60,16 @@ fun FuelStationsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val formState by viewModel.formState.collectAsStateWithLifecycle()
     val showForm by viewModel.showForm.collectAsStateWithLifecycle()
+    val pendingStations by viewModel.pendingStations.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         viewModel.openMapConfirm.collect { onOpenMapConfirm() }
+    }
+
+    // Only a super user can act on the ad-hoc review queue, and the endpoint
+    // is super-user-gated anyway — never fetch it for anyone else.
+    LaunchedEffect(isSuperUser) {
+        if (isSuperUser) viewModel.loadPendingStations()
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -80,6 +87,7 @@ fun FuelStationsScreen(
 
             is StationsUiState.Data -> StationList(
                 stations = state.stations,
+                pendingStations = pendingStations,
                 isSuperUser = isSuperUser,
                 onEdit = viewModel::openFormForEdit,
             )
@@ -105,10 +113,13 @@ fun FuelStationsScreen(
 @Composable
 private fun StationList(
     stations: List<FillingStationDto>,
+    pendingStations: List<FillingStationDto>,
     isSuperUser: Boolean,
     onEdit: (FillingStationDto) -> Unit,
 ) {
-    if (stations.isEmpty()) {
+    val showPending = isSuperUser && pendingStations.isNotEmpty()
+
+    if (stations.isEmpty() && !showPending) {
         Box(Modifier.fillMaxSize()) {
             UrsText(
                 stringResource(R.string.stations_empty),
@@ -124,22 +135,47 @@ private fun StationList(
         contentPadding = ursScreenContentPadding(),
         verticalArrangement = Arrangement.spacedBy(Spacing.s),
     ) {
+        if (showPending) {
+            item(key = "pending_header") { SectionHeader(stringResource(R.string.stations_pending_review_title)) }
+            items(pendingStations, key = { "pending_${it.id}" }) { station ->
+                // Ad-hoc rows are always tap-to-edit (this section only shows for super users).
+                StationRow(station = station, clickable = true, onEdit = onEdit)
+            }
+            if (stations.isNotEmpty()) {
+                item(key = "all_header") { SectionHeader(stringResource(R.string.stations_all_title)) }
+            }
+        }
         items(stations, key = { it.id }) { station ->
-            val rowModifier = if (isSuperUser) {
-                Modifier.fillMaxWidth().clickable { onEdit(station) }
-            } else {
-                Modifier.fillMaxWidth()
-            }
-            UrsCard(radius = Radius.row, modifier = rowModifier) {
-                UrsText(station.name, style = UrsTheme.typography.cardTitle)
-                if (station.address.isNotBlank()) {
-                    UrsText(
-                        station.address,
-                        style = UrsTheme.typography.body,
-                        color = UrsTheme.colors.onSurfaceMuted,
-                    )
-                }
-            }
+            StationRow(station = station, clickable = isSuperUser, onEdit = onEdit)
+        }
+    }
+}
+
+@Composable
+private fun SectionHeader(text: String) {
+    UrsText(
+        text = text,
+        style = UrsTheme.typography.caption,
+        color = UrsTheme.colors.onSurfaceMuted,
+        modifier = Modifier.padding(top = Spacing.s, bottom = Spacing.xs),
+    )
+}
+
+@Composable
+private fun StationRow(station: FillingStationDto, clickable: Boolean, onEdit: (FillingStationDto) -> Unit) {
+    val rowModifier = if (clickable) {
+        Modifier.fillMaxWidth().clickable { onEdit(station) }
+    } else {
+        Modifier.fillMaxWidth()
+    }
+    UrsCard(radius = Radius.row, modifier = rowModifier) {
+        UrsText(station.name, style = UrsTheme.typography.cardTitle)
+        if (station.address.isNotBlank()) {
+            UrsText(
+                station.address,
+                style = UrsTheme.typography.body,
+                color = UrsTheme.colors.onSurfaceMuted,
+            )
         }
     }
 }

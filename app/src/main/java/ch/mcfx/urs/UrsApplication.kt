@@ -17,6 +17,7 @@ import ch.mcfx.urs.data.CatalogRepository
 import ch.mcfx.urs.data.ChoreRepository
 import ch.mcfx.urs.data.FuelRepository
 import ch.mcfx.urs.data.DefaultVehicleStore
+import ch.mcfx.urs.data.ImageGenRepository
 import ch.mcfx.urs.data.InventoryRepository
 import ch.mcfx.urs.data.LocationHistoryRepository
 import ch.mcfx.urs.data.NoteRepository
@@ -218,7 +219,8 @@ class AppContainer(context: Context) {
     // comment for why the three need this exact ordering.
     private val longRunningEndpointTimeout = Interceptor { chain ->
         val request = chain.request()
-        if (request.url.encodedPath.endsWith("/catalog-image/generate")) {
+        val path = request.url.encodedPath
+        if (path.endsWith("/catalog-image/generate") || path.endsWith("/image/generate")) {
             chain.withReadTimeout(100, TimeUnit.SECONDS).proceed(request)
         } else {
             chain.proceed(request)
@@ -348,6 +350,7 @@ class AppContainer(context: Context) {
         tokenStore = authTokenStore,
     )
     val userRepository = UserRepository(retrofit.create(UrsApi::class.java), authTokenStore, defaultVehicleStore)
+    val imageGenRepository = ImageGenRepository(retrofit.create(UrsApi::class.java))
     val locationHistoryRepository = LocationHistoryRepository(
         api = ursApi,
         locationHistoryDao = database.locationHistoryDao(),

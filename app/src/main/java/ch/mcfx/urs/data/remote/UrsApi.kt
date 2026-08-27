@@ -1,5 +1,6 @@
 package ch.mcfx.urs.data.remote
 
+import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -51,6 +52,11 @@ interface UrsApi {
 
     @GET("api/v1/get-filling-station")
     suspend fun getFillingStations(): List<FillingStationDto>
+
+    // Super-user-gated server-side — lists the ad-hoc (gps_auto) stations
+    // awaiting review, which getFillingStations() deliberately excludes.
+    @GET("api/v1/admin/filling-station/pending")
+    suspend fun getPendingFillingStations(): List<FillingStationDto>
 
     @POST("api/v1/filling-station")
     suspend fun createFillingStation(@Body payload: FillingStationPayload): FillingStationDto
@@ -162,6 +168,11 @@ interface UrsApi {
 
     @POST("api/v1/catalog-image/generate")
     suspend fun generateCatalogImage(@Body payload: GenerateCatalogImagePayload): CatalogImageDto
+
+    // Super-user-gated server-side. Returns the raw PNG bytes — nothing is
+    // persisted on the server, no catalog-image row is created.
+    @POST("api/v1/admin/image/generate")
+    suspend fun generateImage(@Body payload: GenerateImagePayload): ResponseBody
 
     // Super-user-gated server-side — same shape as
     // updateFillingStation/restartServer, the backend returns 403 for
