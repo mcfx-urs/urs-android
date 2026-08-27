@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Chores overdue tracking: types can set an expected interval in days; the stats strip shows an "overdue" badge once that long has passed since the last entry, and an opt-in per-type reminder fires via a periodic check, gated by a new "Chore overdue reminders" toggle in notification settings (#29).
 - Watch relay: new `POST /api/watch/chore-event` endpoint logs a chore entry for a given tracker-type id with `source = watch` and today's date, using the same token and network-gate checks as the beer-fill path (urs-zepp#3).
 - Watch relay: new `POST /api/watch/audio-note` endpoint (proof of concept) writes a transferred `.opus` body to `filesDir/audio-notes/` and logs its path and size — no Room entity, UI, or sync (urs-zepp#4).
+- Home screen layout groundwork: a persisted `(column, row, width, height)` tile model with recursive push-down conflict resolution and a default layout seeded from the current order; the edit-mode UI is not wired in yet (#12).
 - Super-user-only Image Generator screen: generate an image from a free-text prompt with adjustable size/quality/background, preview it, then save it to the device gallery, share it, or delete it. Nothing is stored server-side (#20).
 
 ### Changed
