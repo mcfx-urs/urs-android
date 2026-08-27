@@ -81,10 +81,12 @@ import retrofit2.HttpException
  * behavior, only in when they're triggered. [Mutex]-guarded so a periodic
  * worker run and a manual tap can never interleave against the same rows.
  *
- * No conflict resolution is implemented anywhere in this class: a single
- * user on a single device is the accepted scope for this outbox, so FIFO
- * replay order (oldest queued mutation first) is the only ordering
- * guarantee that's actually needed here.
+ * FIFO replay order (oldest queued mutation first) is the ordering
+ * guarantee here. The only conflict resolution is last-write-wins for
+ * `list`/`list_item`/`inventory_product` updates: those carry a basis
+ * timestamp and the backend answers 409 (or 404 for a since-deleted row)
+ * when a newer edit or a delete already won — the losing edit is then
+ * discarded silently, see [replayUpdateList]/[replayUpdateListItem].
  */
 class SyncManager(
     private val api: UrsApi,
@@ -115,6 +117,22 @@ class SyncManager(
     // for a second identical formatter.
     private val locationHistoryDateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
+    /**
+     * Wired by the DI container after [ch.mcfx.urs.data.ShoppingListRepository]
+     * is built — it can't be a constructor dependency, this class is
+     * constructed first. Invoked once per replay pass in which a list or
+     * list-item update lost to a 409/404, so the shopping-list UI reconciles
+     * to the winning state immediately. Must not synchronously re-enter
+     * [syncNow] (the refresh it triggers calls it) — the container wraps it
+     * in an `applicationScope.launch { ... }`.
+     */
+    var onListConflictResolved: (() -> Unit)? = null
+
+    // Set on a 409/404 in replayUpdateList/replayUpdateListItem, consumed at
+    // the end of replayOutbox. A plain var is safe — every access is inside
+    // the syncNow() mutex.
+    private var listUpdateConflictSeen = false
+
     /** @return `true` if the backend was reachable and every queued mutation replayed cleanly. */
     suspend fun syncNow(): Boolean = mutex.withLock { replayOutbox() }
 
@@ -132,6 +150,12 @@ class SyncManager(
         // legitimate "everything confirmed in sync" moment, since reaching
         // this point already required the backend to be reachable.
         if (allSucceeded) syncStatusStore.recordSuccess()
+        if (listUpdateConflictSeen) {
+            listUpdateConflictSeen = false
+            // Deferred (see onListConflictResolved's doc) so the refresh runs
+            // once this pass has released the mutex.
+            onListConflictResolved?.invoke()
+        }
         return allSucceeded
     }
 
@@ -471,9 +495,20 @@ class SyncManager(
     // No local-row lookup needed — payload.serverId identifies the target
     // directly (same reasoning as OutboxWorkTimeEntryUpdatePayload's doc
     // comment), and the PUT route returns no body to reconcile against.
+    // Carries mutation.createdAt as the last-write-wins basis; a 409 (newer
+    // edit won) or 404 (list deleted elsewhere) means this edit lost and is
+    // discarded, same as a clean success but flagged for a follow-up refresh.
     private suspend fun replayUpdateList(mutation: OutboxMutationEntity): Boolean {
         val payload = json.decodeFromString(OutboxListUpdatePayload.serializer(), mutation.payloadJson)
-        api.updateList(payload.serverId, ListPayload(name = payload.name))
+        try {
+            api.updateList(
+                payload.serverId,
+                ListPayload(name = payload.name, updatedAt = mutation.createdAt.toUpdatedAtBasis()),
+            )
+        } catch (e: HttpException) {
+            if (e.code() != 409 && e.code() != 404) throw e
+            listUpdateConflictSeen = true
+        }
         outboxDao.delete(mutation.id)
         return true
     }
@@ -525,13 +560,24 @@ class SyncManager(
         return true
     }
 
-    // Same "no local-row lookup needed" reasoning as replayUpdateList.
+    // Same "no local-row lookup needed" and same last-write-wins handling as
+    // replayUpdateList.
     private suspend fun replayUpdateListItem(mutation: OutboxMutationEntity): Boolean {
         val payload = json.decodeFromString(OutboxListItemUpdatePayload.serializer(), mutation.payloadJson)
-        api.updateListItem(
-            payload.serverId,
-            ListItemUpdatePayload(note = payload.note.orEmpty(), quantity = payload.quantity, onSale = payload.onSale),
-        )
+        try {
+            api.updateListItem(
+                payload.serverId,
+                ListItemUpdatePayload(
+                    note = payload.note.orEmpty(),
+                    quantity = payload.quantity,
+                    onSale = payload.onSale,
+                    updatedAt = mutation.createdAt.toUpdatedAtBasis(),
+                ),
+            )
+        } catch (e: HttpException) {
+            if (e.code() != 409 && e.code() != 404) throw e
+            listUpdateConflictSeen = true
+        }
         outboxDao.delete(mutation.id)
         return true
     }
@@ -815,6 +861,12 @@ class SyncManager(
     }
 
     private fun Long.toBakingDateString(): String =
+        Instant.ofEpochMilli(this).atZone(ZoneId.systemDefault()).format(locationHistoryDateFormat)
+
+    // Same wire format / device-local zone as toBakingDateString — the
+    // backend compares this against the row's own updated_at for
+    // last-write-wins on list/list-item updates.
+    private fun Long.toUpdatedAtBasis(): String =
         Instant.ofEpochMilli(this).atZone(ZoneId.systemDefault()).format(locationHistoryDateFormat)
 
     private suspend fun resolveListId(value: String): String? {

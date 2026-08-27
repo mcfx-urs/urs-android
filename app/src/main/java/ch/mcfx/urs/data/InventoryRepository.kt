@@ -21,6 +21,8 @@ import ch.mcfx.urs.data.remote.InventoryProductSettingsPayload
 import ch.mcfx.urs.data.remote.InventorySharePayload
 import ch.mcfx.urs.data.remote.UrsApi
 import ch.mcfx.urs.data.sync.SyncManager
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -30,6 +32,11 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import retrofit2.HttpException
+
+// Device-local "yyyy-MM-dd HH:mm:ss", matching SyncManager's own formatter —
+// the backend parses it with Go's "2006-01-02 15:04:05" layout.
+private val UpdatedAtBasisFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
 /**
  * Offline-first write path for inventories and their tracked products —
@@ -214,7 +221,24 @@ class InventoryRepository(
     // field this route can still change post-creation — no more name/category
     // to carry along.
     suspend fun updateProductQuantity(productId: String, newQuantity: Int?) {
-        api.updateInventoryProduct(productId, InventoryProductQuantityPayload(quantity = newQuantity?.toString().orEmpty()))
+        try {
+            api.updateInventoryProduct(
+                productId,
+                InventoryProductQuantityPayload(
+                    quantity = newQuantity?.toString().orEmpty(),
+                    updatedAt = LocalDateTime.now().format(UpdatedAtBasisFormat),
+                ),
+            )
+        } catch (e: HttpException) {
+            // 409 = a newer edit won under the backend's last-write-wins
+            // guard; 404 = the product was deleted on another device. Either
+            // way this edit lost — the local mirror was never touched (the
+            // write-through below only runs on success), so just pull the
+            // winning state and drop this edit silently.
+            if (e.code() != 409 && e.code() != 404) throw e
+            refreshFromBackend()
+            return
+        }
         inventoryProductDao.updateQuantityByServerId(productId, newQuantity)
     }
 

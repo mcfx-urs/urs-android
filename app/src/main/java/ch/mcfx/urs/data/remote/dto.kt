@@ -378,6 +378,9 @@ data class InventoryProductCreatePayload(
 @Serializable
 data class InventoryProductQuantityPayload(
     @SerialName("inventory_product_quantity") val quantity: String,
+    // Basis timestamp for the backend's last-write-wins guard: the update
+    // lands only if the row wasn't changed since this moment, else 409.
+    @SerialName("inventory_product_updated_at") val updatedAt: String = "",
 )
 
 // Separate from InventoryProductQuantityPayload so updating thresholds/
@@ -402,6 +405,9 @@ data class ListDto(
 @Serializable
 data class ListPayload(
     @SerialName("list_name") val name: String,
+    // Only sent (and only read by the backend) on PUT: basis timestamp for
+    // the last-write-wins guard. Null on create.
+    @SerialName("list_updated_at") val updatedAt: String? = null,
 )
 
 @Serializable
@@ -455,6 +461,8 @@ data class ListItemUpdatePayload(
     @SerialName("list_item_note") val note: String = "",
     @SerialName("list_item_quantity") val quantity: Int? = null,
     @SerialName("list_item_on_sale") val onSale: Boolean = false,
+    // Basis timestamp for the backend's last-write-wins guard.
+    @SerialName("list_item_updated_at") val updatedAt: String = "",
 )
 
 @Serializable

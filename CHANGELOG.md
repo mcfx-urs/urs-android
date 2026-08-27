@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 
 - Shopping-list items and lists deleted while offline (or on another device) no longer reappear on the next sync (#15).
+- Two devices editing the same shopping-list item, list name, or inventory quantity offline now keep whichever edit was made last, instead of whichever reached the server first; the losing edit is dropped silently and the screen reconciles to the winning value (#14).
 
 ## [0.20.0] - 2026-08-24
 
