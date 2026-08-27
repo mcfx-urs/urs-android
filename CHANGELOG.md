@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Note editor can export the open note: share it as plain text via the Android share sheet, or open a pre-filled calendar event built from its title, content, and reminder time (#22).
+
 ### Changed
 
 - The watch relay's beer-fill endpoint logs the volume passed in the request rather than a fixed 500 ml, and rejects a missing or invalid volume (#26).
