@@ -8,6 +8,8 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.data.FuelRepository
+import ch.mcfx.urs.data.UserRepository
+import ch.mcfx.urs.data.resolveDefaultVehicleId
 import ch.mcfx.urs.data.remote.VehicleDto
 import ch.mcfx.urs.data.remote.FillDto
 import java.time.LocalDate
@@ -47,7 +49,10 @@ data class FuelStatsUiState(
 // Statistics are computed entirely client-side from the raw fills list, same
 // approach as urs-legacy-frontend's stats.vue — the backend has no
 // aggregation endpoints of its own.
-class FuelStatsViewModel(private val repository: FuelRepository) : ViewModel() {
+class FuelStatsViewModel(
+    private val repository: FuelRepository,
+    private val userRepository: UserRepository,
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(FuelStatsUiState())
     val uiState: StateFlow<FuelStatsUiState> = _uiState.asStateFlow()
@@ -64,7 +69,11 @@ class FuelStatsViewModel(private val repository: FuelRepository) : ViewModel() {
                     vehicles = vehiclesDeferred.await()
                     allFills = fillsDeferred.await()
                 }
-                _uiState.update { it.copy(vehicles = vehicles) }
+                // Start scoped to the default vehicle rather than "All
+                // vehicles"; the user can still widen it via the dropdown.
+                runCatching { userRepository.refreshDefaultVehicleId() }
+                val defaultVehicleId = resolveDefaultVehicleId(userRepository.defaultVehicleId.value, vehicles.map { it.id })
+                _uiState.update { it.copy(vehicles = vehicles, selectedVehicleId = defaultVehicleId) }
                 recompute()
             } catch (e: CancellationException) {
                 throw e
@@ -173,7 +182,7 @@ class FuelStatsViewModel(private val repository: FuelRepository) : ViewModel() {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as UrsApplication
-                FuelStatsViewModel(app.container.fuelRepository)
+                FuelStatsViewModel(app.container.fuelRepository, app.container.userRepository)
             }
         }
     }

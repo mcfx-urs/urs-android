@@ -214,6 +214,9 @@ interface UrsApi {
     @GET("api/v1/getuser")
     suspend fun getUsers(): List<UserDto>
 
+    @PUT("api/v1/user/default-vehicle")
+    suspend fun updateUserDefaultVehicle(@Body payload: UserDefaultVehiclePayload)
+
     @PUT("api/v1/user/{id}/default-daily-target-hours")
     suspend fun updateUserDefaultDailyTargetHours(@Path("id") id: String, @Body payload: UserDefaultDailyTargetHoursPayload)
 

@@ -545,11 +545,17 @@ data class UserDto(
     @SerialName("user_suva_nbu_deduction_percent") val suvaNbuDeductionPercent: String = "",
     @SerialName("user_ktg_deduction_percent") val ktgDeductionPercent: String = "",
     @SerialName("user_bvg_deduction_amount") val bvgDeductionAmount: String = "",
+    @SerialName("user_default_vehicle_id") val defaultVehicleId: String = "",
 )
 
 @Serializable
 data class UserDefaultDailyTargetHoursPayload(
     @SerialName("user_default_daily_target_hours") val defaultDailyTargetHours: String,
+)
+
+@Serializable
+data class UserDefaultVehiclePayload(
+    @SerialName("user_default_vehicle_id") val defaultVehicleId: String,
 )
 
 @Serializable

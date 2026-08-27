@@ -107,6 +107,11 @@
     <string name="language_settings_label">Language</string>
     <string name="language_option_english">English</string>
     <string name="language_option_schwiizerdutsch">Schwiizerdütsch</string>
+    <string name="settings_tile_default_vehicle">Default vehicle</string>
+    <string name="default_vehicle_settings_title">Default vehicle</string>
+    <string name="default_vehicle_settings_description">Used for the Home consumption stat, the Statistics filter, and pre-selected when adding a fill-up. Syncs across your devices.</string>
+    <string name="default_vehicle_settings_label">Vehicle</string>
+    <string name="default_vehicle_settings_empty">Add a vehicle first to pick a default.</string>
 
     <string name="about_org">mcfx</string>
     <string name="about_version_build_type">%1$s %2$s</string>
@@ -374,6 +379,7 @@
     <string name="fuel_tile_sync_now">Sync now</string>
     <string name="fuel_tile_syncing">Syncing…</string>
     <string name="fuel_tile_price">Record Fuel Price</string>
+    <string name="fuel_default_vehicle_label">Default vehicle</string>
     <string name="fill_add">New fill-up</string>
     <string name="fill_vehicle">Vehicle</string>
     <string name="fill_station">Filling station</string>

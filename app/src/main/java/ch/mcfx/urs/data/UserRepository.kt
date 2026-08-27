@@ -4,9 +4,11 @@ import ch.mcfx.urs.auth.AuthTokenStore
 import ch.mcfx.urs.data.remote.UrsApi
 import ch.mcfx.urs.data.remote.UserDefaultDailyTargetHoursPayload
 import ch.mcfx.urs.data.remote.UserDto
+import ch.mcfx.urs.data.remote.UserDefaultVehiclePayload
 import ch.mcfx.urs.data.remote.UserEmploymentPercentPayload
 import ch.mcfx.urs.data.remote.UserHourlyWagePayload
 import ch.mcfx.urs.data.remote.UserWageRulesPayload
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.SerializationException
 
 data class WorkSettings(
@@ -26,7 +28,28 @@ data class WorkSettings(
 class UserRepository(
     private val api: UrsApi,
     private val tokenStore: AuthTokenStore,
+    private val defaultVehicleStore: DefaultVehicleStore,
 ) {
+
+    /** Last-known server-stored default vehicle id; null when none is set. Observed by the fuel/home surfaces. */
+    val defaultVehicleId: StateFlow<String?> = defaultVehicleStore.defaultVehicleId
+
+    /** Pulls the server's current default vehicle into the local cache. Lets network errors propagate; callers guard. */
+    suspend fun refreshDefaultVehicleId() {
+        val userId = tokenStore.currentUserId ?: return
+        val serverValue = try {
+            api.getUsers().firstOrNull { it.id == userId }?.defaultVehicleId
+        } catch (_: SerializationException) {
+            return
+        }
+        defaultVehicleStore.set(serverValue)
+    }
+
+    /** Updates the cache immediately (optimistic) then persists server-side. Pass null/"" to clear. */
+    suspend fun setDefaultVehicleId(vehicleId: String?) {
+        defaultVehicleStore.set(vehicleId)
+        api.updateUserDefaultVehicle(UserDefaultVehiclePayload(defaultVehicleId = vehicleId.orEmpty()))
+    }
 
     // Household member picker for UrsShareSheet — every other user
     // this account could share an inventory/list with. Same
