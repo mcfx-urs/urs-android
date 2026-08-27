@@ -65,6 +65,7 @@ import ch.mcfx.urs.obd.ObdSetupScreen
 import ch.mcfx.urs.settings.AboutScreen
 import ch.mcfx.urs.settings.AccountSettingsScreen
 import ch.mcfx.urs.settings.AdminScreen
+import ch.mcfx.urs.settings.DefaultVehicleSettingsScreen
 import ch.mcfx.urs.settings.GeneralSettingsScreen
 import ch.mcfx.urs.settings.ImageReviewScreen
 import ch.mcfx.urs.settings.LanguageSettingsScreen
@@ -394,6 +395,7 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                             onNavigate = { route -> navController.navigate(route) },
                         )
                     }
+                    composable(SettingsRoutes.DEFAULT_VEHICLE) { DefaultVehicleSettingsScreen() }
                     composable(SettingsRoutes.GENERAL) {
                         GeneralSettingsScreen(
                             onNavigate = { route -> navController.navigate(route) },
@@ -461,6 +463,7 @@ private val FUEL_ROUTE_LABELS = mapOf(
 
 private val SETTINGS_ROUTE_LABELS = mapOf(
     SettingsRoutes.GENERAL to R.string.settings_tile_general,
+    SettingsRoutes.DEFAULT_VEHICLE to R.string.settings_tile_default_vehicle,
     SettingsRoutes.VPN to R.string.settings_tile_vpn,
     SettingsRoutes.NOTIFICATIONS to R.string.settings_tile_notifications,
     SettingsRoutes.ACCOUNT to R.string.settings_tile_account,

@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Default vehicle per user: set it in Settings or via a quick-switch chip row on the Fuel hub; drives the Home consumption stat, the Statistics filter, and the pre-selected vehicle when adding a fill-up, and syncs across devices (#13).
+
 ## [0.20.0] - 2026-08-24
 
 ### Added

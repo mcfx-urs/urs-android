@@ -9,6 +9,8 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import android.location.Location
 import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.data.FuelRepository
+import ch.mcfx.urs.data.UserRepository
+import ch.mcfx.urs.data.resolveDefaultVehicleId
 import ch.mcfx.urs.data.local.CurrencyEntity
 import ch.mcfx.urs.data.local.FillEntity
 import ch.mcfx.urs.data.local.FillingStationEntity
@@ -23,6 +25,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -90,6 +93,7 @@ class FuelViewModel(
     private val repository: FuelRepository,
     private val locationCapture: LocationCapture,
     private val locationProvider: LocationProvider,
+    private val userRepository: UserRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<FuelUiState>(FuelUiState.Loading)
@@ -133,6 +137,16 @@ class FuelViewModel(
     fun openForm() {
         _formState.value = FillFormState()
         _showForm.value = true
+        // Pre-select the default vehicle (still overridable in the form).
+        viewModelScope.launch {
+            runCatching { userRepository.refreshDefaultVehicleId() }
+            val vehicles = repository.observeVehicles().first()
+            val defaultVehicleId = resolveDefaultVehicleId(userRepository.defaultVehicleId.value, vehicles.map { it.id })
+            val vehicle = vehicles.firstOrNull { it.id == defaultVehicleId } ?: return@launch
+            if (_showForm.value && _formState.value.editingFillId == null && _formState.value.vehicle == null) {
+                selectVehicle(vehicle)
+            }
+        }
     }
 
     /**
@@ -305,7 +319,12 @@ class FuelViewModel(
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as UrsApplication
-                FuelViewModel(app.container.fuelRepository, app.container.locationCapture, app.container.locationProvider)
+                FuelViewModel(
+                    app.container.fuelRepository,
+                    app.container.locationCapture,
+                    app.container.locationProvider,
+                    app.container.userRepository,
+                )
             }
         }
     }

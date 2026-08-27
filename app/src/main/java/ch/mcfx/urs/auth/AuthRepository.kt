@@ -1,5 +1,6 @@
 package ch.mcfx.urs.auth
 
+import ch.mcfx.urs.data.DefaultVehicleStore
 import ch.mcfx.urs.data.WorkSettingsStore
 import ch.mcfx.urs.data.local.AppDatabase
 import ch.mcfx.urs.data.remote.ChangePasswordPayload
@@ -21,6 +22,7 @@ class AuthRepository(
     private val database: AppDatabase,
     private val wireGuardManager: WireGuardManager,
     private val workSettingsStore: WorkSettingsStore,
+    private val defaultVehicleStore: DefaultVehicleStore,
 ) {
     suspend fun login(userName: String, password: String) {
         val tokens = api.login(LoginPayload(userName = userName, password = password))
@@ -29,8 +31,8 @@ class AuthRepository(
 
     /**
      * Tears down any active VPN tunnel and wipes the local Room cache (plus
-     * WorkSettingsStore, the one per-user cache that lives outside Room)
-     * before clearing the token store — otherwise a previous user's
+     * the per-user caches that live outside Room: WorkSettingsStore and
+     * DefaultVehicleStore) before clearing the token store — otherwise a previous user's
      * still-running tunnel, or their synced rows (lists, inventories, ...),
      * simply stay in place and, since neither carried a user identity
      * before, would keep being used/shown verbatim by whoever logs in next
@@ -43,6 +45,7 @@ class AuthRepository(
         wireGuardManager.disconnect()
         withContext(Dispatchers.IO) { database.clearAllTables() }
         workSettingsStore.clear()
+        defaultVehicleStore.clear()
         tokenStore.clear()
     }
 
