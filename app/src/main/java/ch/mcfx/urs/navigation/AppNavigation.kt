@@ -67,6 +67,7 @@ import ch.mcfx.urs.settings.AccountSettingsScreen
 import ch.mcfx.urs.settings.AdminScreen
 import ch.mcfx.urs.settings.DefaultVehicleSettingsScreen
 import ch.mcfx.urs.settings.GeneralSettingsScreen
+import ch.mcfx.urs.settings.ImageGeneratorScreen
 import ch.mcfx.urs.settings.ImageReviewScreen
 import ch.mcfx.urs.settings.LanguageSettingsScreen
 import ch.mcfx.urs.settings.LocationHistorySettingsScreen
@@ -422,6 +423,7 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                     }
                     composable(SettingsRoutes.ADMIN) { AdminScreen() }
                     composable(SettingsRoutes.IMAGE_REVIEW) { ImageReviewScreen() }
+                    composable(SettingsRoutes.IMAGE_GENERATOR) { ImageGeneratorScreen() }
                 }
             }
         }
@@ -476,6 +478,7 @@ private val SETTINGS_ROUTE_LABELS = mapOf(
     SettingsRoutes.PRODUCT_MANAGEMENT to R.string.settings_tile_product_management,
     SettingsRoutes.ADMIN to R.string.settings_tile_admin,
     SettingsRoutes.IMAGE_REVIEW to R.string.settings_tile_image_review,
+    SettingsRoutes.IMAGE_GENERATOR to R.string.settings_tile_image_generator,
 )
 
 private val VEHICLE_ROUTE_LABELS = mapOf(
