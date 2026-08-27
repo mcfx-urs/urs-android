@@ -804,6 +804,7 @@ data class TrackerTypeDto(
     @SerialName("tracker_type_color") val color: String,
     @SerialName("tracker_type_icon") val icon: String,
     @SerialName("tracker_type_calendar") val calendar: String = "",
+    @SerialName("tracker_type_expected_interval_days") val expectedIntervalDays: String = "",
     @SerialName("tracker_type_archived_at") val archivedAt: String = "",
     @SerialName("tracker_type_last_exported_at") val lastExportedAt: String = "",
 )
@@ -815,6 +816,7 @@ data class TrackerTypePayload(
     @SerialName("tracker_type_color") val color: String,
     @SerialName("tracker_type_icon") val icon: String,
     @SerialName("tracker_type_calendar") val calendar: String = "",
+    @SerialName("tracker_type_expected_interval_days") val expectedIntervalDays: String = "",
 )
 
 @Serializable

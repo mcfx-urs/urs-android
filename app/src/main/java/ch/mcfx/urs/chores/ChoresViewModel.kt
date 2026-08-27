@@ -32,12 +32,23 @@ data class ChoresUiState(
     val typesByPublicId: Map<String, TrackerTypeEntity> get() = types.associateBy { it.publicId }
 }
 
-class ChoresViewModel(private val repository: ChoreRepository) : ViewModel() {
+class ChoresViewModel(
+    private val repository: ChoreRepository,
+    private val reminderSettings: ChoreReminderSettingsStore,
+) : ViewModel() {
 
     val uiState: StateFlow<ChoresUiState> =
         combine(repository.observeTypes(), repository.observeEvents()) { types, events ->
             ChoresUiState(types = types, events = events)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ChoresUiState())
+
+    /** Per-type "notify when overdue" opt-in, keyed by publicId. */
+    val notifyTypeIds: StateFlow<Set<String>> = reminderSettings.notifyTypeIds
+
+    fun setTypeNotifyEnabled(publicId: String, enabled: Boolean) {
+        reminderSettings.setTypeNotifyEnabled(publicId, enabled)
+        if (!enabled) reminderSettings.clearNotified(publicId)
+    }
 
     private val _month = MutableStateFlow(YearMonth.now())
     val month: StateFlow<YearMonth> = _month.asStateFlow()
@@ -66,12 +77,16 @@ class ChoresViewModel(private val repository: ChoreRepository) : ViewModel() {
         _hiddenTypeIds.update { if (typeId in it) it - typeId else it + typeId }
     }
 
-    fun createType(name: String, color: String, icon: String, calendar: String?) {
-        viewModelScope.launch { repository.createType(name.trim(), color, icon, calendar?.trim()?.ifBlank { null }) }
+    fun createType(name: String, color: String, icon: String, calendar: String?, expectedIntervalDays: Int?) {
+        viewModelScope.launch {
+            repository.createType(name.trim(), color, icon, calendar?.trim()?.ifBlank { null }, expectedIntervalDays)
+        }
     }
 
-    fun updateType(localId: Long, name: String, color: String, icon: String, calendar: String?) {
-        viewModelScope.launch { repository.updateType(localId, name.trim(), color, icon, calendar?.trim()?.ifBlank { null }) }
+    fun updateType(localId: Long, name: String, color: String, icon: String, calendar: String?, expectedIntervalDays: Int?) {
+        viewModelScope.launch {
+            repository.updateType(localId, name.trim(), color, icon, calendar?.trim()?.ifBlank { null }, expectedIntervalDays)
+        }
     }
 
     /** Builds the .ics file(s) from the currently loaded types and events. */
@@ -107,7 +122,7 @@ class ChoresViewModel(private val repository: ChoreRepository) : ViewModel() {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as UrsApplication
-                ChoresViewModel(app.container.choreRepository)
+                ChoresViewModel(app.container.choreRepository, app.container.choreReminderSettingsStore)
             }
         }
     }

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -32,6 +33,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ch.mcfx.urs.R
@@ -224,14 +226,17 @@ private data class EventDraft(val typeId: String, val date: String, val time: St
 @Composable
 fun TypeEditorSheet(
     target: TypeEditorTarget,
-    onSave: (name: String, color: String, icon: String, calendar: String) -> Unit,
+    onSave: (name: String, color: String, icon: String, calendar: String, expectedIntervalDays: Int?) -> Unit,
     onArchive: () -> Unit,
+    notifyOverdueEnabled: Boolean = false,
+    onNotifyOverdueChange: ((Boolean) -> Unit)? = null,
 ) {
     val editing = target as? TypeEditorTarget.Edit
     var name by remember { mutableStateOf(editing?.type?.name.orEmpty()) }
     var color by remember { mutableStateOf(editing?.type?.color?.takeIf { it.isNotBlank() } ?: defaultChoreColor) }
     var icon by remember { mutableStateOf(editing?.type?.icon?.takeIf { it.isNotBlank() } ?: defaultChoreIcon) }
     var calendar by remember { mutableStateOf(editing?.type?.calendar.orEmpty()) }
+    var interval by remember { mutableStateOf(editing?.type?.expectedIntervalDays?.toString().orEmpty()) }
     var emojiTab by remember { mutableStateOf(trackerIconMaterialVector(icon) == null) }
     var typedEmoji by remember { mutableStateOf(if (trackerIconMaterialVector(icon) == null) icon else "") }
     val colors = UrsTheme.colors
@@ -257,6 +262,24 @@ fun TypeEditorSheet(
             style = UrsTheme.typography.caption,
             color = colors.onSurfaceMuted,
         )
+
+        UrsTextField(
+            value = interval,
+            onValueChange = { new -> interval = new.filter(Char::isDigit).take(4) },
+            label = stringResource(R.string.chores_type_interval_label),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        )
+        UrsText(
+            stringResource(R.string.chores_type_interval_hint),
+            style = UrsTheme.typography.caption,
+            color = colors.onSurfaceMuted,
+        )
+        if (editing != null && onNotifyOverdueChange != null) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
+                UrsCheckbox(checked = notifyOverdueEnabled, onCheckedChange = onNotifyOverdueChange)
+                UrsText(stringResource(R.string.chores_type_notify_overdue), style = UrsTheme.typography.body)
+            }
+        }
 
         UrsText(stringResource(R.string.chores_color_label), style = UrsTheme.typography.caption, color = colors.onSurfaceMuted)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.s), verticalArrangement = Arrangement.spacedBy(Spacing.s)) {
@@ -328,7 +351,7 @@ fun TypeEditorSheet(
 
         UrsButton(
             text = stringResource(R.string.save),
-            onClick = { onSave(name, color, icon, calendar) },
+            onClick = { onSave(name, color, icon, calendar, interval.toIntOrNull()?.takeIf { it > 0 }) },
             enabled = name.isNotBlank(),
             modifier = Modifier.fillMaxWidth(),
         )

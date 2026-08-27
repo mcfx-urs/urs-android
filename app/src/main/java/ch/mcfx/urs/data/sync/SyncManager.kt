@@ -890,7 +890,13 @@ class SyncManager(
         }
         val payload = json.decodeFromString(OutboxTrackerTypeCreatePayload.serializer(), mutation.payloadJson)
         val response = api.createTrackerType(
-            TrackerTypePayload(name = payload.name, color = payload.color, icon = payload.icon, calendar = payload.calendar.orEmpty()),
+            TrackerTypePayload(
+                name = payload.name,
+                color = payload.color,
+                icon = payload.icon,
+                calendar = payload.calendar.orEmpty(),
+                expectedIntervalDays = payload.expectedIntervalDays?.toString().orEmpty(),
+            ),
         )
         trackerTypeDao.markSynced(localType.id, response.id)
         outboxDao.delete(mutation.id)
@@ -901,7 +907,13 @@ class SyncManager(
         val payload = json.decodeFromString(OutboxTrackerTypeUpdatePayload.serializer(), mutation.payloadJson)
         api.updateTrackerType(
             payload.serverId,
-            TrackerTypePayload(name = payload.name, color = payload.color, icon = payload.icon, calendar = payload.calendar.orEmpty()),
+            TrackerTypePayload(
+                name = payload.name,
+                color = payload.color,
+                icon = payload.icon,
+                calendar = payload.calendar.orEmpty(),
+                expectedIntervalDays = payload.expectedIntervalDays?.toString().orEmpty(),
+            ),
         )
         outboxDao.delete(mutation.id)
         return true

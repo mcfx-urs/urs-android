@@ -369,7 +369,11 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                     composable(NotesRoutes.HISTORY) {
                         NotesHistoryScreen(onOpenNote = { noteId -> navController.navigate(NotesRoutes.detail(noteId)) })
                     }
-                    composable(Destination.CHORES.route) { ChoresScreen() }
+                    composable(
+                        route = Destination.CHORES.route,
+                        // Reached by the overdue-chore reminder notification.
+                        deepLinks = listOf(navDeepLink { uriPattern = "urs://${Destination.CHORES.route}" }),
+                    ) { ChoresScreen() }
                     composable(Destination.BEER.route) { BeerScreen() }
                     composable(Destination.WORK_TIME.route) {
                         WorkTimeScreen(

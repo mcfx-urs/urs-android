@@ -61,6 +61,12 @@
     <string name="chores_export_everything">Export everything again</string>
     <string name="chores_export_nothing">Nothing new to export.</string>
     <string name="chores_export_no_app">No app can receive the export.</string>
+    <string name="chores_type_interval_label">Expected interval (days, optional)</string>
+    <string name="chores_type_interval_hint">Flags this type overdue once it has been this long since the last entry.</string>
+    <string name="chores_type_notify_overdue">Notify me when this becomes overdue</string>
+    <string name="chores_stat_overdue">overdue</string>
+    <string name="chores_overdue_notification_title">Chore overdue</string>
+    <string name="chores_overdue_notification_body">%1$s is overdue.</string>
 
     <string name="baking_step_alarm_body">Time for your next baking step</string>
     <string name="baking_history">History</string>
@@ -246,6 +252,7 @@
     <string name="notifications_granted">Granted</string>
     <string name="notifications_grant">Grant</string>
     <string name="notifications_send_test">Send test notification</string>
+    <string name="notifications_chore_overdue_label">Chore overdue reminders</string>
 
     <string name="location_history_title">Location History</string>
     <string name="location_history_description">Periodically records your location in the background so it can later be browsed as a life map. Off by default — background location access is only requested once you turn this on. Doze mode and aggressive battery managers on some phones can delay captures.</string>

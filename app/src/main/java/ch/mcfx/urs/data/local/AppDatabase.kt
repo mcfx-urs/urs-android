@@ -73,7 +73,10 @@ import androidx.room.TypeConverters
     // v24: calendar + lastExportedAtMillis columns added to
     //      TrackerTypeEntity (GitHub issue #28, ICS export) — same
     //      destructive-fallback handling as every bump above.
-    version = 24,
+    // v25: expectedIntervalDays column added to TrackerTypeEntity (GitHub
+    //      issue #29, overdue badge + reminders) — same destructive-fallback
+    //      handling as every bump above.
+    version = 25,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
