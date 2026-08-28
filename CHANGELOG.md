@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - Chores stats list is now a full-width, vertically scrolling list instead of a horizontally-scrolling row of cards, and supports manual reordering by long-press-drag (#33).
+- Watch relay's audio-note endpoint accepts a base64-encoded body via an `x-audio-encoding: base64` header, decoding it before writing the file (urs-zepp#4).
 
 ### Fixed
 
