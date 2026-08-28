@@ -24,7 +24,9 @@ private const val KEYSTORE_ALIAS = "urs_auth_token_key"
  * shorter-lived) access token, since the whole point of the refresh flow
  * is that an expired access token alone shouldn't force a login screen.
  * [AuthAuthenticator] clears both tokens (flipping this back to `false`)
- * whenever a refresh attempt itself fails.
+ * whenever the server actively rejects a refresh attempt — not when the
+ * refresh call merely can't reach the server (e.g. offline), which leaves
+ * both tokens untouched so the app keeps working from its local cache.
  */
 class AuthTokenStore(context: Context) {
 
