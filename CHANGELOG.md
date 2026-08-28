@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-08-28
+
 ### Added
 
 - Note editor can export the open note: share it as plain text via the Android share sheet, or open a pre-filled calendar event built from its title, content, and reminder time (#22).
