@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Voice Notes: audio memos recorded on the watch are relayed to the phone, converted to standard Ogg-Opus on receipt, stored device-locally, and listed on a new Voice Notes screen with play/pause and delete (#41).
+
 ### Changed
 
 - Chores stats list is now a full-width, vertically scrolling list instead of a horizontally-scrolling row of cards, and supports manual reordering by long-press-drag (#33).

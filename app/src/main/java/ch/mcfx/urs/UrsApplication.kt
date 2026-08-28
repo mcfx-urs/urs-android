@@ -14,6 +14,7 @@ import ch.mcfx.urs.auth.BiometricGate
 import ch.mcfx.urs.chores.ChoreOrderStore
 import ch.mcfx.urs.chores.ChoreOverdueWorker
 import ch.mcfx.urs.chores.ChoreReminderSettingsStore
+import ch.mcfx.urs.data.AudioNoteRepository
 import ch.mcfx.urs.data.BakingRepository
 import ch.mcfx.urs.data.BeerRepository
 import ch.mcfx.urs.data.CatalogRepository
@@ -394,6 +395,9 @@ class AppContainer(context: Context) {
         applicationScope = applicationScope,
         json = json,
     )
+    // Device-local voice notes relayed from the watch (GitHub issue #41).
+    val audioNoteRepository = AudioNoteRepository(appContext, database.audioNoteDao())
+
     val choreRepository = ChoreRepository(
         api = ursApi,
         trackerTypeDao = database.trackerTypeDao(),

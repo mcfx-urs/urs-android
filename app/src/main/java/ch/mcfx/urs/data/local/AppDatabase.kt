@@ -30,6 +30,7 @@ import androidx.room.TypeConverters
         NoteTagEntity::class,
         TrackerTypeEntity::class,
         TrackerEventEntity::class,
+        AudioNoteEntity::class,
     ],
     // Bumped for the isFullTank column on FillEntity, the life map
     // feature's LocationHistoryEntity (local capture + sync fields), and
@@ -76,7 +77,9 @@ import androidx.room.TypeConverters
     // v25: expectedIntervalDays column added to TrackerTypeEntity (GitHub
     //      issue #29, overdue badge + reminders) — same destructive-fallback
     //      handling as every bump above.
-    version = 25,
+    // v26: new AudioNoteEntity table (GitHub issue #41, watch voice notes) —
+    //      same destructive-fallback handling as every bump above.
+    version = 26,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -103,4 +106,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun noteTagDao(): NoteTagDao
     abstract fun trackerTypeDao(): TrackerTypeDao
     abstract fun trackerEventDao(): TrackerEventDao
+    abstract fun audioNoteDao(): AudioNoteDao
 }

@@ -9,6 +9,7 @@ import ch.mcfx.urs.inventory.InventoryRoutes
 import ch.mcfx.urs.notes.NotesRoutes
 import ch.mcfx.urs.settings.SettingsRoutes
 import ch.mcfx.urs.shoppinglist.ShoppingListRoutes
+import ch.mcfx.urs.voicenotes.VoiceNotesRoutes
 import ch.mcfx.urs.worktime.WorkTimeRoutes
 
 // Mirrors the web app's sidebar (urs-frontend App.vue). Destinations with
@@ -33,6 +34,7 @@ enum class Destination(
     BAKING(BakingRoutes.PLANS, R.string.nav_baking, isAvailable = true),
     NOTES(NotesRoutes.LIST, R.string.nav_notes, isAvailable = true),
     CHORES(ChoresRoutes.MONTH, R.string.nav_chores, isAvailable = true),
+    VOICE_NOTES(VoiceNotesRoutes.LIST, R.string.nav_voice_notes, isAvailable = true),
     // Placeholder only — purpose not decided yet, reserves a Home grid slot
     // the same way GOKART/PRICE_MONITOR already do for their own
     // not-yet-built features.

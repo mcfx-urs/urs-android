@@ -44,6 +44,7 @@ import ch.mcfx.urs.notes.NotesHistoryScreen
 import ch.mcfx.urs.notes.NotesHubScreen
 import ch.mcfx.urs.notes.NotesRoutes
 import ch.mcfx.urs.beer.BeerScreen
+import ch.mcfx.urs.voicenotes.VoiceNotesScreen
 import ch.mcfx.urs.fuel.FuelAddScreen
 import ch.mcfx.urs.fuel.FuelHubScreen
 import ch.mcfx.urs.fuel.FuelPriceAddScreen
@@ -374,6 +375,7 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                         // Reached by the overdue-chore reminder notification.
                         deepLinks = listOf(navDeepLink { uriPattern = "urs://${Destination.CHORES.route}" }),
                     ) { ChoresScreen() }
+                    composable(Destination.VOICE_NOTES.route) { VoiceNotesScreen() }
                     composable(Destination.BEER.route) { BeerScreen() }
                     composable(Destination.WORK_TIME.route) {
                         WorkTimeScreen(
