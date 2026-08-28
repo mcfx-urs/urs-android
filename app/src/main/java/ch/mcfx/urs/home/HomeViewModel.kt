@@ -17,6 +17,7 @@ import ch.mcfx.urs.data.VehicleRepository
 import ch.mcfx.urs.data.resolveDefaultVehicleId
 import ch.mcfx.urs.fuel.FuelStats
 import ch.mcfx.urs.location.LocationProvider
+import ch.mcfx.urs.navigation.Destination
 import java.time.LocalDate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -41,10 +42,78 @@ class HomeViewModel(
     private val authTokenStore: AuthTokenStore,
     private val userRepository: UserRepository,
     private val vehicleRepository: VehicleRepository,
+    private val homeLayoutStore: HomeLayoutStore,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+
+    val layout: StateFlow<List<HomeTilePlacement>> = homeLayoutStore.layout
+
+    private val _editMode = MutableStateFlow(false)
+    val editMode: StateFlow<Boolean> = _editMode.asStateFlow()
+
+    private val _selectedTileId = MutableStateFlow<String?>(null)
+    val selectedTileId: StateFlow<String?> = _selectedTileId.asStateFlow()
+
+    private val _showAddTilePicker = MutableStateFlow(false)
+    val showAddTilePicker: StateFlow<Boolean> = _showAddTilePicker.asStateFlow()
+
+    /** Every Destination not currently on the grid — the add-tile picker's list. */
+    val addableTiles: List<Destination>
+        get() {
+            val placedIds = layout.value.map { it.destinationId }.toSet()
+            return Destination.entries.filter {
+                it != Destination.HOME && it != Destination.SETTINGS && it.name !in placedIds
+            }
+        }
+
+    fun enterEditMode(selecting: String? = null) {
+        _editMode.value = true
+        _selectedTileId.value = selecting
+    }
+
+    fun exitEditMode() {
+        _editMode.value = false
+        _selectedTileId.value = null
+        _showAddTilePicker.value = false
+    }
+
+    /** Tapping a tile in edit mode: selects it, or deselects if it was already selected. */
+    fun toggleSelected(id: String) {
+        _selectedTileId.value = if (_selectedTileId.value == id) null else id
+    }
+
+    fun moveTile(id: String, column: Int, row: Int) {
+        homeLayoutStore.setLayout(HomeLayoutEngine.moveTile(layout.value, id, column, row))
+    }
+
+    fun resizeTile(id: String, width: Int, height: Int) {
+        homeLayoutStore.setLayout(HomeLayoutEngine.resizeTile(layout.value, id, width, height))
+    }
+
+    fun removeTile(id: String) {
+        homeLayoutStore.setLayout(HomeLayoutEngine.removeTile(layout.value, id))
+        if (_selectedTileId.value == id) _selectedTileId.value = null
+    }
+
+    fun openAddTilePicker() {
+        _showAddTilePicker.value = true
+    }
+
+    fun dismissAddTilePicker() {
+        _showAddTilePicker.value = false
+    }
+
+    fun addTile(id: String) {
+        homeLayoutStore.setLayout(HomeLayoutEngine.addTile(layout.value, id))
+        _showAddTilePicker.value = false
+    }
+
+    fun resetLayoutToDefault() {
+        homeLayoutStore.resetToDefault()
+        _selectedTileId.value = null
+    }
 
     // The username last used to log in (see AuthTokenStore's own doc comment)
     // — read once, not observed: it only ever changes on a fresh login, which
@@ -97,6 +166,7 @@ class HomeViewModel(
                     app.container.authTokenStore,
                     app.container.userRepository,
                     app.container.vehicleRepository,
+                    app.container.homeLayoutStore,
                 )
             }
         }

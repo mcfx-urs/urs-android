@@ -10,9 +10,14 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -25,35 +30,47 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -64,6 +81,7 @@ import ch.mcfx.urs.location.LOCATION_PERMISSIONS
 import ch.mcfx.urs.location.hasLocationPermission
 import ch.mcfx.urs.navigation.Destination
 import ch.mcfx.urs.settings.SettingsRoutes
+import ch.mcfx.urs.ui.components.UrsBottomSheet
 import ch.mcfx.urs.ui.components.UrsGlassCard
 import ch.mcfx.urs.ui.components.UrsIconButton
 import ch.mcfx.urs.ui.components.UrsPill
@@ -72,61 +90,57 @@ import ch.mcfx.urs.ui.components.ursScreenContentPadding
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Radius
 import ch.mcfx.urs.ui.tokens.Spacing
+import kotlin.math.roundToInt
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 
-// WORK_TIME leads the list on purpose: it's the day-to-day recurring entry
-// (unlike an occasional fuel fill-up), so it takes over the featured,
-// full-width top slot — see WorkTimeCard below, which always renders
-// whichever destination is first here. The "New Fuel Fill" shortcut right
-// below it is a separate, non-Destination full-width row (see
-// NewFuelFillCard) since it navigates straight to FuelRoutes.ADD rather
-// than a Destination's own route — it isn't part of this list. LIFE_MAP is
-// pulled out of the plain tile grid entirely (see LifeMapCard) for its own
-// larger, full-width slot with a live location preview.
-private val FEATURE_TILES = listOf(
-    Destination.WORK_TIME,
-    Destination.SHOPPING_LIST,
-    Destination.VEHICLE,
-    Destination.INVENTORY,
-    Destination.BEER,
-    Destination.LIFE_MAP,
-    Destination.BAKING,
-    Destination.NOTES,
-    Destination.VOICE_NOTES,
-    Destination.CHORES,
-    Destination.PRICE_MONITOR,
-    Destination.K,
-    Destination.GOKART,
-)
-
-private val TILE_IMAGE = mapOf(
-    Destination.SHOPPING_LIST to R.drawable.tile_shopping_list,
-    Destination.VEHICLE to R.drawable.tile_vehicle,
-    Destination.INVENTORY to R.drawable.tile_inventory,
-    Destination.BEER to R.drawable.tile_beer,
-    Destination.BAKING to R.drawable.tile_baking,
-    Destination.NOTES to R.drawable.tile_notes,
+/**
+ * Launcher-style Home grid (GitHub issue #12) — every tile (including what
+ * used to be the bespoke Work Time / New Fuel Fill / Life Map rows) is now
+ * one generic [HomeTileBody] placed by [HomeTileGrid] according to
+ * [HomeViewModel.layout]. Long-press any tile to enter edit mode and select
+ * it in the same gesture; while in edit mode, tap a different tile to
+ * select it instead (corner dots resize, dragging its body moves it, the
+ * top-right icon removes it), tap empty grid space or "Done" in the header
+ * to exit.
+ *
+ * Move/resize both commit through the same [HomeLayoutEngine] call the
+ * moment a drag crosses a grid-cell/half-cell threshold, so the rest of the
+ * grid reflows live via the normal state → recomposition path — there is no
+ * separate "preview, then commit on drop" bookkeeping.
+ */
+private val TILE_IMAGE: Map<String, Int> = mapOf(
+    Destination.WORK_TIME.name to R.drawable.tile_work_time,
+    NEW_FUEL_FILL_TILE_ID to R.drawable.tile_fuel,
+    Destination.SHOPPING_LIST.name to R.drawable.tile_shopping_list,
+    Destination.VEHICLE.name to R.drawable.tile_vehicle,
+    Destination.INVENTORY.name to R.drawable.tile_inventory,
+    Destination.BEER.name to R.drawable.tile_beer,
+    Destination.BAKING.name to R.drawable.tile_baking,
+    Destination.NOTES.name to R.drawable.tile_notes,
     // Interim: reuses the Notes tile art until Voice Notes gets its own.
-    Destination.VOICE_NOTES to R.drawable.tile_notes,
+    Destination.VOICE_NOTES.name to R.drawable.tile_notes,
     // Interim: reuses the K tile art until Chores gets its own commissioned
     // piece (GitHub issue #27, part B).
-    Destination.CHORES to R.drawable.tile_k,
-    Destination.PRICE_MONITOR to R.drawable.tile_price_monitor,
-    Destination.K to R.drawable.tile_k,
-    Destination.GOKART to R.drawable.tile_gokart,
+    Destination.CHORES.name to R.drawable.tile_k,
+    Destination.PRICE_MONITOR.name to R.drawable.tile_price_monitor,
+    Destination.K.name to R.drawable.tile_k,
+    Destination.GOKART.name to R.drawable.tile_gokart,
+    Destination.LIFE_MAP.name to R.drawable.tile_life_map,
 )
 
 private val TileHeight = 112.dp
 private val TileBleedImageSize = 92.dp
-private val WideTileHeight = 80.dp
-private val LifeMapCardHeight = 190.dp
+private val TileBleedImageSizeTall = 132.dp
 private val MiniMapZoom = 15.0
+private val ResizeHandleSize = 24.dp
+private val SelectionBorderWidth = 2.dp
+private val RemoveIconSize = 28.dp
 
-// Header collapses once the grid has scrolled past this many pixels of its
-// first item — not just "scrollOffset > 0", so a tiny accidental drag
-// doesn't immediately snap the header shut.
+// Header collapses once the grid has scrolled past this many pixels — not
+// just "scrollOffset > 0", so a tiny accidental drag doesn't immediately
+// snap the header shut.
 private const val HeaderCollapseThresholdPx = 12
 
 @Composable
@@ -137,8 +151,10 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val location by viewModel.currentLocation.collectAsStateWithLifecycle()
-    val featured = FEATURE_TILES.first()
-    val tiles = FEATURE_TILES.drop(1).filter { it != Destination.LIFE_MAP }
+    val layout by viewModel.layout.collectAsStateWithLifecycle()
+    val editMode by viewModel.editMode.collectAsStateWithLifecycle()
+    val selectedTileId by viewModel.selectedTileId.collectAsStateWithLifecycle()
+    val showAddTilePicker by viewModel.showAddTilePicker.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
     val locationPermissionLauncher = rememberLauncherForActivityResult(
@@ -156,57 +172,76 @@ fun HomeScreen(
         }
     }
 
-    val gridState = rememberLazyGridState()
-    val isHeaderCollapsed by remember {
-        derivedStateOf {
-            gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > HeaderCollapseThresholdPx
-        }
-    }
+    val scrollState = rememberScrollState()
+    val isHeaderCollapsed = scrollState.value > HeaderCollapseThresholdPx
 
     Column(modifier = Modifier.fillMaxSize().background(UrsTheme.colors.background)) {
         HomeHeader(
             username = viewModel.username,
             isCollapsed = isHeaderCollapsed,
+            editMode = editMode,
             onSettingsClick = { onNavigateRoute(SettingsRoutes.HUB) },
             onAboutClick = { onNavigateRoute(SettingsRoutes.ABOUT) },
+            onDoneClick = viewModel::exitEditMode,
         )
-        LazyVerticalGrid(
-            state = gridState,
-            columns = GridCells.Fixed(2),
-            contentPadding = ursScreenContentPadding(),
-            horizontalArrangement = Arrangement.spacedBy(Spacing.m),
-            verticalArrangement = Arrangement.spacedBy(Spacing.m),
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                WorkTimeCard(onClick = { onNavigate(featured) })
-            }
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                NewFuelFillCard(
-                    subtitle = uiState.fuelAvgConsumptionL100Km?.let {
-                        stringResource(R.string.fuel_avg_consumption_6mo, it)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+                // Tiles consume their own taps first (see HomeTileItem); this
+                // only ever fires for a tap on empty grid space — exactly
+                // "tap outside any tile" (point 8).
+                .then(
+                    if (editMode) {
+                        Modifier.pointerInput(Unit) { detectTapGestures(onTap = { viewModel.exitEditMode() }) }
+                    } else {
+                        Modifier
                     },
-                    onClick = { onNavigateRoute(FuelRoutes.ADD) },
+                )
+                .padding(ursScreenContentPadding()),
+            verticalArrangement = Arrangement.spacedBy(Spacing.m),
+        ) {
+            HomeTileGrid(
+                layout = layout,
+                editMode = editMode,
+                selectedTileId = selectedTileId,
+                uiState = uiState,
+                location = location,
+                onTileClick = { id ->
+                    if (editMode) viewModel.toggleSelected(id) else navigateTo(id, onNavigate, onNavigateRoute)
+                },
+                onLongPress = { id -> viewModel.enterEditMode(selecting = id) },
+                onMoveTile = viewModel::moveTile,
+                onResizeTile = viewModel::resizeTile,
+                onRemoveTile = viewModel::removeTile,
+            )
+            if (editMode) {
+                EditModeExtraRow(
+                    icon = Icons.Filled.Add,
+                    label = stringResource(R.string.home_edit_add_tile),
+                    onClick = viewModel::openAddTilePicker,
+                )
+                EditModeExtraRow(
+                    icon = Icons.Filled.Refresh,
+                    label = stringResource(R.string.home_edit_reset),
+                    onClick = viewModel::resetLayoutToDefault,
                 )
             }
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                LifeMapCard(location = location, onClick = { onNavigate(Destination.LIFE_MAP) })
-            }
-            items(
-                items = tiles,
-                span = { destination -> if (destination == Destination.GOKART) GridItemSpan(maxLineSpan) else GridItemSpan(1) },
-            ) { destination ->
-                if (destination == Destination.GOKART) {
-                    WideBleedTile(destination = destination, onClick = { onNavigate(destination) })
-                } else {
-                    CornerBleedTile(
-                        destination = destination,
-                        subtitle = quickStat(destination, uiState),
-                        onClick = { onNavigate(destination) },
-                    )
-                }
-            }
         }
+    }
+
+    if (showAddTilePicker) {
+        UrsBottomSheet(onDismissRequest = viewModel::dismissAddTilePicker) {
+            AddTilePickerContent(tiles = viewModel.addableTiles, onPick = viewModel::addTile)
+        }
+    }
+}
+
+private fun navigateTo(id: String, onNavigate: (Destination) -> Unit, onNavigateRoute: (String) -> Unit) {
+    if (id == NEW_FUEL_FILL_TILE_ID) {
+        onNavigateRoute(FuelRoutes.ADD)
+    } else {
+        Destination.entries.firstOrNull { it.name == id }?.let(onNavigate)
     }
 }
 
@@ -214,8 +249,10 @@ fun HomeScreen(
 private fun HomeHeader(
     username: String?,
     isCollapsed: Boolean,
+    editMode: Boolean,
     onSettingsClick: () -> Unit,
     onAboutClick: () -> Unit,
+    onDoneClick: () -> Unit,
 ) {
     val colors = UrsTheme.colors
 
@@ -240,16 +277,25 @@ private fun HomeHeader(
                 )
                 UrsText(stringResource(R.string.app_name), style = UrsTheme.typography.brand, color = colors.accent)
             }
-            UrsIconButton(
-                onClick = onSettingsClick,
-                contentDescription = stringResource(R.string.nav_settings),
-                imageVector = Icons.Filled.Settings,
-                tint = colors.accent,
-            )
+            if (editMode) {
+                UrsText(
+                    text = stringResource(R.string.home_edit_done),
+                    style = UrsTheme.typography.cardTitle,
+                    color = colors.accent,
+                    modifier = Modifier.clickable(onClick = onDoneClick).padding(Spacing.s),
+                )
+            } else {
+                UrsIconButton(
+                    onClick = onSettingsClick,
+                    contentDescription = stringResource(R.string.nav_settings),
+                    imageVector = Icons.Filled.Settings,
+                    tint = colors.accent,
+                )
+            }
         }
 
         AnimatedVisibility(
-            visible = !isCollapsed,
+            visible = !isCollapsed && !editMode,
             enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
             exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
         ) {
@@ -299,52 +345,367 @@ private fun HomeHeader(
 }
 
 @Composable
-private fun quickStat(destination: Destination, state: HomeUiState): String? = when (destination) {
-    Destination.BEER -> state.daysSinceLastBeer?.let {
-        stringResource(R.string.home_days_since_beer, it)
-    }
+private fun quickStat(id: String, state: HomeUiState): String? = when (id) {
+    NEW_FUEL_FILL_TILE_ID -> state.fuelAvgConsumptionL100Km?.let { stringResource(R.string.fuel_avg_consumption_6mo, it) }
+    Destination.BEER.name -> state.daysSinceLastBeer?.let { stringResource(R.string.home_days_since_beer, it) }
     else -> null
 }
 
+/**
+ * Absolute-placement grid: [androidx.compose.foundation.lazy.grid.LazyVerticalGrid]
+ * can't express explicit `(column, row)` with holes, so this measures every
+ * tile to its exact pixel size from [HomeTilePlacement] and places it
+ * directly via a plain [Layout]. Not lazy — the tile count (~13) is small
+ * enough that this doesn't need virtualization. Column width is computed
+ * once via [BoxWithConstraints] (composition-time, so it's available both
+ * to the [Layout]'s measure pass and to each tile's own drag-threshold
+ * math — the two must agree or a drag would miscompute its target cell).
+ */
 @Composable
-private fun WorkTimeCard(onClick: () -> Unit) {
-    UrsGlassCard(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.m)) {
-            Image(
-                painter = painterResource(R.drawable.tile_work_time),
-                contentDescription = null,
-                modifier = Modifier.size(52.dp).clip(CircleShape),
-            )
-            UrsText(
-                text = stringResource(Destination.WORK_TIME.labelRes),
-                style = UrsTheme.typography.cardTitle,
-                color = UrsTheme.colors.accent,
-            )
+private fun HomeTileGrid(
+    layout: List<HomeTilePlacement>,
+    editMode: Boolean,
+    selectedTileId: String?,
+    uiState: HomeUiState,
+    location: Location?,
+    onTileClick: (String) -> Unit,
+    onLongPress: (String) -> Unit,
+    onMoveTile: (id: String, column: Int, row: Int) -> Unit,
+    onResizeTile: (id: String, width: Int, height: Int) -> Unit,
+    onRemoveTile: (String) -> Unit,
+) {
+    val density = LocalDensity.current
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val spacingPx = with(density) { Spacing.m.roundToPx() }
+        val tileHeightPx = with(density) { TileHeight.roundToPx() }
+        val totalWidthPx = with(density) { maxWidth.roundToPx() }
+        val colWidthPx = (totalWidthPx - spacingPx * (HOME_GRID_COLUMNS - 1)) / HOME_GRID_COLUMNS
+
+        Layout(
+            content = {
+                layout.forEach { placement ->
+                    HomeTileItem(
+                        placement = placement,
+                        selected = editMode && placement.destinationId == selectedTileId,
+                        editMode = editMode,
+                        uiState = uiState,
+                        location = location,
+                        colWidthPx = colWidthPx,
+                        tileHeightPx = tileHeightPx,
+                        spacingPx = spacingPx,
+                        onClick = { onTileClick(placement.destinationId) },
+                        onLongPress = { onLongPress(placement.destinationId) },
+                        onMoveTile = onMoveTile,
+                        onResizeTile = onResizeTile,
+                        onRemoveTile = onRemoveTile,
+                    )
+                }
+            },
+        ) { measurables, constraints ->
+            fun widthPx(w: Int) = colWidthPx * w + spacingPx * (w - 1)
+            fun heightPx(h: Int) = tileHeightPx * h + spacingPx * (h - 1)
+            fun xPx(col: Int) = col * (colWidthPx + spacingPx)
+            fun yPx(row: Int) = row * (tileHeightPx + spacingPx)
+
+            val placeables = measurables.mapIndexed { index, measurable ->
+                val p = layout[index]
+                measurable.measure(Constraints.fixed(widthPx(p.width).coerceAtLeast(0), heightPx(p.height).coerceAtLeast(0)))
+            }
+            val maxRow = layout.maxOfOrNull { it.endRowExclusive } ?: 0
+            val totalHeight = if (layout.isEmpty()) 0 else yPx(maxRow) - spacingPx
+
+            layout(constraints.maxWidth, totalHeight.coerceAtLeast(0)) {
+                placeables.forEachIndexed { index, placeable ->
+                    val p = layout[index]
+                    placeable.place(xPx(p.column), yPx(p.row))
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun NewFuelFillCard(subtitle: String?, onClick: () -> Unit) {
+private fun HomeTileItem(
+    placement: HomeTilePlacement,
+    selected: Boolean,
+    editMode: Boolean,
+    uiState: HomeUiState,
+    location: Location?,
+    colWidthPx: Int,
+    tileHeightPx: Int,
+    spacingPx: Int,
+    onClick: () -> Unit,
+    onLongPress: () -> Unit,
+    onMoveTile: (id: String, column: Int, row: Int) -> Unit,
+    onResizeTile: (id: String, width: Int, height: Int) -> Unit,
+    onRemoveTile: (String) -> Unit,
+) {
+    var moveOffset by remember { mutableStateOf(Offset.Zero) }
+    var moveOrigin by remember { mutableStateOf(placement.column to placement.row) }
+    val currentEditMode = rememberUpdatedState(editMode)
+    val currentSelected = rememberUpdatedState(selected)
+    val currentWidth = rememberUpdatedState(placement.width)
+
     val colors = UrsTheme.colors
 
-    UrsGlassCard(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.m)) {
-                Image(
-                    painter = painterResource(R.drawable.tile_fuel),
-                    contentDescription = null,
-                    modifier = Modifier.size(46.dp).clip(CircleShape),
+    Box(
+        modifier = Modifier
+            .graphicsLayer {
+                translationX = if (selected) moveOffset.x else 0f
+                translationY = if (selected) moveOffset.y else 0f
+            }
+            .zIndex(if (selected) 1f else 0f)
+            // Not keyed on editMode/selected: those flip as a *result* of
+            // onLongPress mid-gesture, and restarting this coroutine right
+            // then would cancel the drag that's supposed to continue
+            // seamlessly into a move. rememberUpdatedState keeps onDrag
+            // reading the latest values without needing the key to change.
+            .pointerInput(placement.destinationId) {
+                detectDragGesturesAfterLongPress(
+                    onDragStart = { onLongPress() },
+                    onDragEnd = { moveOffset = Offset.Zero; moveOrigin = placement.column to placement.row },
+                    onDragCancel = { moveOffset = Offset.Zero; moveOrigin = placement.column to placement.row },
+                    onDrag = { change, delta ->
+                        change.consume()
+                        if (!(currentEditMode.value && currentSelected.value)) return@detectDragGesturesAfterLongPress
+                        moveOffset += delta
+                        val stepX = colWidthPx + spacingPx
+                        val stepY = tileHeightPx + spacingPx
+                        if (stepX <= 0 || stepY <= 0) return@detectDragGesturesAfterLongPress
+                        val (origCol, origRow) = moveOrigin
+                        val deltaCol = (moveOffset.x / stepX).roundToInt()
+                        val deltaRow = (moveOffset.y / stepY).roundToInt()
+                        val newCol = (origCol + deltaCol).coerceIn(0, HOME_GRID_COLUMNS - currentWidth.value)
+                        val newRow = (origRow + deltaRow).coerceAtLeast(0)
+                        if (newCol != origCol || newRow != origRow) {
+                            onMoveTile(placement.destinationId, newCol, newRow)
+                            moveOrigin = newCol to newRow
+                            moveOffset -= Offset((newCol - origCol) * stepX.toFloat(), (newRow - origRow) * stepY.toFloat())
+                        }
+                    },
                 )
-                Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                    UrsText(text = stringResource(R.string.home_new_fuel_fill), style = UrsTheme.typography.cardTitle, color = colors.accent)
-                    if (subtitle != null) {
-                        UrsText(text = subtitle, style = UrsTheme.typography.statAccent, color = colors.accent)
-                    }
+            }
+            // Separate detector for a plain tap (navigate, or toggle
+            // selection in edit mode) — the drag detector above never
+            // consumes anything before its long-press timeout fires, so a
+            // quick tap reaches this one untouched.
+            .pointerInput(Unit) { detectTapGestures(onTap = { onClick() }) },
+    ) {
+        val borderModifier = if (selected) {
+            Modifier.border(SelectionBorderWidth, colors.accent, RoundedCornerShape(Radius.card))
+        } else {
+            Modifier
+        }
+        Box(modifier = Modifier.fillMaxSize().then(borderModifier).padding(if (selected) 2.dp else 0.dp)) {
+            HomeTileBody(
+                id = placement.destinationId,
+                height = placement.height,
+                uiState = uiState,
+                location = location,
+            )
+        }
+
+        if (selected) {
+            UrsIconButton(
+                onClick = { onRemoveTile(placement.destinationId) },
+                contentDescription = stringResource(R.string.home_edit_remove_tile),
+                imageVector = Icons.Filled.Close,
+                size = RemoveIconSize,
+                iconSize = 16.dp,
+                tint = colors.onAccent,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = (-6).dp, y = 6.dp)
+                    .clip(CircleShape)
+                    .background(colors.accent),
+            )
+            listOf(Alignment.TopStart, Alignment.TopEnd, Alignment.BottomStart, Alignment.BottomEnd).forEach { corner ->
+                ResizeHandle(
+                    corner = corner,
+                    colWidthPx = colWidthPx,
+                    tileHeightPx = tileHeightPx,
+                    startWidth = placement.width,
+                    startHeight = placement.height,
+                    onResize = { w, h -> onResizeTile(placement.destinationId, w, h) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun androidx.compose.foundation.layout.BoxScope.ResizeHandle(
+    corner: Alignment,
+    colWidthPx: Int,
+    tileHeightPx: Int,
+    startWidth: Int,
+    startHeight: Int,
+    onResize: (width: Int, height: Int) -> Unit,
+) {
+    var resizeOffset by remember { mutableStateOf(Offset.Zero) }
+    var resizeOrigin by remember { mutableStateOf(startWidth to startHeight) }
+    val colors = UrsTheme.colors
+
+    Box(
+        modifier = Modifier
+            .align(corner)
+            .size(ResizeHandleSize)
+            .offset(
+                x = if (corner == Alignment.TopStart || corner == Alignment.BottomStart) (-8).dp else 8.dp,
+                y = if (corner == Alignment.TopStart || corner == Alignment.TopEnd) (-8).dp else 8.dp,
+            )
+            .clip(CircleShape)
+            .background(colors.accent)
+            .pointerInput(colWidthPx, tileHeightPx) {
+                detectDragGestures(
+                    onDragStart = { resizeOffset = Offset.Zero; resizeOrigin = startWidth to startHeight },
+                    onDragEnd = { resizeOffset = Offset.Zero },
+                    onDragCancel = { resizeOffset = Offset.Zero },
+                    onDrag = { change, delta ->
+                        change.consume()
+                        resizeOffset += delta
+                        val (origW, origH) = resizeOrigin
+                        val widthThreshold = colWidthPx / 2f
+                        val heightThreshold = tileHeightPx / 2f
+                        val newW = when {
+                            resizeOffset.x > widthThreshold -> 2
+                            resizeOffset.x < -widthThreshold -> 1
+                            else -> origW
+                        }
+                        val newH = when {
+                            resizeOffset.y > heightThreshold -> 2
+                            resizeOffset.y < -heightThreshold -> 1
+                            else -> origH
+                        }
+                        if (newW != origW || newH != origH) {
+                            onResize(newW, newH)
+                            resizeOrigin = newW to newH
+                            resizeOffset = Offset.Zero
+                        }
+                    },
+                )
+            },
+    )
+}
+
+@Composable
+private fun AddTilePickerContent(tiles: List<Destination>, onPick: (String) -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth().padding(Spacing.l), verticalArrangement = Arrangement.spacedBy(Spacing.s)) {
+        UrsText(stringResource(R.string.home_edit_picker_title), style = UrsTheme.typography.cardTitle, color = UrsTheme.colors.accent)
+        if (tiles.isEmpty()) {
+            UrsText(
+                stringResource(R.string.home_edit_picker_empty),
+                style = UrsTheme.typography.body,
+                color = UrsTheme.colors.onSurfaceMuted,
+                modifier = Modifier.padding(vertical = Spacing.m),
+            )
+        } else {
+            LazyColumn(modifier = Modifier.height((tiles.size.coerceAtMost(6) * 56).dp)) {
+                items(tiles) { destination ->
+                    UrsText(
+                        text = stringResource(destination.labelRes),
+                        style = UrsTheme.typography.body,
+                        color = UrsTheme.colors.onSurface,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onPick(destination.name) }
+                            .padding(vertical = Spacing.m),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EditModeExtraRow(icon: ImageVector, label: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(Radius.card))
+            .clickable(onClick = onClick)
+            .padding(Spacing.m),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+    ) {
+        UrsIconButton(onClick = onClick, contentDescription = label, imageVector = icon, tint = UrsTheme.colors.accent)
+        UrsText(label, style = UrsTheme.typography.body, color = UrsTheme.colors.accent)
+    }
+}
+
+/**
+ * The one generic tile body every destination (plus the New-Fuel-Fill
+ * shortcut and Life Map) now renders through. 1-tall keeps the previous
+ * `CornerBleedTile` look; height 2 scales the bleed image up and makes room
+ * for a second stat line (issue #12's own open question — the cheapest
+ * treatment that still reads as "bigger", matching the recommendation
+ * already on file in NIGHTRUN-REPORT.md). Life Map keeps its live map
+ * preview regardless of shape, sized to whatever placement it currently has.
+ */
+@Composable
+private fun HomeTileBody(id: String, height: Int, uiState: HomeUiState, location: Location?) {
+    if (id == Destination.LIFE_MAP.name) {
+        LifeMapTileBody(location = location)
+        return
+    }
+
+    val colors = UrsTheme.colors
+    val destination = Destination.entries.firstOrNull { it.name == id }
+    val title = if (id == NEW_FUEL_FILL_TILE_ID) {
+        stringResource(R.string.home_new_fuel_fill)
+    } else {
+        destination?.let { stringResource(it.labelRes) } ?: id
+    }
+    val subtitle = quickStat(id, uiState)
+    val available = destination?.isAvailable ?: true
+    val image = TILE_IMAGE[id] ?: R.drawable.tile_k
+    val imageSize = if (height >= 2) TileBleedImageSizeTall else TileBleedImageSize
+
+    UrsGlassCard(
+        contentPadding = PaddingValues(0.dp),
+        modifier = Modifier.fillMaxSize().alpha(if (available) 1f else colors.disabledAlpha),
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Image(
+                painter = painterResource(image),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .offset(x = 10.dp, y = 10.dp)
+                    .size(imageSize),
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.linearGradient(
+                            colorStops = arrayOf(
+                                0f to colors.surface,
+                                0.42f to colors.surface,
+                                0.78f to colors.surface.copy(alpha = 0f),
+                            ),
+                        ),
+                    ),
+            )
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(Spacing.m)
+                    .fillMaxWidth(0.62f),
+                verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+            ) {
+                UrsText(text = title, style = UrsTheme.typography.cardTitle, color = colors.accent)
+                if (subtitle != null) {
+                    UrsText(text = subtitle, style = UrsTheme.typography.statAccent, color = colors.accent)
+                }
+                if (!available) {
+                    UrsPill(
+                        text = stringResource(R.string.coming_soon).uppercase(),
+                        containerColor = colors.surface,
+                        contentColor = colors.onSurfaceMuted,
+                        style = UrsTheme.typography.tag,
+                    )
                 }
             }
         }
@@ -352,20 +713,17 @@ private fun NewFuelFillCard(subtitle: String?, onClick: () -> Unit) {
 }
 
 /**
- * Life Map's Home tile: a real, non-interactive preview of the last known
- * location (osmdroid — the same library `LifeMapScreen` already uses),
- * centered on [location]. Falls back to a plain illustration only until a
- * location is available (no permission yet, or the very first app launch
- * before a fix has landed) — never a fake/placeholder coordinate.
+ * Life Map's tile: a real, non-interactive preview of the last known
+ * location (osmdroid — the same library `LifeMapScreen` already uses).
+ * Falls back to a plain illustration only until a location is available
+ * (no permission yet, or the very first app launch before a fix has
+ * landed) — never a fake/placeholder coordinate.
  */
 @Composable
-private fun LifeMapCard(location: Location?, onClick: () -> Unit) {
+private fun LifeMapTileBody(location: Location?) {
     val colors = UrsTheme.colors
 
-    UrsGlassCard(
-        contentPadding = PaddingValues(0.dp),
-        modifier = Modifier.fillMaxWidth().height(LifeMapCardHeight),
-    ) {
+    UrsGlassCard(contentPadding = PaddingValues(0.dp), modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize()) {
                 UrsText(
@@ -387,10 +745,6 @@ private fun LifeMapCard(location: Location?, onClick: () -> Unit) {
                     }
                 }
             }
-            // Transparent tap target drawn last (on top of the map), so the
-            // whole tile navigates to the full Life Map screen and the
-            // embedded preview never intercepts the tap as a pan/zoom gesture.
-            Box(modifier = Modifier.fillMaxSize().clickable(onClick = onClick))
         }
     }
 }
@@ -440,113 +794,4 @@ private fun MiniMapView(location: Location, modifier: Modifier = Modifier) {
             }
         },
     )
-}
-
-@Composable
-private fun CornerBleedTile(destination: Destination, subtitle: String?, onClick: () -> Unit) {
-    val colors = UrsTheme.colors
-
-    UrsGlassCard(
-        contentPadding = PaddingValues(0.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(TileHeight)
-            .alpha(if (destination.isAvailable) 1f else colors.disabledAlpha)
-            .clickable(enabled = destination.isAvailable, onClick = onClick),
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            Image(
-                painter = painterResource(TILE_IMAGE.getValue(destination)),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .offset(x = 10.dp, y = 10.dp)
-                    .size(TileBleedImageSize),
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.linearGradient(
-                            colorStops = arrayOf(
-                                0f to colors.surface,
-                                0.42f to colors.surface,
-                                0.78f to colors.surface.copy(alpha = 0f),
-                            ),
-                        ),
-                    ),
-            )
-            Column(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(Spacing.m)
-                    .fillMaxWidth(0.62f),
-                verticalArrangement = Arrangement.spacedBy(Spacing.xs),
-            ) {
-                UrsText(text = stringResource(destination.labelRes), style = UrsTheme.typography.cardTitle, color = colors.accent)
-                if (subtitle != null) {
-                    UrsText(text = subtitle, style = UrsTheme.typography.statAccent, color = colors.accent)
-                }
-                if (!destination.isAvailable) {
-                    UrsPill(
-                        text = stringResource(R.string.coming_soon).uppercase(),
-                        containerColor = colors.surface,
-                        contentColor = colors.onSurfaceMuted,
-                        style = UrsTheme.typography.tag,
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun WideBleedTile(destination: Destination, onClick: () -> Unit) {
-    val colors = UrsTheme.colors
-
-    UrsGlassCard(
-        contentPadding = PaddingValues(0.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(WideTileHeight)
-            .alpha(if (destination.isAvailable) 1f else colors.disabledAlpha)
-            .clickable(enabled = destination.isAvailable, onClick = onClick),
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            Image(
-                painter = painterResource(TILE_IMAGE.getValue(destination)),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.align(Alignment.CenterEnd).fillMaxWidth(0.55f).fillMaxSize(),
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.horizontalGradient(
-                            colorStops = arrayOf(
-                                0f to colors.surface,
-                                0.5f to colors.surface,
-                                0.85f to colors.surface.copy(alpha = 0f),
-                            ),
-                        ),
-                    ),
-            )
-            Column(
-                modifier = Modifier.align(Alignment.CenterStart).padding(Spacing.m),
-                verticalArrangement = Arrangement.spacedBy(Spacing.xs),
-            ) {
-                UrsText(text = stringResource(destination.labelRes), style = UrsTheme.typography.cardTitle, color = colors.accent)
-                if (!destination.isAvailable) {
-                    UrsPill(
-                        text = stringResource(R.string.coming_soon).uppercase(),
-                        containerColor = colors.surface,
-                        contentColor = colors.onSurfaceMuted,
-                        style = UrsTheme.typography.tag,
-                    )
-                }
-            }
-        }
-    }
 }
