@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Note formatting toolbar's indent/outdent buttons now render in the correct left/right order (#30).
 - Chores calendar export now only marks entries as exported once a share target is actually selected, not just when the share sheet opens (#35).
 - Chores calendar export now writes one `.ics` file per event instead of bundling every event into a single file, so calendar apps that only import the first event from a file (e.g. Proton Mail Mobile) create all of them (#36).
+- The app no longer forces a login screen when the access token has expired while offline; a token refresh that can't reach the server leaves the session intact instead of logging out, fixing vehicles (and other cached data) not showing up offline (#38).
 
 ## [0.21.0] - 2026-08-28
 

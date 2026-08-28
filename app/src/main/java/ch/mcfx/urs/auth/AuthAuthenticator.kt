@@ -2,6 +2,7 @@ package ch.mcfx.urs.auth
 
 import ch.mcfx.urs.data.remote.RefreshPayload
 import ch.mcfx.urs.data.remote.TokenResponseDto
+import java.io.IOException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okhttp3.Authenticator
@@ -68,31 +69,52 @@ class AuthAuthenticator(
             }
 
             val refreshToken = tokenStore.refreshToken
-            val newTokens = if (refreshToken != null) performRefresh(refreshToken) else null
-            if (newTokens == null) {
-                tokenStore.clear()
-                return null
+            when (val outcome = if (refreshToken != null) performRefresh(refreshToken) else RefreshOutcome.Rejected) {
+                is RefreshOutcome.Success -> {
+                    tokenStore.save(outcome.tokens.accessToken, outcome.tokens.refreshToken)
+                    return response.request.newBuilder()
+                        .header("Authorization", "Bearer ${outcome.tokens.accessToken}")
+                        .build()
+                }
+                // The server was reachable and actually rejected the refresh token
+                // (expired/revoked/invalid) — this really is a logout.
+                RefreshOutcome.Rejected -> {
+                    tokenStore.clear()
+                    return null
+                }
+                // Couldn't reach the refresh endpoint at all (e.g. offline). Not a
+                // rejection — the refresh token itself may still be perfectly
+                // valid, so leave it and isLoggedIn alone; only this one request
+                // fails, and the app keeps working from its local cache. Confirmed
+                // as the root cause of "app appears logged out / offline screens
+                // empty" when the access token had already expired before going
+                // offline — treating a network failure the same as a rejection
+                // forced a login screen that itself needs network to get past.
+                RefreshOutcome.NetworkError -> return null
             }
-
-            tokenStore.save(newTokens.accessToken, newTokens.refreshToken)
-            return response.request.newBuilder()
-                .header("Authorization", "Bearer ${newTokens.accessToken}")
-                .build()
         }
     }
 
-    private fun performRefresh(refreshToken: String): TokenResponseDto? {
+    private sealed interface RefreshOutcome {
+        data class Success(val tokens: TokenResponseDto) : RefreshOutcome
+        data object Rejected : RefreshOutcome
+        data object NetworkError : RefreshOutcome
+    }
+
+    private fun performRefresh(refreshToken: String): RefreshOutcome {
         return try {
             val body = json.encodeToString(RefreshPayload(refreshToken))
                 .toRequestBody("application/json".toMediaType())
             val request = Request.Builder().url(refreshUrl).post(body).build()
             refreshClient.newCall(request).execute().use { resp ->
-                if (!resp.isSuccessful) return null
-                val text = resp.body?.string() ?: return null
-                json.decodeFromString(TokenResponseDto.serializer(), text)
+                if (!resp.isSuccessful) return RefreshOutcome.Rejected
+                val text = resp.body?.string() ?: return RefreshOutcome.Rejected
+                RefreshOutcome.Success(json.decodeFromString(TokenResponseDto.serializer(), text))
             }
+        } catch (_: IOException) {
+            RefreshOutcome.NetworkError
         } catch (_: Exception) {
-            null
+            RefreshOutcome.Rejected
         }
     }
 
