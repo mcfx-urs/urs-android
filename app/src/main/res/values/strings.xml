@@ -8,6 +8,13 @@
     <string name="home_welcome_eyebrow">Welcome</string>
     <string name="home_new_fuel_fill">New Fuel Fill</string>
     <string name="home_days_since_beer">Last beer: %1$d days ago</string>
+    <string name="home_edit_done">Done</string>
+    <string name="home_edit_add_tile">Add tile</string>
+    <string name="home_edit_remove_tile">Remove tile</string>
+    <string name="home_edit_reset">Reset to default</string>
+    <string name="home_edit_resize_handle">Resize</string>
+    <string name="home_edit_picker_title">Add a tile</string>
+    <string name="home_edit_picker_empty">Every tile is already on your Home screen</string>
     <string name="nav_fuel">Fuel</string>
     <string name="nav_vehicle">Vehicle</string>
     <string name="nav_inventory">Inventory</string>

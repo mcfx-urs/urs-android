@@ -46,20 +46,23 @@ object HomeLayoutEngine {
 
     // Mirrors today's hardcoded FEATURE_TILES order and the current
     // full-width treatment of Work Time / New Fuel Fill / Life Map / Gokart.
-    private val DEFAULT_ORDER: List<Pair<String, Int>> = listOf(
-        Destination.WORK_TIME.name to 2,
-        NEW_FUEL_FILL_TILE_ID to 2,
-        Destination.LIFE_MAP.name to 2,
-        Destination.SHOPPING_LIST.name to 1,
-        Destination.VEHICLE.name to 1,
-        Destination.INVENTORY.name to 1,
-        Destination.BEER.name to 1,
-        Destination.BAKING.name to 1,
-        Destination.NOTES.name to 1,
-        Destination.CHORES.name to 1,
-        Destination.PRICE_MONITOR.name to 1,
-        Destination.K.name to 1,
-        Destination.GOKART.name to 2,
+    // Life Map gets height 2 by default (unlike every other seed tile) — its
+    // live map preview reads as too cramped at a single 112dp row, closer to
+    // its previous bespoke 190dp card height at two stacked rows.
+    private val DEFAULT_ORDER: List<Triple<String, Int, Int>> = listOf(
+        Triple(Destination.WORK_TIME.name, 2, 1),
+        Triple(NEW_FUEL_FILL_TILE_ID, 2, 1),
+        Triple(Destination.LIFE_MAP.name, 2, 2),
+        Triple(Destination.SHOPPING_LIST.name, 1, 1),
+        Triple(Destination.VEHICLE.name, 1, 1),
+        Triple(Destination.INVENTORY.name, 1, 1),
+        Triple(Destination.BEER.name, 1, 1),
+        Triple(Destination.BAKING.name, 1, 1),
+        Triple(Destination.NOTES.name, 1, 1),
+        Triple(Destination.CHORES.name, 1, 1),
+        Triple(Destination.PRICE_MONITOR.name, 1, 1),
+        Triple(Destination.K.name, 1, 1),
+        Triple(Destination.GOKART.name, 2, 1),
     )
 
     /** Today's order/sizes, laid out top-to-bottom, left-to-right. */
@@ -67,19 +70,19 @@ object HomeLayoutEngine {
         val placed = mutableListOf<HomeTilePlacement>()
         var col = 0
         var row = 0
-        for ((id, width) in DEFAULT_ORDER) {
+        for ((id, width, height) in DEFAULT_ORDER) {
             if (col + width > HOME_GRID_COLUMNS) {
                 col = 0
                 row += 1
             }
-            placed += HomeTilePlacement(id, col, row, width, height = 1)
+            placed += HomeTilePlacement(id, col, row, width, height)
             col += width
             if (col >= HOME_GRID_COLUMNS) {
                 col = 0
-                row += 1
+                row += height
             }
         }
-        return placed
+        return resolveConflicts(placed)
     }
 
     private fun overlaps(a: HomeTilePlacement, b: HomeTilePlacement): Boolean =
