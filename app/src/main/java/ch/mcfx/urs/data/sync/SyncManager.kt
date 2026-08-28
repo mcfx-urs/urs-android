@@ -12,6 +12,7 @@ import ch.mcfx.urs.data.local.ListItemDao
 import ch.mcfx.urs.data.local.LocationHistoryDao
 import ch.mcfx.urs.data.local.NoteDao
 import ch.mcfx.urs.data.local.OutboxBakePlanCancelPayload
+import ch.mcfx.urs.data.local.OutboxBeerLogCreatePayload
 import ch.mcfx.urs.data.local.OutboxBakePlanPayload
 import ch.mcfx.urs.data.local.OutboxBakePlanStepUpdatePayload
 import ch.mcfx.urs.data.local.OutboxDao
@@ -57,6 +58,7 @@ import ch.mcfx.urs.data.local.localInventoryId
 import ch.mcfx.urs.data.local.localListId
 import ch.mcfx.urs.data.local.publicId
 import ch.mcfx.urs.data.remote.BakePlanCreatePayload
+import ch.mcfx.urs.data.remote.BeerLogPayload
 import ch.mcfx.urs.data.remote.BakePlanStepCreatePayload
 import ch.mcfx.urs.data.remote.BakePlanStepPatchPayload
 import ch.mcfx.urs.data.remote.FillPayload
@@ -209,6 +211,7 @@ class SyncManager(
                 OutboxMutationEntity.TYPE_CREATE_TRACKER_EVENT -> replayCreateTrackerEvent(mutation)
                 OutboxMutationEntity.TYPE_UPDATE_TRACKER_EVENT -> replayUpdateTrackerEvent(mutation)
                 OutboxMutationEntity.TYPE_DELETE_TRACKER_EVENT -> replayDeleteTrackerEvent(mutation)
+                OutboxMutationEntity.TYPE_CREATE_BEER_LOG -> replayCreateBeerLog(mutation)
                 else -> {
                     // Forward-compat placeholder — nothing else is queued today.
                     outboxDao.markFailed(mutation.id, "unknown outbox mutation type: ${mutation.type}")
@@ -972,6 +975,13 @@ class SyncManager(
     private suspend fun replayDeleteTrackerEvent(mutation: OutboxMutationEntity): Boolean {
         val payload = json.decodeFromString(OutboxTrackerEventDeletePayload.serializer(), mutation.payloadJson)
         api.deleteTrackerEvent(payload.serverId)
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    private suspend fun replayCreateBeerLog(mutation: OutboxMutationEntity): Boolean {
+        val payload = json.decodeFromString(OutboxBeerLogCreatePayload.serializer(), mutation.payloadJson)
+        api.createBeerLog(BeerLogPayload(amountMl = payload.amountMl.toString(), date = payload.date))
         outboxDao.delete(mutation.id)
         return true
     }

@@ -349,7 +349,11 @@ class AppContainer(context: Context) {
         applicationScope = applicationScope,
         json = json,
     )
-    val beerRepository = BeerRepository(retrofit.create(UrsApi::class.java))
+    val beerRepository = BeerRepository(
+        api = retrofit.create(UrsApi::class.java),
+        outboxDao = database.outboxDao(),
+        json = json,
+    )
     val workTimeRepository = WorkTimeRepository(
         api = ursApi,
         workTimeDao = database.workTimeDao(),
