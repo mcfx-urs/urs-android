@@ -28,7 +28,8 @@ enum class OutboxStatus { PENDING, SYNCING, FAILED }
  * [OutboxBakePlanCancelPayload] for [TYPE_CANCEL_BAKE_PLAN],
  * [OutboxNoteCreatePayload] for [TYPE_CREATE_NOTE], [OutboxNoteUpdatePayload]
  * for [TYPE_UPDATE_NOTE], [OutboxNoteStatusPayload] for
- * [TYPE_UPDATE_NOTE_STATUS], [OutboxNoteDeletePayload] for [TYPE_DELETE_NOTE].
+ * [TYPE_UPDATE_NOTE_STATUS], [OutboxNoteDeletePayload] for [TYPE_DELETE_NOTE],
+ * [OutboxBeerLogCreatePayload] for [TYPE_CREATE_BEER_LOG].
  * [createdAt] drives strict FIFO replay order (see `SyncManager`), not
  * wall-clock display.
  */
@@ -76,5 +77,6 @@ data class OutboxMutationEntity(
         const val TYPE_CREATE_TRACKER_EVENT = "CREATE_TRACKER_EVENT"
         const val TYPE_UPDATE_TRACKER_EVENT = "UPDATE_TRACKER_EVENT"
         const val TYPE_DELETE_TRACKER_EVENT = "DELETE_TRACKER_EVENT"
+        const val TYPE_CREATE_BEER_LOG = "CREATE_BEER_LOG"
     }
 }

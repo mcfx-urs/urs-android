@@ -15,7 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Admin screen can view and change the backend log level (debug/info/warn/error) at runtime, applied immediately with no server restart (#16).
 - Chores calendar export: an action in the Chores screen builds one `.ics` file per calendar label from local data and shares it via the Android share sheet, scoped to new events since the last export or everything again; types gain an optional calendar label in the type editor (#28).
 - Chores overdue tracking: types can set an expected interval in days; the stats strip shows an "overdue" badge once that long has passed since the last entry, and an opt-in per-type reminder fires via a periodic check, gated by a new "Chore overdue reminders" toggle in notification settings (#29).
-- Watch relay: new `POST /api/watch/chore-event` endpoint logs a chore entry for a given tracker-type id with `source = watch` and today's date, using the same token and network-gate checks as the beer-fill path (urs-zepp#3).
+- Watch relay: new `POST /api/watch/chore-event` endpoint logs a chore entry for a given tracker-type id with `source = watch` and today's date, using the same relay token as the beer-fill path (urs-zepp#3).
 - Watch relay: new `POST /api/watch/audio-note` endpoint (proof of concept) writes a transferred `.opus` body to `filesDir/audio-notes/` and logs its path and size — no Room entity, UI, or sync (urs-zepp#4).
 - Home screen layout groundwork: a persisted `(column, row, width, height)` tile model with recursive push-down conflict resolution and a default layout seeded from the current order; the edit-mode UI is not wired in yet (#12).
 - Super-user-only Image Generator screen: generate an image from a free-text prompt with adjustable size/quality/background, preview it, then save it to the device gallery, share it, or delete it. Nothing is stored server-side (#20).
@@ -26,6 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Logging a beer or chore from the watch no longer fails when the phone can't reach the backend directly or bring up the VPN tunnel; the entry is queued offline and synced like every other change.
 - Opening the vehicle list with no network connection no longer crashes the app.
 - Shopping-list items and lists deleted while offline (or on another device) no longer reappear on the next sync (#15).
 - Two devices editing the same shopping-list item, list name, or inventory quantity offline now keep whichever edit was made last, instead of whichever reached the server first; the losing edit is dropped silently and the screen reconciles to the winning value (#14).

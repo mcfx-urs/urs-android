@@ -9,6 +9,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.data.BeerRepository
 import ch.mcfx.urs.data.remote.BeerLogDto
+import ch.mcfx.urs.data.sync.SyncManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,7 +23,10 @@ sealed interface BeerUiState {
     data class Data(val entries: List<BeerLogDto>) : BeerUiState
 }
 
-class BeerViewModel(private val repository: BeerRepository) : ViewModel() {
+class BeerViewModel(
+    private val repository: BeerRepository,
+    private val syncManager: SyncManager,
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow<BeerUiState>(BeerUiState.Loading)
     val uiState: StateFlow<BeerUiState> = _uiState.asStateFlow()
@@ -45,9 +49,10 @@ class BeerViewModel(private val repository: BeerRepository) : ViewModel() {
     }
 
     // Optimistic: a placeholder entry appears immediately so the charts and
-    // stats card feel instant; the following reload always runs (success or
-    // failure) and reflects server truth — the placeholder is replaced by
-    // the real row on success, or simply disappears if the POST failed.
+    // stats card feel instant. logBeer only queues to the outbox, so the
+    // syncNow() drains it against the backend when online (the reload then
+    // shows the real row); offline it stays queued and the placeholder drops
+    // out on reload, to reappear after a later successful sync.
     fun logBeer(amountMl: Int) {
         val now = LocalDateTime.now()
         val dateText = now.format(BeerStats.DATE_FORMAT)
@@ -61,6 +66,7 @@ class BeerViewModel(private val repository: BeerRepository) : ViewModel() {
         viewModelScope.launch {
             try {
                 repository.logBeer(amountMl, dateText)
+                syncManager.syncNow()
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
@@ -88,7 +94,7 @@ class BeerViewModel(private val repository: BeerRepository) : ViewModel() {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as UrsApplication
-                BeerViewModel(app.container.beerRepository)
+                BeerViewModel(app.container.beerRepository, app.container.syncManager)
             }
         }
     }

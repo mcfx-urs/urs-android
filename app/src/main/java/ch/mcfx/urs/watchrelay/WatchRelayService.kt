@@ -15,7 +15,6 @@ import ch.mcfx.urs.R
 import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.beer.BeerStats
 import ch.mcfx.urs.notifications.NotificationChannels
-import ch.mcfx.urs.vpn.NetworkGate
 import fi.iki.elonen.NanoHTTPD
 import java.io.File
 import java.time.LocalDate
@@ -36,12 +35,14 @@ private const val NOTIFICATION_ID = 1
  * Foreground service hosting a loopback-only HTTP server so the `urs-zepp`
  * watch app's Bluetooth-relayed requests (via its Zepp App side-service,
  * which does have real network access unlike the watch itself) can trigger
- * an authenticated backend call without the watch or the Zepp App ever
- * needing urs-backend's WireGuard tunnel or JWT session — both already
- * exist in this process. The first persistent [Service] in this codebase
- * (the VPN tunnel is brought up on demand, not always-on — see
- * [NetworkGate]'s own doc comment) — opt-in via Settings, matching
- * [ch.mcfx.urs.location.LocationHistorySettingsStore]'s toggle pattern.
+ * a backend write without the watch or the Zepp App ever needing
+ * urs-backend's WireGuard tunnel or JWT session. Each endpoint hands off
+ * to the same offline-first repository the in-app UI uses: the write is
+ * queued locally and delivered by `SyncManager` when connectivity allows,
+ * so the relay never blocks on — or fails because of — network/VPN state.
+ * The first persistent [Service] in this codebase — opt-in via Settings,
+ * matching [ch.mcfx.urs.location.LocationHistorySettingsStore]'s toggle
+ * pattern.
  */
 class WatchRelayService : Service() {
 
@@ -53,7 +54,6 @@ class WatchRelayService : Service() {
         val container = (application as UrsApplication).container
         val audioNotesDir = File(filesDir, "audio-notes")
         server = RelayHttpServer(
-            networkGate = container.networkGate,
             onBeerFill = { volumeMl ->
                 container.beerRepository.logBeer(volumeMl, LocalDateTime.now().format(BeerStats.DATE_FORMAT))
             },
@@ -136,7 +136,6 @@ class WatchRelayService : Service() {
  * exactly this response.
  */
 private class RelayHttpServer(
-    private val networkGate: NetworkGate,
     private val onBeerFill: suspend (volumeMl: Int) -> Unit,
     private val onChoreEvent: suspend (typeId: String) -> Unit,
     private val onAudioNote: suspend (bytes: ByteArray) -> Unit,
@@ -190,24 +189,15 @@ private class RelayHttpServer(
             }
         }
 
-        // The audio-note PoC only writes to local disk, so it doesn't need
-        // the backend to be reachable; the beer/chore paths do.
-        val needsBackend = session.uri != AUDIO_NOTE_PATH
-
+        // Every endpoint's action is a local, offline-first write (a queued
+        // outbox mutation, or the audio-note PoC's disk write) — none blocks
+        // on connectivity, so there is no network-reachability gate here.
         return runBlocking {
-            if (needsBackend) {
-                val reachable = when (networkGate.ensureReachable()) {
-                    NetworkGate.Result.OnHomeNetwork, NetworkGate.Result.Connected -> true
-                    else -> false
-                }
-                if (!reachable) {
-                    return@runBlocking newFixedLengthResponse(Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "backend unreachable")
-                }
-            }
             try {
                 action()
                 newFixedLengthResponse(Response.Status.OK, MIME_PLAINTEXT, "ok")
             } catch (e: Exception) {
+                android.util.Log.w("WatchRelay", "${session.uri} failed", e)
                 newFixedLengthResponse(Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "failed: ${e.message}")
             }
         }
