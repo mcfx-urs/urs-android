@@ -46,9 +46,13 @@ fun buildChoresIcs(
     val eventsByType: Map<String, List<TrackerEventEntity>> = events.groupBy { it.trackerTypeId }
     val dtStamp = DTSTAMP.format(now)
 
-    // group key -> (label or null, VEVENT blocks, contributing type local ids)
-    data class Bucket(val label: String?, val blocks: MutableList<String>, val typeIds: MutableSet<Long>)
-    val buckets = LinkedHashMap<String, Bucket>()
+    // One VEVENT per file, always — bundling several VEVENTs into a single
+    // multi-event .ics only surfaces the first one when opened in some
+    // mobile calendar apps' "open .ics" flow (confirmed with Proton Mail
+    // Mobile). A separate ACTION_SEND_MULTIPLE attachment per event, each
+    // importable on its own, avoids that entirely.
+    val files = mutableListOf<IcsFile>()
+    val exportedTypeIds = mutableSetOf<Long>()
 
     for (type in types.sortedBy { it.name.lowercase() }) {
         val label = type.calendar?.trim()?.ifBlank { null }
@@ -62,19 +66,16 @@ fun buildChoresIcs(
             }
         if (typeEvents.isEmpty()) continue
 
-        val key = label ?: ""
-        val bucket = buckets.getOrPut(key) { Bucket(label, mutableListOf(), mutableSetOf()) }
-        bucket.typeIds += type.id
+        exportedTypeIds += type.id
         for (event in typeEvents) {
-            bucket.blocks += vevent(type, event, dtStamp)
+            files += IcsFile(
+                fileName = fileNameFor(label, type, event),
+                content = vcalendar(listOf(vevent(type, event, dtStamp))),
+            )
         }
     }
 
-    val files = buckets.values.map { bucket ->
-        IcsFile(fileName = fileNameFor(bucket.label), content = vcalendar(bucket.blocks))
-    }
-    val exportedIds = buckets.values.flatMap { it.typeIds }.distinct()
-    return IcsExport(files, exportedIds)
+    return IcsExport(files, exportedTypeIds.toList())
 }
 
 private fun vcalendar(blocks: List<String>): String = buildString {
@@ -120,11 +121,10 @@ private fun escapeText(value: String): String = value
     .replace(",", "\\,")
     .replace("\n", "\\n")
 
-private fun fileNameFor(label: String?): String {
-    if (label == null) return "chores.ics"
-    val slug = label.lowercase()
+private fun fileNameFor(label: String?, type: TrackerTypeEntity, event: TrackerEventEntity): String {
+    val slug = (label ?: type.name).lowercase()
         .replace(Regex("[^a-z0-9]+"), "-")
         .trim('-')
         .ifBlank { "calendar" }
-    return "chores-$slug.ics"
+    return "chores-$slug-${event.occurredOn}-${event.publicId}.ics"
 }
