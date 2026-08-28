@@ -11,6 +11,7 @@ import ch.mcfx.urs.auth.AuthInterceptor
 import ch.mcfx.urs.auth.AuthRepository
 import ch.mcfx.urs.auth.AuthTokenStore
 import ch.mcfx.urs.auth.BiometricGate
+import ch.mcfx.urs.chores.ChoreOrderStore
 import ch.mcfx.urs.chores.ChoreOverdueWorker
 import ch.mcfx.urs.chores.ChoreReminderSettingsStore
 import ch.mcfx.urs.data.BakingRepository
@@ -249,8 +250,11 @@ class AppContainer(context: Context) {
 
     val workSettingsStore = WorkSettingsStore(context)
     val defaultVehicleStore = DefaultVehicleStore(context)
+    val choreOrderStore = ChoreOrderStore(context)
 
-    val authRepository = AuthRepository(ursApi, authTokenStore, database, wireGuardManager, workSettingsStore, defaultVehicleStore)
+    val authRepository = AuthRepository(
+        ursApi, authTokenStore, database, wireGuardManager, workSettingsStore, defaultVehicleStore, choreOrderStore,
+    )
 
     val reachabilityChecker = ReachabilityChecker()
     val syncStatusStore = SyncStatusStore(context)

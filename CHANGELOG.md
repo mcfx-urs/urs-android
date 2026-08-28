@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- Chores stats list is now a full-width, vertically scrolling list instead of a horizontally-scrolling row of cards, and supports manual reordering by long-press-drag (#33).
+
 ### Fixed
 
 - Note formatting toolbar's indent/outdent buttons now render in the correct left/right order (#30).
