@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 
 - Note formatting toolbar's indent/outdent buttons now render in the correct left/right order (#30).
+- Chores calendar export now only marks entries as exported once a share target is actually selected, not just when the share sheet opens (#35).
 
 ## [0.21.0] - 2026-08-28
 
