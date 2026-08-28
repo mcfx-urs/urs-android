@@ -35,11 +35,12 @@ data class ChoresUiState(
 class ChoresViewModel(
     private val repository: ChoreRepository,
     private val reminderSettings: ChoreReminderSettingsStore,
+    private val orderStore: ChoreOrderStore,
 ) : ViewModel() {
 
     val uiState: StateFlow<ChoresUiState> =
-        combine(repository.observeTypes(), repository.observeEvents()) { types, events ->
-            ChoresUiState(types = types, events = events)
+        combine(repository.observeTypes(), repository.observeEvents(), orderStore.order) { types, events, order ->
+            ChoresUiState(types = applyOrder(types, order), events = events)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ChoresUiState())
 
     /** Per-type "notify when overdue" opt-in, keyed by publicId. */
@@ -104,6 +105,11 @@ class ChoresViewModel(
         viewModelScope.launch { repository.archiveType(localId) }
     }
 
+    /** Persists the manually dragged order (a list of publicIds) for the stats list. */
+    fun reorderTypes(publicIds: List<String>) {
+        orderStore.setOrder(publicIds)
+    }
+
     fun logEvent(typeId: String, occurredOn: String, occurredAt: String?, note: String?) {
         viewModelScope.launch { repository.logEvent(typeId, occurredOn, occurredAt?.ifBlank { null }, note?.ifBlank { null }) }
     }
@@ -122,8 +128,19 @@ class ChoresViewModel(
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as UrsApplication
-                ChoresViewModel(app.container.choreRepository, app.container.choreReminderSettingsStore)
+                ChoresViewModel(
+                    app.container.choreRepository,
+                    app.container.choreReminderSettingsStore,
+                    app.container.choreOrderStore,
+                )
             }
         }
     }
+}
+
+/** Types with a stored position sort by it (ties keep DB order); unordered types are appended, DB order preserved. */
+private fun applyOrder(types: List<TrackerTypeEntity>, order: List<String>): List<TrackerTypeEntity> {
+    if (order.isEmpty()) return types
+    val rank = order.withIndex().associate { (index, id) -> id to index }
+    return types.sortedBy { rank[it.publicId] ?: Int.MAX_VALUE }
 }

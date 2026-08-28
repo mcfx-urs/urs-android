@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -35,6 +36,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -42,11 +44,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -144,7 +150,7 @@ fun ChoresScreen(viewModel: ChoresViewModel = viewModel(factory = ChoresViewMode
             )
 
             Spacer(Modifier.height(Spacing.xs))
-            StatsStrip(types = state.activeTypes, lastDoneByType = lastDoneByType)
+            StatsStrip(types = state.activeTypes, lastDoneByType = lastDoneByType, onReorder = viewModel::reorderTypes)
         }
 
         daySheet?.let { date ->
@@ -521,15 +527,31 @@ private fun shareIcsExport(context: Context, export: IcsExport, onTargetSelected
     if (!launched) context.unregisterReceiver(receiver)
 }
 
+// Full-width, one row per type (GitHub issue #33 — the previous
+// horizontally-scrolling row of cards read as an unsorted, hard-to-scan
+// strip). Long-press-drag reorders rows; the committed order (by publicId)
+// is handed to onReorder only once the drag ends, and persists locally via
+// ChoreOrderStore.
 @Composable
-private fun StatsStrip(types: List<TrackerTypeEntity>, lastDoneByType: Map<String, LocalDate>) {
+private fun StatsStrip(
+    types: List<TrackerTypeEntity>,
+    lastDoneByType: Map<String, LocalDate>,
+    onReorder: (List<String>) -> Unit,
+) {
     if (types.isEmpty()) return
     val today = LocalDate.now()
-    Row(
-        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(Spacing.s),
-    ) {
-        types.forEach { type ->
+    val spacingPx = with(LocalDensity.current) { Spacing.s.toPx() }
+
+    var orderedIds by remember(types.map { it.publicId }) { mutableStateOf(types.map { it.publicId }) }
+    val byId = remember(types) { types.associateBy { it.publicId } }
+    val itemHeights = remember { mutableStateMapOf<String, Int>() }
+    var draggingId by remember { mutableStateOf<String?>(null) }
+    var dragOffset by remember { mutableStateOf(0f) }
+
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Spacing.s)) {
+        orderedIds.forEach { id ->
+            val type = byId[id] ?: return@forEach
+            val isDragging = id == draggingId
             val last = lastDoneByType[type.publicId]
             val text = when {
                 last == null -> stringResource(R.string.chores_stat_never)
@@ -537,14 +559,46 @@ private fun StatsStrip(types: List<TrackerTypeEntity>, lastDoneByType: Map<Strin
                 else -> stringResource(R.string.chores_stat_days_ago, ChronoUnit.DAYS.between(last, today))
             }
             val overdue = isChoreOverdue(type.expectedIntervalDays, last, today)
-            UrsCard {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                        Box(Modifier.size(8.dp).clip(CircleShape).background(parseChoreColor(type.color)))
-                        ChoreIconView(token = type.icon, tint = UrsTheme.colors.onSurface, size = 16.dp)
-                        UrsText(type.name, style = UrsTheme.typography.body)
-                    }
-                    UrsText(text, style = UrsTheme.typography.caption, color = UrsTheme.colors.onSurfaceMuted)
+
+            UrsCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onGloballyPositioned { itemHeights[id] = it.size.height }
+                    .graphicsLayer { translationY = if (isDragging) dragOffset else 0f }
+                    .zIndex(if (isDragging) 1f else 0f)
+                    .pointerInput(id) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = { draggingId = id; dragOffset = 0f },
+                            onDragEnd = {
+                                draggingId = null
+                                dragOffset = 0f
+                                onReorder(orderedIds)
+                            },
+                            onDragCancel = { draggingId = null; dragOffset = 0f },
+                            onDrag = { change, delta ->
+                                change.consume()
+                                dragOffset += delta.y
+                                val step = (itemHeights[id] ?: 0) + spacingPx
+                                if (step <= 0f) return@detectDragGesturesAfterLongPress
+                                val currentIndex = orderedIds.indexOf(id)
+                                val targetIndex = (currentIndex + (dragOffset / step).toInt())
+                                    .coerceIn(0, orderedIds.lastIndex)
+                                if (targetIndex != currentIndex) {
+                                    orderedIds = orderedIds.toMutableList().apply { add(targetIndex, removeAt(currentIndex)) }
+                                    dragOffset -= (targetIndex - currentIndex) * step
+                                }
+                            },
+                        )
+                    },
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+                ) {
+                    Box(Modifier.size(8.dp).clip(CircleShape).background(parseChoreColor(type.color)))
+                    ChoreIconView(token = type.icon, tint = UrsTheme.colors.onSurface, size = 16.dp)
+                    UrsText(type.name, style = UrsTheme.typography.body, modifier = Modifier.weight(1f))
                     if (overdue) {
                         UrsText(
                             text = stringResource(R.string.chores_stat_overdue),
@@ -556,6 +610,7 @@ private fun StatsStrip(types: List<TrackerTypeEntity>, lastDoneByType: Map<Strin
                                 .padding(horizontal = Spacing.s, vertical = 2.dp),
                         )
                     }
+                    UrsText(text, style = UrsTheme.typography.caption, color = UrsTheme.colors.onSurfaceMuted)
                 }
             }
         }

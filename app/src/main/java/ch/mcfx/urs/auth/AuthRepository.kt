@@ -1,5 +1,6 @@
 package ch.mcfx.urs.auth
 
+import ch.mcfx.urs.chores.ChoreOrderStore
 import ch.mcfx.urs.data.DefaultVehicleStore
 import ch.mcfx.urs.data.WorkSettingsStore
 import ch.mcfx.urs.data.local.AppDatabase
@@ -23,6 +24,7 @@ class AuthRepository(
     private val wireGuardManager: WireGuardManager,
     private val workSettingsStore: WorkSettingsStore,
     private val defaultVehicleStore: DefaultVehicleStore,
+    private val choreOrderStore: ChoreOrderStore,
 ) {
     suspend fun login(userName: String, password: String) {
         val tokens = api.login(LoginPayload(userName = userName, password = password))
@@ -36,7 +38,8 @@ class AuthRepository(
      * still-running tunnel, or their synced rows (lists, inventories, ...),
      * simply stay in place and, since neither carried a user identity
      * before, would keep being used/shown verbatim by whoever logs in next
-     * on this device. Deliberately calls [WireGuardManager.disconnect]
+     * on this device. Same for [ChoreOrderStore]'s manual chores sort order.
+     * Deliberately calls [WireGuardManager.disconnect]
      * directly rather than [ch.mcfx.urs.vpn.NetworkGate.userDisconnect] —
      * the latter also flips a "user disabled" flag that would incorrectly
      * suppress the *next* user's own automatic reconnect too.
@@ -46,6 +49,7 @@ class AuthRepository(
         withContext(Dispatchers.IO) { database.clearAllTables() }
         workSettingsStore.clear()
         defaultVehicleStore.clear()
+        choreOrderStore.clear()
         tokenStore.clear()
     }
 
