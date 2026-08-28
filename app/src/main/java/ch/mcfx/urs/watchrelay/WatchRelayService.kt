@@ -26,6 +26,10 @@ private const val BEER_FILL_PATH = "/api/watch/beer-fill"
 private const val CHORE_EVENT_PATH = "/api/watch/chore-event"
 private const val AUDIO_NOTE_PATH = "/api/watch/audio-note"
 private const val TOKEN_HEADER = "x-relay-token"
+// The watch has no direct network access and the Zepp companion service
+// cannot read a transferred file's bytes, so the watch reads its own
+// recording back and uploads it base64-encoded over the relay instead.
+private const val AUDIO_ENCODING_HEADER = "x-audio-encoding"
 private const val VOLUME_PARAM = "volume"
 private const val TYPE_ID_PARAM = "typeId"
 private const val AUDIO_NOTE_MAX_BYTES = 8 * 1024 * 1024
@@ -185,7 +189,16 @@ private class RelayHttpServer(
                 if (read != length) {
                     return newFixedLengthResponse(Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "truncated body")
                 }
-                { onAudioNote(body) }
+                val payload = if (session.headers[AUDIO_ENCODING_HEADER]?.lowercase() == "base64") {
+                    try {
+                        android.util.Base64.decode(body, android.util.Base64.DEFAULT)
+                    } catch (e: IllegalArgumentException) {
+                        return newFixedLengthResponse(Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "invalid base64")
+                    }
+                } else {
+                    body
+                }
+                { onAudioNote(payload) }
             }
         }
 
