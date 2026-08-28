@@ -102,16 +102,16 @@ internal fun RichTextToolbar(
             iconSize = ToolbarIconSize,
         )
         UrsIconButton(
-            onClick = onIndent,
-            contentDescription = stringResource(R.string.note_richtext_indent),
-            imageVector = Icons.AutoMirrored.Filled.FormatIndentIncrease,
+            onClick = onOutdent,
+            contentDescription = stringResource(R.string.note_richtext_outdent),
+            imageVector = Icons.AutoMirrored.Filled.FormatIndentDecrease,
             size = ToolbarIconButtonSize,
             iconSize = ToolbarIconSize,
         )
         UrsIconButton(
-            onClick = onOutdent,
-            contentDescription = stringResource(R.string.note_richtext_outdent),
-            imageVector = Icons.AutoMirrored.Filled.FormatIndentDecrease,
+            onClick = onIndent,
+            contentDescription = stringResource(R.string.note_richtext_indent),
+            imageVector = Icons.AutoMirrored.Filled.FormatIndentIncrease,
             size = ToolbarIconButtonSize,
             iconSize = ToolbarIconSize,
         )
