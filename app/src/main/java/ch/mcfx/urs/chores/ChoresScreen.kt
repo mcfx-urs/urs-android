@@ -22,8 +22,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.widget.Toast
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
@@ -187,9 +190,7 @@ fun ChoresScreen(viewModel: ChoresViewModel = viewModel(factory = ChoresViewMode
                     onExport = { exportAll ->
                         exportSheet = false
                         val export = viewModel.buildIcsExport(exportAll)
-                        if (shareIcsExport(context, export)) {
-                            viewModel.markExported(export.exportedTypeLocalIds)
-                        }
+                        shareIcsExport(context, export) { viewModel.markExported(export.exportedTypeLocalIds) }
                     },
                 )
             }
@@ -463,12 +464,16 @@ private fun ExportSheet(onExport: (exportAll: Boolean) -> Unit) {
 }
 
 // Writes each .ics into cacheDir/chores-ics/ and hands it to the share
-// sheet through the app's FileProvider. Returns true once the chooser is
-// launched, so the caller only then marks the types exported.
-private fun shareIcsExport(context: Context, export: IcsExport): Boolean {
+// sheet through the app's FileProvider. Android never reports back whether
+// the receiving app actually completed the share, but createChooser's
+// callback PendingIntent does fire once the user picks a target from the
+// chooser — the closest available signal that the share wasn't cancelled —
+// so onTargetSelected (which marks the types exported) only runs then,
+// never just because the chooser was launched.
+private fun shareIcsExport(context: Context, export: IcsExport, onTargetSelected: () -> Unit) {
     if (export.files.isEmpty()) {
         Toast.makeText(context, R.string.chores_export_nothing, Toast.LENGTH_SHORT).show()
-        return false
+        return
     }
     val dir = File(context.cacheDir, "chores-ics").apply { mkdirs() }
     dir.listFiles()?.forEach { it.delete() }
@@ -480,7 +485,7 @@ private fun shareIcsExport(context: Context, export: IcsExport): Boolean {
         uris += FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", out)
     }
 
-    val intent = if (uris.size == 1) {
+    val sendIntent = if (uris.size == 1) {
         Intent(Intent.ACTION_SEND).apply {
             type = "text/calendar"
             putExtra(Intent.EXTRA_STREAM, uris.first())
@@ -491,11 +496,29 @@ private fun shareIcsExport(context: Context, export: IcsExport): Boolean {
             putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
         }
     }
-    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    sendIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
 
-    return runCatching { context.startActivity(Intent.createChooser(intent, null)) }
+    val resultAction = "${context.packageName}.CHORES_EXPORT_CHOOSER_RESULT"
+    val receiver = object : BroadcastReceiver() {
+        override fun onReceive(receiverContext: Context, intent: Intent) {
+            context.unregisterReceiver(this)
+            onTargetSelected()
+        }
+    }
+    context.registerReceiver(receiver, IntentFilter(resultAction), Context.RECEIVER_NOT_EXPORTED)
+    val callbackIntent = PendingIntent.getBroadcast(
+        context,
+        0,
+        Intent(resultAction).setPackage(context.packageName),
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
+
+    val launched = runCatching {
+        context.startActivity(Intent.createChooser(sendIntent, null, callbackIntent.intentSender))
+    }
         .onFailure { Toast.makeText(context, R.string.chores_export_no_app, Toast.LENGTH_SHORT).show() }
         .isSuccess
+    if (!launched) context.unregisterReceiver(receiver)
 }
 
 @Composable
