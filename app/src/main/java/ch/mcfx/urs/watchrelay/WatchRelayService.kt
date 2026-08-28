@@ -16,7 +16,6 @@ import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.beer.BeerStats
 import ch.mcfx.urs.notifications.NotificationChannels
 import fi.iki.elonen.NanoHTTPD
-import java.io.File
 import java.time.LocalDate
 import java.time.LocalDateTime
 import kotlinx.coroutines.runBlocking
@@ -56,7 +55,6 @@ class WatchRelayService : Service() {
         super.onCreate()
         startForegroundWithNotification()
         val container = (application as UrsApplication).container
-        val audioNotesDir = File(filesDir, "audio-notes")
         server = RelayHttpServer(
             onBeerFill = { volumeMl ->
                 container.beerRepository.logBeer(volumeMl, LocalDateTime.now().format(BeerStats.DATE_FORMAT))
@@ -70,13 +68,15 @@ class WatchRelayService : Service() {
                     source = "watch",
                 )
             },
-            // PoC only (urs-zepp#4): land the transferred .opus in app storage
-            // and log it. No Room entity, no UI, no sync.
+            // Convert the watch recorder's raw output to a standard Ogg-Opus
+            // file, store it, and record the row. A conversion failure throws,
+            // which the server turns into a non-2xx so the watch retries.
             onAudioNote = { bytes ->
-                audioNotesDir.mkdirs()
-                val out = File(audioNotesDir, "note-${System.currentTimeMillis()}.opus")
-                out.writeBytes(bytes)
-                android.util.Log.i("WatchRelay", "audio note saved: ${out.absolutePath} (${bytes.size} bytes)")
+                val note = container.audioNoteRepository.saveFromWatch(bytes)
+                android.util.Log.i(
+                    "WatchRelay",
+                    "audio note saved: ${note.filePath} (${bytes.size} watch bytes, ${note.durationMs} ms)",
+                )
             },
         ).also { it.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false) }
     }
