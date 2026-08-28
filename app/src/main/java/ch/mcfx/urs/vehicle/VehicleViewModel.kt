@@ -109,7 +109,10 @@ class VehicleViewModel(
                 // Best-effort — the vehicle list itself still comes from the
                 // Room cache regardless of whether fuel types loaded.
             }
-            repository.refreshFromBackend()
+            // Best-effort cache warm; VehicleRepository deliberately lets
+            // network/HTTP failures propagate for its mutating calls, so the
+            // refresh has to be guarded here or an offline open crashes.
+            runCatching { repository.refreshFromBackend() }
         }
     }
 
