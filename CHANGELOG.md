@@ -5,8 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Home screen edit mode: long-press any tile to enter it, then tap a tile to select it (resize via corner dots, drag to move, remove via the corner icon), add unplaced destinations via "Add tile", or reset the layout to default — the layout persists per device (#12).
+
 ### Changed
 
+- Every Home tile (including the previously bespoke Work Time, New Fuel Fill, and Life Map rows) now renders through one unified tile component so resizing/moving behaves consistently across the whole grid (#12).
 - Chores stats list is now a full-width, vertically scrolling list instead of a horizontally-scrolling row of cards, and supports manual reordering by long-press-drag (#33).
 - Watch relay's audio-note endpoint accepts a base64-encoded body via an `x-audio-encoding: base64` header, decoding it before writing the file (urs-zepp#4).
 
