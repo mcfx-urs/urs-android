@@ -9,7 +9,10 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.runtime.Composable
@@ -198,7 +201,17 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                 },
             )
         }
-        Box(modifier = Modifier.fillMaxSize()) {
+        // Reserve the system navigation bar's space for every screen in one
+        // place. The app draws edge-to-edge (framework-enforced on this
+        // targetSdk — no opt-out), so without this each screen has to inset
+        // its own bottom edge, and any screen that forgets ends up with its
+        // last content unreachable behind the nav bar (only visible in
+        // 3-button mode, where the inset is non-zero). Applying it here means
+        // no screen can regress. windowInsetsPadding consumes the inset for
+        // descendants, so a screen that still adds its own bottom inset just
+        // gets zero — no double padding. The few full-bleed screens (osmdroid
+        // maps) accept the resulting bottom band.
+        Box(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.navigationBars)) {
             NavHost(
                 navController = navController,
                 startDestination = Destination.HOME.route,

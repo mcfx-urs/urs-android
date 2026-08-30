@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Screen content no longer ends up stuck behind the system navigation bar in 3-button navigation mode; the bar's space is now reserved once app-wide, so every screen (e.g. the Chores calendar) scrolls fully clear of it.
 - Home screen edit mode: dragging a tile no longer corrupts drag state or drops mid-gesture when the move reorders the underlying tile list (#12).
 - Home screen edit mode: the tile order, not explicit grid coordinates, is now the layout's source of truth — dragging a tile onto another reorders them like a list instead of leaving gaps a coordinate-based layout could produce, and a wide or tall tile that blocks a cell no longer gets backfilled by something later in the order. The reorder commits after hovering the same tile for 500ms rather than on every cell passed over, and a tile no longer visibly snaps back to its old cell when a drag is released after committing a reorder, nor toward a stale position left over from an unrelated tile's earlier reorder (#12).
 - Note formatting toolbar's indent/outdent buttons now render in the correct left/right order (#30).

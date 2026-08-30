@@ -27,7 +27,6 @@ import ch.mcfx.urs.ui.components.UrsBottomSheet
 import ch.mcfx.urs.ui.components.UrsIcon
 import ch.mcfx.urs.ui.components.UrsSquareTile
 import ch.mcfx.urs.ui.components.UrsText
-import ch.mcfx.urs.ui.components.ursNavigationBarsBottomPadding
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Spacing
 
@@ -65,7 +64,6 @@ fun ImageReviewScreen(viewModel: ImageReviewViewModel = viewModel(factory = Imag
 
             else -> LazyVerticalGrid(
                 columns = GridCells.Fixed(3),
-                contentPadding = ursNavigationBarsBottomPadding(),
                 verticalArrangement = Arrangement.spacedBy(Spacing.s),
                 horizontalArrangement = Arrangement.spacedBy(Spacing.s),
             ) {
