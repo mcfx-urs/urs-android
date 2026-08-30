@@ -12,23 +12,34 @@ import kotlinx.serialization.json.Json
 /**
  * Launcher-style Home layout model + persistence (GitHub issue #12).
  *
- * The grid is a fixed 2 columns, scrolling vertically. Every Home item —
- * including the ones that are bespoke full-width rows today (Work Time,
- * New Fuel Fill, Life Map) — is one generic tile with an explicit
- * `(column, row, width, height)`, width and height each in {1, 2}. One
- * row-unit is today's `TileHeight`.
+ * The grid is a fixed 2 columns, scrolling vertically. The persisted, and
+ * only authoritative, state is an ORDERED LIST of tiles ([HomeTileSpec]):
+ * moving a tile means moving it to a different position in that order,
+ * exactly like reordering items in a list. A tile's on-screen
+ * `(column, row)` is never stored — [HomeLayoutEngine.pack] derives it
+ * fresh every time by laying the list out strictly left-to-right/
+ * top-to-bottom, so it can never drift out of sync with the order.
  *
- * This file is the data + conflict-resolution core only. The edit-mode UI
- * (long-press to enter, corner-dot resize, drag-move, the add picker,
- * "Done"/tap-outside to exit) is still to be built on top of it — see the
- * nightrun report.
+ * This replaces an earlier design where each tile stored its own
+ * `(column, row)` directly and gaps were closed by reactively nudging
+ * neighbors — that model couldn't express "shift everything between the
+ * old and new spot by one", which is what reordering by dragging one tile
+ * onto another actually needs.
  */
 
 const val HOME_GRID_COLUMNS = 2
 
+/** One entry in the persisted tile order. Width/height each in {1, 2}. */
 @Serializable
-data class HomeTilePlacement(
+data class HomeTileSpec(
     /** [Destination.name]; "NEW_FUEL_FILL" is the one non-Destination tile. */
+    val destinationId: String,
+    val width: Int,
+    val height: Int,
+)
+
+/** A tile's computed grid position — rendering-only, derived by [HomeLayoutEngine.pack], never persisted. */
+data class HomeTilePlacement(
     val destinationId: String,
     val column: Int,
     val row: Int,
@@ -49,112 +60,96 @@ object HomeLayoutEngine {
     // Life Map gets height 2 by default (unlike every other seed tile) — its
     // live map preview reads as too cramped at a single 112dp row, closer to
     // its previous bespoke 190dp card height at two stacked rows.
-    private val DEFAULT_ORDER: List<Triple<String, Int, Int>> = listOf(
-        Triple(Destination.WORK_TIME.name, 2, 1),
-        Triple(NEW_FUEL_FILL_TILE_ID, 2, 1),
-        Triple(Destination.LIFE_MAP.name, 2, 2),
-        Triple(Destination.SHOPPING_LIST.name, 1, 1),
-        Triple(Destination.VEHICLE.name, 1, 1),
-        Triple(Destination.INVENTORY.name, 1, 1),
-        Triple(Destination.BEER.name, 1, 1),
-        Triple(Destination.BAKING.name, 1, 1),
-        Triple(Destination.NOTES.name, 1, 1),
-        Triple(Destination.CHORES.name, 1, 1),
-        Triple(Destination.PRICE_MONITOR.name, 1, 1),
-        Triple(Destination.K.name, 1, 1),
-        Triple(Destination.GOKART.name, 2, 1),
+    private val DEFAULT_ORDER: List<HomeTileSpec> = listOf(
+        HomeTileSpec(Destination.WORK_TIME.name, 2, 1),
+        HomeTileSpec(NEW_FUEL_FILL_TILE_ID, 2, 1),
+        HomeTileSpec(Destination.LIFE_MAP.name, 2, 2),
+        HomeTileSpec(Destination.SHOPPING_LIST.name, 1, 1),
+        HomeTileSpec(Destination.VEHICLE.name, 1, 1),
+        HomeTileSpec(Destination.INVENTORY.name, 1, 1),
+        HomeTileSpec(Destination.BEER.name, 1, 1),
+        HomeTileSpec(Destination.BAKING.name, 1, 1),
+        HomeTileSpec(Destination.NOTES.name, 1, 1),
+        HomeTileSpec(Destination.CHORES.name, 1, 1),
+        HomeTileSpec(Destination.PRICE_MONITOR.name, 1, 1),
+        HomeTileSpec(Destination.K.name, 1, 1),
+        HomeTileSpec(Destination.GOKART.name, 2, 1),
     )
 
-    /** Today's order/sizes, laid out top-to-bottom, left-to-right. */
-    fun defaultLayout(): List<HomeTilePlacement> {
-        val placed = mutableListOf<HomeTilePlacement>()
-        var col = 0
-        var row = 0
-        for ((id, width, height) in DEFAULT_ORDER) {
-            if (col + width > HOME_GRID_COLUMNS) {
-                col = 0
-                row += 1
-            }
-            placed += HomeTilePlacement(id, col, row, width, height)
-            col += width
-            if (col >= HOME_GRID_COLUMNS) {
-                col = 0
-                row += height
-            }
-        }
-        return resolveConflicts(placed)
-    }
+    fun defaultOrder(): List<HomeTileSpec> = DEFAULT_ORDER
 
     private fun overlaps(a: HomeTilePlacement, b: HomeTilePlacement): Boolean =
         a.column < b.endColumnExclusive && b.column < a.endColumnExclusive &&
             a.row < b.endRowExclusive && b.row < a.endRowExclusive
 
-    /** Clamp a placement to the grid: valid sizes, in-bounds column. */
-    private fun clamp(p: HomeTilePlacement): HomeTilePlacement {
-        val w = p.width.coerceIn(1, 2)
-        val h = p.height.coerceIn(1, 2)
-        val c = p.column.coerceIn(0, HOME_GRID_COLUMNS - w)
-        return p.copy(column = c, width = w, height = h, row = p.row.coerceAtLeast(0))
-    }
-
     /**
-     * Resolves overlaps by pushing conflicting tiles straight down by the
-     * minimum number of rows needed to clear, recursively. [priorityId], if
-     * given, is placed first and never moved — the tile the user just
-     * dragged or resized.
+     * Lays [specs] out strictly in order: each tile takes the earliest
+     * (topmost, then leftmost) position that fits its size without
+     * overlapping an already-placed tile. The scan cursor only ever moves
+     * *forward* — it never re-checks a row an earlier tile has already
+     * moved past. That's the difference between the two kinds of gaps a
+     * tile's shape can leave: a spot beside a tall tile that's still ahead
+     * of the cursor gets picked up by whatever comes next (the cursor
+     * simply steps over the blocked cell within the same row-by-row
+     * sweep), but a spot a wide tile skipped past *earlier* — because nothing
+     * yet placed there fit — is never revisited, so a later, better-fitting
+     * tile can't jump back into it. That's what keeps a manual drag from
+     * fighting an automatic backfill: the only way to fill an
+     * already-passed cell is to explicitly reorder something into it.
      */
-    fun resolveConflicts(input: List<HomeTilePlacement>, priorityId: String? = null): List<HomeTilePlacement> {
-        val clamped = input.map(::clamp)
-        val ordered = buildList {
-            clamped.firstOrNull { it.destinationId == priorityId }?.let(::add)
-            addAll(
-                clamped
-                    .filter { it.destinationId != priorityId }
-                    .sortedWith(compareBy({ it.row }, { it.column })),
-            )
-        }
-
+    fun pack(specs: List<HomeTileSpec>): List<HomeTilePlacement> {
         val placed = mutableListOf<HomeTilePlacement>()
-        for (tile in ordered) {
-            var current = tile
-            var guard = 0
-            while (placed.any { overlaps(it, current) } && guard++ < 1000) {
-                val clearRow = placed.filter { overlaps(it, current) }.maxOf { it.endRowExclusive }
-                current = current.copy(row = clearRow)
-            }
-            placed += current
-        }
-        return placed.sortedWith(compareBy({ it.row }, { it.column }))
-    }
-
-    fun moveTile(layout: List<HomeTilePlacement>, id: String, column: Int, row: Int): List<HomeTilePlacement> {
-        val next = layout.map { if (it.destinationId == id) it.copy(column = column, row = row) else it }
-        return resolveConflicts(next, priorityId = id)
-    }
-
-    fun resizeTile(layout: List<HomeTilePlacement>, id: String, width: Int, height: Int): List<HomeTilePlacement> {
-        val next = layout.map { if (it.destinationId == id) it.copy(width = width, height = height) else it }
-        return resolveConflicts(next, priorityId = id)
-    }
-
-    fun removeTile(layout: List<HomeTilePlacement>, id: String): List<HomeTilePlacement> =
-        resolveConflicts(layout.filterNot { it.destinationId == id })
-
-    /** Adds [id] at 1x1 in the first free cell. */
-    fun addTile(layout: List<HomeTilePlacement>, id: String): List<HomeTilePlacement> {
-        if (layout.any { it.destinationId == id }) return layout
-        val occupied = layout.flatMap { p ->
-            (p.row until p.endRowExclusive).flatMap { r -> (p.column until p.endColumnExclusive).map { c -> r to c } }
-        }.toSet()
-        var row = 0
-        while (true) {
-            for (col in 0 until HOME_GRID_COLUMNS) {
-                if ((row to col) !in occupied) {
-                    return resolveConflicts(layout + HomeTilePlacement(id, col, row, 1, 1))
+        var cursorCol = 0
+        var cursorRow = 0
+        for (spec in specs) {
+            val width = spec.width.coerceIn(1, 2)
+            val height = spec.height.coerceIn(1, 2)
+            var placement: HomeTilePlacement? = null
+            while (placement == null) {
+                if (cursorCol + width > HOME_GRID_COLUMNS) {
+                    cursorCol = 0
+                    cursorRow++
+                    continue
+                }
+                val candidate = HomeTilePlacement(spec.destinationId, cursorCol, cursorRow, width, height)
+                if (placed.none { overlaps(it, candidate) }) {
+                    placement = candidate
+                } else {
+                    cursorCol++
                 }
             }
-            row += 1
+            placed += placement
+            cursorCol += width
+            if (cursorCol >= HOME_GRID_COLUMNS) {
+                cursorCol = 0
+                cursorRow++
+            }
         }
+        return placed
+    }
+
+    /** Moves [id] to [targetId]'s current position in the order; everything between shifts by one. */
+    fun moveTile(specs: List<HomeTileSpec>, id: String, targetId: String): List<HomeTileSpec> {
+        if (id == targetId) return specs
+        val from = specs.indexOfFirst { it.destinationId == id }
+        val to = specs.indexOfFirst { it.destinationId == targetId }
+        if (from < 0 || to < 0) return specs
+        val mutable = specs.toMutableList()
+        val tile = mutable.removeAt(from)
+        mutable.add(to, tile)
+        return mutable
+    }
+
+    fun resizeTile(specs: List<HomeTileSpec>, id: String, width: Int, height: Int): List<HomeTileSpec> =
+        specs.map { if (it.destinationId == id) it.copy(width = width, height = height) else it }
+
+    fun removeTile(specs: List<HomeTileSpec>, id: String): List<HomeTileSpec> =
+        specs.filterNot { it.destinationId == id }
+
+    /** Adds [id] at 1x1, appended to the end of the order — [pack] places it in the next free slot. */
+    fun addTile(specs: List<HomeTileSpec>, id: String): List<HomeTileSpec> {
+        if (specs.any { it.destinationId == id }) return specs
+        return specs + HomeTileSpec(id, 1, 1)
     }
 }
 
@@ -168,20 +163,25 @@ private const val KEY_LAYOUT = "layout_json"
 class HomeLayoutStore(context: Context, private val json: Json) {
 
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-    private val serializer = ListSerializer(HomeTilePlacement.serializer())
+    private val serializer = ListSerializer(HomeTileSpec.serializer())
 
-    private val _layout = MutableStateFlow(readPersisted() ?: HomeLayoutEngine.defaultLayout())
+    private val initialOrder = readPersisted() ?: HomeLayoutEngine.defaultOrder()
+
+    private val _order = MutableStateFlow(initialOrder)
+    val order: StateFlow<List<HomeTileSpec>> = _order.asStateFlow()
+
+    private val _layout = MutableStateFlow(HomeLayoutEngine.pack(initialOrder))
     val layout: StateFlow<List<HomeTilePlacement>> = _layout.asStateFlow()
 
-    fun setLayout(placements: List<HomeTilePlacement>) {
-        val resolved = HomeLayoutEngine.resolveConflicts(placements)
-        prefs.edit().putString(KEY_LAYOUT, json.encodeToString(serializer, resolved)).apply()
-        _layout.value = resolved
+    fun setOrder(next: List<HomeTileSpec>) {
+        prefs.edit().putString(KEY_LAYOUT, json.encodeToString(serializer, next)).apply()
+        _order.value = next
+        _layout.value = HomeLayoutEngine.pack(next)
     }
 
-    fun resetToDefault() = setLayout(HomeLayoutEngine.defaultLayout())
+    fun resetToDefault() = setOrder(HomeLayoutEngine.defaultOrder())
 
-    private fun readPersisted(): List<HomeTilePlacement>? =
+    private fun readPersisted(): List<HomeTileSpec>? =
         prefs.getString(KEY_LAYOUT, null)?.let { stored ->
             runCatching { json.decodeFromString(serializer, stored) }.getOrNull()
         }

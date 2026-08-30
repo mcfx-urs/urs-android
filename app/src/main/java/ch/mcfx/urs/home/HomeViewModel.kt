@@ -84,16 +84,16 @@ class HomeViewModel(
         _selectedTileId.value = if (_selectedTileId.value == id) null else id
     }
 
-    fun moveTile(id: String, column: Int, row: Int) {
-        homeLayoutStore.setLayout(HomeLayoutEngine.moveTile(layout.value, id, column, row))
+    fun moveTile(id: String, targetId: String) {
+        homeLayoutStore.setOrder(HomeLayoutEngine.moveTile(homeLayoutStore.order.value, id, targetId))
     }
 
     fun resizeTile(id: String, width: Int, height: Int) {
-        homeLayoutStore.setLayout(HomeLayoutEngine.resizeTile(layout.value, id, width, height))
+        homeLayoutStore.setOrder(HomeLayoutEngine.resizeTile(homeLayoutStore.order.value, id, width, height))
     }
 
     fun removeTile(id: String) {
-        homeLayoutStore.setLayout(HomeLayoutEngine.removeTile(layout.value, id))
+        homeLayoutStore.setOrder(HomeLayoutEngine.removeTile(homeLayoutStore.order.value, id))
         if (_selectedTileId.value == id) _selectedTileId.value = null
     }
 
@@ -106,7 +106,7 @@ class HomeViewModel(
     }
 
     fun addTile(id: String) {
-        homeLayoutStore.setLayout(HomeLayoutEngine.addTile(layout.value, id))
+        homeLayoutStore.setOrder(HomeLayoutEngine.addTile(homeLayoutStore.order.value, id))
         _showAddTilePicker.value = false
     }
 

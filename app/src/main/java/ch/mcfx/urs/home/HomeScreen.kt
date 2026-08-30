@@ -46,8 +46,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -91,6 +93,9 @@ import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Radius
 import ch.mcfx.urs.ui.tokens.Spacing
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
@@ -105,10 +110,12 @@ import org.osmdroid.views.overlay.Marker
  * top-right icon removes it), tap empty grid space or "Done" in the header
  * to exit.
  *
- * Move/resize both commit through the same [HomeLayoutEngine] call the
- * moment a drag crosses a grid-cell/half-cell threshold, so the rest of the
- * grid reflows live via the normal state → recomposition path — there is no
- * separate "preview, then commit on drop" bookkeeping.
+ * Dragging a tile onto another one reorders them (see [HomeLayoutEngine] —
+ * the tile order is the authoritative layout state; `(column, row)` is
+ * always derived from it, never stored directly). The swap only commits
+ * once the drag has hovered the same target tile for [HoverCommitDelayMs],
+ * so passing over several tiles on the way somewhere doesn't reflow the
+ * grid for each one; releasing before that commits immediately.
  */
 private val TILE_IMAGE: Map<String, Int> = mapOf(
     Destination.WORK_TIME.name to R.drawable.tile_work_time,
@@ -136,6 +143,11 @@ private val TileBleedImageSizeTall = 132.dp
 private val MiniMapZoom = 15.0
 private val ResizeHandleSize = 24.dp
 private val SelectionBorderWidth = 2.dp
+
+// How long a dragged tile must hover over the same cell before the rest of
+// the grid reflows around it — long enough that passing over several cells
+// on the way somewhere doesn't shove other tiles around each time.
+private const val HoverCommitDelayMs = 500L
 private val RemoveIconSize = 28.dp
 
 // Header collapses once the grid has scrolled past this many pixels — not
@@ -370,7 +382,7 @@ private fun HomeTileGrid(
     location: Location?,
     onTileClick: (String) -> Unit,
     onLongPress: (String) -> Unit,
-    onMoveTile: (id: String, column: Int, row: Int) -> Unit,
+    onMoveTile: (id: String, targetId: String) -> Unit,
     onResizeTile: (id: String, width: Int, height: Int) -> Unit,
     onRemoveTile: (String) -> Unit,
 ) {
@@ -384,21 +396,24 @@ private fun HomeTileGrid(
         Layout(
             content = {
                 layout.forEach { placement ->
-                    HomeTileItem(
-                        placement = placement,
-                        selected = editMode && placement.destinationId == selectedTileId,
-                        editMode = editMode,
-                        uiState = uiState,
-                        location = location,
-                        colWidthPx = colWidthPx,
-                        tileHeightPx = tileHeightPx,
-                        spacingPx = spacingPx,
-                        onClick = { onTileClick(placement.destinationId) },
-                        onLongPress = { onLongPress(placement.destinationId) },
-                        onMoveTile = onMoveTile,
-                        onResizeTile = onResizeTile,
-                        onRemoveTile = onRemoveTile,
-                    )
+                    key(placement.destinationId) {
+                        HomeTileItem(
+                            placement = placement,
+                            layout = layout,
+                            selected = editMode && placement.destinationId == selectedTileId,
+                            editMode = editMode,
+                            uiState = uiState,
+                            location = location,
+                            colWidthPx = colWidthPx,
+                            tileHeightPx = tileHeightPx,
+                            spacingPx = spacingPx,
+                            onClick = { onTileClick(placement.destinationId) },
+                            onLongPress = { onLongPress(placement.destinationId) },
+                            onMoveTile = onMoveTile,
+                            onResizeTile = onResizeTile,
+                            onRemoveTile = onRemoveTile,
+                        )
+                    }
                 }
             },
         ) { measurables, constraints ->
@@ -427,6 +442,7 @@ private fun HomeTileGrid(
 @Composable
 private fun HomeTileItem(
     placement: HomeTilePlacement,
+    layout: List<HomeTilePlacement>,
     selected: Boolean,
     editMode: Boolean,
     uiState: HomeUiState,
@@ -436,23 +452,85 @@ private fun HomeTileItem(
     spacingPx: Int,
     onClick: () -> Unit,
     onLongPress: () -> Unit,
-    onMoveTile: (id: String, column: Int, row: Int) -> Unit,
+    onMoveTile: (id: String, targetId: String) -> Unit,
     onResizeTile: (id: String, width: Int, height: Int) -> Unit,
     onRemoveTile: (String) -> Unit,
 ) {
-    var moveOffset by remember { mutableStateOf(Offset.Zero) }
-    var moveOrigin by remember { mutableStateOf(placement.column to placement.row) }
+    // Raw finger movement since the drag started — never adjusted or
+    // rebased. dragStartCol/Row is captured once, at the start of the
+    // gesture. The on-screen translation is then always computed fresh as
+    // "where the drag started, plus how far the finger has moved, minus
+    // wherever the tile's real (committed) position currently is" — a pure
+    // function of always-current state, so it self-corrects the instant a
+    // swap commits and this tile's placement moves, with no need to predict
+    // or manually re-adjust anything at commit time.
+    var rawDelta by remember { mutableStateOf(Offset.Zero) }
+    var dragStartCol by remember { mutableStateOf(placement.column) }
+    var dragStartRow by remember { mutableStateOf(placement.row) }
+    // True only between onDragStart and onDragEnd/onDragCancel. The
+    // translation math below is a drag-follow offset — meaningless once the
+    // finger is up, when the tile just sits at its real (re-packed)
+    // placement. Without this gate, a drag that committed a reorder leaves
+    // dragStartCol/Row pointing at the pre-drag cell while rawDelta is back
+    // to zero, so graphicsLayer renders the tile shifted by the exact
+    // inverse of the move — visually snapped back onto its old cell (and,
+    // being drawn at a higher zIndex, hiding whatever tile now sits there)
+    // until some later, unrelated recomposition clears it.
+    var isDragging by remember { mutableStateOf(false) }
+    // The tile currently under the finger but not yet swapped with — the
+    // swap (and the reflow it causes) waits for HoverCommitDelayMs of
+    // hovering over the *same* tile so passing over several tiles on the
+    // way somewhere doesn't reorder the list for each one.
+    var pendingTargetId by remember { mutableStateOf<String?>(null) }
+    var pendingJob by remember { mutableStateOf<Job?>(null) }
+    val scope = rememberCoroutineScope()
     val currentEditMode = rememberUpdatedState(editMode)
     val currentSelected = rememberUpdatedState(selected)
-    val currentWidth = rememberUpdatedState(placement.width)
+    // placement.column/row must never be read directly inside the gesture
+    // callbacks below: pointerInput(placement.destinationId) launches its
+    // coroutine once and never restarts it (the id never changes), so any
+    // plain parameter read inside stays frozen at whatever it was back
+    // then — exactly what caused tiles to jump using stale positions after
+    // an unrelated swap had already moved them. rememberUpdatedState keeps
+    // these reading the latest value regardless.
+    val currentPlacement = rememberUpdatedState(placement)
+    val currentLayout = rememberUpdatedState(layout)
+
+    // A tile can become selected without ever going through onDragStart —
+    // a plain tap-to-select in edit mode selects it directly, with no
+    // gesture involved at all. Without this, dragStartCol/Row would still
+    // hold whatever value they had at this composable's very first
+    // rendering, however outdated an unrelated swap since then has made
+    // it, and the graphicsLayer block below would render the tile
+    // translated toward that stale spot the instant it's selected.
+    LaunchedEffect(selected) {
+        if (selected) {
+            dragStartCol = currentPlacement.value.column
+            dragStartRow = currentPlacement.value.row
+            rawDelta = Offset.Zero
+        }
+    }
 
     val colors = UrsTheme.colors
+
+    fun targetAt(col: Int, row: Int): HomeTilePlacement? = currentLayout.value.firstOrNull { candidate ->
+        candidate.destinationId != currentPlacement.value.destinationId &&
+            col >= candidate.column && col < candidate.endColumnExclusive &&
+            row >= candidate.row && row < candidate.endRowExclusive
+    }
 
     Box(
         modifier = Modifier
             .graphicsLayer {
-                translationX = if (selected) moveOffset.x else 0f
-                translationY = if (selected) moveOffset.y else 0f
+                if (selected && isDragging) {
+                    val stepX = (colWidthPx + spacingPx).toFloat()
+                    val stepY = (tileHeightPx + spacingPx).toFloat()
+                    translationX = (dragStartCol - currentPlacement.value.column) * stepX + rawDelta.x
+                    translationY = (dragStartRow - currentPlacement.value.row) * stepY + rawDelta.y
+                } else {
+                    translationX = 0f
+                    translationY = 0f
+                }
             }
             .zIndex(if (selected) 1f else 0f)
             // Not keyed on editMode/selected: those flip as a *result* of
@@ -462,25 +540,53 @@ private fun HomeTileItem(
             // reading the latest values without needing the key to change.
             .pointerInput(placement.destinationId) {
                 detectDragGesturesAfterLongPress(
-                    onDragStart = { onLongPress() },
-                    onDragEnd = { moveOffset = Offset.Zero; moveOrigin = placement.column to placement.row },
-                    onDragCancel = { moveOffset = Offset.Zero; moveOrigin = placement.column to placement.row },
+                    onDragStart = {
+                        dragStartCol = currentPlacement.value.column
+                        dragStartRow = currentPlacement.value.row
+                        rawDelta = Offset.Zero
+                        isDragging = true
+                        onLongPress()
+                    },
+                    onDragEnd = {
+                        pendingJob?.cancel()
+                        pendingJob = null
+                        pendingTargetId?.let { onMoveTile(currentPlacement.value.destinationId, it) }
+                        pendingTargetId = null
+                        rawDelta = Offset.Zero
+                        isDragging = false
+                    },
+                    onDragCancel = {
+                        pendingJob?.cancel()
+                        pendingJob = null
+                        pendingTargetId = null
+                        rawDelta = Offset.Zero
+                        isDragging = false
+                    },
                     onDrag = { change, delta ->
                         change.consume()
                         if (!(currentEditMode.value && currentSelected.value)) return@detectDragGesturesAfterLongPress
-                        moveOffset += delta
+                        rawDelta += delta
                         val stepX = colWidthPx + spacingPx
                         val stepY = tileHeightPx + spacingPx
                         if (stepX <= 0 || stepY <= 0) return@detectDragGesturesAfterLongPress
-                        val (origCol, origRow) = moveOrigin
-                        val deltaCol = (moveOffset.x / stepX).roundToInt()
-                        val deltaRow = (moveOffset.y / stepY).roundToInt()
-                        val newCol = (origCol + deltaCol).coerceIn(0, HOME_GRID_COLUMNS - currentWidth.value)
-                        val newRow = (origRow + deltaRow).coerceAtLeast(0)
-                        if (newCol != origCol || newRow != origRow) {
-                            onMoveTile(placement.destinationId, newCol, newRow)
-                            moveOrigin = newCol to newRow
-                            moveOffset -= Offset((newCol - origCol) * stepX.toFloat(), (newRow - origRow) * stepY.toFloat())
+                        val newCol = (dragStartCol + (rawDelta.x / stepX).roundToInt())
+                            .coerceIn(0, HOME_GRID_COLUMNS - currentPlacement.value.width)
+                        val newRow = (dragStartRow + (rawDelta.y / stepY).roundToInt()).coerceAtLeast(0)
+                        val target = targetAt(newCol, newRow)
+                        if (target == null) {
+                            if (pendingTargetId != null) {
+                                pendingJob?.cancel()
+                                pendingJob = null
+                                pendingTargetId = null
+                            }
+                        } else if (target.destinationId != pendingTargetId) {
+                            pendingJob?.cancel()
+                            pendingTargetId = target.destinationId
+                            pendingJob = scope.launch {
+                                delay(HoverCommitDelayMs)
+                                onMoveTile(currentPlacement.value.destinationId, target.destinationId)
+                                pendingTargetId = null
+                            }
                         }
                     },
                 )
