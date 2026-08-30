@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-08-30
+
 ### Added
 
 - Voice Notes: audio memos recorded on the watch are relayed to the phone, converted to standard Ogg-Opus on receipt, stored device-locally, and listed on a new Voice Notes screen with play/pause and delete (#41).
