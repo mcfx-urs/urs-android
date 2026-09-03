@@ -80,14 +80,14 @@ data class WageRules(
     val alvDeductionPercent: String?,
     val suvaNbuDeductionPercent: String?,
     val ktgDeductionPercent: String?,
-    val bvgDeductionAmount: String?,
 )
 
 // Pre-filled the first time a user's wage rules are loaded (backend value
 // blank), so the feature works out of the box and only needs adjusting, not
 // filling in from scratch — see GitHub issue #11's worked example. AHV/ALV
-// match current official Swiss employee-share rates; BVG has no sensible
-// default (varies per pension plan/coordinated salary), so it starts at 0.
+// match current official Swiss employee-share rates. The BVG deduction is
+// not a rate here — it's a per-month franc amount on the month override
+// (see [WorkTimeMonthOverrideEntity]).
 val DefaultWageRules = WageRules(
     vacationPaySurchargePercent = "10.6",
     holidaySurchargePercent = "3.8",
@@ -96,7 +96,6 @@ val DefaultWageRules = WageRules(
     alvDeductionPercent = "1.1",
     suvaNbuDeductionPercent = "1.76",
     ktgDeductionPercent = "1.621",
-    bvgDeductionAmount = "0",
 )
 
 /** Substitutes the built-in default for any field the caller left blank/unset. */
@@ -108,7 +107,6 @@ fun WageRules.withDefaults(): WageRules = WageRules(
     alvDeductionPercent = alvDeductionPercent?.takeIf { it.isNotBlank() } ?: DefaultWageRules.alvDeductionPercent,
     suvaNbuDeductionPercent = suvaNbuDeductionPercent?.takeIf { it.isNotBlank() } ?: DefaultWageRules.suvaNbuDeductionPercent,
     ktgDeductionPercent = ktgDeductionPercent?.takeIf { it.isNotBlank() } ?: DefaultWageRules.ktgDeductionPercent,
-    bvgDeductionAmount = bvgDeductionAmount?.takeIf { it.isNotBlank() } ?: DefaultWageRules.bvgDeductionAmount,
 )
 
 /** One row of [WageBreakdown]'s surcharge/deduction chain — [percent] is null for BVG, the chain's only flat-amount item. */
@@ -142,10 +140,12 @@ private fun Float.roundToNearestFiveRappen(): Float = Math.round(this * 20f) / 2
  * *before* the meal allowance, plus BVG's fixed amount) — see the worked
  * example in GitHub issue #11 this mirrors. The meal allowance is part of
  * gross but carries no surcharge or deduction, so it passes straight through
- * to [WageBreakdown.net]. Every line is rounded to 5 Rappen and the totals
- * are the sum of the rounded lines, as on the official payslip.
+ * to [WageBreakdown.net]. [bvgDeduction] is the month's flat BVG franc
+ * amount (resolved and carried forward by [computeMonthlySummary]). Every
+ * line is rounded to 5 Rappen and the totals are the sum of the rounded
+ * lines, as on the official payslip.
  */
-fun computeWage(baseWage: Float, rules: WageRules, mealAllowanceDays: Int = 0): WageBreakdown {
+fun computeWage(baseWage: Float, rules: WageRules, mealAllowanceDays: Int = 0, bvgDeduction: Float = 0f): WageBreakdown {
     fun surcharge(type: WageLineItemType, percent: String?, base: Float) =
         WageLineItem(type, percent?.toFloatOrNull() ?: 0f, applyPercent(base, percent).roundToNearestFiveRappen())
 
@@ -165,7 +165,7 @@ fun computeWage(baseWage: Float, rules: WageRules, mealAllowanceDays: Int = 0): 
     val alv = deduction(WageLineItemType.ALV, rules.alvDeductionPercent)
     val suva = deduction(WageLineItemType.SUVA_NBU, rules.suvaNbuDeductionPercent)
     val ktg = deduction(WageLineItemType.KTG, rules.ktgDeductionPercent)
-    val bvg = WageLineItem(WageLineItemType.BVG, percent = null, amount = (rules.bvgDeductionAmount?.toFloatOrNull() ?: 0f).roundToNearestFiveRappen())
+    val bvg = WageLineItem(WageLineItemType.BVG, percent = null, amount = bvgDeduction.roundToNearestFiveRappen())
 
     val totalDeductions = ahv.amount + alv.amount + suva.amount + ktg.amount + bvg.amount
     val net = (gross - totalDeductions).roundToNearestFiveRappen()
@@ -211,6 +211,8 @@ fun computeMonthlySummary(
     hourlyWage: String?,
     wageRules: WageRules,
     overrideDaysWorked: String?,
+    /** The month's BVG franc amount, already resolved by the caller from the carried-forward month overrides. */
+    bvgAmountForMonth: String?,
     isCurrentMonth: Boolean,
 ): MonthlySummary {
     val monthPrefix = "%04d-%02d".format(year, month)
@@ -237,7 +239,9 @@ fun computeMonthlySummary(
     // shift logged as two entries the same day must not double the
     // allowance (GitHub issue #24).
     val mealAllowanceDays = monthEntries.filter { it.entry.mealAllowance }.map { it.entry.date }.distinct().size
-    val wage = hourlyWage?.toFloatOrNull()?.let { computeWage(actualHours * it, wageRules, mealAllowanceDays) }
+    val wage = hourlyWage?.toFloatOrNull()?.let {
+        computeWage(actualHours * it, wageRules, mealAllowanceDays, bvgAmountForMonth?.toFloatOrNull() ?: 0f)
+    }
 
     return MonthlySummary(
         actualHours = actualHours,

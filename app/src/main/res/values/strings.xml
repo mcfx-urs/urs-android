@@ -256,7 +256,6 @@
     <string name="worktime_wage_rules_alv_label">ALV deduction %</string>
     <string name="worktime_wage_rules_suva_nbu_label">SUVA/NBU deduction %</string>
     <string name="worktime_wage_rules_ktg_label">KTG deduction %</string>
-    <string name="worktime_wage_rules_bvg_label">BVG deduction (fixed amount)</string>
 
     <string name="notifications_title">Notifications</string>
     <string name="notifications_description">Reminders and other alerts need both permissions below. Notification access shows the alert itself; exact-alarm access makes sure a scheduled reminder fires at the exact time you set, not sometime nearby.</string>
@@ -660,9 +659,11 @@
     <string name="worktime_wage_breakdown_bvg">BVG</string>
     <string name="worktime_wage_breakdown_meal_allowance">Meal allowance (%1$d × CHF 18.–)</string>
     <string name="worktime_stat_percent_of_soll">% of monthly Soll</string>
-    <string name="worktime_override_title">Override days worked — %1$s %2$s</string>
+    <string name="worktime_override_title">Month adjustments — %1$s %2$s</string>
     <string name="worktime_override_label">Days worked this month</string>
-    <string name="worktime_override_clear">Clear override</string>
+    <string name="worktime_override_bvg_label">BVG deduction (CHF)</string>
+    <string name="worktime_override_bvg_carried">Carried from %1$s %2$s: %3$s</string>
+    <string name="worktime_override_clear">Clear</string>
     <string name="worktime_edit">Edit</string>
     <string name="worktime_delete">Delete</string>
     <string name="worktime_delete_confirm_title">Delete this entry?</string>

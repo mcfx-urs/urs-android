@@ -34,7 +34,6 @@ fun WageRulesSettingsScreen(viewModel: WageRulesViewModel = viewModel(factory = 
     val alv by viewModel.alvDeductionPercent.collectAsStateWithLifecycle()
     val suvaNbu by viewModel.suvaNbuDeductionPercent.collectAsStateWithLifecycle()
     val ktg by viewModel.ktgDeductionPercent.collectAsStateWithLifecycle()
-    val bvg by viewModel.bvgDeductionAmount.collectAsStateWithLifecycle()
     val justSaved by viewModel.justSaved.collectAsStateWithLifecycle()
     val saveFailed by viewModel.saveFailed.collectAsStateWithLifecycle()
 
@@ -100,14 +99,6 @@ fun WageRulesSettingsScreen(viewModel: WageRulesViewModel = viewModel(factory = 
             value = ktg,
             onValueChange = viewModel::setKtgDeductionPercent,
             label = stringResource(R.string.worktime_wage_rules_ktg_label),
-            keyboardOptions = decimalKeyboard,
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        UrsTextField(
-            value = bvg,
-            onValueChange = viewModel::setBvgDeductionAmount,
-            label = stringResource(R.string.worktime_wage_rules_bvg_label),
             keyboardOptions = decimalKeyboard,
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),

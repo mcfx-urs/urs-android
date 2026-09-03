@@ -81,7 +81,9 @@ import androidx.room.TypeConverters
     //      same destructive-fallback handling as every bump above.
     // v27: comment column added to WorkTimeEntryEntity (GitHub issue #45) —
     //      same destructive-fallback handling as every bump above.
-    version = 27,
+    // v28: bvgAmount column added to WorkTimeMonthOverrideEntity (GitHub
+    //      issue #43) — same destructive-fallback handling as every bump above.
+    version = 28,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)

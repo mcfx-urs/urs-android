@@ -13,7 +13,6 @@ private const val KEY_AHV_IV_EO = "ahv_iv_eo_deduction_percent"
 private const val KEY_ALV = "alv_deduction_percent"
 private const val KEY_SUVA_NBU = "suva_nbu_deduction_percent"
 private const val KEY_KTG = "ktg_deduction_percent"
-private const val KEY_BVG = "bvg_deduction_amount"
 private const val KEY_HAS_VALUE = "has_value"
 
 /**
@@ -46,7 +45,6 @@ class WorkSettingsStore(context: Context) {
                 alvDeductionPercent = prefs.getString(KEY_ALV, ""),
                 suvaNbuDeductionPercent = prefs.getString(KEY_SUVA_NBU, ""),
                 ktgDeductionPercent = prefs.getString(KEY_KTG, ""),
-                bvgDeductionAmount = prefs.getString(KEY_BVG, ""),
             ),
         )
     }
@@ -69,7 +67,6 @@ class WorkSettingsStore(context: Context) {
             .putString(KEY_ALV, settings.wageRules.alvDeductionPercent)
             .putString(KEY_SUVA_NBU, settings.wageRules.suvaNbuDeductionPercent)
             .putString(KEY_KTG, settings.wageRules.ktgDeductionPercent)
-            .putString(KEY_BVG, settings.wageRules.bvgDeductionAmount)
             .apply()
     }
 }

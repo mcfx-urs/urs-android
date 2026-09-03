@@ -165,10 +165,14 @@ class WorkTimeViewModel(
         _showOverrideSheet.value = false
     }
 
-    fun setMonthOverride(daysWorked: String) {
+    fun setMonthOverride(daysWorked: String, bvgAmount: String) {
         viewModelScope.launch {
             try {
-                repository.setMonthOverride(_selectedYear.value, _selectedMonth.value, daysWorked)
+                if (daysWorked.isBlank() && bvgAmount.isBlank()) {
+                    repository.clearMonthOverride(_selectedYear.value, _selectedMonth.value)
+                } else {
+                    repository.setMonthOverride(_selectedYear.value, _selectedMonth.value, daysWorked, bvgAmount)
+                }
                 _showOverrideSheet.value = false
             } catch (e: CancellationException) {
                 throw e

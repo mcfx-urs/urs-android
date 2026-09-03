@@ -558,7 +558,6 @@ data class UserDto(
     @SerialName("user_alv_deduction_percent") val alvDeductionPercent: String = "",
     @SerialName("user_suva_nbu_deduction_percent") val suvaNbuDeductionPercent: String = "",
     @SerialName("user_ktg_deduction_percent") val ktgDeductionPercent: String = "",
-    @SerialName("user_bvg_deduction_amount") val bvgDeductionAmount: String = "",
     @SerialName("user_default_vehicle_id") val defaultVehicleId: String = "",
 )
 
@@ -591,7 +590,6 @@ data class UserWageRulesPayload(
     @SerialName("user_alv_deduction_percent") val alvDeductionPercent: String,
     @SerialName("user_suva_nbu_deduction_percent") val suvaNbuDeductionPercent: String,
     @SerialName("user_ktg_deduction_percent") val ktgDeductionPercent: String,
-    @SerialName("user_bvg_deduction_amount") val bvgDeductionAmount: String,
 )
 
 @Serializable
@@ -600,12 +598,14 @@ data class WorkTimeMonthOverrideDto(
     @SerialName("work_time_month_override_user_id") val userId: String,
     @SerialName("work_time_month_override_year") val year: String,
     @SerialName("work_time_month_override_month") val month: String,
-    @SerialName("work_time_month_override_days_worked") val daysWorked: String,
+    @SerialName("work_time_month_override_days_worked") val daysWorked: String = "",
+    @SerialName("work_time_month_override_bvg_amount") val bvgAmount: String = "",
 )
 
 @Serializable
 data class WorkTimeMonthOverridePayload(
     @SerialName("work_time_month_override_days_worked") val daysWorked: String,
+    @SerialName("work_time_month_override_bvg_amount") val bvgAmount: String,
 )
 
 @Serializable
