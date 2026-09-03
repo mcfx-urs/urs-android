@@ -28,6 +28,9 @@ data class ChoresUiState(
     /** Non-archived types — the set pickers, filter chips and the stats strip use. */
     val activeTypes: List<TrackerTypeEntity> get() = types.filter { it.archivedAtMillis == null }
 
+    /** Soft-archived types — shown only in the type-management sheet (GitHub issue #37). */
+    val archivedTypes: List<TrackerTypeEntity> get() = types.filter { it.archivedAtMillis != null }
+
     /** Every type keyed by the id an event references (archived included, so historical events still resolve). */
     val typesByPublicId: Map<String, TrackerTypeEntity> get() = types.associateBy { it.publicId }
 }
@@ -112,6 +115,10 @@ class ChoresViewModel(
 
     fun archiveType(localId: Long) {
         viewModelScope.launch { repository.archiveType(localId) }
+    }
+
+    fun reactivateType(localId: Long) {
+        viewModelScope.launch { repository.reactivateType(localId) }
     }
 
     /** Persists the manually dragged order (a list of publicIds) for the stats list. */

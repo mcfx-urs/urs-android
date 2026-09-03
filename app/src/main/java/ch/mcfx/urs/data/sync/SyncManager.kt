@@ -40,6 +40,7 @@ import ch.mcfx.urs.data.local.OutboxTrackerEventDeletePayload
 import ch.mcfx.urs.data.local.OutboxTrackerEventUpdatePayload
 import ch.mcfx.urs.data.local.OutboxTrackerTypeArchivePayload
 import ch.mcfx.urs.data.local.OutboxTrackerTypeCreatePayload
+import ch.mcfx.urs.data.local.OutboxTrackerTypeReactivatePayload
 import ch.mcfx.urs.data.local.OutboxTrackerTypeUpdatePayload
 import ch.mcfx.urs.data.local.TrackerEventDao
 import ch.mcfx.urs.data.local.TrackerTypeDao
@@ -208,6 +209,7 @@ class SyncManager(
                 OutboxMutationEntity.TYPE_CREATE_TRACKER_TYPE -> replayCreateTrackerType(mutation)
                 OutboxMutationEntity.TYPE_UPDATE_TRACKER_TYPE -> replayUpdateTrackerType(mutation)
                 OutboxMutationEntity.TYPE_ARCHIVE_TRACKER_TYPE -> replayArchiveTrackerType(mutation)
+                OutboxMutationEntity.TYPE_REACTIVATE_TRACKER_TYPE -> replayReactivateTrackerType(mutation)
                 OutboxMutationEntity.TYPE_CREATE_TRACKER_EVENT -> replayCreateTrackerEvent(mutation)
                 OutboxMutationEntity.TYPE_UPDATE_TRACKER_EVENT -> replayUpdateTrackerEvent(mutation)
                 OutboxMutationEntity.TYPE_DELETE_TRACKER_EVENT -> replayDeleteTrackerEvent(mutation)
@@ -927,6 +929,13 @@ class SyncManager(
     private suspend fun replayArchiveTrackerType(mutation: OutboxMutationEntity): Boolean {
         val payload = json.decodeFromString(OutboxTrackerTypeArchivePayload.serializer(), mutation.payloadJson)
         api.archiveTrackerType(payload.serverId)
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    private suspend fun replayReactivateTrackerType(mutation: OutboxMutationEntity): Boolean {
+        val payload = json.decodeFromString(OutboxTrackerTypeReactivatePayload.serializer(), mutation.payloadJson)
+        api.reactivateTrackerType(payload.serverId)
         outboxDao.delete(mutation.id)
         return true
     }

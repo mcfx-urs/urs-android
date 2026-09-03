@@ -159,12 +159,14 @@ fun ChoresScreen(viewModel: ChoresViewModel = viewModel(factory = ChoresViewMode
             UrsBottomSheet(onDismissRequest = { typeSheet = false }) {
                 ChoreTypeFilterSheet(
                     activeTypes = state.activeTypes,
+                    archivedTypes = state.archivedTypes,
                     hiddenTypeIds = hiddenTypeIds,
                     onToggle = viewModel::toggleTypeVisible,
                     onSelectAll = viewModel::showAllTypes,
                     onDeselectAll = { viewModel.hideAllTypes(state.activeTypes.map { it.publicId }) },
                     onAdd = { typeSheet = false; typeEditor = TypeEditorTarget.New },
                     onEditType = { typeSheet = false; typeEditor = TypeEditorTarget.Edit(it) },
+                    onReactivate = { viewModel.reactivateType(it.id) },
                 )
             }
         }
