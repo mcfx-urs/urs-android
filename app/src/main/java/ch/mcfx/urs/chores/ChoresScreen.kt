@@ -161,6 +161,8 @@ fun ChoresScreen(viewModel: ChoresViewModel = viewModel(factory = ChoresViewMode
                     activeTypes = state.activeTypes,
                     hiddenTypeIds = hiddenTypeIds,
                     onToggle = viewModel::toggleTypeVisible,
+                    onSelectAll = viewModel::showAllTypes,
+                    onDeselectAll = { viewModel.hideAllTypes(state.activeTypes.map { it.publicId }) },
                     onAdd = { typeSheet = false; typeEditor = TypeEditorTarget.New },
                     onEditType = { typeSheet = false; typeEditor = TypeEditorTarget.Edit(it) },
                 )
