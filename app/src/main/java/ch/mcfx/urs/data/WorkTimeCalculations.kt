@@ -127,9 +127,8 @@ data class WageBreakdown(
     val net: Float,
     /** Distinct calendar days in the month with the meal-allowance flag set — see [computeMonthlySummary]'s dedup. */
     val mealAllowanceDays: Int,
+    /** Part of [gross] but excluded from every deduction base, so it flows straight through to [net]. */
     val mealAllowanceAmount: Float,
-    /** [net] plus [mealAllowanceAmount] — the figure shown as the month's actual net earnings. */
-    val netTotal: Float,
 )
 
 private fun applyPercent(base: Float, percent: String?): Float = base * (percent?.toFloatOrNull() ?: 0f) / 100f
@@ -137,35 +136,39 @@ private fun applyPercent(base: Float, percent: String?): Float = base * (percent
 private fun Float.roundToNearestFiveRappen(): Float = Math.round(this * 20f) / 20f
 
 /**
- * Chained surcharges (each a % of a running subtotal, order matters) then
- * chained deductions (each a % of the resulting gross, plus BVG's fixed
- * amount) — see the worked example in GitHub issue #11 this mirrors. The
- * meal allowance ([mealAllowanceDays] × [MealAllowancePerDay]) is added on
- * top of [net] as [netTotal] rather than folded into the chain itself — it's
- * a flat per-diem, not a wage-derived surcharge/deduction.
+ * Chained surcharges (each a % of a running subtotal, order matters), then
+ * the meal allowance ([mealAllowanceDays] × [MealAllowancePerDay]) added
+ * into [WageBreakdown.gross], then chained deductions (each a % of the gross
+ * *before* the meal allowance, plus BVG's fixed amount) — see the worked
+ * example in GitHub issue #11 this mirrors. The meal allowance is part of
+ * gross but carries no surcharge or deduction, so it passes straight through
+ * to [WageBreakdown.net]. Every line is rounded to 5 Rappen and the totals
+ * are the sum of the rounded lines, as on the official payslip.
  */
 fun computeWage(baseWage: Float, rules: WageRules, mealAllowanceDays: Int = 0): WageBreakdown {
     fun surcharge(type: WageLineItemType, percent: String?, base: Float) =
-        WageLineItem(type, percent?.toFloatOrNull() ?: 0f, applyPercent(base, percent))
+        WageLineItem(type, percent?.toFloatOrNull() ?: 0f, applyPercent(base, percent).roundToNearestFiveRappen())
 
     val vacationPay = surcharge(WageLineItemType.VACATION_PAY, rules.vacationPaySurchargePercent, baseWage)
     val holidayPay = surcharge(WageLineItemType.HOLIDAY_PAY, rules.holidaySurchargePercent, baseWage)
     val beforeThirteenthMonth = baseWage + vacationPay.amount + holidayPay.amount
     val thirteenthMonth = surcharge(WageLineItemType.THIRTEENTH_MONTH, rules.thirteenthMonthSurchargePercent, beforeThirteenthMonth)
-    val gross = beforeThirteenthMonth + thirteenthMonth.amount
+    val grossBeforeMealAllowance = beforeThirteenthMonth + thirteenthMonth.amount
+
+    val mealAllowanceAmount = mealAllowanceDays * MealAllowancePerDay
+    val gross = grossBeforeMealAllowance + mealAllowanceAmount
 
     fun deduction(type: WageLineItemType, percent: String?) =
-        WageLineItem(type, percent?.toFloatOrNull() ?: 0f, applyPercent(gross, percent))
+        WageLineItem(type, percent?.toFloatOrNull() ?: 0f, applyPercent(grossBeforeMealAllowance, percent).roundToNearestFiveRappen())
 
     val ahv = deduction(WageLineItemType.AHV_IV_EO, rules.ahvIvEoDeductionPercent)
     val alv = deduction(WageLineItemType.ALV, rules.alvDeductionPercent)
     val suva = deduction(WageLineItemType.SUVA_NBU, rules.suvaNbuDeductionPercent)
     val ktg = deduction(WageLineItemType.KTG, rules.ktgDeductionPercent)
-    val bvg = WageLineItem(WageLineItemType.BVG, percent = null, amount = rules.bvgDeductionAmount?.toFloatOrNull() ?: 0f)
+    val bvg = WageLineItem(WageLineItemType.BVG, percent = null, amount = (rules.bvgDeductionAmount?.toFloatOrNull() ?: 0f).roundToNearestFiveRappen())
 
     val totalDeductions = ahv.amount + alv.amount + suva.amount + ktg.amount + bvg.amount
     val net = (gross - totalDeductions).roundToNearestFiveRappen()
-    val mealAllowanceAmount = mealAllowanceDays * MealAllowancePerDay
 
     return WageBreakdown(
         baseWage = baseWage,
@@ -175,7 +178,6 @@ fun computeWage(baseWage: Float, rules: WageRules, mealAllowanceDays: Int = 0): 
         net = net,
         mealAllowanceDays = mealAllowanceDays,
         mealAllowanceAmount = mealAllowanceAmount,
-        netTotal = net + mealAllowanceAmount,
     )
 }
 

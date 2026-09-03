@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- Wage breakdown: the meal allowance is now part of the gross figure (shown as a line before the Gross total) instead of being appended to net as a separate "Net (incl. meal allowance)" line; it stays excluded from every surcharge and deduction base, so the net figure is unchanged (#42).
+- Wage breakdown: each surcharge and deduction line is now rounded to 5 Rappen and the totals are the sum of the rounded lines, matching the official payslip (#44).
+
 ## [0.22.0] - 2026-08-30
 
 ### Added
