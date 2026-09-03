@@ -588,7 +588,6 @@ private fun WageBreakdownSheet(breakdown: WageBreakdown, hourlyWage: String, act
             detail = stringResource(R.string.worktime_wage_breakdown_base_wage_detail, formatHours(actualHours), hourlyWage),
             amount = breakdown.baseWage,
         )
-        breakdown.surcharges.forEach { WageLineItemRow(it) }
         if (breakdown.mealAllowanceDays > 0) {
             WageBreakdownRow(
                 label = stringResource(R.string.worktime_wage_breakdown_meal_allowance, breakdown.mealAllowanceDays),
@@ -596,8 +595,14 @@ private fun WageBreakdownSheet(breakdown: WageBreakdown, hourlyWage: String, act
                 amount = breakdown.mealAllowanceAmount,
             )
         }
+        breakdown.surcharges.forEach { WageLineItemRow(it) }
         WageBreakdownTotalRow(stringResource(R.string.worktime_stat_gross), breakdown.gross)
         breakdown.deductions.forEach { WageLineItemRow(it, isDeduction = true) }
+        WageBreakdownRow(
+            label = stringResource(R.string.worktime_wage_breakdown_total_deductions),
+            detail = null,
+            amount = -breakdown.totalDeductions,
+        )
         WageBreakdownTotalRow(stringResource(R.string.worktime_stat_net), breakdown.net)
     }
 }

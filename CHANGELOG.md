@@ -12,8 +12,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - BVG deduction: removed from the Surcharges & deductions settings; it is now entered per month in the month's adjustments sheet (alongside the days-worked override) and carried forward to later months until a later month sets its own value (#43).
-- Wage breakdown: the meal allowance is now part of the gross figure (shown as a line before the Gross total) instead of being appended to net as a separate "Net (incl. meal allowance)" line; it stays excluded from every surcharge and deduction base, so the net figure is unchanged (#42).
+- Wage breakdown: the meal allowance is now part of the gross figure (its own line in the gross build-up) instead of being appended to net as a separate "Net (incl. meal allowance)" line; it stays excluded from every surcharge and deduction base, so the net figure is unchanged (#42).
 - Wage breakdown: each surcharge and deduction line is now rounded to 5 Rappen and the totals are the sum of the rounded lines, matching the official payslip (#44).
+- Wage breakdown: line order now matches the official payslip — the meal allowance row sits directly after the base wage, deductions run AHV/IV/EO, ALV, SUVA/NBU, BVG, KTG, and a "Total deductions" row is shown before Net (#46).
 
 ## [0.22.0] - 2026-08-30
 

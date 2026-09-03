@@ -122,6 +122,8 @@ data class WageBreakdown(
     val surcharges: List<WageLineItem>,
     val gross: Float,
     val deductions: List<WageLineItem>,
+    /** Sum of the (rounded) [deductions] amounts — the payslip's "Total deductions" line. */
+    val totalDeductions: Float,
     val net: Float,
     /** Distinct calendar days in the month with the meal-allowance flag set — see [computeMonthlySummary]'s dedup. */
     val mealAllowanceDays: Int,
@@ -164,17 +166,20 @@ fun computeWage(baseWage: Float, rules: WageRules, mealAllowanceDays: Int = 0, b
     val ahv = deduction(WageLineItemType.AHV_IV_EO, rules.ahvIvEoDeductionPercent)
     val alv = deduction(WageLineItemType.ALV, rules.alvDeductionPercent)
     val suva = deduction(WageLineItemType.SUVA_NBU, rules.suvaNbuDeductionPercent)
-    val ktg = deduction(WageLineItemType.KTG, rules.ktgDeductionPercent)
     val bvg = WageLineItem(WageLineItemType.BVG, percent = null, amount = bvgDeduction.roundToNearestFiveRappen())
+    val ktg = deduction(WageLineItemType.KTG, rules.ktgDeductionPercent)
 
-    val totalDeductions = ahv.amount + alv.amount + suva.amount + ktg.amount + bvg.amount
+    // Order matches the official payslip: AHV/IV/EO, ALV, SUVA/NBU, BVG, KTG.
+    val deductions = listOf(ahv, alv, suva, bvg, ktg)
+    val totalDeductions = deductions.sumOf { it.amount.toDouble() }.toFloat()
     val net = (gross - totalDeductions).roundToNearestFiveRappen()
 
     return WageBreakdown(
         baseWage = baseWage,
         surcharges = listOf(vacationPay, holidayPay, thirteenthMonth),
         gross = gross,
-        deductions = listOf(ahv, alv, suva, ktg, bvg),
+        deductions = deductions,
+        totalDeductions = totalDeductions,
         net = net,
         mealAllowanceDays = mealAllowanceDays,
         mealAllowanceAmount = mealAllowanceAmount,

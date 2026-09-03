@@ -658,6 +658,7 @@
     <string name="worktime_wage_breakdown_ktg">KTG</string>
     <string name="worktime_wage_breakdown_bvg">BVG</string>
     <string name="worktime_wage_breakdown_meal_allowance">Meal allowance (%1$d × CHF 18.–)</string>
+    <string name="worktime_wage_breakdown_total_deductions">Total deductions</string>
     <string name="worktime_stat_percent_of_soll">% of monthly Soll</string>
     <string name="worktime_override_title">Month adjustments — %1$s %2$s</string>
     <string name="worktime_override_label">Days worked this month</string>
