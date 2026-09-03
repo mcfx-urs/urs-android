@@ -338,6 +338,9 @@ interface UrsApi {
     @DELETE("api/v1/tracker-type/{id}")
     suspend fun archiveTrackerType(@Path("id") id: String)
 
+    @PUT("api/v1/tracker-type/{id}/reactivate")
+    suspend fun reactivateTrackerType(@Path("id") id: String)
+
     @PUT("api/v1/tracker-type/{id}/exported")
     suspend fun markTrackerTypeExported(@Path("id") id: String)
 

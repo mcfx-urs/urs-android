@@ -79,17 +79,23 @@ private val dayHeaderFormat: DateTimeFormatter = DateTimeFormatter.ofLocalizedDa
 @Composable
 fun ChoreTypeFilterSheet(
     activeTypes: List<TrackerTypeEntity>,
+    archivedTypes: List<TrackerTypeEntity>,
     hiddenTypeIds: Set<String>,
     onToggle: (String) -> Unit,
     onSelectAll: () -> Unit,
     onDeselectAll: () -> Unit,
     onAdd: () -> Unit,
     onEditType: (TrackerTypeEntity) -> Unit,
+    onReactivate: (TrackerTypeEntity) -> Unit,
 ) {
     val colors = UrsTheme.colors
     val allVisible = activeTypes.isNotEmpty() && activeTypes.none { it.publicId in hiddenTypeIds }
     Column(
-        modifier = Modifier.padding(horizontal = Spacing.l).padding(bottom = Spacing.l),
+        modifier = Modifier
+            .padding(horizontal = Spacing.l)
+            .padding(bottom = Spacing.l)
+            .heightIn(max = 480.dp)
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(Spacing.m),
     ) {
         Row(
@@ -154,6 +160,39 @@ fun ChoreTypeFilterSheet(
             onClick = onAdd,
             modifier = Modifier.fillMaxWidth(),
         )
+
+        if (archivedTypes.isNotEmpty()) {
+            UrsText(
+                stringResource(R.string.chores_type_filter_archived_title),
+                style = UrsTheme.typography.caption,
+                color = colors.onSurfaceMuted,
+            )
+            archivedTypes.forEach { type ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+                ) {
+                    Box(Modifier.size(10.dp).clip(CircleShape).background(parseChoreColor(type.color)))
+                    ChoreIconView(token = type.icon, tint = colors.onSurfaceMuted, size = 16.dp)
+                    UrsText(
+                        type.name,
+                        style = UrsTheme.typography.body,
+                        color = colors.onSurfaceMuted,
+                        modifier = Modifier.weight(1f),
+                    )
+                    UrsText(
+                        text = stringResource(R.string.chores_type_filter_reactivate),
+                        style = UrsTheme.typography.body,
+                        color = colors.accent,
+                        modifier = Modifier
+                            .clip(Radius.pill)
+                            .clickable { onReactivate(type) }
+                            .padding(horizontal = Spacing.s, vertical = Spacing.xs),
+                    )
+                }
+            }
+        }
     }
 }
 

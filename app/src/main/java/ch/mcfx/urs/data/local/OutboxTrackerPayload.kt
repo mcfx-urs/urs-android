@@ -29,6 +29,11 @@ data class OutboxTrackerTypeArchivePayload(
     val serverId: String,
 )
 
+@Serializable
+data class OutboxTrackerTypeReactivatePayload(
+    val serverId: String,
+)
+
 // trackerTypeId is the parent type's publicId — a real id or a stand-in
 // resolved at replay time (same as OutboxListItemPayload.listId).
 @Serializable

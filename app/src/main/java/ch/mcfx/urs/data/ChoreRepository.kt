@@ -8,6 +8,7 @@ import ch.mcfx.urs.data.local.OutboxTrackerEventDeletePayload
 import ch.mcfx.urs.data.local.OutboxTrackerEventUpdatePayload
 import ch.mcfx.urs.data.local.OutboxTrackerTypeArchivePayload
 import ch.mcfx.urs.data.local.OutboxTrackerTypeCreatePayload
+import ch.mcfx.urs.data.local.OutboxTrackerTypeReactivatePayload
 import ch.mcfx.urs.data.local.OutboxTrackerTypeUpdatePayload
 import ch.mcfx.urs.data.local.SyncStatus
 import ch.mcfx.urs.data.local.TrackerEventDao
@@ -181,6 +182,25 @@ class ChoreRepository(
             ),
         )
         trackerTypeDao.updateArchived(localId, System.currentTimeMillis(), SyncStatus.PENDING, outboxId)
+        applicationScope.launch { syncManager.syncNow() }
+    }
+
+    /** Undo a soft-archive — bring the type back into pickers (GitHub issue #37). */
+    suspend fun reactivateType(localId: Long) {
+        val current = trackerTypeDao.getById(localId) ?: return
+        // An archived type is always one that synced (archiveType drops
+        // never-synced ones outright), so serverId is present.
+        val serverId = current.serverId ?: return
+
+        current.outboxId?.let { outboxDao.delete(it) }
+        val outboxId = outboxDao.insert(
+            OutboxMutationEntity(
+                type = OutboxMutationEntity.TYPE_REACTIVATE_TRACKER_TYPE,
+                payloadJson = json.encodeToString(OutboxTrackerTypeReactivatePayload(serverId = serverId)),
+                createdAt = System.currentTimeMillis(),
+            ),
+        )
+        trackerTypeDao.updateArchived(localId, null, SyncStatus.PENDING, outboxId)
         applicationScope.launch { syncManager.syncNow() }
     }
 
