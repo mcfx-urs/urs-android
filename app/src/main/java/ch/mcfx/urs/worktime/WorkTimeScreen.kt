@@ -359,7 +359,7 @@ private fun EarningsTile(wageBreakdown: WageBreakdown?, onClick: () -> Unit, mod
                 color = UrsTheme.colors.onSurfaceMuted,
             )
             EarningsRow(stringResource(R.string.worktime_stat_gross), wageBreakdown?.gross)
-            EarningsRow(stringResource(R.string.worktime_stat_net), wageBreakdown?.netTotal)
+            EarningsRow(stringResource(R.string.worktime_stat_net), wageBreakdown?.net)
         }
     }
 }
@@ -551,17 +551,16 @@ private fun WageBreakdownSheet(breakdown: WageBreakdown, hourlyWage: String, act
             amount = breakdown.baseWage,
         )
         breakdown.surcharges.forEach { WageLineItemRow(it) }
-        WageBreakdownTotalRow(stringResource(R.string.worktime_stat_gross), breakdown.gross)
-        breakdown.deductions.forEach { WageLineItemRow(it, isDeduction = true) }
-        WageBreakdownTotalRow(stringResource(R.string.worktime_stat_net), breakdown.net)
         if (breakdown.mealAllowanceDays > 0) {
             WageBreakdownRow(
                 label = stringResource(R.string.worktime_wage_breakdown_meal_allowance, breakdown.mealAllowanceDays),
                 detail = null,
                 amount = breakdown.mealAllowanceAmount,
             )
-            WageBreakdownTotalRow(stringResource(R.string.worktime_wage_breakdown_net_total), breakdown.netTotal)
         }
+        WageBreakdownTotalRow(stringResource(R.string.worktime_stat_gross), breakdown.gross)
+        breakdown.deductions.forEach { WageLineItemRow(it, isDeduction = true) }
+        WageBreakdownTotalRow(stringResource(R.string.worktime_stat_net), breakdown.net)
     }
 }
 
