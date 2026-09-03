@@ -223,7 +223,7 @@ class WorkTimeRepository(
                 overrides.mapNotNull { dto ->
                     val year = dto.year.toIntOrNull() ?: return@mapNotNull null
                     val month = dto.month.toIntOrNull() ?: return@mapNotNull null
-                    WorkTimeMonthOverrideEntity(year = year, month = month, daysWorked = dto.daysWorked)
+                    WorkTimeMonthOverrideEntity(year = year, month = month, daysWorked = dto.daysWorked, bvgAmount = dto.bvgAmount)
                 },
             )
         } catch (e: CancellationException) {
@@ -234,19 +234,22 @@ class WorkTimeRepository(
     }
 
     /**
-     * Direct REST write, no outbox — a manual days-worked override is a
-     * low-frequency, settings-adjacent edit, not offline-first write data
-     * like a work-time entry itself (see [WorkTimeMonthOverrideEntity]).
+     * Direct REST write, no outbox — a month's manual adjustments (days-worked
+     * override, BVG amount) are low-frequency, settings-adjacent edits, not
+     * offline-first write data like a work-time entry itself (see
+     * [WorkTimeMonthOverrideEntity]).
      */
-    suspend fun setMonthOverride(year: Int, month: Int, daysWorked: String) {
+    suspend fun setMonthOverride(year: Int, month: Int, daysWorked: String, bvgAmount: String) {
         val userId = tokenStore.currentUserId ?: return
         api.updateWorkTimeMonthOverride(
             userId,
             year.toString(),
             month.toString(),
-            WorkTimeMonthOverridePayload(daysWorked = daysWorked),
+            WorkTimeMonthOverridePayload(daysWorked = daysWorked, bvgAmount = bvgAmount),
         )
-        workTimeMonthOverrideDao.upsert(WorkTimeMonthOverrideEntity(year = year, month = month, daysWorked = daysWorked))
+        workTimeMonthOverrideDao.upsert(
+            WorkTimeMonthOverrideEntity(year = year, month = month, daysWorked = daysWorked, bvgAmount = bvgAmount),
+        )
     }
 
     suspend fun clearMonthOverride(year: Int, month: Int) {

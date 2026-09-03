@@ -49,6 +49,7 @@ import ch.mcfx.urs.data.computeMonthlySummary
 import ch.mcfx.urs.data.computeTotals
 import ch.mcfx.urs.data.local.SyncStatus
 import ch.mcfx.urs.data.local.WorkTimeEntryWithBreaks
+import ch.mcfx.urs.data.local.WorkTimeMonthOverrideEntity
 import ch.mcfx.urs.ui.components.UrsBottomSheet
 import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsCard
@@ -151,13 +152,18 @@ fun WorkTimeScreen(
     }
 
     if (overrideSheetOpen) {
-        val currentOverride = (uiState as? WorkTimeUiState.Data)?.monthOverrides
-            ?.find { it.year == selectedYear && it.month == selectedMonth }
+        val overrides = (uiState as? WorkTimeUiState.Data)?.monthOverrides.orEmpty()
+        val currentOverride = overrides.find { it.year == selectedYear && it.month == selectedMonth }
+        val carriedBvgHint = overrides.carriedBvg(selectedYear, selectedMonth)
+            ?.takeIf { it.year != selectedYear || it.month != selectedMonth }
+            ?.let { stringResource(R.string.worktime_override_bvg_carried, monthName(it.month), it.year.toString(), it.bvgAmount) }
         UrsBottomSheet(onDismissRequest = viewModel::closeOverrideSheet) {
             MonthOverrideSheet(
                 year = selectedYear,
                 month = selectedMonth,
-                initialValue = currentOverride?.daysWorked ?: "",
+                initialDaysWorked = currentOverride?.daysWorked ?: "",
+                initialBvgAmount = currentOverride?.bvgAmount ?: "",
+                carriedBvgHint = carriedBvgHint,
                 hasOverride = currentOverride != null,
                 saveFailed = overrideSaveFailed,
                 onSave = viewModel::setMonthOverride,
@@ -190,6 +196,7 @@ private fun MonthContent(
     val monthPrefix = "%04d-%02d".format(selectedYear, selectedMonth)
     val monthEntries = state.entries.filter { it.entry.date.startsWith(monthPrefix) }
     val override = state.monthOverrides.find { it.year == selectedYear && it.month == selectedMonth }?.daysWorked
+    val bvgForMonth = state.monthOverrides.carriedBvg(selectedYear, selectedMonth)?.bvgAmount
     val today = LocalDate.now()
     val isCurrentMonth = selectedYear == today.year && selectedMonth == today.monthValue
     val summary = computeMonthlySummary(
@@ -201,6 +208,7 @@ private fun MonthContent(
         hourlyWage = state.hourlyWage,
         wageRules = state.wageRules,
         overrideDaysWorked = override,
+        bvgAmountForMonth = bvgForMonth,
         isCurrentMonth = isCurrentMonth,
     )
 
@@ -308,6 +316,12 @@ private fun nextMonth(year: Int, month: Int): Pair<Int, Int> =
 private fun previousMonth(year: Int, month: Int): Pair<Int, Int> =
     if (month == 1) (year - 1) to 12 else year to (month - 1)
 
+// The BVG amount carries forward: a month with no value of its own inherits
+// the most recent earlier month that has one — see WorkTimeMonthOverrideEntity.
+private fun List<WorkTimeMonthOverrideEntity>.carriedBvg(year: Int, month: Int): WorkTimeMonthOverrideEntity? =
+    filter { it.bvgAmount.isNotBlank() && (it.year < year || (it.year == year && it.month <= month)) }
+        .maxWithOrNull(compareBy({ it.year }, { it.month }))
+
 @Composable
 private fun MonthSummaryTiles(summary: MonthlySummary, onEditOverride: () -> Unit, onShowWageBreakdown: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.s)) {
@@ -398,14 +412,21 @@ private fun MonthStatTile(
 private fun MonthOverrideSheet(
     year: Int,
     month: Int,
-    initialValue: String,
+    initialDaysWorked: String,
+    initialBvgAmount: String,
+    /** Non-null when this month has no BVG value of its own but inherits an earlier one. */
+    carriedBvgHint: String?,
     hasOverride: Boolean,
     saveFailed: Boolean,
-    onSave: (String) -> Unit,
+    onSave: (daysWorked: String, bvgAmount: String) -> Unit,
     onClear: () -> Unit,
     onCancel: () -> Unit,
 ) {
-    var value by remember(year, month, initialValue) { mutableStateOf(initialValue) }
+    var daysWorked by remember(year, month, initialDaysWorked) { mutableStateOf(initialDaysWorked) }
+    var bvgAmount by remember(year, month, initialBvgAmount) { mutableStateOf(initialBvgAmount) }
+
+    val daysValid = daysWorked.isBlank() || daysWorked.toFloatOrNull() != null
+    val bvgValid = bvgAmount.isBlank() || bvgAmount.toFloatOrNull() != null
 
     Column(
         modifier = Modifier.padding(horizontal = Spacing.l).padding(bottom = Spacing.l),
@@ -416,9 +437,18 @@ private fun MonthOverrideSheet(
             style = UrsTheme.typography.cardTitle,
         )
         UrsTextField(
-            value = value,
-            onValueChange = { value = it },
+            value = daysWorked,
+            onValueChange = { daysWorked = it },
             label = stringResource(R.string.worktime_override_label),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        UrsTextField(
+            value = bvgAmount,
+            onValueChange = { bvgAmount = it },
+            label = stringResource(R.string.worktime_override_bvg_label),
+            supportingText = carriedBvgHint?.takeIf { bvgAmount.isBlank() },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
@@ -431,8 +461,8 @@ private fun MonthOverrideSheet(
             )
             UrsButton(
                 text = stringResource(R.string.save),
-                onClick = { onSave(value) },
-                enabled = value.toFloatOrNull() != null,
+                onClick = { onSave(daysWorked.trim(), bvgAmount.trim()) },
+                enabled = daysValid && bvgValid && (daysWorked.isNotBlank() || bvgAmount.isNotBlank() || hasOverride),
                 modifier = Modifier.weight(1f),
             )
         }

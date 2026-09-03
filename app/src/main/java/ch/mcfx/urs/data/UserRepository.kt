@@ -82,7 +82,6 @@ class UserRepository(
                 alvDeductionPercent = user?.alvDeductionPercent.orEmpty(),
                 suvaNbuDeductionPercent = user?.suvaNbuDeductionPercent.orEmpty(),
                 ktgDeductionPercent = user?.ktgDeductionPercent.orEmpty(),
-                bvgDeductionAmount = user?.bvgDeductionAmount.orEmpty(),
             ).withDefaults(),
         )
     }
@@ -114,7 +113,6 @@ class UserRepository(
                 alvDeductionPercent = rules.alvDeductionPercent.orEmpty(),
                 suvaNbuDeductionPercent = rules.suvaNbuDeductionPercent.orEmpty(),
                 ktgDeductionPercent = rules.ktgDeductionPercent.orEmpty(),
-                bvgDeductionAmount = rules.bvgDeductionAmount.orEmpty(),
             ),
         )
     }

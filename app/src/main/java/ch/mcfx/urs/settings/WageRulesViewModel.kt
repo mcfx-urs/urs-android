@@ -39,9 +39,6 @@ class WageRulesViewModel(private val userRepository: UserRepository) : ViewModel
     private val _ktgDeductionPercent = MutableStateFlow(DefaultWageRules.ktgDeductionPercent!!)
     val ktgDeductionPercent: StateFlow<String> = _ktgDeductionPercent.asStateFlow()
 
-    private val _bvgDeductionAmount = MutableStateFlow(DefaultWageRules.bvgDeductionAmount!!)
-    val bvgDeductionAmount: StateFlow<String> = _bvgDeductionAmount.asStateFlow()
-
     private val _justSaved = MutableStateFlow(false)
     val justSaved: StateFlow<Boolean> = _justSaved.asStateFlow()
 
@@ -59,7 +56,6 @@ class WageRulesViewModel(private val userRepository: UserRepository) : ViewModel
                 rules.alvDeductionPercent?.takeIf { it.isNotBlank() }?.let { _alvDeductionPercent.value = it }
                 rules.suvaNbuDeductionPercent?.takeIf { it.isNotBlank() }?.let { _suvaNbuDeductionPercent.value = it }
                 rules.ktgDeductionPercent?.takeIf { it.isNotBlank() }?.let { _ktgDeductionPercent.value = it }
-                rules.bvgDeductionAmount?.takeIf { it.isNotBlank() }?.let { _bvgDeductionAmount.value = it }
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
@@ -75,7 +71,6 @@ class WageRulesViewModel(private val userRepository: UserRepository) : ViewModel
     fun setAlvDeductionPercent(value: String) = markDirty { _alvDeductionPercent.value = value }
     fun setSuvaNbuDeductionPercent(value: String) = markDirty { _suvaNbuDeductionPercent.value = value }
     fun setKtgDeductionPercent(value: String) = markDirty { _ktgDeductionPercent.value = value }
-    fun setBvgDeductionAmount(value: String) = markDirty { _bvgDeductionAmount.value = value }
 
     private inline fun markDirty(set: () -> Unit) {
         set()
@@ -95,7 +90,6 @@ class WageRulesViewModel(private val userRepository: UserRepository) : ViewModel
                         alvDeductionPercent = _alvDeductionPercent.value,
                         suvaNbuDeductionPercent = _suvaNbuDeductionPercent.value,
                         ktgDeductionPercent = _ktgDeductionPercent.value,
-                        bvgDeductionAmount = _bvgDeductionAmount.value,
                     ),
                 )
                 _justSaved.value = true
