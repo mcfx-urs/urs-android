@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Work-time entry: optional free-text comment, editable in the add/edit form and shown under the entry in the monthly list (#45).
+
 ### Changed
 
 - Wage breakdown: the meal allowance is now part of the gross figure (shown as a line before the Gross total) instead of being appended to net as a separate "Net (incl. meal allowance)" line; it stays excluded from every surcharge and deduction base, so the net figure is unchanged (#42).

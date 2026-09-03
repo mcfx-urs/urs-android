@@ -361,6 +361,7 @@ class SyncManager(
                 targetDailyHours = payload.targetDailyHours,
                 paidBreak = if (payload.paidBreak) "1" else "0",
                 mealAllowance = if (payload.mealAllowance) "1" else "0",
+                comment = payload.comment,
                 breaks = payload.breaks.map { WorkTimeBreakPayload(startTime = it.startTime, endTime = it.endTime) },
             ),
         )
@@ -394,6 +395,7 @@ class SyncManager(
                 targetDailyHours = payload.targetDailyHours,
                 paidBreak = if (payload.paidBreak) "1" else "0",
                 mealAllowance = if (payload.mealAllowance) "1" else "0",
+                comment = payload.comment,
                 breaks = payload.breaks.map { WorkTimeBreakPayload(startTime = it.startTime, endTime = it.endTime) },
             ),
         )
