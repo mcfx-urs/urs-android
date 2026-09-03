@@ -36,6 +36,9 @@
     <string name="chores_month_label">Month</string>
     <string name="chores_year_label">Year</string>
     <string name="chores_add_type">Type</string>
+    <string name="chores_type_filter">Types &amp; filter</string>
+    <string name="chores_type_filter_title">Types</string>
+    <string name="chores_type_filter_empty">No types yet.</string>
     <string name="chores_stat_never">never</string>
     <string name="chores_stat_today">today</string>
     <string name="chores_stat_days_ago">%1$d days ago</string>

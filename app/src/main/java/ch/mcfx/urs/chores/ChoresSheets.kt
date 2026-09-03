@@ -4,6 +4,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -68,6 +69,71 @@ sealed interface EventEditorTarget {
 }
 
 private val dayHeaderFormat: DateTimeFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)
+
+// --- Type filter & management (GitHub issue #34) ---
+
+// Replaces the always-visible type-filter row on the calendar screen: the
+// type chips (tap to show/hide on the calendar, long-press to edit) plus
+// "create new type", all behind the header's filter button.
+@OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
+@Composable
+fun ChoreTypeFilterSheet(
+    activeTypes: List<TrackerTypeEntity>,
+    hiddenTypeIds: Set<String>,
+    onToggle: (String) -> Unit,
+    onAdd: () -> Unit,
+    onEditType: (TrackerTypeEntity) -> Unit,
+) {
+    val colors = UrsTheme.colors
+    Column(
+        modifier = Modifier.padding(horizontal = Spacing.l).padding(bottom = Spacing.l),
+        verticalArrangement = Arrangement.spacedBy(Spacing.m),
+    ) {
+        UrsText(stringResource(R.string.chores_type_filter_title), style = UrsTheme.typography.cardTitle)
+
+        if (activeTypes.isEmpty()) {
+            UrsText(
+                stringResource(R.string.chores_type_filter_empty),
+                style = UrsTheme.typography.body,
+                color = colors.onSurfaceMuted,
+            )
+        } else {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+                verticalArrangement = Arrangement.spacedBy(Spacing.s),
+            ) {
+                activeTypes.forEach { type ->
+                    val selected = type.publicId !in hiddenTypeIds
+                    val bg = if (selected) colors.accent else Color.Transparent
+                    val fg = if (selected) colors.onAccent else colors.onSurface
+                    Row(
+                        modifier = Modifier
+                            .clip(Radius.pill)
+                            .background(bg)
+                            .then(
+                                if (selected) Modifier
+                                else Modifier.border(1.dp, colors.onSurfaceMuted.copy(alpha = 0.3f), Radius.pill),
+                            )
+                            .combinedClickable(onClick = { onToggle(type.publicId) }, onLongClick = { onEditType(type) })
+                            .padding(horizontal = Spacing.m, vertical = Spacing.s),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+                    ) {
+                        Box(Modifier.size(10.dp).clip(CircleShape).background(parseChoreColor(type.color)))
+                        ChoreIconView(token = type.icon, tint = fg, size = 16.dp)
+                        UrsText(type.name, style = UrsTheme.typography.body, color = fg)
+                    }
+                }
+            }
+        }
+
+        UrsOutlinedButton(
+            text = stringResource(R.string.chores_add_type),
+            onClick = onAdd,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
 
 // --- Day detail ---
 

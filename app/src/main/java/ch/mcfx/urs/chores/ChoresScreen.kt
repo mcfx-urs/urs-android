@@ -1,13 +1,9 @@
 package ch.mcfx.urs.chores
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,8 +28,8 @@ import android.widget.Toast
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -64,7 +60,6 @@ import ch.mcfx.urs.ui.components.UrsBottomSheet
 import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsDropdownField
-import ch.mcfx.urs.ui.components.UrsIcon
 import ch.mcfx.urs.ui.components.UrsIconButton
 import ch.mcfx.urs.ui.components.UrsOutlinedButton
 import ch.mcfx.urs.ui.components.UrsText
@@ -96,6 +91,7 @@ fun ChoresScreen(viewModel: ChoresViewModel = viewModel(factory = ChoresViewMode
     val context = LocalContext.current
 
     var daySheet by remember { mutableStateOf<LocalDate?>(null) }
+    var typeSheet by remember { mutableStateOf(false) }
     var typeEditor by remember { mutableStateOf<TypeEditorTarget?>(null) }
     var eventEditor by remember { mutableStateOf<EventEditorTarget?>(null) }
     var exportSheet by remember { mutableStateOf(false) }
@@ -128,15 +124,8 @@ fun ChoresScreen(viewModel: ChoresViewModel = viewModel(factory = ChoresViewMode
                 onPrev = viewModel::previousMonth,
                 onNext = viewModel::nextMonth,
                 onPick = viewModel::showMonth,
+                onOpenFilter = { typeSheet = true },
                 onExport = { exportSheet = true },
-            )
-
-            TypeFilterRow(
-                types = state.activeTypes,
-                hiddenTypeIds = hiddenTypeIds,
-                onToggle = viewModel::toggleTypeVisible,
-                onAdd = { typeEditor = TypeEditorTarget.New },
-                onEditType = { typeEditor = TypeEditorTarget.Edit(it) },
             )
 
             MonthGrid(
@@ -162,6 +151,18 @@ fun ChoresScreen(viewModel: ChoresViewModel = viewModel(factory = ChoresViewMode
                     onAddEvent = { eventEditor = EventEditorTarget.New(date) },
                     onEditEvent = { eventEditor = EventEditorTarget.Edit(it) },
                     onDeleteEvent = viewModel::deleteEvent,
+                )
+            }
+        }
+
+        if (typeSheet) {
+            UrsBottomSheet(onDismissRequest = { typeSheet = false }) {
+                ChoreTypeFilterSheet(
+                    activeTypes = state.activeTypes,
+                    hiddenTypeIds = hiddenTypeIds,
+                    onToggle = viewModel::toggleTypeVisible,
+                    onAdd = { typeSheet = false; typeEditor = TypeEditorTarget.New },
+                    onEditType = { typeSheet = false; typeEditor = TypeEditorTarget.Edit(it) },
                 )
             }
         }
@@ -226,6 +227,7 @@ private fun MonthHeader(
     onPrev: () -> Unit,
     onNext: () -> Unit,
     onPick: (YearMonth) -> Unit,
+    onOpenFilter: () -> Unit,
     onExport: () -> Unit,
 ) {
     var picking by remember { mutableStateOf(false) }
@@ -256,6 +258,11 @@ private fun MonthHeader(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
             )
             UrsIconButton(
+                onClick = onOpenFilter,
+                contentDescription = stringResource(R.string.chores_type_filter),
+                imageVector = Icons.Filled.Tune,
+            )
+            UrsIconButton(
                 onClick = onExport,
                 contentDescription = stringResource(R.string.chores_export_calendar),
                 imageVector = Icons.Filled.Share,
@@ -279,61 +286,6 @@ private fun MonthHeader(
                     onSelect = { onPick(YearMonth.of(it, month.monthValue)); picking = false },
                     modifier = Modifier.weight(1f),
                 )
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun TypeFilterRow(
-    types: List<TrackerTypeEntity>,
-    hiddenTypeIds: Set<String>,
-    onToggle: (String) -> Unit,
-    onAdd: () -> Unit,
-    onEditType: (TrackerTypeEntity) -> Unit,
-) {
-    val colors = UrsTheme.colors
-    Row(
-        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(Spacing.s),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(
-            modifier = Modifier
-                .clip(Radius.pill)
-                .background(colors.accent.copy(alpha = 0.15f))
-                .clickable(onClick = onAdd)
-                .padding(horizontal = Spacing.m, vertical = Spacing.s),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
-        ) {
-            UrsIcon(
-                imageVector = Icons.Filled.Add,
-                contentDescription = stringResource(R.string.chores_add_type),
-                tint = colors.accent,
-                modifier = Modifier.size(18.dp),
-            )
-            UrsText(stringResource(R.string.chores_add_type), style = UrsTheme.typography.body, color = colors.accent)
-        }
-
-        types.forEach { type ->
-            val selected = type.publicId !in hiddenTypeIds
-            val bg = if (selected) colors.accent else Color.Transparent
-            val fg = if (selected) colors.onAccent else colors.onSurface
-            Row(
-                modifier = Modifier
-                    .clip(Radius.pill)
-                    .background(bg)
-                    .then(if (selected) Modifier else Modifier.border(1.dp, colors.onSurfaceMuted.copy(alpha = 0.3f), Radius.pill))
-                    .combinedClickable(onClick = { onToggle(type.publicId) }, onLongClick = { onEditType(type) })
-                    .padding(horizontal = Spacing.m, vertical = Spacing.s),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
-            ) {
-                Box(Modifier.size(10.dp).clip(CircleShape).background(parseChoreColor(type.color)))
-                ChoreIconView(token = type.icon, tint = fg, size = 16.dp)
-                UrsText(type.name, style = UrsTheme.typography.body, color = fg)
             }
         }
     }
