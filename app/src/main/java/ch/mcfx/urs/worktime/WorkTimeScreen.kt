@@ -508,6 +508,14 @@ private fun EntryCard(entryWithBreaks: WorkTimeEntryWithBreaks, userDefaultTarge
                 color = UrsTheme.colors.onSurfaceMuted,
             )
         }
+        if (entryWithBreaks.entry.comment.isNotBlank()) {
+            Spacer(Modifier.height(Spacing.xs))
+            UrsText(
+                entryWithBreaks.entry.comment,
+                style = UrsTheme.typography.caption,
+                color = UrsTheme.colors.onSurfaceMuted,
+            )
+        }
     }
 }
 

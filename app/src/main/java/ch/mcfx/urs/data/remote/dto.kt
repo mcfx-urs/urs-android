@@ -506,6 +506,8 @@ data class WorkTimeEntryDto(
     // "1"/"0" — CHF 18.- meal allowance owed for the day, see
     // WorkTimeCalculations.computeWage.
     @SerialName("work_time_entry_meal_allowance") val mealAllowance: String = "0",
+    // Optional free-text note; empty string = none.
+    @SerialName("work_time_entry_comment") val comment: String = "",
     @SerialName("breaks") val breaks: List<WorkTimeBreakDto> = emptyList(),
     // Computed server-side (see urs-backend's computeDailyTotals) — the
     // client never reimplements this formula.
@@ -532,6 +534,7 @@ data class WorkTimeEntryPayload(
     // backend's Go zero value (false) would silently disagree with it.
     @SerialName("work_time_entry_paid_break") val paidBreak: String,
     @SerialName("work_time_entry_meal_allowance") val mealAllowance: String,
+    @SerialName("work_time_entry_comment") val comment: String = "",
     @SerialName("breaks") val breaks: List<WorkTimeBreakPayload> = emptyList(),
 )
 

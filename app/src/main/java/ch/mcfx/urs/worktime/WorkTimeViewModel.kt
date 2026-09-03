@@ -59,6 +59,7 @@ data class WorkTimeFormState(
     // Default off — most days don't require eating out, see
     // WorkTimeEntryEntity.mealAllowance.
     val mealAllowance: Boolean = false,
+    val comment: String = "",
     val breaks: List<BreakDraft> = emptyList(),
     val submitting: Boolean = false,
     val submitFailed: Boolean = false,
@@ -213,6 +214,7 @@ class WorkTimeViewModel(
                 targetDailyHours = entry.entry.targetDailyHours,
                 paidBreak = entry.entry.paidBreak,
                 mealAllowance = entry.entry.mealAllowance,
+                comment = entry.entry.comment,
                 breaks = entry.breaks.map { BreakDraft(startTime = it.startTime.take(5), endTime = it.endTime.take(5)) },
             )
             _showForm.value = true
@@ -262,6 +264,8 @@ class WorkTimeViewModel(
 
     fun setMealAllowance(value: Boolean) = _formState.update { it.copy(mealAllowance = value) }
 
+    fun setComment(value: String) = _formState.update { it.copy(comment = value) }
+
     /** @return the new break's id, so the caller can move keyboard focus onto its start-time field. */
     fun addBreak(): Long {
         val draft = BreakDraft()
@@ -297,6 +301,7 @@ class WorkTimeViewModel(
                         targetDailyHours = form.targetDailyHours,
                         paidBreak = form.paidBreak,
                         mealAllowance = form.mealAllowance,
+                        comment = form.comment.trim(),
                         breaks = breaksArg,
                     )
                 } else {
@@ -307,6 +312,7 @@ class WorkTimeViewModel(
                         targetDailyHours = form.targetDailyHours,
                         paidBreak = form.paidBreak,
                         mealAllowance = form.mealAllowance,
+                        comment = form.comment.trim(),
                         breaks = breaksArg,
                     )
                 }

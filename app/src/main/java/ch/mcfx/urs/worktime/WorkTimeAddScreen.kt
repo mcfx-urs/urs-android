@@ -182,6 +182,16 @@ private fun EntryForm(form: WorkTimeFormState, userDefaultTargetHours: String?, 
             UrsCheckbox(checked = form.mealAllowance, onCheckedChange = viewModel::setMealAllowance)
         }
 
+        UrsTextField(
+            value = form.comment,
+            onValueChange = viewModel::setComment,
+            label = stringResource(R.string.worktime_comment),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+            singleLine = false,
+            minLines = 2,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
         UrsText(stringResource(R.string.worktime_breaks_title), style = UrsTheme.typography.cardTitle)
 
         form.breaks.forEach { breakDraft ->

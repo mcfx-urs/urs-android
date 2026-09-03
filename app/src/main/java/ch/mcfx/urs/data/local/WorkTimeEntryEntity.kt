@@ -31,6 +31,9 @@ data class WorkTimeEntryEntity(
     // as a flat amount into the month's net wage rather than run through
     // the surcharge/deduction chain, see WorkTimeCalculations.computeWage.
     val mealAllowance: Boolean = false,
+    // Optional free-text note for the day; empty string = none, mirroring
+    // the backend's nullable-column-as-empty-string convention.
+    val comment: String = "",
     val syncStatus: SyncStatus,
 )
 

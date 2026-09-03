@@ -79,7 +79,9 @@ import androidx.room.TypeConverters
     //      handling as every bump above.
     // v26: new AudioNoteEntity table (GitHub issue #41, watch voice notes) —
     //      same destructive-fallback handling as every bump above.
-    version = 26,
+    // v27: comment column added to WorkTimeEntryEntity (GitHub issue #45) —
+    //      same destructive-fallback handling as every bump above.
+    version = 27,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
