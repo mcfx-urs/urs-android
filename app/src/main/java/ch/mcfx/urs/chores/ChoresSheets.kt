@@ -81,15 +81,37 @@ fun ChoreTypeFilterSheet(
     activeTypes: List<TrackerTypeEntity>,
     hiddenTypeIds: Set<String>,
     onToggle: (String) -> Unit,
+    onSelectAll: () -> Unit,
+    onDeselectAll: () -> Unit,
     onAdd: () -> Unit,
     onEditType: (TrackerTypeEntity) -> Unit,
 ) {
     val colors = UrsTheme.colors
+    val allVisible = activeTypes.isNotEmpty() && activeTypes.none { it.publicId in hiddenTypeIds }
     Column(
         modifier = Modifier.padding(horizontal = Spacing.l).padding(bottom = Spacing.l),
         verticalArrangement = Arrangement.spacedBy(Spacing.m),
     ) {
-        UrsText(stringResource(R.string.chores_type_filter_title), style = UrsTheme.typography.cardTitle)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            UrsText(stringResource(R.string.chores_type_filter_title), style = UrsTheme.typography.cardTitle)
+            if (activeTypes.isNotEmpty()) {
+                UrsText(
+                    text = stringResource(
+                        if (allVisible) R.string.chores_type_filter_deselect_all else R.string.chores_type_filter_select_all,
+                    ),
+                    style = UrsTheme.typography.body,
+                    color = colors.accent,
+                    modifier = Modifier
+                        .clip(Radius.pill)
+                        .clickable { if (allVisible) onDeselectAll() else onSelectAll() }
+                        .padding(horizontal = Spacing.s, vertical = Spacing.xs),
+                )
+            }
+        }
 
         if (activeTypes.isEmpty()) {
             UrsText(

@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - Chores: the always-visible type row is now behind a filter button in the calendar header (between the next-month arrow and the share button); tapping it opens a sheet with the type filter and "create new type" (#34).
+- Chores type filter: added a select-all / deselect-all toggle so isolating one type no longer means tapping every other one off (#40).
 - BVG deduction: removed from the Surcharges & deductions settings; it is now entered per month in the month's adjustments sheet (alongside the days-worked override) and carried forward to later months until a later month sets its own value (#43).
 - Wage breakdown: the meal allowance is now part of the gross figure (its own line in the gross build-up) instead of being appended to net as a separate "Net (incl. meal allowance)" line; it stays excluded from every surcharge and deduction base, so the net figure is unchanged (#42).
 - Wage breakdown: each surcharge and deduction line is now rounded to 5 Rappen and the totals are the sum of the rounded lines, matching the official payslip (#44).

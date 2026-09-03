@@ -78,6 +78,15 @@ class ChoresViewModel(
         _hiddenTypeIds.update { if (typeId in it) it - typeId else it + typeId }
     }
 
+    /** Bulk filter toggle (GitHub issue #40). */
+    fun showAllTypes() {
+        _hiddenTypeIds.value = emptySet()
+    }
+
+    fun hideAllTypes(publicIds: Collection<String>) {
+        _hiddenTypeIds.value = publicIds.toSet()
+    }
+
     fun createType(name: String, color: String, icon: String, calendar: String?, expectedIntervalDays: Int?) {
         viewModelScope.launch {
             repository.createType(name.trim(), color, icon, calendar?.trim()?.ifBlank { null }, expectedIntervalDays)
