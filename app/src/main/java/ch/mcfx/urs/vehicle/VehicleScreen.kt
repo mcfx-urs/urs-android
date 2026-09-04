@@ -55,6 +55,7 @@ private val FormErrorColor = Color(0xFFD64545)
 fun VehicleScreen(
     onAddVehicle: () -> Unit,
     onEditVehicle: (String) -> Unit,
+    onViewVehicle: (String) -> Unit,
     viewModel: VehicleViewModel = viewModel(factory = VehicleViewModel.Factory),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -65,7 +66,11 @@ fun VehicleScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         when (val state = uiState) {
             VehicleUiState.Loading -> UrsProgressIndicator(Modifier.align(Alignment.Center))
-            is VehicleUiState.Data -> VehicleList(state.vehicles, onLongPress = viewModel::openActionSheet)
+            is VehicleUiState.Data -> VehicleList(
+                state.vehicles,
+                onTap = { vehicle -> onViewVehicle(vehicle.id) },
+                onLongPress = viewModel::openActionSheet,
+            )
         }
 
         UrsFab(
@@ -101,7 +106,7 @@ fun VehicleScreen(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun VehicleList(vehicles: List<VehicleEntity>, onLongPress: (VehicleEntity) -> Unit) {
+private fun VehicleList(vehicles: List<VehicleEntity>, onTap: (VehicleEntity) -> Unit, onLongPress: (VehicleEntity) -> Unit) {
     if (vehicles.isEmpty()) {
         Box(Modifier.fillMaxSize()) {
             UrsText(
@@ -123,7 +128,7 @@ private fun VehicleList(vehicles: List<VehicleEntity>, onLongPress: (VehicleEnti
                 radius = Radius.row,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .combinedClickable(onClick = {}, onLongClick = { onLongPress(vehicle) }),
+                    .combinedClickable(onClick = { onTap(vehicle) }, onLongClick = { onLongPress(vehicle) }),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),

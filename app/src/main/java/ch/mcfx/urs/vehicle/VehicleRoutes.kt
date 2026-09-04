@@ -9,6 +9,8 @@ object VehicleRoutes {
     const val LIST = "vehicle/list"
     const val ADD = "vehicle/add"
     const val EDIT = "vehicle/edit/{vehicleId}"
+    const val VIEW = "vehicle/view/{vehicleId}"
 
     fun edit(vehicleId: String) = "vehicle/edit/$vehicleId"
+    fun view(vehicleId: String) = "vehicle/view/$vehicleId"
 }
