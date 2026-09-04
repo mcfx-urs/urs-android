@@ -3,6 +3,7 @@ package ch.mcfx.urs.data
 import ch.mcfx.urs.data.local.OutboxBeerLogCreatePayload
 import ch.mcfx.urs.data.local.OutboxDao
 import ch.mcfx.urs.data.local.OutboxMutationEntity
+import ch.mcfx.urs.data.remote.BeerLogDateUpdatePayload
 import ch.mcfx.urs.data.remote.BeerLogDto
 import ch.mcfx.urs.data.remote.UrsApi
 import kotlinx.serialization.SerializationException
@@ -34,6 +35,13 @@ class BeerRepository(
 
     suspend fun deleteEntry(id: String) {
         api.deleteBeerLog(id)
+    }
+
+    // Direct call, same as deleteEntry — an entry being edited already has a
+    // server-side id, so unlike logBeer (which queues brand-new entries to
+    // the outbox) there is nothing to reconcile against a local cache here.
+    suspend fun updateEntryDate(id: String, date: String) {
+        api.updateBeerLog(id, BeerLogDateUpdatePayload(date))
     }
 
     // The backend encodes empty result sets as JSON `null` instead of `[]`.

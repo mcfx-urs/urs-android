@@ -621,6 +621,11 @@ data class BeerLogPayload(
     @SerialName("beer_log_date") val date: String,
 )
 
+@Serializable
+data class BeerLogDateUpdatePayload(
+    @SerialName("beer_log_date") val date: String,
+)
+
 // Matches urs-backend's LocationHistory struct (src/web/locationHistory.go):
 // every value is a string, same DB-column-as-a-string convention as every
 // other DTO in this file. capturedAt uses "yyyy-MM-dd HH:mm:ss" (device
