@@ -625,6 +625,10 @@
     <string name="beer_history_title">History</string>
     <string name="beer_history_empty">No beers logged yet.</string>
     <string name="beer_entry_remove">Remove entry</string>
+    <string name="beer_edit_title">Edit Timestamp</string>
+    <string name="beer_edit_date_label">Date</string>
+    <string name="beer_edit_time_label">Time</string>
+    <string name="beer_edit_future_date_error">Timestamp can\'t be in the future</string>
 
     <string name="worktime_date">Date (YYYY-MM-DD)</string>
     <string name="worktime_date_locked">Date can\'t be changed once created</string>

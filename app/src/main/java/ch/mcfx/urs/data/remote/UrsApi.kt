@@ -280,6 +280,9 @@ interface UrsApi {
     @POST("api/v1/beer-log")
     suspend fun createBeerLog(@Body payload: BeerLogPayload)
 
+    @PUT("api/v1/beer-log/{id}")
+    suspend fun updateBeerLog(@Path("id") id: String, @Body payload: BeerLogDateUpdatePayload)
+
     @DELETE("api/v1/beer-log/{id}")
     suspend fun deleteBeerLog(@Path("id") id: String)
 
