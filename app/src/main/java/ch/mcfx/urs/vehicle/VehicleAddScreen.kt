@@ -41,7 +41,9 @@ private val FormErrorColor = Color(0xFFD64545)
 
 private val VehicleTypeOptions = VehicleType.entries.toList()
 
-private fun vehicleTypeLabelRes(type: VehicleType) = when (type) {
+// Package-visible (not private) — VehicleViewScreen's read-only display
+// reuses this same type-to-label mapping instead of duplicating it.
+fun vehicleTypeLabelRes(type: VehicleType) = when (type) {
     VehicleType.CAR -> R.string.vehicle_type_car
     VehicleType.MOTORBIKE -> R.string.vehicle_type_motorbike
     VehicleType.EBIKE -> R.string.vehicle_type_ebike

@@ -98,6 +98,7 @@ import ch.mcfx.urs.vehicle.VehicleAddScreen
 import ch.mcfx.urs.vehicle.VehicleHubScreen
 import ch.mcfx.urs.vehicle.VehicleRoutes
 import ch.mcfx.urs.vehicle.VehicleScreen
+import ch.mcfx.urs.vehicle.VehicleViewScreen
 import ch.mcfx.urs.worktime.WorkTimeAddScreen
 import ch.mcfx.urs.worktime.WorkTimeRoutes
 import ch.mcfx.urs.worktime.WorkTimeScreen
@@ -237,6 +238,7 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                         VehicleScreen(
                             onAddVehicle = { navController.navigate(VehicleRoutes.ADD) },
                             onEditVehicle = { vehicleId -> navController.navigate(VehicleRoutes.edit(vehicleId)) },
+                            onViewVehicle = { vehicleId -> navController.navigate(VehicleRoutes.view(vehicleId)) },
                         )
                     }
                     composable(VehicleRoutes.ADD) {
@@ -245,6 +247,13 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                     composable(VehicleRoutes.EDIT) { backStackEntry ->
                         val vehicleId = backStackEntry.arguments?.getString("vehicleId") ?: return@composable
                         VehicleAddScreen(vehicleId = vehicleId, onDone = { navController.popBackStack() })
+                    }
+                    composable(VehicleRoutes.VIEW) { backStackEntry ->
+                        val vehicleId = backStackEntry.arguments?.getString("vehicleId") ?: return@composable
+                        VehicleViewScreen(
+                            vehicleId = vehicleId,
+                            onEdit = { navController.navigate(VehicleRoutes.edit(vehicleId)) },
+                        )
                     }
                     composable(ServiceRoutes.LIST) {
                         ServiceScreen(
@@ -505,6 +514,7 @@ private val SETTINGS_ROUTE_LABELS = mapOf(
 private val VEHICLE_ROUTE_LABELS = mapOf(
     VehicleRoutes.LIST to R.string.vehicle_list_title,
     VehicleRoutes.ADD to R.string.vehicle_add_title,
+    VehicleRoutes.VIEW to R.string.vehicle_view_title,
 )
 
 private val SERVICE_ROUTE_LABELS = mapOf(

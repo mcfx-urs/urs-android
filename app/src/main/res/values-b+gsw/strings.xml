@@ -204,6 +204,7 @@
     <string name="vehicle_list_empty">No vehicles yet.</string>
     <string name="vehicle_add_title">Add Vehicle</string>
     <string name="vehicle_edit_title">Edit Vehicle</string>
+    <string name="vehicle_view_title">Vehicle</string>
     <string name="vehicle_edit">Edit</string>
     <string name="vehicle_delete">Delete</string>
     <string name="vehicle_delete_confirm_title">Delete this vehicle?</string>

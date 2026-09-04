@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - Beer log: long-pressing an entry opens an edit sheet for adjusting its timestamp; amount stays as logged, and the timestamp can't be set in the future (#47).
+- Vehicle list: tapping an entry opens a read-only detail screen with an Edit action; long-press keeps its existing Edit/Delete sheet (#48).
 
 ## [0.23.0] - 2026-09-04
 
