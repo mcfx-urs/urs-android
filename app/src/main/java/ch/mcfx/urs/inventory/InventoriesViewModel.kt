@@ -127,6 +127,12 @@ class InventoriesViewModel(
         _actionSheetInventory.value = null
     }
 
+    fun toggleFavorite() {
+        val inventory = _actionSheetInventory.value ?: return
+        _actionSheetInventory.value = null
+        viewModelScope.launch { repository.setInventoryFavorite(inventory.id, !inventory.isFavorite) }
+    }
+
     fun requestDelete() {
         val inventory = _actionSheetInventory.value ?: return
         _actionSheetInventory.value = null

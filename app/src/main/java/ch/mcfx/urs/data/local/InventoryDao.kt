@@ -17,6 +17,12 @@ interface InventoryDao {
     @Query("SELECT * FROM inventory WHERE userId = :userId")
     fun observeAll(userId: String): Flow<List<InventoryEntity>>
 
+    @Query("SELECT * FROM inventory WHERE userId = :userId AND isFavorite = 1 ORDER BY name ASC")
+    fun observeFavorites(userId: String): Flow<List<InventoryEntity>>
+
+    @Query("UPDATE inventory SET isFavorite = :isFavorite WHERE id = :id")
+    suspend fun setFavorite(id: Long, isFavorite: Boolean)
+
     @Query("SELECT * FROM inventory WHERE id = :id LIMIT 1")
     suspend fun getById(id: Long): InventoryEntity?
 
@@ -39,7 +45,11 @@ interface InventoryDao {
         inventories.forEach { inventory ->
             val serverId = inventory.serverId ?: return@forEach
             val existingLocalId = findLocalIdByServerId(serverId)
-            replace(inventory.copy(id = existingLocalId ?: 0))
+            // isFavorite is a local-only UI preference, never part of the
+            // server payload — carry the existing row's value forward so a
+            // backend refresh doesn't silently un-favorite it.
+            val existingIsFavorite = existingLocalId?.let { getById(it)?.isFavorite } ?: false
+            replace(inventory.copy(id = existingLocalId ?: 0, isFavorite = existingIsFavorite))
         }
     }
 

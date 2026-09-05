@@ -64,6 +64,11 @@ class InventoryRepository(
     fun observeInventories(): Flow<List<InventoryEntity>> =
         inventoryDao.observeAll(currentUserId()).map { it.sortedBy { i -> i.name.alphabeticSortKey() } }
 
+    /** Home-tile quick-jump badges — local-only preference, never synced to the backend. */
+    fun observeFavoriteInventories(): Flow<List<InventoryEntity>> = inventoryDao.observeFavorites(currentUserId())
+
+    suspend fun setInventoryFavorite(localId: Long, isFavorite: Boolean) = inventoryDao.setFavorite(localId, isFavorite)
+
     // Empty string never matches a stored userId, so a (shouldn't-happen)
     // logged-out call just observes/writes nothing rather than crashing.
     private fun currentUserId(): String = authTokenStore.currentUserId.orEmpty()

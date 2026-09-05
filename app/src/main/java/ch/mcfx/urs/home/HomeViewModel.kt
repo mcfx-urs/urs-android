@@ -12,8 +12,12 @@ import ch.mcfx.urs.auth.AuthTokenStore
 import ch.mcfx.urs.beer.BeerStats
 import ch.mcfx.urs.data.BeerRepository
 import ch.mcfx.urs.data.FuelRepository
+import ch.mcfx.urs.data.InventoryRepository
+import ch.mcfx.urs.data.ShoppingListRepository
 import ch.mcfx.urs.data.UserRepository
 import ch.mcfx.urs.data.VehicleRepository
+import ch.mcfx.urs.data.local.InventoryEntity
+import ch.mcfx.urs.data.local.ListEntity
 import ch.mcfx.urs.data.resolveDefaultVehicleId
 import ch.mcfx.urs.fuel.FuelStats
 import ch.mcfx.urs.location.LocationProvider
@@ -43,10 +47,21 @@ class HomeViewModel(
     private val userRepository: UserRepository,
     private val vehicleRepository: VehicleRepository,
     private val homeLayoutStore: HomeLayoutStore,
+    private val shoppingListRepository: ShoppingListRepository,
+    private val inventoryRepository: InventoryRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+
+    // Quick-jump badges on the Shopping List / Inventory tiles — kept live
+    // (unlike uiState's one-shot quick-stats above) since favoriting a list
+    // elsewhere in the app should show up the moment the user returns Home.
+    private val _favoriteLists = MutableStateFlow<List<ListEntity>>(emptyList())
+    val favoriteLists: StateFlow<List<ListEntity>> = _favoriteLists.asStateFlow()
+
+    private val _favoriteInventories = MutableStateFlow<List<InventoryEntity>>(emptyList())
+    val favoriteInventories: StateFlow<List<InventoryEntity>> = _favoriteInventories.asStateFlow()
 
     val layout: StateFlow<List<HomeTilePlacement>> = homeLayoutStore.layout
 
@@ -125,6 +140,8 @@ class HomeViewModel(
     val currentLocation: StateFlow<Location?> = locationProvider.currentLocation
 
     init {
+        viewModelScope.launch { shoppingListRepository.observeFavoriteLists().collect { _favoriteLists.value = it } }
+        viewModelScope.launch { inventoryRepository.observeFavoriteInventories().collect { _favoriteInventories.value = it } }
         viewModelScope.launch {
             val fills = runCatching { fuelRepository.getFills() }.getOrDefault(emptyList())
             val since = LocalDate.now().minusMonths(QUICK_STAT_WINDOW_MONTHS)
@@ -167,6 +184,8 @@ class HomeViewModel(
                     app.container.userRepository,
                     app.container.vehicleRepository,
                     app.container.homeLayoutStore,
+                    app.container.shoppingListRepository,
+                    app.container.inventoryRepository,
                 )
             }
         }

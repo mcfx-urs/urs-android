@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Beer log: long-pressing an entry opens an edit sheet for adjusting its timestamp; amount stays as logged, and the timestamp can't be set in the future (#47).
 - Vehicle list: tapping an entry opens a read-only detail screen with an Edit action; long-press keeps its existing Edit/Delete sheet (#48).
+- Shopping List and Inventory home tiles show quick-jump badges for favorited lists/inventories, opening straight into that list; favorite/unfavorite from the existing long-press action sheet (#50).
 
 ### Fixed
 

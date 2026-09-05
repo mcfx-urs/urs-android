@@ -83,7 +83,10 @@ import androidx.room.TypeConverters
     //      same destructive-fallback handling as every bump above.
     // v28: bvgAmount column added to WorkTimeMonthOverrideEntity (GitHub
     //      issue #43) — same destructive-fallback handling as every bump above.
-    version = 28,
+    // v29: isFavorite column added to ListEntity/InventoryEntity (GitHub
+    //      issue #50, home-tile quick-jump badges) — same destructive-fallback
+    //      handling as every bump above.
+    version = 29,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
