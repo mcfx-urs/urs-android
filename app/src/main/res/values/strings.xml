@@ -517,6 +517,10 @@
     <string name="retry">Retry</string>
     <string name="error_load">Could not reach the backend.</string>
     <string name="error_save">Saving failed. Please try again.</string>
+    <string name="discard_changes_title">Discard changes?</string>
+    <string name="discard_changes_message">Your unsaved changes will be lost.</string>
+    <string name="discard">Discard</string>
+    <string name="keep_editing">Keep editing</string>
 
     <string name="inventory_inventories_empty">No inventories yet — add one to start tracking stock.</string>
     <string name="inventory_add">New inventory</string>

@@ -31,6 +31,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -57,6 +58,7 @@ import ch.mcfx.urs.data.local.TrackerEventEntity
 import ch.mcfx.urs.data.local.TrackerTypeEntity
 import ch.mcfx.urs.data.local.publicId
 import ch.mcfx.urs.ui.components.UrsBottomSheet
+import ch.mcfx.urs.ui.components.UrsDiscardChangesDialog
 import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsDropdownField
@@ -95,6 +97,14 @@ fun ChoresScreen(viewModel: ChoresViewModel = viewModel(factory = ChoresViewMode
     var typeEditor by remember { mutableStateOf<TypeEditorTarget?>(null) }
     var eventEditor by remember { mutableStateOf<EventEditorTarget?>(null) }
     var exportSheet by remember { mutableStateOf(false) }
+
+    var typeEditorDirty by remember { mutableStateOf(false) }
+    var confirmingDiscardTypeEditor by remember { mutableStateOf(false) }
+    LaunchedEffect(typeEditor) { typeEditorDirty = false }
+
+    var eventEditorDirty by remember { mutableStateOf(false) }
+    var confirmingDiscardEventEditor by remember { mutableStateOf(false) }
+    LaunchedEffect(eventEditor) { eventEditorDirty = false }
 
     val typesByPublicId = state.typesByPublicId
     val eventsByDate = remember(state.events) {
@@ -172,7 +182,7 @@ fun ChoresScreen(viewModel: ChoresViewModel = viewModel(factory = ChoresViewMode
         }
 
         typeEditor?.let { target ->
-            UrsBottomSheet(onDismissRequest = { typeEditor = null }) {
+            UrsBottomSheet(onDismissRequest = { if (typeEditorDirty) confirmingDiscardTypeEditor = true else typeEditor = null }) {
                 val editingType = (target as? TypeEditorTarget.Edit)?.type
                 TypeEditorSheet(
                     target = target,
@@ -191,8 +201,18 @@ fun ChoresScreen(viewModel: ChoresViewModel = viewModel(factory = ChoresViewMode
                     onNotifyOverdueChange = editingType?.let { type ->
                         { on: Boolean -> viewModel.setTypeNotifyEnabled(type.publicId, on) }
                     },
+                    onDirtyChanged = { typeEditorDirty = it },
                 )
             }
+        }
+        if (confirmingDiscardTypeEditor) {
+            UrsDiscardChangesDialog(
+                onDiscard = {
+                    confirmingDiscardTypeEditor = false
+                    typeEditor = null
+                },
+                onKeepEditing = { confirmingDiscardTypeEditor = false },
+            )
         }
 
         if (exportSheet) {
@@ -208,7 +228,7 @@ fun ChoresScreen(viewModel: ChoresViewModel = viewModel(factory = ChoresViewMode
         }
 
         eventEditor?.let { target ->
-            UrsBottomSheet(onDismissRequest = { eventEditor = null }) {
+            UrsBottomSheet(onDismissRequest = { if (eventEditorDirty) confirmingDiscardEventEditor = true else eventEditor = null }) {
                 EventEditorSheet(
                     target = target,
                     types = state.activeTypes,
@@ -219,8 +239,18 @@ fun ChoresScreen(viewModel: ChoresViewModel = viewModel(factory = ChoresViewMode
                         }
                         eventEditor = null
                     },
+                    onDirtyChanged = { eventEditorDirty = it },
                 )
             }
+        }
+        if (confirmingDiscardEventEditor) {
+            UrsDiscardChangesDialog(
+                onDiscard = {
+                    confirmingDiscardEventEditor = false
+                    eventEditor = null
+                },
+                onKeepEditing = { confirmingDiscardEventEditor = false },
+            )
         }
     }
 }
