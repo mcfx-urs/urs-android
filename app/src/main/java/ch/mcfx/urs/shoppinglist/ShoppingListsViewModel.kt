@@ -135,6 +135,12 @@ class ShoppingListsViewModel(
         _actionSheetList.value = null
     }
 
+    fun toggleFavorite() {
+        val list = _actionSheetList.value ?: return
+        _actionSheetList.value = null
+        viewModelScope.launch { repository.setListFavorite(list.id, !list.isFavorite) }
+    }
+
     fun requestDelete() {
         val list = _actionSheetList.value ?: return
         _actionSheetList.value = null

@@ -35,6 +35,8 @@ data class InventoryEntity(
     val name: String,
     val userId: String,
     val syncStatus: SyncStatus,
+    // Shown as a quick-jump badge on the Inventory home tile.
+    val isFavorite: Boolean = false,
 )
 
 /**

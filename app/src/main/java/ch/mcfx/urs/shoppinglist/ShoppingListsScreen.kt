@@ -17,6 +17,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -100,8 +102,10 @@ fun ShoppingListsScreen(
     actionSheetList?.let { list ->
         UrsBottomSheet(onDismissRequest = viewModel::closeActionSheet) {
             ListActionSheet(
+                isFavorite = list.isFavorite,
                 onRename = { viewModel.openRenameForm(list) },
                 onShare = { viewModel.openShareSheet(list) },
+                onToggleFavorite = viewModel::toggleFavorite,
                 onDelete = viewModel::requestDelete,
             )
         }
@@ -227,10 +231,21 @@ private fun ListForm(form: ListFormState, viewModel: ShoppingListsViewModel) {
 }
 
 @Composable
-private fun ListActionSheet(onRename: () -> Unit, onShare: () -> Unit, onDelete: () -> Unit) {
+private fun ListActionSheet(
+    isFavorite: Boolean,
+    onRename: () -> Unit,
+    onShare: () -> Unit,
+    onToggleFavorite: () -> Unit,
+    onDelete: () -> Unit,
+) {
     Column(modifier = Modifier.padding(horizontal = Spacing.l).padding(bottom = Spacing.l)) {
         ActionSheetRow(label = stringResource(R.string.shoppinglist_list_rename), icon = Icons.Filled.Edit, onClick = onRename)
         ActionSheetRow(label = stringResource(R.string.shoppinglist_list_share), icon = Icons.Filled.Share, onClick = onShare)
+        ActionSheetRow(
+            label = stringResource(if (isFavorite) R.string.favorite_remove else R.string.favorite_add),
+            icon = if (isFavorite) Icons.Filled.Star else Icons.Filled.StarBorder,
+            onClick = onToggleFavorite,
+        )
         ActionSheetRow(
             label = stringResource(R.string.shoppinglist_list_delete),
             icon = Icons.Filled.Delete,

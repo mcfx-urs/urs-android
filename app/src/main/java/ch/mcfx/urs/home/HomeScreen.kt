@@ -78,11 +78,16 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
+import ch.mcfx.urs.data.local.InventoryEntity
+import ch.mcfx.urs.data.local.ListEntity
+import ch.mcfx.urs.data.local.publicId
 import ch.mcfx.urs.fuel.FuelRoutes
+import ch.mcfx.urs.inventory.InventoryRoutes
 import ch.mcfx.urs.location.LOCATION_PERMISSIONS
 import ch.mcfx.urs.location.hasLocationPermission
 import ch.mcfx.urs.navigation.Destination
 import ch.mcfx.urs.settings.SettingsRoutes
+import ch.mcfx.urs.shoppinglist.ShoppingListRoutes
 import ch.mcfx.urs.ui.components.UrsBottomSheet
 import ch.mcfx.urs.ui.components.UrsGlassCard
 import ch.mcfx.urs.ui.components.UrsIconButton
@@ -143,6 +148,12 @@ private val TileBleedImageSizeTall = 132.dp
 private val MiniMapZoom = 15.0
 private val ResizeHandleSize = 24.dp
 private val SelectionBorderWidth = 2.dp
+private val FavoriteBadgeSize = 28.dp
+// 1x1 tile: favorites stack vertically, up to 2 fit comfortably in the
+// available height. A wider or taller tile has room for a horizontal row of
+// 3 instead. Anything beyond that limit is simply not shown.
+private const val MaxFavoriteBadgesCompact = 2
+private const val MaxFavoriteBadgesWide = 3
 
 // How long a dragged tile must hover over the same cell before the rest of
 // the grid reflows around it — long enough that passing over several cells
@@ -162,6 +173,8 @@ fun HomeScreen(
     viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val favoriteLists by viewModel.favoriteLists.collectAsStateWithLifecycle()
+    val favoriteInventories by viewModel.favoriteInventories.collectAsStateWithLifecycle()
     val location by viewModel.currentLocation.collectAsStateWithLifecycle()
     val layout by viewModel.layout.collectAsStateWithLifecycle()
     val editMode by viewModel.editMode.collectAsStateWithLifecycle()
@@ -218,6 +231,8 @@ fun HomeScreen(
                 editMode = editMode,
                 selectedTileId = selectedTileId,
                 uiState = uiState,
+                favoriteLists = favoriteLists,
+                favoriteInventories = favoriteInventories,
                 location = location,
                 onTileClick = { id ->
                     if (editMode) viewModel.toggleSelected(id) else navigateTo(id, onNavigate, onNavigateRoute)
@@ -226,6 +241,7 @@ fun HomeScreen(
                 onMoveTile = viewModel::moveTile,
                 onResizeTile = viewModel::resizeTile,
                 onRemoveTile = viewModel::removeTile,
+                onOpenFavoriteRoute = onNavigateRoute,
             )
             if (editMode) {
                 EditModeExtraRow(
@@ -379,12 +395,15 @@ private fun HomeTileGrid(
     editMode: Boolean,
     selectedTileId: String?,
     uiState: HomeUiState,
+    favoriteLists: List<ListEntity>,
+    favoriteInventories: List<InventoryEntity>,
     location: Location?,
     onTileClick: (String) -> Unit,
     onLongPress: (String) -> Unit,
     onMoveTile: (id: String, targetId: String) -> Unit,
     onResizeTile: (id: String, width: Int, height: Int) -> Unit,
     onRemoveTile: (String) -> Unit,
+    onOpenFavoriteRoute: (String) -> Unit,
 ) {
     val density = LocalDensity.current
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
@@ -403,6 +422,8 @@ private fun HomeTileGrid(
                             selected = editMode && placement.destinationId == selectedTileId,
                             editMode = editMode,
                             uiState = uiState,
+                            favoriteLists = favoriteLists,
+                            favoriteInventories = favoriteInventories,
                             location = location,
                             colWidthPx = colWidthPx,
                             tileHeightPx = tileHeightPx,
@@ -412,6 +433,7 @@ private fun HomeTileGrid(
                             onMoveTile = onMoveTile,
                             onResizeTile = onResizeTile,
                             onRemoveTile = onRemoveTile,
+                            onOpenFavoriteRoute = onOpenFavoriteRoute,
                         )
                     }
                 }
@@ -446,6 +468,8 @@ private fun HomeTileItem(
     selected: Boolean,
     editMode: Boolean,
     uiState: HomeUiState,
+    favoriteLists: List<ListEntity>,
+    favoriteInventories: List<InventoryEntity>,
     location: Location?,
     colWidthPx: Int,
     tileHeightPx: Int,
@@ -455,6 +479,7 @@ private fun HomeTileItem(
     onMoveTile: (id: String, targetId: String) -> Unit,
     onResizeTile: (id: String, width: Int, height: Int) -> Unit,
     onRemoveTile: (String) -> Unit,
+    onOpenFavoriteRoute: (String) -> Unit,
 ) {
     // Raw finger movement since the drag started — never adjusted or
     // rebased. dragStartCol/Row is captured once, at the start of the
@@ -605,9 +630,13 @@ private fun HomeTileItem(
         Box(modifier = Modifier.fillMaxSize().then(borderModifier).padding(if (selected) 2.dp else 0.dp)) {
             HomeTileBody(
                 id = placement.destinationId,
+                width = placement.width,
                 height = placement.height,
                 uiState = uiState,
                 location = location,
+                favoriteLists = if (editMode) emptyList() else favoriteLists,
+                favoriteInventories = if (editMode) emptyList() else favoriteInventories,
+                onOpenFavoriteRoute = onOpenFavoriteRoute,
             )
         }
 
@@ -749,7 +778,16 @@ private fun EditModeExtraRow(icon: ImageVector, label: String, onClick: () -> Un
  * preview regardless of shape, sized to whatever placement it currently has.
  */
 @Composable
-private fun HomeTileBody(id: String, height: Int, uiState: HomeUiState, location: Location?) {
+private fun HomeTileBody(
+    id: String,
+    width: Int,
+    height: Int,
+    uiState: HomeUiState,
+    location: Location?,
+    favoriteLists: List<ListEntity>,
+    favoriteInventories: List<InventoryEntity>,
+    onOpenFavoriteRoute: (String) -> Unit,
+) {
     if (id == Destination.LIFE_MAP.name) {
         LifeMapTileBody(location = location)
         return
@@ -814,7 +852,56 @@ private fun HomeTileBody(id: String, height: Int, uiState: HomeUiState, location
                     )
                 }
             }
+
+            val favorites = when (id) {
+                Destination.SHOPPING_LIST.name -> favoriteLists.map { FavoriteBadgeItem(firstGlyph(it.name), ShoppingListRoutes.listDetail(it.publicId)) }
+                Destination.INVENTORY.name -> favoriteInventories.map { FavoriteBadgeItem(firstGlyph(it.name), InventoryRoutes.products(it.publicId, it.name)) }
+                else -> emptyList()
+            }
+            if (favorites.isNotEmpty()) {
+                FavoriteBadges(
+                    items = favorites,
+                    wide = width == 2 || height == 2,
+                    onOpen = onOpenFavoriteRoute,
+                    modifier = Modifier.align(Alignment.BottomStart).padding(Spacing.m),
+                )
+            }
         }
+    }
+}
+
+private data class FavoriteBadgeItem(val glyph: String, val route: String)
+
+/** First character of a name, codepoint-aware so a multi-byte emoji isn't split. */
+private fun firstGlyph(name: String): String {
+    val trimmed = name.trim()
+    if (trimmed.isEmpty()) return "?"
+    return String(Character.toChars(trimmed.codePointAt(0)))
+}
+
+@Composable
+private fun FavoriteBadges(items: List<FavoriteBadgeItem>, wide: Boolean, onOpen: (String) -> Unit, modifier: Modifier = Modifier) {
+    val shown = items.take(if (wide) MaxFavoriteBadgesWide else MaxFavoriteBadgesCompact)
+    val colors = UrsTheme.colors
+    val badges: @Composable () -> Unit = {
+        shown.forEach { item ->
+            Box(
+                modifier = Modifier
+                    .size(FavoriteBadgeSize)
+                    .clip(CircleShape)
+                    .background(colors.surface)
+                    .border(1.dp, colors.accent, CircleShape)
+                    .clickable { onOpen(item.route) },
+                contentAlignment = Alignment.Center,
+            ) {
+                UrsText(text = item.glyph, style = UrsTheme.typography.caption, color = colors.accent)
+            }
+        }
+    }
+    if (wide) {
+        Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) { badges() }
+    } else {
+        Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(Spacing.xs)) { badges() }
     }
 }
 

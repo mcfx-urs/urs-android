@@ -23,6 +23,8 @@ data class ListEntity(
     val outboxId: Long? = null,
     val name: String,
     val syncStatus: SyncStatus,
+    // Shown as a quick-jump badge on the Shopping List home tile.
+    val isFavorite: Boolean = false,
 )
 
 /**

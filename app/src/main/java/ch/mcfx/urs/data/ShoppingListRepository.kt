@@ -67,6 +67,11 @@ class ShoppingListRepository(
 
     fun observeLists(): Flow<List<ListEntity>> = listDao.observeAll().map { it.sortedBy { l -> l.name.alphabeticSortKey() } }
 
+    /** Home-tile quick-jump badges — local-only preference, never synced to the backend. */
+    fun observeFavoriteLists(): Flow<List<ListEntity>> = listDao.observeFavorites()
+
+    suspend fun setListFavorite(localId: Long, isFavorite: Boolean) = listDao.setFavorite(localId, isFavorite)
+
     suspend fun getList(localId: Long): ListEntity? = listDao.getById(localId)
 
     /**
