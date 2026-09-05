@@ -73,6 +73,14 @@ data class FillFormState(
     val lastOdometer: String? = null,
     val submitting: Boolean = false,
     val submitFailed: Boolean = false,
+    // Guards openForm()/openFormForEdit() against re-running on a config
+    // change (the ViewModel survives rotation, but its LaunchedEffect(Unit)
+    // caller doesn't, so it fires again) — without this, a fresh load
+    // overwrites any in-progress edit with the last-saved DB state.
+    val initialized: Boolean = false,
+    // True once any field has been edited since the last load/save — drives
+    // the discard-changes confirmation on back/Home.
+    val dirty: Boolean = false,
 ) {
     val totalCost: String?
         get() {
@@ -135,7 +143,8 @@ class FuelViewModel(
     }
 
     fun openForm() {
-        _formState.value = FillFormState()
+        if (_formState.value.initialized) return
+        _formState.value = FillFormState(initialized = true)
         _showForm.value = true
         // Pre-select the default vehicle (still overridable in the form).
         viewModelScope.launch {
@@ -157,6 +166,8 @@ class FuelViewModel(
      * WorkTimeViewModel.openFormForEdit.
      */
     fun openFormForEdit(fillId: Long) {
+        if (_formState.value.initialized) return
+        _formState.value = FillFormState(initialized = true)
         viewModelScope.launch {
             val data = repository.getFillForEdit(fillId) ?: return@launch
             _formState.value = FillFormState(
@@ -170,6 +181,7 @@ class FuelViewModel(
                 date = data.fill.date.substringBefore(' '),
                 isFullTank = data.fill.isFullTank,
                 currencyCode = data.fill.currencyCode,
+                initialized = true,
             )
             _showForm.value = true
         }
@@ -221,13 +233,13 @@ class FuelViewModel(
     }
 
     fun selectStation(station: FillingStationEntity) =
-        _formState.update { it.copy(station = station, useGps = false, gpsLatitude = null, gpsLongitude = null) }
+        _formState.update { it.copy(station = station, useGps = false, gpsLatitude = null, gpsLongitude = null, dirty = true) }
 
     fun setUseGps(useGps: Boolean) = _formState.update {
         if (useGps) {
-            it.copy(useGps = true, station = null)
+            it.copy(useGps = true, station = null, dirty = true)
         } else {
-            it.copy(useGps = false, gpsLatitude = null, gpsLongitude = null)
+            it.copy(useGps = false, gpsLatitude = null, gpsLongitude = null, dirty = true)
         }
     }
 
@@ -251,17 +263,17 @@ class FuelViewModel(
         }
     }
 
-    fun setCurrencyCode(value: String) = _formState.update { it.copy(currencyCode = value) }
+    fun setCurrencyCode(value: String) = _formState.update { it.copy(currencyCode = value, dirty = true) }
 
-    fun setOdometer(value: String) = _formState.update { it.copy(odometer = value) }
+    fun setOdometer(value: String) = _formState.update { it.copy(odometer = value, dirty = true) }
 
-    fun setPricePerLiter(value: String) = _formState.update { it.copy(pricePerLiter = value) }
+    fun setPricePerLiter(value: String) = _formState.update { it.copy(pricePerLiter = value, dirty = true) }
 
-    fun setLiters(value: String) = _formState.update { it.copy(liters = value) }
+    fun setLiters(value: String) = _formState.update { it.copy(liters = value, dirty = true) }
 
-    fun setDate(value: String) = _formState.update { it.copy(date = value) }
+    fun setDate(value: String) = _formState.update { it.copy(date = value, dirty = true) }
 
-    fun setIsFullTank(value: Boolean) = _formState.update { it.copy(isFullTank = value) }
+    fun setIsFullTank(value: Boolean) = _formState.update { it.copy(isFullTank = value, dirty = true) }
 
     fun submit() {
         val form = _formState.value
@@ -306,6 +318,7 @@ class FuelViewModel(
                 // can close right away. A later sync failure surfaces via
                 // the row's own pending/failed badge (see FuelScreen), not
                 // here.
+                _formState.update { it.copy(dirty = false) }
                 _showForm.value = false
             } catch (e: CancellationException) {
                 throw e

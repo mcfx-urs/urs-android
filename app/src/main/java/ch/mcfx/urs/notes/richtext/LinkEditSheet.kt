@@ -11,6 +11,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -19,6 +20,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import ch.mcfx.urs.R
 import ch.mcfx.urs.ui.components.UrsBottomSheet
 import ch.mcfx.urs.ui.components.UrsButton
+import ch.mcfx.urs.ui.components.UrsDiscardChangesDialog
 import ch.mcfx.urs.ui.components.UrsOutlinedButton
 import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.components.UrsTextField
@@ -40,8 +42,9 @@ internal fun LinkEditSheet(
     onOpen: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var text by remember { mutableStateOf(initialText) }
-    var url by remember { mutableStateOf(initialUrl) }
+    var text by rememberSaveable { mutableStateOf(initialText) }
+    var url by rememberSaveable { mutableStateOf(initialUrl) }
+    var confirmingDiscard by remember { mutableStateOf(false) }
     val textFocusRequester = remember { FocusRequester() }
     val urlFocusRequester = remember { FocusRequester() }
 
@@ -53,7 +56,9 @@ internal fun LinkEditSheet(
         if (initialText.isBlank()) textFocusRequester.requestFocus() else urlFocusRequester.requestFocus()
     }
 
-    UrsBottomSheet(onDismissRequest = onDismiss) {
+    val requestDismiss = { if (text != initialText || url != initialUrl) confirmingDiscard = true else onDismiss() }
+
+    UrsBottomSheet(onDismissRequest = requestDismiss) {
         Column(
             modifier = Modifier.padding(horizontal = Spacing.l).padding(bottom = Spacing.l),
             verticalArrangement = Arrangement.spacedBy(Spacing.m),
@@ -94,7 +99,7 @@ internal fun LinkEditSheet(
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.m)) {
-                UrsOutlinedButton(text = stringResource(R.string.cancel), onClick = onDismiss, modifier = Modifier.weight(1f))
+                UrsOutlinedButton(text = stringResource(R.string.cancel), onClick = requestDismiss, modifier = Modifier.weight(1f))
                 UrsButton(
                     text = stringResource(R.string.note_richtext_link_save),
                     onClick = { onSave(text.trim(), url.trim()) },
@@ -103,5 +108,15 @@ internal fun LinkEditSheet(
                 )
             }
         }
+    }
+
+    if (confirmingDiscard) {
+        UrsDiscardChangesDialog(
+            onDiscard = {
+                confirmingDiscard = false
+                onDismiss()
+            },
+            onKeepEditing = { confirmingDiscard = false },
+        )
     }
 }

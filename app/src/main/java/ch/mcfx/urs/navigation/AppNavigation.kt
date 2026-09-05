@@ -18,8 +18,10 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Modifier
@@ -90,6 +92,7 @@ import ch.mcfx.urs.service.ServiceScreen
 import ch.mcfx.urs.shoppinglist.ListDetailScreen
 import ch.mcfx.urs.shoppinglist.ShoppingListRoutes
 import ch.mcfx.urs.shoppinglist.ShoppingListsScreen
+import ch.mcfx.urs.ui.components.UrsDiscardChangesDialog
 import ch.mcfx.urs.ui.components.UrsIconButton
 import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.components.UrsTopBar
@@ -163,6 +166,15 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route ?: Destination.HOME.route
 
+    // Reported by whichever form screen (Note/Fuel) is currently showing, via
+    // its onDirtyChanged callback below — lets the Home icon warn before
+    // discarding unsaved edits instead of navigating away silently. Reset on
+    // every route change so a stale "dirty" from a screen just left behind
+    // doesn't linger and block the next screen's own Home tap.
+    var currentScreenHasUnsavedChanges by remember { mutableStateOf(false) }
+    var confirmingDiscardOnHome by remember { mutableStateOf(false) }
+    LaunchedEffect(currentRoute) { currentScreenHasUnsavedChanges = false }
+
     Column(modifier = Modifier.fillMaxSize().background(UrsTheme.colors.background)) {
         // Home renders its own header (logo/gear + collapsing welcome/hero
         // row) inline as part of its scrollable content instead of this
@@ -187,7 +199,13 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                     // The only in-app "back" affordance anywhere below Home:
                     // always jumps straight to Home, never one level up.
                     UrsIconButton(
-                        onClick = { navController.navigateHome() },
+                        onClick = {
+                            if (currentScreenHasUnsavedChanges) {
+                                confirmingDiscardOnHome = true
+                            } else {
+                                navController.navigateHome()
+                            }
+                        },
                         contentDescription = stringResource(R.string.nav_home),
                         imageVector = Icons.Filled.Home,
                         tint = topBarTint,
@@ -281,14 +299,21 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                         )
                     }
                     composable(FuelRoutes.ADD) {
-                        FuelAddScreen(onDone = { navController.popBackStack() })
+                        FuelAddScreen(
+                            onDone = { navController.popBackStack() },
+                            onDirtyChanged = { currentScreenHasUnsavedChanges = it },
+                        )
                     }
                     composable(
                         route = FuelRoutes.EDIT,
                         arguments = listOf(navArgument("fillId") { type = NavType.LongType }),
                     ) { backStackEntry ->
                         val fillId = backStackEntry.arguments?.getLong("fillId") ?: return@composable
-                        FuelAddScreen(fillId = fillId, onDone = { navController.popBackStack() })
+                        FuelAddScreen(
+                            fillId = fillId,
+                            onDone = { navController.popBackStack() },
+                            onDirtyChanged = { currentScreenHasUnsavedChanges = it },
+                        )
                     }
                     composable(FuelRoutes.STATIONS) {
                         FuelStationsScreen(
@@ -378,7 +403,10 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                         )
                     }
                     composable(NotesRoutes.NEW) {
-                        NoteDetailScreen(onDone = { navController.popBackStack() })
+                        NoteDetailScreen(
+                            onDone = { navController.popBackStack() },
+                            onDirtyChanged = { currentScreenHasUnsavedChanges = it },
+                        )
                     }
                     composable(
                         route = NotesRoutes.DETAIL,
@@ -387,7 +415,11 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                         deepLinks = listOf(navDeepLink { uriPattern = "urs://${NotesRoutes.DETAIL}" }),
                     ) { backStackEntry ->
                         val noteId = backStackEntry.arguments?.getString("noteId") ?: return@composable
-                        NoteDetailScreen(noteId = noteId, onDone = { navController.popBackStack() })
+                        NoteDetailScreen(
+                            noteId = noteId,
+                            onDone = { navController.popBackStack() },
+                            onDirtyChanged = { currentScreenHasUnsavedChanges = it },
+                        )
                     }
                     composable(NotesRoutes.HISTORY) {
                         NotesHistoryScreen(onOpenNote = { noteId -> navController.navigate(NotesRoutes.detail(noteId)) })
@@ -457,6 +489,16 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                 }
             }
         }
+
+    if (confirmingDiscardOnHome) {
+        UrsDiscardChangesDialog(
+            onDiscard = {
+                confirmingDiscardOnHome = false
+                navController.navigateHome()
+            },
+            onKeepEditing = { confirmingDiscardOnHome = false },
+        )
+    }
     }
 
 private fun NavHostController.navigateToDestination(destination: Destination) {

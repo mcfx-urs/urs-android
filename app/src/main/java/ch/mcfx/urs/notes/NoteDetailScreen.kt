@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.provider.CalendarContract
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -54,6 +55,7 @@ import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsCheckbox
 import ch.mcfx.urs.ui.components.UrsDateField
+import ch.mcfx.urs.ui.components.UrsDiscardChangesDialog
 import ch.mcfx.urs.ui.components.UrsIconButton
 import ch.mcfx.urs.ui.components.UrsOutlinedButton
 import ch.mcfx.urs.ui.components.UrsPill
@@ -79,14 +81,19 @@ fun NoteDetailScreen(
     /** Null creates a new note; set edits that note (its publicId, see [ch.mcfx.urs.data.local.publicId]). */
     noteId: String? = null,
     viewModel: NoteDetailViewModel = viewModel(factory = NoteDetailViewModel.Factory),
+    onDirtyChanged: (Boolean) -> Unit = {},
 ) {
     val form by viewModel.formState.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) { if (noteId != null) viewModel.loadForEdit(noteId) else viewModel.startNew() }
     LaunchedEffect(form.finished) { if (form.finished) onDone() }
+    LaunchedEffect(form.dirty) { onDirtyChanged(form.dirty) }
 
     var confirmingDelete by remember { mutableStateOf(false) }
+    var confirmingDiscard by remember { mutableStateOf(false) }
     val richTextState = rememberRichTextFieldState(form.content)
+
+    BackHandler(enabled = form.dirty) { confirmingDiscard = true }
 
     Box(modifier = Modifier.fillMaxSize()) {
         when {
@@ -115,6 +122,16 @@ fun NoteDetailScreen(
                 onCancel = { confirmingDelete = false },
             )
         }
+    }
+
+    if (confirmingDiscard) {
+        UrsDiscardChangesDialog(
+            onDiscard = {
+                confirmingDiscard = false
+                onDone()
+            },
+            onKeepEditing = { confirmingDiscard = false },
+        )
     }
 
     // Same screen-top-level placement reasoning as the delete-confirmation

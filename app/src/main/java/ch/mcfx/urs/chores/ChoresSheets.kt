@@ -24,9 +24,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -271,6 +273,7 @@ fun EventEditorSheet(
     target: EventEditorTarget,
     types: List<TrackerTypeEntity>,
     onSave: (typeId: String, date: String, time: String?, note: String?) -> Unit,
+    onDirtyChanged: (Boolean) -> Unit = {},
 ) {
     if (types.isEmpty()) {
         Column(modifier = Modifier.padding(Spacing.l), verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
@@ -290,11 +293,15 @@ fun EventEditorSheet(
             )
         }
     }
-    var typeId by remember { mutableStateOf(initial.typeId) }
-    var date by remember { mutableStateOf(initial.date) }
-    var withTime by remember { mutableStateOf(initial.time.isNotBlank()) }
-    var time by remember { mutableStateOf(initial.time) }
-    var note by remember { mutableStateOf(initial.note) }
+    var typeId by rememberSaveable(target) { mutableStateOf(initial.typeId) }
+    var date by rememberSaveable(target) { mutableStateOf(initial.date) }
+    var withTime by rememberSaveable(target) { mutableStateOf(initial.time.isNotBlank()) }
+    var time by rememberSaveable(target) { mutableStateOf(initial.time) }
+    var note by rememberSaveable(target) { mutableStateOf(initial.note) }
+
+    LaunchedEffect(typeId, date, withTime, time, note) {
+        onDirtyChanged(EventDraft(typeId, date, if (withTime) time else "", note) != initial)
+    }
 
     val selectedType = types.firstOrNull { it.publicId == typeId } ?: types.first()
 
@@ -357,16 +364,28 @@ fun TypeEditorSheet(
     onArchive: () -> Unit,
     notifyOverdueEnabled: Boolean = false,
     onNotifyOverdueChange: ((Boolean) -> Unit)? = null,
+    onDirtyChanged: (Boolean) -> Unit = {},
 ) {
     val editing = target as? TypeEditorTarget.Edit
-    var name by remember { mutableStateOf(editing?.type?.name.orEmpty()) }
-    var color by remember { mutableStateOf(editing?.type?.color?.takeIf { it.isNotBlank() } ?: defaultChoreColor) }
-    var icon by remember { mutableStateOf(editing?.type?.icon?.takeIf { it.isNotBlank() } ?: defaultChoreIcon) }
-    var calendar by remember { mutableStateOf(editing?.type?.calendar.orEmpty()) }
-    var interval by remember { mutableStateOf(editing?.type?.expectedIntervalDays?.toString().orEmpty()) }
-    var emojiTab by remember { mutableStateOf(trackerIconMaterialVector(icon) == null) }
-    var typedEmoji by remember { mutableStateOf(if (trackerIconMaterialVector(icon) == null) icon else "") }
+    val initialName = editing?.type?.name.orEmpty()
+    val initialColor = editing?.type?.color?.takeIf { it.isNotBlank() } ?: defaultChoreColor
+    val initialIcon = editing?.type?.icon?.takeIf { it.isNotBlank() } ?: defaultChoreIcon
+    val initialCalendar = editing?.type?.calendar.orEmpty()
+    val initialInterval = editing?.type?.expectedIntervalDays?.toString().orEmpty()
+    var name by rememberSaveable(target) { mutableStateOf(initialName) }
+    var color by rememberSaveable(target) { mutableStateOf(initialColor) }
+    var icon by rememberSaveable(target) { mutableStateOf(initialIcon) }
+    var calendar by rememberSaveable(target) { mutableStateOf(initialCalendar) }
+    var interval by rememberSaveable(target) { mutableStateOf(initialInterval) }
+    var emojiTab by rememberSaveable(target) { mutableStateOf(trackerIconMaterialVector(icon) == null) }
+    var typedEmoji by rememberSaveable(target) { mutableStateOf(if (trackerIconMaterialVector(icon) == null) icon else "") }
     val colors = UrsTheme.colors
+
+    LaunchedEffect(name, color, icon, calendar, interval) {
+        val dirty = name != initialName || color != initialColor || icon != initialIcon ||
+            calendar != initialCalendar || interval != initialInterval
+        onDirtyChanged(dirty)
+    }
 
     Column(
         modifier = Modifier.padding(horizontal = Spacing.l).padding(bottom = Spacing.l).verticalScroll(rememberScrollState()),

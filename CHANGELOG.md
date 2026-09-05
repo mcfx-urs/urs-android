@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Beer log: long-pressing an entry opens an edit sheet for adjusting its timestamp; amount stays as logged, and the timestamp can't be set in the future (#47).
 - Vehicle list: tapping an entry opens a read-only detail screen with an Edit action; long-press keeps its existing Edit/Delete sheet (#48).
 
+### Fixed
+
+- Unsaved text in notes, fuel fill-ups, link edits, and chores sheets no longer disappears on device rotation or an accidental back/Home/scrim dismiss — rotation now resumes the in-progress edit instead of reloading it, and leaving a form or sheet with unsaved changes shows a discard confirmation (#49).
+
 ## [0.23.0] - 2026-09-04
 
 ### Added

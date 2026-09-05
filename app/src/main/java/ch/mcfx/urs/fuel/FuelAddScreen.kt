@@ -1,5 +1,6 @@
 package ch.mcfx.urs.fuel
 
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -35,6 +36,7 @@ import ch.mcfx.urs.location.hasLocationPermission
 import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsCheckbox
 import ch.mcfx.urs.ui.components.UrsDateField
+import ch.mcfx.urs.ui.components.UrsDiscardChangesDialog
 import ch.mcfx.urs.ui.components.UrsDropdownField
 import ch.mcfx.urs.ui.components.UrsOutlinedButton
 import ch.mcfx.urs.ui.components.UrsProgressIndicator
@@ -62,12 +64,14 @@ fun FuelAddScreen(
     /** Null creates a new fill; set edits that existing local row (see [FuelViewModel.openFormForEdit]). */
     fillId: Long? = null,
     viewModel: FuelViewModel = viewModel(factory = FuelViewModel.Factory),
+    onDirtyChanged: (Boolean) -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val formState by viewModel.formState.collectAsStateWithLifecycle()
     val showForm by viewModel.showForm.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) { if (fillId != null) viewModel.openFormForEdit(fillId) else viewModel.openForm() }
+    LaunchedEffect(formState.dirty) { onDirtyChanged(formState.dirty) }
 
     var hasOpened by remember { mutableStateOf(false) }
     LaunchedEffect(showForm) {
@@ -77,6 +81,9 @@ fun FuelAddScreen(
             onDone()
         }
     }
+
+    var confirmingDiscard by remember { mutableStateOf(false) }
+    BackHandler(enabled = formState.dirty) { confirmingDiscard = true }
 
     Box(modifier = Modifier.fillMaxSize()) {
         when (val state = uiState) {
@@ -96,6 +103,16 @@ fun FuelAddScreen(
                 UrsProgressIndicator(Modifier.align(Alignment.Center))
             }
         }
+    }
+
+    if (confirmingDiscard) {
+        UrsDiscardChangesDialog(
+            onDiscard = {
+                confirmingDiscard = false
+                onDone()
+            },
+            onKeepEditing = { confirmingDiscard = false },
+        )
     }
 }
 

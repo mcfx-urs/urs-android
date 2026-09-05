@@ -42,6 +42,14 @@ data class NoteDetailFormState(
     // back on this, same "state flag, not a callback" shape as
     // WorkTimeViewModel's showForm.
     val finished: Boolean = false,
+    // Guards startNew()/loadForEdit() against re-running on a config change
+    // (the ViewModel survives rotation, but its LaunchedEffect(Unit) caller
+    // doesn't, so it fires again) — without this, a fresh load overwrites
+    // any in-progress edit with the last-saved DB state.
+    val initialized: Boolean = false,
+    // True once any field has been edited since the last load/save — drives
+    // the discard-changes confirmation on back/Home/dismiss.
+    val dirty: Boolean = false,
 ) {
     val isValid: Boolean
         get() = title.isNotBlank() && (!reminderEnabled || (reminderDate.isNotBlank() && reminderTime.isNotBlank()))
@@ -57,21 +65,23 @@ class NoteDetailViewModel(private val repository: NoteRepository) : ViewModel() 
     val formState: StateFlow<NoteDetailFormState> = _formState.asStateFlow()
 
     fun startNew() {
-        _formState.value = NoteDetailFormState(loading = false)
+        if (_formState.value.initialized) return
+        _formState.value = NoteDetailFormState(loading = false, initialized = true)
     }
 
     /** [noteId] is a note's publicId (real serverId, or a not-yet-synced stand-in) — same convention as BakePlanDetailViewModel, needed since a reminder notification's deep link only ever has that, never the local row id directly. */
     fun loadForEdit(noteId: String) {
+        if (_formState.value.initialized) return
         _formState.value = NoteDetailFormState(loading = true)
         viewModelScope.launch {
             val localId = repository.resolveLocalNoteId(noteId)
             if (localId == null) {
-                _formState.value = NoteDetailFormState(loading = false, notFound = true)
+                _formState.value = NoteDetailFormState(loading = false, notFound = true, initialized = true)
                 return@launch
             }
             val noteWithTags = repository.observeNote(localId).first()
             if (noteWithTags == null) {
-                _formState.value = NoteDetailFormState(loading = false, notFound = true)
+                _formState.value = NoteDetailFormState(loading = false, notFound = true, initialized = true)
                 return@launch
             }
             val note = noteWithTags.note
@@ -86,19 +96,20 @@ class NoteDetailViewModel(private val repository: NoteRepository) : ViewModel() 
                 reminderTime = time,
                 status = note.status,
                 loading = false,
+                initialized = true,
             )
         }
     }
 
-    fun setTitle(value: String) = _formState.update { it.copy(title = value, submitFailed = false) }
+    fun setTitle(value: String) = _formState.update { it.copy(title = value, submitFailed = false, dirty = true) }
 
-    fun setContent(value: String) = _formState.update { it.copy(content = value) }
+    fun setContent(value: String) = _formState.update { it.copy(content = value, dirty = true) }
 
-    fun setReminderEnabled(value: Boolean) = _formState.update { it.copy(reminderEnabled = value) }
+    fun setReminderEnabled(value: Boolean) = _formState.update { it.copy(reminderEnabled = value, dirty = true) }
 
-    fun setReminderDate(value: String) = _formState.update { it.copy(reminderDate = value) }
+    fun setReminderDate(value: String) = _formState.update { it.copy(reminderDate = value, dirty = true) }
 
-    fun setReminderTime(value: String) = _formState.update { it.copy(reminderTime = value) }
+    fun setReminderTime(value: String) = _formState.update { it.copy(reminderTime = value, dirty = true) }
 
     fun setTagInput(value: String) {
         _formState.update { it.copy(tagInput = value) }
@@ -114,11 +125,11 @@ class NoteDetailViewModel(private val repository: NoteRepository) : ViewModel() 
         if (trimmed.isEmpty()) return
         _formState.update {
             val tags = if (trimmed in it.tags) it.tags else it.tags + trimmed
-            it.copy(tags = tags, tagInput = "", tagSuggestions = emptyList())
+            it.copy(tags = tags, tagInput = "", tagSuggestions = emptyList(), dirty = true)
         }
     }
 
-    fun removeTag(tag: String) = _formState.update { it.copy(tags = it.tags - tag) }
+    fun removeTag(tag: String) = _formState.update { it.copy(tags = it.tags - tag, dirty = true) }
 
     fun submit() {
         val form = _formState.value
@@ -134,7 +145,7 @@ class NoteDetailViewModel(private val repository: NoteRepository) : ViewModel() 
                 } else {
                     repository.createNote(form.title.trim(), form.content, reminderMillis, form.tags)
                 }
-                _formState.update { it.copy(finished = true) }
+                _formState.update { it.copy(finished = true, dirty = false) }
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
