@@ -23,19 +23,26 @@ val keystoreProperties = Properties().apply {
     }
 }
 
-// A fresh joke per build, shown on the About screen — fetched from the
-// backend's public GET /api/v1/joke at Gradle configuration time, not at
-// app runtime, so it needs no network permission/error-state handling in
-// the app itself. Falls back to a fixed joke if the backend isn't
-// reachable (e.g. an offline build), rather than failing the build.
-fun fetchDadJoke(baseUrl: String): String {
+// A fresh joke per build, shown on the About screen — fetched at Gradle
+// configuration time, not at app runtime, so it needs no network
+// permission/error-state handling in the app itself. Hits the public
+// icanhazdadjoke.com API directly rather than the backend's own proxy
+// route: that route is only reachable over the private tunnel, so it
+// always timed out on the CI runner that builds the release APK and every
+// release shipped the same hardcoded fallback. Still falls back to a fixed
+// joke if the fetch fails (e.g. an offline build), rather than failing the
+// build.
+fun fetchDadJoke(): String {
     val fallback = "Why don't scientists trust atoms? Because they make up everything."
     return try {
-        val connection = URI("${baseUrl}api/v1/joke").toURL().openConnection() as HttpURLConnection
+        val connection = URI("https://icanhazdadjoke.com/").toURL().openConnection() as HttpURLConnection
         connection.requestMethod = "GET"
         connection.connectTimeout = 3000
         connection.readTimeout = 3000
         connection.setRequestProperty("Accept", "application/json")
+        // icanhazdadjoke.com asks API clients to send an identifying
+        // User-Agent; a request without one can be served HTML or throttled.
+        connection.setRequestProperty("User-Agent", "urs-android (https://github.com/3lefeint/urs-android)")
         val body = connection.inputStream.bufferedReader().use { it.readText() }
         connection.disconnect()
         Regex("\"joke\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"").find(body)
@@ -88,12 +95,12 @@ android {
             versionNameSuffix = "-debug"
             val baseUrl = "https://urs-backend-stg.mcfx.ch/"
             buildConfigField("String", "BASE_URL", "\"$baseUrl\"")
-            buildConfigField("String", "JOKE_OF_THE_DAY", fetchDadJoke(baseUrl).toJavaStringLiteral())
+            buildConfigField("String", "JOKE_OF_THE_DAY", fetchDadJoke().toJavaStringLiteral())
         }
         release {
             val baseUrl = "https://urs-backend.mcfx.ch/"
             buildConfigField("String", "BASE_URL", "\"$baseUrl\"")
-            buildConfigField("String", "JOKE_OF_THE_DAY", fetchDadJoke(baseUrl).toJavaStringLiteral())
+            buildConfigField("String", "JOKE_OF_THE_DAY", fetchDadJoke().toJavaStringLiteral())
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             if (keystorePropertiesFile.exists()) {

@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 
 - Unsaved text in notes, fuel fill-ups, link edits, and chores sheets no longer disappears on device rotation or an accidental back/Home/scrim dismiss — rotation now resumes the in-progress edit instead of reloading it, and leaving a form or sheet with unsaved changes shows a discard confirmation (#49).
+- Joke of the day: the About screen's build-time joke is now fetched from the public dad-joke API instead of the private backend, so published release builds no longer all ship the same hardcoded fallback (#58).
 
 ## [0.23.0] - 2026-09-04
 
