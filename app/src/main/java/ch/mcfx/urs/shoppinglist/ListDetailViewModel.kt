@@ -107,6 +107,19 @@ class ListDetailViewModel(
         )
     }
 
+    /**
+     * Edit action on the add-product panel's post-add confirmation bar —
+     * closes that panel and opens the same item editor a long-press would,
+     * for the just-added row (looked up among the currently loaded items).
+     */
+    fun openNoteFormFor(localItemId: Long) {
+        val detail = (_uiState.value as? ListDetailUiState.Data)
+            ?.groups?.asSequence()?.flatMap { it.items.asSequence() }
+            ?.firstOrNull { it.item.id == localItemId } ?: return
+        _showAddProduct.value = false
+        openNoteForm(detail)
+    }
+
     fun setNote(value: String) = _noteForm.update { it.copy(note = value) }
 
     fun incrementQuantity() = _noteForm.update { it.copy(quantity = (it.quantity ?: 0) + 1) }

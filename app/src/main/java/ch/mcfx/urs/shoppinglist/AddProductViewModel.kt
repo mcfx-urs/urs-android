@@ -26,16 +26,14 @@ import kotlinx.coroutines.launch
 /** The three browse tabs — HÄUFIG/ZULETZT/KATEGORIEN, overridden by [AddProductViewModel.query] whenever it's non-blank. */
 enum class AddProductTab { POPULAR, RECENT, CATEGORIES }
 
-data class NoteInputState(
-    val product: CatalogProductEntity,
-    val note: String = "",
-    // Null = unset ("-" in the popup, no badge on the tile). Distinct from
-    // `note`, which stays free text (brand, color, ...).
-    val quantity: Int? = null,
-    // "Only buy this on sale" — stock-up items that should stay on the list
-    // until a promo price comes along.
-    val onSale: Boolean = false,
-)
+/**
+ * Drives the post-add confirmation bar (Undo + Edit) — [addedItemLocalId] is
+ * the just-created [ch.mcfx.urs.data.local.ListItemEntity]'s local row id,
+ * passed to [ShoppingListRepository.deleteItem] on Undo, or handed to
+ * [ListDetailScreen] on Edit so it can open its existing item editor for that
+ * row.
+ */
+data class AddedFeedback(val productName: String, val addedItemLocalId: Long)
 
 /**
  * Add-product picker, redesigned around three tabs plus a search box that
@@ -46,6 +44,11 @@ data class NoteInputState(
  * genuinely new product (search found nothing) calls the new manual-creation
  * endpoint directly (see [CatalogRepository.createProduct]) — no inventory
  * interaction at all.
+ *
+ * Selecting a result adds it to the list immediately (no note, quantity
+ * unset, not on sale) — no separate confirm step. The post-add confirmation
+ * bar offers Undo and an Edit action; Edit is handled by [ListDetailScreen],
+ * which opens its existing long-press item editor for the just-added row.
  */
 class AddProductViewModel(
     private val shoppingListRepository: ShoppingListRepository,
@@ -73,8 +76,8 @@ class AddProductViewModel(
     private val _listProductIds = MutableStateFlow<Set<String>>(emptySet())
     val listProductIds: StateFlow<Set<String>> = _listProductIds.asStateFlow()
 
-    private val _noteInput = MutableStateFlow<NoteInputState?>(null)
-    val noteInput: StateFlow<NoteInputState?> = _noteInput.asStateFlow()
+    private val _lastAdded = MutableStateFlow<AddedFeedback?>(null)
+    val lastAdded: StateFlow<AddedFeedback?> = _lastAdded.asStateFlow()
 
     // Lazily populated per visible tile (see AddProductScreen) rather than
     // batched up front — a search/tab result set can be large, and most of
@@ -147,47 +150,33 @@ class AddProductViewModel(
         }
     }
 
+    // Clears the search so the browse view is immediately ready for the next
+    // pick, same reasoning as the confirm step this replaces: adding several
+    // different results in a row never needs the FAB to be tapped again.
     fun selectResult(product: CatalogProductEntity) {
-        _noteInput.value = NoteInputState(product = product)
-    }
-
-    fun setNote(value: String) = _noteInput.update { it?.copy(note = value) }
-
-    fun incrementQuantity() = _noteInput.update { it?.copy(quantity = (it.quantity ?: 0) + 1) }
-
-    // Decrementing below 1 clears back to unset, rather than floor-stopping
-    // at 1 — matches the popup's "-" default and the tile's "no badge when
-    // unset" display.
-    fun decrementQuantity() = _noteInput.update { state ->
-        val current = state?.quantity ?: return@update state
-        state.copy(quantity = if (current <= 1) null else current - 1)
-    }
-
-    fun toggleOnSale() = _noteInput.update { it?.copy(onSale = !it.onSale) }
-
-    fun closeNoteInput() {
-        _noteInput.value = null
-    }
-
-    // Deliberately does not close the whole sheet on confirm — returns to
-    // whichever tab/search was active, same reasoning as the earlier
-    // AddProductScreen this replaces: adding several different results in a
-    // row, or the same one twice with a different note, never needs the FAB
-    // to be tapped again in between.
-    fun confirmAdd() {
-        val state = _noteInput.value ?: return
-        val note = state.note.trim().ifEmpty { null }
-        _noteInput.value = null
         _query.value = ""
         viewModelScope.launch {
-            shoppingListRepository.addCatalogProduct(listId, state.product, note, state.quantity, state.onSale)
+            val localId = shoppingListRepository.addCatalogProduct(listId, product, note = null, quantity = null, onSale = false)
+            _lastAdded.value = AddedFeedback(product.name, localId)
         }
+    }
+
+    /** Undo for the Snackbar shown after [selectResult] — removes the just-added row again. */
+    fun undoLastAdd() {
+        val added = _lastAdded.value ?: return
+        _lastAdded.value = null
+        viewModelScope.launch { shoppingListRepository.deleteItem(added.addedItemLocalId) }
+    }
+
+    fun dismissAddedFeedback() {
+        _lastAdded.value = null
     }
 
     /**
      * "Search found nothing" quick-create path — a direct, synchronous REST
      * call (see [CatalogRepository.createProduct]'s doc comment), tied to
-     * whichever category was being browsed when this fires (if any).
+     * whichever category was being browsed when this fires (if any) — then
+     * added to the list immediately, same as [selectResult].
      */
     fun quickCreate() {
         val name = _query.value.trim()
@@ -196,7 +185,9 @@ class AddProductViewModel(
             _quickCreating.value = true
             try {
                 val product = catalogRepository.createProduct(name = name, catalogCategoryId = _selectedCategory.value?.id)
-                _noteInput.value = NoteInputState(product = product)
+                _query.value = ""
+                val localId = shoppingListRepository.addCatalogProduct(listId, product, note = null, quantity = null, onSale = false)
+                _lastAdded.value = AddedFeedback(product.name, localId)
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {

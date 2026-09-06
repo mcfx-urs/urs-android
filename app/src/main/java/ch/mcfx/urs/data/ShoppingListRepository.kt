@@ -225,13 +225,14 @@ class ShoppingListRepository(
      * product twice with two different notes is expected to create two
      * separate rows, not merge them.
      */
+    /** Returns the new item's local row id — lets a caller undo the add via [deleteItem]. */
     suspend fun addExistingProduct(
         listId: String,
         catalogProductId: String,
         note: String?,
         quantity: Int? = null,
         onSale: Boolean = false,
-    ) {
+    ): Long {
         val payload = OutboxListItemPayload(
             listId = listId, catalogProductId = catalogProductId, note = note,
             quantity = quantity, onSale = onSale,
@@ -243,7 +244,7 @@ class ShoppingListRepository(
                 createdAt = System.currentTimeMillis(),
             ),
         )
-        listItemDao.upsert(
+        val localId = listItemDao.upsert(
             ListItemEntity(
                 outboxId = outboxId, listId = listId, catalogProductId = catalogProductId, note = note,
                 quantity = quantity, onSale = onSale,
@@ -251,6 +252,7 @@ class ShoppingListRepository(
             ),
         )
         applicationScope.launch { syncManager.syncNow() }
+        return localId
     }
 
     /**
@@ -268,9 +270,7 @@ class ShoppingListRepository(
         note: String?,
         quantity: Int? = null,
         onSale: Boolean = false,
-    ) {
-        addExistingProduct(listId, catalogProduct.id, note, quantity, onSale)
-    }
+    ): Long = addExistingProduct(listId, catalogProduct.id, note, quantity, onSale)
 
     /**
      * Offline-first update — same "rewrite the pending create in place if
