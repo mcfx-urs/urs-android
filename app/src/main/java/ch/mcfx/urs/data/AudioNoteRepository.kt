@@ -27,24 +27,29 @@ class AudioNoteRepository(
      * Convert the watch recorder's raw output to a standard Ogg-Opus file,
      * store it, and record the row. Runs on IO. Throws if the bytes are not
      * decodable framing — the caller (relay) then returns a non-2xx so the
-     * watch keeps the recording and retries.
+     * watch keeps the recording and retries. [recordedAtMillis] is the
+     * watch's recording-start time if the upload carried one; falls back to
+     * the save time otherwise (e.g. an older watch build without the
+     * header).
      */
-    suspend fun saveFromWatch(watchBytes: ByteArray): AudioNoteEntity = withContext(Dispatchers.IO) {
-        val converted = ZeppOpusToOgg.convert(watchBytes)
-        require(converted.packetCount > 0) { "no opus frames in watch upload" }
+    suspend fun saveFromWatch(watchBytes: ByteArray, recordedAtMillis: Long? = null): AudioNoteEntity =
+        withContext(Dispatchers.IO) {
+            val converted = ZeppOpusToOgg.convert(watchBytes)
+            require(converted.packetCount > 0) { "no opus frames in watch upload" }
 
-        dir.mkdirs()
-        val file = File(dir, "note-${System.currentTimeMillis()}.opus")
-        file.writeBytes(converted.ogg)
+            val timestamp = recordedAtMillis ?: System.currentTimeMillis()
+            dir.mkdirs()
+            val file = File(dir, "note-$timestamp.opus")
+            file.writeBytes(converted.ogg)
 
-        val entity = AudioNoteEntity(
-            createdAtMillis = System.currentTimeMillis(),
-            filePath = file.absolutePath,
-            durationMs = converted.durationMs,
-            source = "watch",
-        )
-        entity.copy(id = dao.insert(entity))
-    }
+            val entity = AudioNoteEntity(
+                createdAtMillis = timestamp,
+                filePath = file.absolutePath,
+                durationMs = converted.durationMs,
+                source = "watch",
+            )
+            entity.copy(id = dao.insert(entity))
+        }
 
     suspend fun delete(note: AudioNoteEntity) = withContext(Dispatchers.IO) {
         dao.delete(note.id)
