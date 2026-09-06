@@ -523,6 +523,8 @@
     <string name="keep_editing">Keep editing</string>
     <string name="favorite_add">Add to favorites</string>
     <string name="favorite_remove">Remove from favorites</string>
+    <string name="undo">Undo</string>
+    <string name="edit">Edit</string>
 
     <string name="inventory_inventories_empty">No inventories yet — add one to start tracking stock.</string>
     <string name="inventory_add">New inventory</string>
@@ -579,7 +581,7 @@
     <string name="shoppinglist_add_product_title">Add a product</string>
     <string name="shoppinglist_add_product_search">Search products</string>
     <string name="shoppinglist_add_product_no_results">No matching products.</string>
-    <string name="shoppinglist_add_product_add">Add</string>
+    <string name="shoppinglist_add_product_added">\"%1$s\" added to the list</string>
     <string name="shoppinglist_add_custom_product">Add custom product</string>
     <string name="shoppinglist_tab_popular">POPULAR</string>
     <string name="shoppinglist_tab_recent">RECENT</string>

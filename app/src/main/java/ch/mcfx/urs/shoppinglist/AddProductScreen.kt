@@ -3,7 +3,6 @@ package ch.mcfx.urs.shoppinglist
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -40,33 +39,44 @@ import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsCheckbox
 import ch.mcfx.urs.ui.components.UrsFilterChip
 import ch.mcfx.urs.ui.components.UrsIconButton
-import ch.mcfx.urs.ui.components.UrsOutlinedButton
 import ch.mcfx.urs.ui.components.UrsSquareTile
 import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.components.UrsTextField
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Radius
 import ch.mcfx.urs.ui.tokens.Spacing
+import kotlinx.coroutines.delay
+
+// How long the "added to the list" confirmation bar stays up before it
+// dismisses itself if the user takes neither action.
+private const val ConfirmBarTimeoutMillis = 4000L
 
 /**
  * Content of the "add a product to this list" panel, opened from
- * [ListDetailScreen]'s FAB — redesigned around three tabs (HÄUFIG/ZULETZT/
- * KATEGORIEN) plus a search box that overrides all three when non-blank.
- * A single [ch.mcfx.urs.ui.components.UrsDockedPanel] instance
- * switches between "browse/search" and "confirm-note" modes driven by
- * [AddProductViewModel]'s state, same "no nested overlay" reasoning as the
- * earlier screen this replaces — the panel's own fixed height (set by its
- * caller) is what keeps both modes, and every tab within browse mode, the
- * exact same size; this composable only ever fills that given height, never
- * measures its own.
+ * [ListDetailScreen]'s FAB — three tabs (HÄUFIG/ZULETZT/KATEGORIEN) plus a
+ * search box that overrides all three when non-blank. Tapping a result adds
+ * it to the list immediately (see [AddProductViewModel.selectResult]) — a
+ * confirmation bar pinned at the panel's bottom then offers Undo, and Edit
+ * (via [onEditAdded], handled by [ListDetailScreen]'s own item editor).
  */
 @Composable
 fun AddProductScreen(
     listId: String,
     onClose: () -> Unit,
+    onEditAdded: (Long) -> Unit,
     viewModel: AddProductViewModel = viewModel(factory = AddProductViewModel.factory(listId)),
 ) {
-    val noteInput by viewModel.noteInput.collectAsStateWithLifecycle()
+    val lastAdded by viewModel.lastAdded.collectAsStateWithLifecycle()
+    val addedMessageFormat = stringResource(R.string.shoppinglist_add_product_added)
+
+    // A custom bar rather than a material3 Snackbar: it needs two actions
+    // (Undo + Edit), and Snackbar carries only one. Dismisses itself after a
+    // short window if neither is used.
+    LaunchedEffect(lastAdded) {
+        if (lastAdded == null) return@LaunchedEffect
+        delay(ConfirmBarTimeoutMillis)
+        viewModel.dismissAddedFeedback()
+    }
 
     Column(
         modifier = Modifier.padding(horizontal = Spacing.xl).fillMaxHeight(),
@@ -77,17 +87,53 @@ fun AddProductScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            UrsText(
-                text = noteInput?.product?.name ?: stringResource(R.string.shoppinglist_add_product_title),
-                style = UrsTheme.typography.screenTitle,
-            )
+            UrsText(text = stringResource(R.string.shoppinglist_add_product_title), style = UrsTheme.typography.screenTitle)
             UrsIconButton(onClick = onClose, contentDescription = stringResource(R.string.close), imageVector = Icons.Filled.Close)
         }
 
-        if (noteInput != null) {
-            NoteInputMode(state = noteInput, viewModel = viewModel, modifier = Modifier.weight(1f))
-        } else {
-            BrowseMode(viewModel = viewModel, modifier = Modifier.weight(1f))
+        BrowseMode(viewModel = viewModel, modifier = Modifier.weight(1f))
+
+        lastAdded?.let { added ->
+            AddedConfirmBar(
+                message = String.format(addedMessageFormat, added.productName),
+                onUndo = viewModel::undoLastAdd,
+                onEdit = {
+                    onEditAdded(added.addedItemLocalId)
+                    viewModel.dismissAddedFeedback()
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun AddedConfirmBar(
+    message: String,
+    onUndo: () -> Unit,
+    onEdit: () -> Unit,
+) {
+    UrsCard(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = Spacing.l, vertical = Spacing.s),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+        ) {
+            UrsText(message, style = UrsTheme.typography.body, modifier = Modifier.weight(1f))
+            UrsText(
+                stringResource(R.string.undo),
+                style = UrsTheme.typography.body,
+                color = UrsTheme.colors.accent,
+                modifier = Modifier.clickable(onClick = onUndo).padding(Spacing.s),
+            )
+            UrsText(
+                stringResource(R.string.edit),
+                style = UrsTheme.typography.body,
+                color = UrsTheme.colors.accent,
+                modifier = Modifier.clickable(onClick = onEdit).padding(Spacing.s),
+            )
         }
     }
 }
@@ -235,63 +281,6 @@ private fun ProductTileGrid(
                 dimmed = product.id in listProductIds,
                 quantityBadge = quantity?.toString(),
                 onClick = { onSelect(product) },
-            )
-        }
-    }
-}
-
-@Composable
-private fun NoteInputMode(state: NoteInputState?, viewModel: AddProductViewModel, modifier: Modifier = Modifier) {
-    if (state == null) return
-
-    val recentNotes = listOfNotNull(state.product.recentNote1, state.product.recentNote2, state.product.recentNote3)
-        .filter { it.isNotBlank() }
-
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(Spacing.m),
-    ) {
-        UrsTextField(
-            value = state.note,
-            onValueChange = viewModel::setNote,
-            label = stringResource(R.string.shoppinglist_item_note),
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        QuantityAndOnSaleRow(
-            quantity = state.quantity,
-            onSale = state.onSale,
-            onIncrement = viewModel::incrementQuantity,
-            onDecrement = viewModel::decrementQuantity,
-            onToggleOnSale = viewModel::toggleOnSale,
-        )
-
-        // Tapping a chip only fills the text field above, it never submits
-        // by itself — the user can still edit the note before confirming,
-        // and picking one doesn't reorder the history unless it's actually
-        // resubmitted (the normal add-with-note flow below does that).
-        if (recentNotes.isNotEmpty()) {
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(Spacing.s),
-                verticalArrangement = Arrangement.spacedBy(Spacing.s),
-            ) {
-                recentNotes.forEach { note ->
-                    UrsFilterChip(label = note, selected = false, onClick = { viewModel.setNote(note) })
-                }
-            }
-        }
-
-        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.m)) {
-            UrsOutlinedButton(
-                text = stringResource(R.string.cancel),
-                onClick = viewModel::closeNoteInput,
-                modifier = Modifier.weight(1f),
-            )
-            UrsButton(
-                text = stringResource(R.string.shoppinglist_add_product_add),
-                onClick = { viewModel.confirmAdd() },
-                modifier = Modifier.weight(1f),
             )
         }
     }

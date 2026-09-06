@@ -12,6 +12,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Shopping List and Inventory home tiles show quick-jump badges for favorited lists/inventories, opening straight into that list; favorite/unfavorite from the existing long-press action sheet (#50).
 - Watch relay accepts chunked audio-note uploads on a new `/api/watch/audio-note-chunk` endpoint, removing the note-length limit the single-request upload had (#41).
 
+### Changed
+
+- Shopping list add-product picker: tapping a result adds it to the list immediately, replacing the separate note/quantity confirm step; a confirmation bar then offers Undo and Edit (opens the item editor for note, quantity and on-sale). Added items start with no quantity set rather than a default of 1 (#51).
+
 ### Fixed
 
 - Unsaved text in notes, fuel fill-ups, link edits, and chores sheets no longer disappears on device rotation or an accidental back/Home/scrim dismiss — rotation now resumes the in-progress edit instead of reloading it, and leaving a form or sheet with unsaved changes shows a discard confirmation (#49).

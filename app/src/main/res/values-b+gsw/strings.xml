@@ -421,7 +421,6 @@
     <string name="shoppinglist_add_product_title">Add a product</string>
     <string name="shoppinglist_add_product_search">Search products</string>
     <string name="shoppinglist_add_product_no_results">No matching products.</string>
-    <string name="shoppinglist_add_product_add">Add</string>
     <string name="shoppinglist_add_custom_product">Add custom product</string>
     <string name="shoppinglist_tab_popular">POPULAR</string>
     <string name="shoppinglist_tab_recent">RECENT</string>

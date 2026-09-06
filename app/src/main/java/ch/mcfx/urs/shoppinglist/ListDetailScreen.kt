@@ -83,7 +83,11 @@ fun ListDetailScreen(
 
     if (showAddProduct) {
         UrsDockedPanel(onDismissRequest = viewModel::closeAddProduct) {
-            AddProductScreen(listId = listId, onClose = viewModel::closeAddProduct)
+            AddProductScreen(
+                listId = listId,
+                onClose = viewModel::closeAddProduct,
+                onEditAdded = viewModel::openNoteFormFor,
+            )
         }
     }
 
