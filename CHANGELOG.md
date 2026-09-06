@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - Shopping list add-product picker: tapping a result adds it to the list immediately, replacing the separate note/quantity confirm step; a confirmation bar then offers Undo and Edit (opens the item editor for note, quantity and on-sale). Added items start with no quantity set rather than a default of 1 (#51).
+- Life Map: the track line now runs a cyan→blue→magenta gradient with an optional contrasting outline so it stays readable where it follows a coloured road; the three gradient colours and the outline are configurable in Location History settings, and an on-map Standard/Muted toggle desaturates the base map (#55).
 
 ### Fixed
 

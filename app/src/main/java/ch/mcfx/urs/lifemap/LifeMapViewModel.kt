@@ -10,6 +10,7 @@ import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.data.LocationHistoryRepository
 import ch.mcfx.urs.data.local.LocationHistoryDao
 import ch.mcfx.urs.data.local.LocationHistoryEntity
+import ch.mcfx.urs.location.LocationHistorySettingsStore
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -60,10 +61,14 @@ enum class TimeRange(private val days: Long?) {
  */
 data class LifeMapPointsState(val range: TimeRange, val points: List<LocationHistoryEntity>)
 
+/** Track rendering options, read from [LocationHistorySettingsStore] when the screen opens. */
+data class TrackStyle(val gradientStops: List<Int>, val haloEnabled: Boolean)
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class LifeMapViewModel(
     private val locationHistoryDao: LocationHistoryDao,
     private val locationHistoryRepository: LocationHistoryRepository,
+    private val settingsStore: LocationHistorySettingsStore,
 ) : ViewModel() {
 
     private val _selectedRange = MutableStateFlow(TimeRange.LAST_DAY)
@@ -71,6 +76,13 @@ class LifeMapViewModel(
 
     private val _pointsState = MutableStateFlow(LifeMapPointsState(TimeRange.LAST_DAY, emptyList()))
     val pointsState: StateFlow<LifeMapPointsState> = _pointsState.asStateFlow()
+
+    // Read once at construction — changing these lives in Location History
+    // settings, which recreates this ViewModel on the way back here.
+    val trackStyle: TrackStyle = TrackStyle(settingsStore.trackColors(), settingsStore.isTrackHaloEnabled())
+
+    private val _mutedMap = MutableStateFlow(settingsStore.isMutedMap())
+    val mutedMap: StateFlow<Boolean> = _mutedMap.asStateFlow()
 
     init {
         // Pull the full server-side history down on load so points
@@ -90,11 +102,20 @@ class LifeMapViewModel(
         _selectedRange.value = range
     }
 
+    fun setMutedMap(muted: Boolean) {
+        settingsStore.setMutedMap(muted)
+        _mutedMap.value = muted
+    }
+
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as UrsApplication
-                LifeMapViewModel(app.container.database.locationHistoryDao(), app.container.locationHistoryRepository)
+                LifeMapViewModel(
+                    app.container.database.locationHistoryDao(),
+                    app.container.locationHistoryRepository,
+                    app.container.locationHistorySettingsStore,
+                )
             }
         }
     }

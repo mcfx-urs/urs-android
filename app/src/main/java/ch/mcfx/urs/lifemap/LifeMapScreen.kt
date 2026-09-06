@@ -1,7 +1,12 @@
 package ch.mcfx.urs.lifemap
 
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -17,8 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -31,6 +34,7 @@ import ch.mcfx.urs.R
 import ch.mcfx.urs.data.local.LocationHistoryEntity
 import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsDropdownField
+import ch.mcfx.urs.ui.components.UrsFilterChip
 import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Spacing
@@ -45,11 +49,23 @@ private const val DEFAULT_ZOOM = 12.0
 /** Extra margin around the fitted points' bounding box so the outermost points don't sit flush against the screen edge. */
 private const val BOUNDING_BOX_PADDING_SCALE = 1.25f
 
-/** Life Map track's age-gradient stops, oldest to newest — a "heat" scale rather than a plain two-color blend. */
-private val TrackGradientStops = listOf(
-    Color(0xFF000000), // oldest — black
-    Color(0xFFFF9800), // orange
-    Color(0xFFF44336), // newest — red
+// "Muted" base-map filter: drop most of the tile colour and lift it toward
+// white, so a bright track sits clearly on top. Applied to osmdroid's tiles
+// overlay, no alternative tile provider needed.
+private val MUTED_TILE_FILTER = ColorMatrixColorFilter(
+    ColorMatrix().apply {
+        setSaturation(0.2f)
+        postConcat(
+            ColorMatrix(
+                floatArrayOf(
+                    0.9f, 0f, 0f, 0f, 24f,
+                    0f, 0.9f, 0f, 0f, 24f,
+                    0f, 0f, 0.9f, 0f, 24f,
+                    0f, 0f, 0f, 1f, 0f,
+                ),
+            ),
+        )
+    },
 )
 
 /** Interpolates piecewise across [stops] (already ARGB [Int]s) by [fraction] in `0f..1f`. */
@@ -68,6 +84,11 @@ fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewM
     val selectedRange by viewModel.selectedRange.collectAsStateWithLifecycle()
     val pointsState by viewModel.pointsState.collectAsStateWithLifecycle()
     val points = pointsState.points
+    val mutedMap by viewModel.mutedMap.collectAsStateWithLifecycle()
+    val trackStyle = viewModel.trackStyle
+    // Halo colour tracks the active theme — the dark palette is the only one
+    // with a non-transparent border colour (same check UrsCard/UrsBottomSheet use).
+    val haloColorArgb = if (UrsTheme.colors.border.alpha > 0f) 0xFF0A0A0A.toInt() else 0xFFF7F7F7.toInt()
 
     val rangeLabels = mapOf(
         TimeRange.LAST_DAY to stringResource(R.string.life_map_range_last_day),
@@ -94,6 +115,10 @@ fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewM
             // range these exact points were queried for, never the (possibly
             // ahead-of-itself) dropdown selection. See LifeMapPointsState.
             selectedRange = pointsState.range,
+            gradientStopsArgb = trackStyle.gradientStops,
+            haloEnabled = trackStyle.haloEnabled,
+            haloColorArgb = haloColorArgb,
+            muted = mutedMap,
             modifier = Modifier.fillMaxSize(),
         )
 
@@ -106,21 +131,35 @@ fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewM
             )
         }
 
-        UrsCard(
+        Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
                 .padding(Spacing.l),
-            contentPadding = PaddingValues(0.dp),
+            verticalArrangement = Arrangement.spacedBy(Spacing.s),
         ) {
-            UrsDropdownField(
-                label = stringResource(R.string.life_map_range_label),
-                options = TimeRange.entries,
-                selectedLabel = rangeLabels[selectedRange],
-                optionLabel = { rangeLabels[it] ?: it.name },
-                onSelect = viewModel::selectRange,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            UrsCard(modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(0.dp)) {
+                UrsDropdownField(
+                    label = stringResource(R.string.life_map_range_label),
+                    options = TimeRange.entries,
+                    selectedLabel = rangeLabels[selectedRange],
+                    optionLabel = { rangeLabels[it] ?: it.name },
+                    onSelect = viewModel::selectRange,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
+                UrsFilterChip(
+                    label = stringResource(R.string.life_map_map_style_standard),
+                    selected = !mutedMap,
+                    onClick = { viewModel.setMutedMap(false) },
+                )
+                UrsFilterChip(
+                    label = stringResource(R.string.life_map_map_style_muted),
+                    selected = mutedMap,
+                    onClick = { viewModel.setMutedMap(true) },
+                )
+            }
         }
     }
 }
@@ -136,6 +175,10 @@ fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewM
 private fun LifeMapView(
     points: List<LocationHistoryEntity>,
     selectedRange: TimeRange,
+    gradientStopsArgb: List<Int>,
+    haloEnabled: Boolean,
+    haloColorArgb: Int,
+    muted: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -149,7 +192,6 @@ private fun LifeMapView(
             setBuiltInZoomControls(false)
         }
     }
-    val gradientStopsArgb = remember(TrackGradientStops) { TrackGradientStops.map { it.toArgb() } }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, mapView) {
@@ -234,22 +276,39 @@ private fun LifeMapView(
         modifier = modifier.clipToBounds(),
         update = { view ->
             view.overlays.clear()
+            view.overlayManager.tilesOverlay.setColorFilter(if (muted) MUTED_TILE_FILTER else null)
             val geoPoints = points.map { GeoPoint(it.latitude, it.longitude) }
+            val density = context.resources.displayMetrics.density
+
+            // Optional contrasting casing: one continuous wide stroke in a
+            // near-white / near-black colour, drawn first so the coloured
+            // core segments sit on top of it. A single polyline over the
+            // whole route rather than one per segment keeps the overlay
+            // count at (segments + 1), not doubled.
+            if (haloEnabled && points.size >= 2) {
+                view.overlays.add(
+                    Polyline(view).apply {
+                        setPoints(geoPoints)
+                        outlinePaint.color = haloColorArgb
+                        outlinePaint.strokeWidth = 7f * density
+                    },
+                )
+            }
 
             // No native multi-color polyline in osmdroid — approximate the
-            // black→orange→red age gradient with one short segment per
-            // consecutive point pair, each colored by that segment's index
-            // among the currently-loaded points (points is already
-            // ascending, per LocationHistoryDao.observeSince's ORDER BY
-            // capturedAt), not by elapsed wall-clock time. A time-based
-            // fraction collapsed to a near-solid color across an entire
-            // short trip whenever it sat far from the loaded set's other
-            // points on the clock (e.g. two separate trips either side of a
-            // long stationary gap, where capture briefly pauses — confirmed
-            // on-device as two flat black/red loops with no visible
-            // transition) — linear-by-point-count instead means every
-            // segment gets an equal share of the gradient regardless of how
-            // much real time passed since the previous fix.
+            // age gradient with one short segment per consecutive point
+            // pair, each coloured by that segment's index among the
+            // currently-loaded points (points is already ascending, per
+            // LocationHistoryDao.observeSince's ORDER BY capturedAt), not by
+            // elapsed wall-clock time. A time-based fraction collapsed to a
+            // near-solid colour across an entire short trip whenever it sat
+            // far from the loaded set's other points on the clock (e.g. two
+            // separate trips either side of a long stationary gap, where
+            // capture briefly pauses — confirmed on-device as two flat
+            // loops with no visible transition) — linear-by-point-count
+            // instead means every segment gets an equal share of the
+            // gradient regardless of how much real time passed since the
+            // previous fix.
             if (points.size >= 2) {
                 val lastIndex = points.size - 1
                 for (i in 1 until points.size) {
@@ -258,7 +317,7 @@ private fun LifeMapView(
                         Polyline(view).apply {
                             setPoints(listOf(geoPoints[i - 1], geoPoints[i]))
                             outlinePaint.color = blendGradientStops(gradientStopsArgb, fraction)
-                            outlinePaint.strokeWidth = 1.5f * context.resources.displayMetrics.density
+                            outlinePaint.strokeWidth = 3f * density
                         },
                     )
                 }

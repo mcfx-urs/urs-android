@@ -9,13 +9,19 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -24,6 +30,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
@@ -36,6 +44,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
 import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsCheckbox
+import ch.mcfx.urs.ui.components.UrsColorWheelDialog
 import ch.mcfx.urs.ui.components.UrsDropdownField
 import ch.mcfx.urs.ui.components.UrsOutlinedButton
 import ch.mcfx.urs.ui.components.UrsPill
@@ -70,6 +79,9 @@ fun LocationHistorySettingsScreen(
     val intervalMinutes by viewModel.intervalMinutes.collectAsStateWithLifecycle()
     val stationaryThresholdMeters by viewModel.stationaryThresholdMeters.collectAsStateWithLifecycle()
     val precisionModeEnabled by viewModel.precisionModeEnabled.collectAsStateWithLifecycle()
+    val trackColors by viewModel.trackColors.collectAsStateWithLifecycle()
+    val trackHaloEnabled by viewModel.trackHaloEnabled.collectAsStateWithLifecycle()
+    var editingTrackStop by remember { mutableStateOf<Int?>(null) }
 
     val context = LocalContext.current
     var hasForegroundPermission by remember { mutableStateOf(hasForegroundLocationPermission(context)) }
@@ -236,6 +248,64 @@ fun LocationHistorySettingsScreen(
                 )
             }
         }
+
+        UrsText(
+            stringResource(R.string.location_history_track_appearance),
+            style = UrsTheme.typography.cardTitle,
+            modifier = Modifier.padding(top = Spacing.m),
+        )
+        UrsCard(
+            radius = Radius.row,
+            contentPadding = PaddingValues(horizontal = Spacing.l, vertical = 14.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
+                UrsText(stringResource(R.string.location_history_track_colors), style = UrsTheme.typography.body)
+                UrsText(
+                    stringResource(R.string.location_history_track_colors_hint),
+                    style = UrsTheme.typography.caption,
+                    color = colors.onSurfaceMuted,
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.m),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    trackColors.forEachIndexed { index, argb ->
+                        if (index > 0) {
+                            UrsText("→", style = UrsTheme.typography.body, color = colors.onSurfaceMuted)
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(Color(argb))
+                                .border(2.dp, colors.onSurfaceMuted.copy(alpha = 0.4f), CircleShape)
+                                .clickable { editingTrackStop = index },
+                        )
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    UrsText(stringResource(R.string.location_history_track_halo), style = UrsTheme.typography.body)
+                    UrsCheckbox(checked = trackHaloEnabled, onCheckedChange = viewModel::setTrackHaloEnabled)
+                }
+            }
+        }
+    }
+
+    editingTrackStop?.let { index ->
+        UrsColorWheelDialog(
+            initialColor = trackColors[index],
+            title = stringResource(R.string.location_history_track_color_pick),
+            onConfirm = {
+                viewModel.setTrackColor(index, it)
+                editingTrackStop = null
+            },
+            onDismiss = { editingTrackStop = null },
+        )
     }
 }
 
