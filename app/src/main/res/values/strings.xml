@@ -300,6 +300,11 @@
     <string name="location_history_precision_mode">Precision mode</string>
     <string name="location_history_precision_mode_description">Uses exact alarms instead of the default battery-friendly scheduling, so captures land on schedule instead of drifting under Doze/battery standby. Check Settings → Apps → urs → App battery usage before/after to see the actual cost for your usage.</string>
     <string name="location_history_exact_alarm_permission_label">Exact alarm access</string>
+    <string name="location_history_track_appearance">Track appearance</string>
+    <string name="location_history_track_colors">Track line colours</string>
+    <string name="location_history_track_colors_hint">Oldest to newest segment. Tap a colour to change it.</string>
+    <string name="location_history_track_color_pick">Pick a colour</string>
+    <string name="location_history_track_halo">Contrasting outline</string>
 
     <string name="watch_relay_title">Watch Relay</string>
     <string name="watch_relay_description">Lets the urs-zepp companion watch app trigger quick actions (like logging a beer) without opening the app. Runs a small local server while enabled, shown as an ongoing notification, so it works even with the app closed.</string>
@@ -316,6 +321,8 @@
     <string name="life_map_range_last_year">Last year</string>
     <string name="life_map_range_all">All time</string>
     <string name="life_map_empty">No location history yet.</string>
+    <string name="life_map_map_style_standard">Standard</string>
+    <string name="life_map_map_style_muted">Muted</string>
 
     <string name="vpn_title">VPN</string>
     <string name="vpn_description">The backend is only reachable over WireGuard — paste your client config below (or scan its QR code) once. On a saved home Wi-Fi network, the app skips VPN entirely; anywhere else it brings the tunnel up automatically before reaching the backend.</string>

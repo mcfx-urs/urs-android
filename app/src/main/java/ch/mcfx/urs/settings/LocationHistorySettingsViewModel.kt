@@ -30,6 +30,12 @@ class LocationHistorySettingsViewModel(
     private val _precisionModeEnabled = MutableStateFlow(settingsStore.isPrecisionModeEnabled())
     val precisionModeEnabled: StateFlow<Boolean> = _precisionModeEnabled.asStateFlow()
 
+    private val _trackColors = MutableStateFlow(settingsStore.trackColors())
+    val trackColors: StateFlow<List<Int>> = _trackColors.asStateFlow()
+
+    private val _trackHaloEnabled = MutableStateFlow(settingsStore.isTrackHaloEnabled())
+    val trackHaloEnabled: StateFlow<Boolean> = _trackHaloEnabled.asStateFlow()
+
     fun canScheduleExactAlarms(): Boolean = LocationCaptureScheduler.canScheduleExactAlarms(context)
 
     fun setEnabled(enabled: Boolean) {
@@ -64,6 +70,17 @@ class LocationHistorySettingsViewModel(
         if (settingsStore.isEnabled()) {
             LocationCaptureScheduler.reschedule(context, settingsStore.intervalMinutes(), enabled)
         }
+    }
+
+    /** [index] 0 = oldest gradient stop, 1 = middle, 2 = newest. */
+    fun setTrackColor(index: Int, argb: Int) {
+        settingsStore.setTrackColor(index, argb)
+        _trackColors.value = settingsStore.trackColors()
+    }
+
+    fun setTrackHaloEnabled(enabled: Boolean) {
+        settingsStore.setTrackHaloEnabled(enabled)
+        _trackHaloEnabled.value = enabled
     }
 
     /**
