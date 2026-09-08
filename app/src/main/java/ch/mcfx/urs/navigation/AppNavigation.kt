@@ -77,6 +77,7 @@ import ch.mcfx.urs.settings.GeneralSettingsScreen
 import ch.mcfx.urs.settings.ImageGeneratorScreen
 import ch.mcfx.urs.settings.ImageReviewScreen
 import ch.mcfx.urs.settings.LanguageSettingsScreen
+import ch.mcfx.urs.settings.LocationCaptureLogScreen
 import ch.mcfx.urs.settings.LocationHistorySettingsScreen
 import ch.mcfx.urs.settings.NotificationSettingsScreen
 import ch.mcfx.urs.settings.ProductManagementScreen
@@ -472,7 +473,12 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                         )
                     }
                     composable(SettingsRoutes.WAGE_RULES) { WageRulesSettingsScreen() }
-                    composable(SettingsRoutes.ABOUT) { AboutScreen() }
+                    composable(SettingsRoutes.ABOUT) {
+                        AboutScreen(
+                            onOpenLocationCaptureLog = { navController.navigate(SettingsRoutes.LOCATION_CAPTURE_LOG) },
+                        )
+                    }
+                    composable(SettingsRoutes.LOCATION_CAPTURE_LOG) { LocationCaptureLogScreen() }
                     composable(SettingsRoutes.LOCATION_HISTORY) { LocationHistorySettingsScreen() }
                     composable(SettingsRoutes.WATCH_RELAY) { WatchRelaySettingsScreen() }
                     composable(SettingsRoutes.THEME) { ThemeSettingsScreen() }
@@ -544,6 +550,7 @@ private val SETTINGS_ROUTE_LABELS = mapOf(
     SettingsRoutes.WAGE_RULES to R.string.worktime_wage_rules_title,
     SettingsRoutes.ABOUT to R.string.settings_tile_about,
     SettingsRoutes.LOCATION_HISTORY to R.string.settings_tile_location_history,
+    SettingsRoutes.LOCATION_CAPTURE_LOG to R.string.about_location_capture_details_title,
     SettingsRoutes.WATCH_RELAY to R.string.settings_tile_watch_relay,
     SettingsRoutes.THEME to R.string.settings_tile_theme,
     SettingsRoutes.LANGUAGE to R.string.settings_tile_language,

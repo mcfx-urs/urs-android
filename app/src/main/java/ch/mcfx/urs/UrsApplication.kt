@@ -38,10 +38,15 @@ import ch.mcfx.urs.data.sync.ReachabilityChecker
 import ch.mcfx.urs.data.sync.SyncManager
 import ch.mcfx.urs.data.sync.SyncStatusStore
 import ch.mcfx.urs.data.sync.SyncWorker
+import ch.mcfx.urs.location.LocationActivityRecognitionManager
 import ch.mcfx.urs.location.LocationCapture
-import ch.mcfx.urs.location.LocationCaptureScheduler
+import ch.mcfx.urs.location.LocationCaptureDebugLog
+import ch.mcfx.urs.location.LocationCaptureModeManager
+import ch.mcfx.urs.location.LocationGeofenceManager
 import ch.mcfx.urs.location.LocationHistorySettingsStore
 import ch.mcfx.urs.location.LocationProvider
+import ch.mcfx.urs.location.hasActivityRecognitionPermission
+import ch.mcfx.urs.location.hasLocationPermission
 import ch.mcfx.urs.notifications.NotificationChannels
 import ch.mcfx.urs.notifications.NotificationSender
 import ch.mcfx.urs.notifications.ReminderScheduler
@@ -109,12 +114,30 @@ class UrsApplication : Application() {
         // WorkManager itself persists periodic work across reboot, but this
         // covers the case where it was never enqueued in this process at
         // all (e.g. right after an app update).
+        // Re-arms the geofence/activity-recognition registrations too
+        // (GitHub issue #60) — Play Services usually persists these across
+        // process death, but not necessarily across a reboot, and this
+        // mirrors the existing scheduler-only re-arm above regardless.
         if (container.locationHistorySettingsStore.isEnabled()) {
-            LocationCaptureScheduler.reschedule(
-                this,
-                container.locationHistorySettingsStore.intervalMinutes(),
-                container.locationHistorySettingsStore.isPrecisionModeEnabled(),
-            )
+            val store = container.locationHistorySettingsStore
+            LocationCaptureModeManager.applyEffectiveCapture(this, "process-start")
+            if (store.isGeofenceAdaptiveEnabled() && hasLocationPermission(this)) {
+                store.geofenceCenter()?.let { (lat, lon) ->
+                    try {
+                        LocationGeofenceManager.arm(this, lat, lon, store.geofenceRadiusMeters().toFloat())
+                    } catch (e: SecurityException) {
+                        // Permission revoked since the toggle was turned on — leave it
+                        // to the settings screen's own permission-row UI to surface.
+                    }
+                }
+            }
+            if (store.isActivityPauseEnabled() && hasActivityRecognitionPermission(this)) {
+                try {
+                    LocationActivityRecognitionManager.start(this)
+                } catch (e: SecurityException) {
+                    // Same rationale as above.
+                }
+            }
         }
         // Same rationale — a killed-and-relaunched process (not a full
         // reboot, which BootCompletedReceiver covers) otherwise leaves the
@@ -280,7 +303,8 @@ class AppContainer(context: Context) {
         syncStatusStore = syncStatusStore,
         json = json,
     )
-    val locationCapture = LocationCapture(context)
+    val locationCaptureDebugLog = LocationCaptureDebugLog(database.locationCaptureLogDao(), applicationScope)
+    val locationCapture = LocationCapture(context, locationCaptureDebugLog)
     val locationProvider = LocationProvider(context, locationCapture)
     val locationHistorySettingsStore = LocationHistorySettingsStore(context)
     val watchRelaySettingsStore = WatchRelaySettingsStore(context)

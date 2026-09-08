@@ -54,7 +54,7 @@ private fun formatEpochMillis(epochMillis: Long): String =
     Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).format(TimestampFormat)
 
 @Composable
-fun AboutScreen(viewModel: AboutViewModel = viewModel(factory = AboutViewModel.Factory)) {
+fun AboutScreen(onOpenLocationCaptureLog: () -> Unit, viewModel: AboutViewModel = viewModel(factory = AboutViewModel.Factory)) {
     val colors = UrsTheme.colors
     val version = BuildConfig.VERSION_NAME.substringBefore("-")
     val buildType = BuildConfig.BUILD_TYPE.replaceFirstChar { it.uppercase() }
@@ -64,6 +64,7 @@ fun AboutScreen(viewModel: AboutViewModel = viewModel(factory = AboutViewModel.F
     val vpnState by viewModel.vpnState.collectAsStateWithLifecycle()
     val outboxEntries by viewModel.outboxEntries.collectAsStateWithLifecycle()
     val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
+    val locationCaptureStatus by viewModel.locationCaptureStatus.collectAsStateWithLifecycle()
 
     var showSyncDetails by remember { mutableStateOf(false) }
 
@@ -117,6 +118,7 @@ fun AboutScreen(viewModel: AboutViewModel = viewModel(factory = AboutViewModel.F
                     SyncStateRow(syncState, onClick = { showSyncDetails = true })
                     BackendStateRow(backendState, onRecheck = viewModel::recheckBackend)
                     VpnStateRow(vpnState)
+                    LocationCaptureStateRow(locationCaptureStatus, onClick = onOpenLocationCaptureLog)
                 }
             }
         }
@@ -290,3 +292,24 @@ private fun VpnStateRow(state: VpnConnectionState) {
         UrsPill(text = stringResource(labelRes), containerColor = color.copy(alpha = 0.15f), contentColor = color)
     }
 }
+
+@Composable
+private fun LocationCaptureStateRow(status: LocationCaptureStatus, onClick: () -> Unit) {
+    val colors = UrsTheme.colors
+    val (labelRes, color) = when (status) {
+        LocationCaptureStatus.DISABLED -> R.string.about_location_capture_status_disabled to colors.onSurfaceMuted
+        LocationCaptureStatus.PAUSED -> R.string.about_location_capture_status_paused to colors.onSurfaceMuted
+        LocationCaptureStatus.DENSE -> R.string.about_location_capture_status_dense to colors.accent
+        LocationCaptureStatus.SPARSE -> R.string.about_location_capture_status_sparse to colors.accent
+        LocationCaptureStatus.FIXED -> R.string.about_location_capture_status_fixed to colors.accent
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        UrsText(stringResource(R.string.about_state_location_capture), style = UrsTheme.typography.body)
+        UrsPill(text = stringResource(labelRes), containerColor = color.copy(alpha = 0.15f), contentColor = color)
+    }
+}
+

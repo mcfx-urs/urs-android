@@ -36,6 +36,6 @@ class LocationProvider(context: Context, private val locationCapture: LocationCa
     /** No-ops without permission or on a failed/timed-out fix — keeps whatever value it already had. */
     suspend fun refresh() {
         if (!hasPermission()) return
-        locationCapture.captureLocation()?.let { _currentLocation.value = it }
+        locationCapture.captureLocation("ambient-refresh")?.let { _currentLocation.value = it }
     }
 }

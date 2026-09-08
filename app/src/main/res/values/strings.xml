@@ -187,6 +187,14 @@
     <string name="about_state_sync">Sync</string>
     <string name="about_state_backend">Backend</string>
     <string name="about_state_vpn">VPN</string>
+    <string name="about_state_location_capture">Location capture</string>
+    <string name="about_location_capture_status_disabled">Off</string>
+    <string name="about_location_capture_status_paused">Paused (still)</string>
+    <string name="about_location_capture_status_dense">Dense (moving)</string>
+    <string name="about_location_capture_status_sparse">Sparse (settled)</string>
+    <string name="about_location_capture_status_fixed">Fixed interval</string>
+    <string name="about_location_capture_details_title">Location capture log</string>
+    <string name="about_location_capture_empty">No events yet.</string>
     <string name="about_sync_never">Never synced yet</string>
     <string name="about_sync_last_synced">Last synced %1$s</string>
     <string name="about_sync_pending_count">%1$d pending</string>
@@ -305,6 +313,22 @@
     <string name="location_history_track_colors_hint">Oldest to newest segment. Tap a colour to change it.</string>
     <string name="location_history_track_color_pick">Pick a colour</string>
     <string name="location_history_track_halo">Contrasting outline</string>
+    <string name="location_history_adaptive_section_title">Adaptive interval</string>
+    <string name="location_history_geofence_adaptive">Geofence-based adaptive interval</string>
+    <string name="location_history_geofence_adaptive_description">Arms a circle around your last point. Leaving it switches to the capture interval above (dense); settling back down inside a new circle switches to the sparse interval below. Combinable with the activity-based toggle.</string>
+    <string name="location_history_geofence_radius_label">Circle radius</string>
+    <string name="location_history_geofence_radius_50">50 m</string>
+    <string name="location_history_geofence_radius_100">100 m</string>
+    <string name="location_history_geofence_radius_150">150 m</string>
+    <string name="location_history_geofence_radius_200">200 m</string>
+    <string name="location_history_geofence_radius_300">300 m</string>
+    <string name="location_history_geofence_radius_500">500 m</string>
+    <string name="location_history_geofence_sparse_interval_label">Interval inside the circle</string>
+    <string name="location_history_activity_pause">Activity-based pause on stillness</string>
+    <string name="location_history_activity_pause_description">Detects genuine stillness (e.g. a break) and pauses or throttles capture during it, regardless of the geofence state above. Combinable with the geofence-based toggle.</string>
+    <string name="location_history_activity_permission_label">Activity recognition access</string>
+    <string name="location_history_still_fallback_label">While still</string>
+    <string name="location_history_still_fallback_pause">Pause capture</string>
 
     <string name="watch_relay_title">Watch Relay</string>
     <string name="watch_relay_description">Lets the urs-zepp companion watch app trigger quick actions (like logging a beer) without opening the app. Runs a small local server while enabled, shown as an ongoing notification, so it works even with the app closed.</string>

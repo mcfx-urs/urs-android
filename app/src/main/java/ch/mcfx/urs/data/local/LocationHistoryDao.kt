@@ -19,6 +19,10 @@ interface LocationHistoryDao {
     @Query("SELECT * FROM location_history ORDER BY capturedAt DESC LIMIT 1")
     suspend fun getLatest(): LocationHistoryEntity?
 
+    /** Newest first — used by the geofence-adaptive settle-check (GitHub issue #60). */
+    @Query("SELECT * FROM location_history ORDER BY capturedAt DESC LIMIT :limit")
+    suspend fun getRecent(limit: Int): List<LocationHistoryEntity>
+
     @Query("SELECT * FROM location_history WHERE outboxId = :outboxId LIMIT 1")
     suspend fun getByOutboxId(outboxId: Long): LocationHistoryEntity?
 

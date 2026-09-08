@@ -247,7 +247,7 @@ class FuelViewModel(
         _formState.update { it.copy(capturingLocation = true) }
         viewModelScope.launch {
             val location = try {
-                locationCapture.captureLocation()
+                locationCapture.captureLocation("fuel-fill")
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {

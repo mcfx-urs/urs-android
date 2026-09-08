@@ -8,12 +8,14 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import ch.mcfx.urs.R
 import ch.mcfx.urs.UrsApplication
+import ch.mcfx.urs.data.local.LocationCaptureLogDao
 import ch.mcfx.urs.data.local.OutboxDao
 import ch.mcfx.urs.data.local.OutboxMutationEntity
 import ch.mcfx.urs.data.local.OutboxStatus
 import ch.mcfx.urs.data.sync.ReachabilityChecker
 import ch.mcfx.urs.data.sync.SyncManager
 import ch.mcfx.urs.data.sync.SyncStatusStore
+import ch.mcfx.urs.location.LocationHistorySettingsStore
 import ch.mcfx.urs.vpn.VpnConnectionState
 import ch.mcfx.urs.vpn.WireGuardManager
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,6 +49,9 @@ sealed interface BackendState {
     data object Unreachable : BackendState
 }
 
+/** GitHub issue #60 — a quick-glance summary of the adaptive-interval feature's current state. */
+enum class LocationCaptureStatus { DISABLED, PAUSED, DENSE, SPARSE, FIXED }
+
 /**
  * Backs the About screen's "State" section — observation of existing
  * sync/backend/VPN state, plus the two explicit, user-triggered actions it
@@ -59,6 +64,8 @@ class AboutViewModel(
     val wireGuardManager: WireGuardManager,
     outboxDao: OutboxDao,
     syncStatusStore: SyncStatusStore,
+    locationCaptureLogDao: LocationCaptureLogDao,
+    private val locationHistorySettingsStore: LocationHistorySettingsStore,
 ) : ViewModel() {
 
     val vpnState: StateFlow<VpnConnectionState> get() = wireGuardManager.state
@@ -90,6 +97,25 @@ class AboutViewModel(
     val outboxEntries: StateFlow<List<OutboxEntryUi>> = outboxDao.observeAll()
         .map { mutations -> mutations.map { it.toEntryUi() } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    // GitHub issue #60 — recomputed on every log write, since that's every
+    // moment the underlying store flags could have changed; a plain
+    // SharedPreferences read otherwise has nothing to observe reactively.
+    val locationCaptureStatus: StateFlow<LocationCaptureStatus> = locationCaptureLogDao.observeRecent()
+        .map { locationCaptureStatus() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), locationCaptureStatus())
+
+    private fun locationCaptureStatus(): LocationCaptureStatus {
+        val store = locationHistorySettingsStore
+        if (!store.isEnabled()) return LocationCaptureStatus.DISABLED
+        if (store.isActivityPauseEnabled() && store.isCurrentlyStill() && store.activityStillFallbackMinutes() <= 0L) {
+            return LocationCaptureStatus.PAUSED
+        }
+        if (store.isGeofenceAdaptiveEnabled()) {
+            return if (store.isGeofenceDense()) LocationCaptureStatus.DENSE else LocationCaptureStatus.SPARSE
+        }
+        return LocationCaptureStatus.FIXED
+    }
 
     init {
         recheckBackend()
@@ -129,6 +155,8 @@ class AboutViewModel(
                     wireGuardManager = app.container.wireGuardManager,
                     outboxDao = app.container.database.outboxDao(),
                     syncStatusStore = app.container.syncStatusStore,
+                    locationCaptureLogDao = app.container.database.locationCaptureLogDao(),
+                    locationHistorySettingsStore = app.container.locationHistorySettingsStore,
                 )
             }
         }

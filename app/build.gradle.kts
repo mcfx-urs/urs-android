@@ -160,4 +160,9 @@ dependencies {
     implementation(libs.coil.network.okhttp)
     implementation(libs.osmdroid.android)
     implementation(libs.nanohttpd)
+    // Geofencing + Activity Recognition for Location History's adaptive
+    // capture interval (GitHub issue #60) — first Play Services dependency
+    // in this app; see LocationCapture.kt's doc comment for why plain
+    // LocationManager was preferred everywhere else.
+    implementation(libs.play.services.location)
 }

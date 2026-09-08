@@ -31,6 +31,7 @@ import androidx.room.TypeConverters
         TrackerTypeEntity::class,
         TrackerEventEntity::class,
         AudioNoteEntity::class,
+        LocationCaptureLogEntity::class,
     ],
     // Bumped for the isFullTank column on FillEntity, the life map
     // feature's LocationHistoryEntity (local capture + sync fields), and
@@ -86,7 +87,10 @@ import androidx.room.TypeConverters
     // v29: isFavorite column added to ListEntity/InventoryEntity (GitHub
     //      issue #50, home-tile quick-jump badges) — same destructive-fallback
     //      handling as every bump above.
-    version = 29,
+    // v30: new LocationCaptureLogEntity table (GitHub issue #60, adaptive
+    //      capture interval debug trail) — same destructive-fallback
+    //      handling as every bump above.
+    version = 30,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -114,4 +118,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun trackerTypeDao(): TrackerTypeDao
     abstract fun trackerEventDao(): TrackerEventDao
     abstract fun audioNoteDao(): AudioNoteDao
+    abstract fun locationCaptureLogDao(): LocationCaptureLogDao
 }
