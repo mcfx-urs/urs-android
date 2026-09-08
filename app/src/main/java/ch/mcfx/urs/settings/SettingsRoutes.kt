@@ -14,6 +14,7 @@ object SettingsRoutes {
     const val WAGE_RULES = "settings/wage-rules"
     const val ABOUT = "settings/about"
     const val LOCATION_HISTORY = "settings/location-history"
+    const val LOCATION_CAPTURE_LOG = "settings/location-capture-log"
     const val WATCH_RELAY = "settings/watch-relay"
     const val THEME = "settings/theme"
     const val LANGUAGE = "settings/language"

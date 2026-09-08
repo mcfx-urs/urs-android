@@ -34,6 +34,13 @@ class LocationCaptureAlarmReceiver : BroadcastReceiver() {
             ExistingWorkPolicy.APPEND_OR_REPLACE,
             OneTimeWorkRequestBuilder<LocationCaptureWorker>().build(),
         )
-        LocationCaptureScheduler.armExact(context, store.intervalMinutes())
+        // Effective interval (GitHub issue #60), not necessarily the plain
+        // Settings value — null means the adaptive toggles currently want
+        // capture paused, in which case the chain simply isn't re-armed
+        // (whatever triggered the pause already cancelled it via
+        // LocationCaptureModeManager; re-arming here would undo that).
+        LocationCaptureModeManager.effectiveIntervalMinutes(store)?.let {
+            LocationCaptureScheduler.armExact(context, it)
+        }
     }
 }

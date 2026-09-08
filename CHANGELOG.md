@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Vehicle list: tapping an entry opens a read-only detail screen with an Edit action; long-press keeps its existing Edit/Delete sheet (#48).
 - Shopping List and Inventory home tiles show quick-jump badges for favorited lists/inventories, opening straight into that list; favorite/unfavorite from the existing long-press action sheet (#50).
 - Watch relay accepts chunked audio-note uploads on a new `/api/watch/audio-note-chunk` endpoint, removing the note-length limit the single-request upload had (#41).
+- Location History: two combinable adaptive-interval toggles alongside the fixed capture interval — geofence-based (switches to a dense interval on leaving a circle around the last point, back to a sparse one once settled) and activity-based (pauses or throttles capture during detected stillness); a "Location capture" card on the About screen opens a dedicated terminal-style log screen with a live header (current activity/confidence and geofence tier, each with how long they've been in that state) above the detailed event trail, which also records every explicit GPS read app-wide (life-map capture, geofence re-centering, fuel-fill, and the ambient location refresh), tagged by source (#60).
 
 ### Changed
 

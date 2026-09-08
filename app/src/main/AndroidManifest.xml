@@ -20,6 +20,11 @@
          via a deep link to the app's own system Settings page (not a normal
          permission dialog) — see LocationHistorySettingsScreen. -->
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <!-- Location History's optional "Activity-based pause on stillness"
+         toggle (Settings → Location History, GitHub issue #60) — a normal
+         runtime-dialog permission (like fine/coarse location), requested
+         only once that toggle is turned on. -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
     <!-- On newer Android versions, unredacted Wi-Fi info (real SSID, not
          "<unknown ssid>") also requires this even with location granted.
          neverForLocation: this app only ever compares the SSID string
@@ -124,6 +129,20 @@
              see LocationCaptureScheduler. -->
         <receiver
             android:name=".location.LocationCaptureAlarmReceiver"
+            android:exported="false" />
+
+        <!-- Location History's "Geofence-based adaptive interval" toggle
+             (GitHub issue #60) — fired by Play Services on exiting the
+             circle armed by LocationGeofenceManager. -->
+        <receiver
+            android:name=".location.LocationGeofenceBroadcastReceiver"
+            android:exported="false" />
+
+        <!-- Location History's "Activity-based pause on stillness" toggle
+             (GitHub issue #60) — fired periodically by Play Services'
+             ActivityRecognitionClient while registered. -->
+        <receiver
+            android:name=".location.LocationActivityRecognitionReceiver"
             android:exported="false" />
 
         <!-- One per baking-plan step — fired by

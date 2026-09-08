@@ -50,7 +50,19 @@ class LocationCaptureWorker(context: Context, params: WorkerParameters) : Corout
         // already re-arms the next exact alarm itself, and this worker only
         // runs there as the alarm's immediate zero-delay payload — self-chaining
         // here too would double-schedule the next run.
-        val intervalMinutes = store.intervalMinutes()
+        //
+        // intervalMinutes is the *effective* interval (GitHub issue #60),
+        // not necessarily the plain Settings value — a null result means
+        // the adaptive toggles currently want capture paused (e.g. STILL
+        // with a 0-minute fallback); self-chaining is skipped in that case
+        // too, since LocationCaptureModeManager already cancelled the chain
+        // from wherever the pause was triggered, and re-arming here would
+        // undo that.
+        val intervalMinutes = LocationCaptureModeManager.effectiveIntervalMinutes(store)
+        if (intervalMinutes == null) {
+            app.container.locationCaptureDebugLog.log("SKIPPED", "paused")
+            return Result.success()
+        }
         if (!store.isPrecisionModeEnabled() && intervalMinutes < LocationCaptureScheduler.PERIODIC_FLOOR_MINUTES) {
             LocationCaptureScheduler.scheduleNext(applicationContext, intervalMinutes, ExistingWorkPolicy.APPEND_OR_REPLACE)
         }
@@ -59,7 +71,7 @@ class LocationCaptureWorker(context: Context, params: WorkerParameters) : Corout
         // doc comment) just leaves a gap in the track for this run — not
         // worth Result.retry()'s backoff churn, since a permanently-missing
         // permission would otherwise retry forever.
-        val location = app.container.locationCapture.captureLocation() ?: return Result.success()
+        val location = app.container.locationCapture.captureLocation("history-worker") ?: return Result.success()
 
         // Drop unreliable fixes outright, before they can ever look like a
         // spurious jump in the track.
@@ -108,6 +120,49 @@ class LocationCaptureWorker(context: Context, params: WorkerParameters) : Corout
                 syncStatus = SyncStatus.PENDING,
             ),
         )
+        app.container.locationCaptureDebugLog.log("FIRED", "every $intervalMinutes min")
+
+        if (store.isGeofenceAdaptiveEnabled() && store.isGeofenceDense()) {
+            maybeSettle(app, store, location)
+        }
         return Result.success()
+    }
+
+    /**
+     * Geofence-adaptive settle-check (GitHub issue #60): once
+     * [SETTLE_FIX_COUNT] consecutive dense-tier fixes all land within the
+     * configured radius of the latest one, treat that as "arrived" —
+     * re-centers a fresh circle there and drops back to sparse capture.
+     * Reuses the already-persisted [LocationHistoryEntity] rows rather than
+     * tracking separate in-memory state.
+     */
+    private suspend fun maybeSettle(app: UrsApplication, store: LocationHistorySettingsStore, location: Location) {
+        val recent = app.container.database.locationHistoryDao().getRecent(SETTLE_FIX_COUNT)
+        if (recent.size < SETTLE_FIX_COUNT) return
+
+        val radiusMeters = store.geofenceRadiusMeters().toFloat()
+        val settled = recent.all { point ->
+            val distanceMeters = FloatArray(1)
+            Location.distanceBetween(location.latitude, location.longitude, point.latitude, point.longitude, distanceMeters)
+            distanceMeters[0] <= radiusMeters
+        }
+        if (!settled) return
+
+        store.setGeofenceDense(false)
+        store.setGeofenceCenter(location.latitude, location.longitude)
+        app.container.locationCaptureDebugLog.log(
+            "GEOFENCE_SETTLED",
+            "within ${radiusMeters.toInt()} m for $SETTLE_FIX_COUNT fixes — new circle armed, switching to sparse",
+        )
+        try {
+            LocationGeofenceManager.arm(app, location.latitude, location.longitude, radiusMeters)
+        } catch (e: SecurityException) {
+            app.container.locationCaptureDebugLog.log("GEOFENCE_ERROR", "arm failed: ${e.message}")
+        }
+        LocationCaptureModeManager.applyEffectiveCapture(app, "geofence-settled")
+    }
+
+    companion object {
+        private const val SETTLE_FIX_COUNT = 3
     }
 }

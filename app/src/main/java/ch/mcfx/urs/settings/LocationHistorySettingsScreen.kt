@@ -21,7 +21,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -70,6 +72,8 @@ private fun hasBackgroundLocationPermission(context: Context) =
 
 private val INTERVAL_OPTIONS_MINUTES = listOf(1L, 2L, 5L, 10L, 15L, 30L, 60L, 120L, 240L)
 private val STATIONARY_THRESHOLD_OPTIONS_METERS = listOf(0L, 10L, 25L, 50L, 100L, 250L)
+private val GEOFENCE_RADIUS_OPTIONS_METERS = listOf(50L, 100L, 150L, 200L, 300L, 500L)
+private val STILL_FALLBACK_OPTIONS_MINUTES = listOf(0L, 5L, 10L, 15L, 30L, 60L)
 
 @Composable
 fun LocationHistorySettingsScreen(
@@ -83,15 +87,29 @@ fun LocationHistorySettingsScreen(
     val trackHaloEnabled by viewModel.trackHaloEnabled.collectAsStateWithLifecycle()
     var editingTrackStop by remember { mutableStateOf<Int?>(null) }
 
+    val geofenceAdaptiveEnabled by viewModel.geofenceAdaptiveEnabled.collectAsStateWithLifecycle()
+    val geofenceRadiusMeters by viewModel.geofenceRadiusMeters.collectAsStateWithLifecycle()
+    val geofenceSparseIntervalMinutes by viewModel.geofenceSparseIntervalMinutes.collectAsStateWithLifecycle()
+    val activityPauseEnabled by viewModel.activityPauseEnabled.collectAsStateWithLifecycle()
+    val activityStillFallbackMinutes by viewModel.activityStillFallbackMinutes.collectAsStateWithLifecycle()
+
     val context = LocalContext.current
     var hasForegroundPermission by remember { mutableStateOf(hasForegroundLocationPermission(context)) }
     var hasBackgroundPermission by remember { mutableStateOf(hasBackgroundLocationPermission(context)) }
     var hasExactAlarmPermission by remember { mutableStateOf(viewModel.canScheduleExactAlarms()) }
+    var hasActivityPermission by remember { mutableStateOf(viewModel.hasActivityRecognitionPermission()) }
 
     val foregroundPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
     ) { result ->
         hasForegroundPermission = result.values.any { it }
+    }
+
+    val activityPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        hasActivityPermission = granted
+        if (granted) viewModel.rearmIfNeeded()
     }
 
     // Background location and exact-alarm access can only be granted/revoked
@@ -106,6 +124,7 @@ fun LocationHistorySettingsScreen(
                 hasForegroundPermission = hasForegroundLocationPermission(context)
                 hasBackgroundPermission = hasBackgroundLocationPermission(context)
                 hasExactAlarmPermission = viewModel.canScheduleExactAlarms()
+                hasActivityPermission = viewModel.hasActivityRecognitionPermission()
                 viewModel.rearmIfNeeded()
             }
         }
@@ -134,10 +153,23 @@ fun LocationHistorySettingsScreen(
         250L to stringResource(R.string.location_history_stationary_threshold_250),
     )
 
+    val geofenceRadiusLabels = mapOf(
+        50L to stringResource(R.string.location_history_geofence_radius_50),
+        100L to stringResource(R.string.location_history_geofence_radius_100),
+        150L to stringResource(R.string.location_history_geofence_radius_150),
+        200L to stringResource(R.string.location_history_geofence_radius_200),
+        300L to stringResource(R.string.location_history_geofence_radius_300),
+        500L to stringResource(R.string.location_history_geofence_radius_500),
+    )
+
+    // 0 = pause; the rest reuse the same "every N min" phrasing as the
+    // capture-interval dropdown above.
+    val stillFallbackLabels = mapOf(0L to stringResource(R.string.location_history_still_fallback_pause)) + intervalLabels
+
     val colors = UrsTheme.colors
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(Spacing.xl),
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Spacing.xl),
         verticalArrangement = Arrangement.spacedBy(Spacing.s),
     ) {
         UrsText(stringResource(R.string.location_history_title), style = UrsTheme.typography.screenTitle)
@@ -247,6 +279,95 @@ fun LocationHistorySettingsScreen(
                     },
                 )
             }
+
+            UrsText(
+                stringResource(R.string.location_history_adaptive_section_title),
+                style = UrsTheme.typography.cardTitle,
+                modifier = Modifier.padding(top = Spacing.m),
+            )
+
+            UrsCard(
+                radius = Radius.row,
+                contentPadding = PaddingValues(horizontal = Spacing.l, vertical = 14.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        UrsText(stringResource(R.string.location_history_geofence_adaptive), style = UrsTheme.typography.body)
+                        UrsCheckbox(checked = geofenceAdaptiveEnabled, onCheckedChange = viewModel::setGeofenceAdaptiveEnabled)
+                    }
+                    UrsText(
+                        stringResource(R.string.location_history_geofence_adaptive_description),
+                        style = UrsTheme.typography.caption,
+                        color = colors.onSurfaceMuted,
+                        modifier = Modifier.padding(top = Spacing.s),
+                    )
+                    if (geofenceAdaptiveEnabled) {
+                        UrsDropdownField(
+                            label = stringResource(R.string.location_history_geofence_radius_label),
+                            options = GEOFENCE_RADIUS_OPTIONS_METERS,
+                            selectedLabel = geofenceRadiusLabels[geofenceRadiusMeters],
+                            optionLabel = { geofenceRadiusLabels[it] ?: it.toString() },
+                            onSelect = viewModel::setGeofenceRadiusMeters,
+                            modifier = Modifier.fillMaxWidth().padding(top = Spacing.m),
+                        )
+                        UrsDropdownField(
+                            label = stringResource(R.string.location_history_geofence_sparse_interval_label),
+                            options = INTERVAL_OPTIONS_MINUTES,
+                            selectedLabel = intervalLabels[geofenceSparseIntervalMinutes],
+                            optionLabel = { intervalLabels[it] ?: it.toString() },
+                            onSelect = viewModel::setGeofenceSparseIntervalMinutes,
+                            modifier = Modifier.fillMaxWidth().padding(top = Spacing.s),
+                        )
+                    }
+                }
+            }
+
+            UrsCard(
+                radius = Radius.row,
+                contentPadding = PaddingValues(horizontal = Spacing.l, vertical = 14.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        UrsText(stringResource(R.string.location_history_activity_pause), style = UrsTheme.typography.body)
+                        UrsCheckbox(checked = activityPauseEnabled, onCheckedChange = viewModel::setActivityPauseEnabled)
+                    }
+                    UrsText(
+                        stringResource(R.string.location_history_activity_pause_description),
+                        style = UrsTheme.typography.caption,
+                        color = colors.onSurfaceMuted,
+                        modifier = Modifier.padding(top = Spacing.s),
+                    )
+                    if (activityPauseEnabled) {
+                        // Activity recognition is a normal runtime-dialog
+                        // permission (unlike background location/exact
+                        // alarms above) — a launcher, not a Settings deep link.
+                        PermissionRow(
+                            label = stringResource(R.string.location_history_activity_permission_label),
+                            granted = hasActivityPermission,
+                            onGrant = { activityPermissionLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION) },
+                            modifier = Modifier.padding(top = Spacing.m),
+                        )
+                        UrsDropdownField(
+                            label = stringResource(R.string.location_history_still_fallback_label),
+                            options = STILL_FALLBACK_OPTIONS_MINUTES,
+                            selectedLabel = stillFallbackLabels[activityStillFallbackMinutes],
+                            optionLabel = { stillFallbackLabels[it] ?: it.toString() },
+                            onSelect = viewModel::setActivityStillFallbackMinutes,
+                            modifier = Modifier.fillMaxWidth().padding(top = Spacing.s),
+                        )
+                    }
+                }
+            }
         }
 
         UrsText(
@@ -310,13 +431,19 @@ fun LocationHistorySettingsScreen(
 }
 
 @Composable
-private fun PermissionRow(label: String, granted: Boolean, onGrant: () -> Unit, enabled: Boolean = true) {
+private fun PermissionRow(
+    label: String,
+    granted: Boolean,
+    onGrant: () -> Unit,
+    enabled: Boolean = true,
+    modifier: Modifier = Modifier,
+) {
     val colors = UrsTheme.colors
     val alpha = if (enabled) 1f else colors.disabledAlpha
     UrsCard(
         radius = Radius.row,
         contentPadding = PaddingValues(horizontal = Spacing.l, vertical = 14.dp),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),

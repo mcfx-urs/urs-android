@@ -10,6 +10,39 @@ private const val KEY_STATIONARY_THRESHOLD_METERS = "stationary_threshold_meters
 private const val DEFAULT_STATIONARY_THRESHOLD_METERS = 50L
 private const val KEY_PRECISION_MODE_ENABLED = "precision_mode_enabled"
 
+// Adaptive-interval toggles (GitHub issue #60) — see LocationCaptureModeManager
+// for how these combine into one effective interval.
+private const val KEY_GEOFENCE_ADAPTIVE_ENABLED = "geofence_adaptive_enabled"
+private const val KEY_GEOFENCE_RADIUS_METERS = "geofence_radius_meters"
+private const val DEFAULT_GEOFENCE_RADIUS_METERS = 150L
+private const val KEY_GEOFENCE_SPARSE_INTERVAL_MINUTES = "geofence_sparse_interval_minutes"
+private const val DEFAULT_GEOFENCE_SPARSE_INTERVAL_MINUTES = 10L
+// Sub-state: whether we're currently outside the armed circle (dense
+// capture) or settled inside one (sparse). Persisted so a process restart
+// doesn't lose track of which tier is active.
+private const val KEY_GEOFENCE_IS_DENSE = "geofence_is_dense"
+// Stamped by setGeofenceDense() whenever the tier actually flips — lets the
+// UI show "dense/sparse since HH:mm" (owner follow-up to GitHub issue #60)
+// without a DB query. 0L means never flipped.
+private const val KEY_GEOFENCE_IS_DENSE_SINCE = "geofence_is_dense_since"
+private const val KEY_GEOFENCE_CENTER_LAT = "geofence_center_lat"
+private const val KEY_GEOFENCE_CENTER_LON = "geofence_center_lon"
+
+private const val KEY_ACTIVITY_PAUSE_ENABLED = "activity_pause_enabled"
+private const val KEY_ACTIVITY_STILL_FALLBACK_MINUTES = "activity_still_fallback_minutes"
+private const val DEFAULT_ACTIVITY_STILL_FALLBACK_MINUTES = 0L
+// Sub-state: the last activity-recognition result classified as STILL or
+// not, purely to detect a *change* rather than acting on every callback.
+private const val KEY_ACTIVITY_IS_STILL = "activity_is_still"
+// Stamped by setCurrentlyStill() whenever it actually flips (owner
+// follow-up to GitHub issue #60) — 0L means never flipped.
+private const val KEY_ACTIVITY_IS_STILL_SINCE = "activity_is_still_since"
+// The raw classification behind isCurrentlyStill(), refreshed on every poll
+// (not just on a STILL/not-STILL flip) so "what is it seeing right now" is
+// always current, e.g. "walking (82%)" rather than just a still/not-still bit.
+private const val KEY_ACTIVITY_LAST_LABEL = "activity_last_label"
+private const val KEY_ACTIVITY_LAST_CONFIDENCE = "activity_last_confidence"
+
 private const val KEY_TRACK_COLOR_OLD = "track_color_old"
 private const val KEY_TRACK_COLOR_MID = "track_color_mid"
 private const val KEY_TRACK_COLOR_NEW = "track_color_new"
@@ -89,5 +122,89 @@ class LocationHistorySettingsStore(context: Context) {
 
     fun setMutedMap(muted: Boolean) {
         prefs.edit().putBoolean(KEY_MUTED_MAP, muted).apply()
+    }
+
+    // --- adaptive interval (GitHub issue #60) ---------------------------
+
+    fun isGeofenceAdaptiveEnabled(): Boolean = prefs.getBoolean(KEY_GEOFENCE_ADAPTIVE_ENABLED, false)
+
+    fun setGeofenceAdaptiveEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_GEOFENCE_ADAPTIVE_ENABLED, enabled).apply()
+    }
+
+    fun geofenceRadiusMeters(): Long = prefs.getLong(KEY_GEOFENCE_RADIUS_METERS, DEFAULT_GEOFENCE_RADIUS_METERS)
+
+    fun setGeofenceRadiusMeters(meters: Long) {
+        prefs.edit().putLong(KEY_GEOFENCE_RADIUS_METERS, meters).apply()
+    }
+
+    fun geofenceSparseIntervalMinutes(): Long =
+        prefs.getLong(KEY_GEOFENCE_SPARSE_INTERVAL_MINUTES, DEFAULT_GEOFENCE_SPARSE_INTERVAL_MINUTES)
+
+    fun setGeofenceSparseIntervalMinutes(minutes: Long) {
+        prefs.edit().putLong(KEY_GEOFENCE_SPARSE_INTERVAL_MINUTES, minutes).apply()
+    }
+
+    fun isGeofenceDense(): Boolean = prefs.getBoolean(KEY_GEOFENCE_IS_DENSE, false)
+
+    fun setGeofenceDense(dense: Boolean) {
+        val editor = prefs.edit().putBoolean(KEY_GEOFENCE_IS_DENSE, dense)
+        if (dense != isGeofenceDense()) editor.putLong(KEY_GEOFENCE_IS_DENSE_SINCE, System.currentTimeMillis())
+        editor.apply()
+    }
+
+    /** 0L until the dense/sparse tier has flipped at least once. */
+    fun geofenceDenseSinceMillis(): Long = prefs.getLong(KEY_GEOFENCE_IS_DENSE_SINCE, 0L)
+
+    /** Null until a geofence has been armed at least once. */
+    fun geofenceCenter(): Pair<Double, Double>? {
+        if (!prefs.contains(KEY_GEOFENCE_CENTER_LAT)) return null
+        val lat = java.lang.Double.longBitsToDouble(prefs.getLong(KEY_GEOFENCE_CENTER_LAT, 0L))
+        val lon = java.lang.Double.longBitsToDouble(prefs.getLong(KEY_GEOFENCE_CENTER_LON, 0L))
+        return lat to lon
+    }
+
+    fun setGeofenceCenter(latitude: Double, longitude: Double) {
+        prefs.edit()
+            .putLong(KEY_GEOFENCE_CENTER_LAT, java.lang.Double.doubleToRawLongBits(latitude))
+            .putLong(KEY_GEOFENCE_CENTER_LON, java.lang.Double.doubleToRawLongBits(longitude))
+            .apply()
+    }
+
+    fun isActivityPauseEnabled(): Boolean = prefs.getBoolean(KEY_ACTIVITY_PAUSE_ENABLED, false)
+
+    fun setActivityPauseEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_ACTIVITY_PAUSE_ENABLED, enabled).apply()
+    }
+
+    /** 0 pauses capture entirely while STILL; otherwise the fallback interval in minutes. */
+    fun activityStillFallbackMinutes(): Long =
+        prefs.getLong(KEY_ACTIVITY_STILL_FALLBACK_MINUTES, DEFAULT_ACTIVITY_STILL_FALLBACK_MINUTES)
+
+    fun setActivityStillFallbackMinutes(minutes: Long) {
+        prefs.edit().putLong(KEY_ACTIVITY_STILL_FALLBACK_MINUTES, minutes).apply()
+    }
+
+    fun isCurrentlyStill(): Boolean = prefs.getBoolean(KEY_ACTIVITY_IS_STILL, false)
+
+    fun setCurrentlyStill(still: Boolean) {
+        val editor = prefs.edit().putBoolean(KEY_ACTIVITY_IS_STILL, still)
+        if (still != isCurrentlyStill()) editor.putLong(KEY_ACTIVITY_IS_STILL_SINCE, System.currentTimeMillis())
+        editor.apply()
+    }
+
+    /** 0L until the still/not-still state has flipped at least once. */
+    fun activityStillSinceMillis(): Long = prefs.getLong(KEY_ACTIVITY_IS_STILL_SINCE, 0L)
+
+    /** Null until the first activity-recognition callback has been received. */
+    fun lastActivityLabel(): String? = prefs.getString(KEY_ACTIVITY_LAST_LABEL, null)
+
+    fun lastActivityConfidence(): Int = prefs.getInt(KEY_ACTIVITY_LAST_CONFIDENCE, 0)
+
+    fun setLastActivity(label: String, confidencePercent: Int) {
+        prefs.edit()
+            .putString(KEY_ACTIVITY_LAST_LABEL, label)
+            .putInt(KEY_ACTIVITY_LAST_CONFIDENCE, confidencePercent)
+            .apply()
     }
 }

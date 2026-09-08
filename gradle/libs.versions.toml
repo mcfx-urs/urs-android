@@ -18,6 +18,7 @@ workManager = "2.11.2"
 biometric = "1.1.0"
 osmdroid = "6.1.20"
 nanohttpd = "2.3.1"
+playServicesLocation = "21.3.0"
 # Pinned below Coil's latest (3.5.0 pulls kotlin-stdlib 2.4.0, whose metadata
 # format this repo's Kotlin 2.2.10 compiler — see builtInKotlin above — can't
 # read) so it stays on a stdlib version from the same 2.2.x line.
@@ -60,6 +61,7 @@ coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref 
 coil-network-okhttp = { group = "io.coil-kt.coil3", name = "coil-network-okhttp", version.ref = "coil" }
 osmdroid-android = { group = "org.osmdroid", name = "osmdroid-android", version.ref = "osmdroid" }
 nanohttpd = { group = "org.nanohttpd", name = "nanohttpd", version.ref = "nanohttpd" }
+play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
