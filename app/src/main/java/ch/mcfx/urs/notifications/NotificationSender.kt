@@ -30,6 +30,7 @@ class NotificationSender(private val context: Context) {
         body: String,
         deepLinkRoute: String? = null,
         groupKey: String? = null,
+        actions: List<NotificationCompat.Action> = emptyList(),
     ) {
         val manager = NotificationManagerCompat.from(context)
 
@@ -39,6 +40,7 @@ class NotificationSender(private val context: Context) {
             .setContentText(body)
             .setAutoCancel(true)
             .setContentIntent(deepLinkPendingIntent(notificationId, deepLinkRoute))
+        actions.forEach { builder.addAction(it) }
         if (groupKey != null) builder.setGroup(groupKey)
 
         if (!manager.areNotificationsEnabled()) return

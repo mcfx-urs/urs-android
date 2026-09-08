@@ -115,15 +115,33 @@ class NoteRepository(
     }
 
     /**
+     * Clears just the reminder, leaving title/content/tags/status untouched
+     * — routes through [updateNote] so the change is bundled into the same
+     * kind of outbox update a manual edit-and-save already produces (a bare
+     * local DAO write would leave the backend's copy of `reminderAtMillis`
+     * unchanged, which the next sync would pull back down). Used by the
+     * note-detail completion path in [setStatus] and by the reminder
+     * notification's "Done" action ([ch.mcfx.urs.notifications.NoteReminderDoneReceiver]).
+     */
+    suspend fun clearReminder(localId: Long) {
+        val current = noteDao.getById(localId) ?: return
+        if (current.reminderAtMillis == null) return
+        val tags = noteTagDao.getByNoteId(localId).map { it.tagName }
+        updateNote(localId, current.title, current.content, reminderAtMillis = null, tags = tags)
+    }
+
+    /**
      * Toggles between active and completed — reopening is explicitly
      * supported, not final (GitHub issue #10's own open question, resolved
      * "yes"). A reminder on a reopened note is re-armed exactly like
      * [ch.mcfx.urs.data.BakingRepository.rearmPendingStepAlarms] handles a
      * trigger time already in the past: still handed to AlarmManager rather
      * than special-cased, so it fires almost immediately instead of being
-     * silently suppressed.
+     * silently suppressed. Completing a note clears its reminder outright
+     * (GitHub issue #52) — nothing left to re-arm if it's ever reopened.
      */
     suspend fun setStatus(localId: Long, status: String) {
+        if (status == STATUS_COMPLETED) clearReminder(localId)
         val current = noteDao.getById(localId) ?: return
         val completedAtMillis = if (status == STATUS_COMPLETED) System.currentTimeMillis() else null
         noteDao.updateStatus(localId, status, completedAtMillis, SyncStatus.PENDING)
