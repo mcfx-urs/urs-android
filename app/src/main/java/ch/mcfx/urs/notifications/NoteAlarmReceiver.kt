@@ -1,8 +1,10 @@
 package ch.mcfx.urs.notifications
 
+import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import androidx.core.app.NotificationCompat
 import ch.mcfx.urs.R
 import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.notes.NotesRoutes
@@ -21,12 +23,33 @@ class NoteAlarmReceiver : BroadcastReceiver() {
         val alarmId = intent.getIntExtra(EXTRA_ALARM_ID, -1)
         if (alarmId < 0) return
 
+        // "Done" only clears the reminder (GitHub issue #52) — it never
+        // touches the note's completion status, unlike marking it Erledigt
+        // from within the app. NoteReminderDoneReceiver needs a suspend DB
+        // write, so it goAsync()s itself; this receiver stays synchronous.
+        val doneIntent = Intent(context, NoteReminderDoneReceiver::class.java).apply {
+            putExtra(EXTRA_NOTE_ID, noteId)
+            putExtra(EXTRA_ALARM_ID, alarmId)
+        }
+        val donePendingIntent = PendingIntent.getBroadcast(
+            context,
+            alarmId,
+            doneIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val doneAction = NotificationCompat.Action(
+            0,
+            context.getString(R.string.note_reminder_done_action),
+            donePendingIntent,
+        )
+
         app.container.notificationSender.show(
             channelId = NotificationChannels.NOTES,
             notificationId = alarmId,
             title = title,
             body = context.getString(R.string.note_reminder_body),
             deepLinkRoute = NotesRoutes.detail(noteId),
+            actions = listOf(doneAction),
         )
     }
 

@@ -103,6 +103,7 @@
     <string name="baking_history_title">Baking History</string>
 
     <string name="note_reminder_body">Reminder</string>
+    <string name="note_reminder_done_action">Done</string>
     <string name="notes_empty">No notes yet</string>
     <string name="notes_new">New note</string>
     <string name="notes_history_link">Archive</string>
