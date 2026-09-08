@@ -636,6 +636,8 @@ private fun HomeTileItem(
                 location = location,
                 favoriteLists = if (editMode) emptyList() else favoriteLists,
                 favoriteInventories = if (editMode) emptyList() else favoriteInventories,
+                editMode = editMode,
+                onClick = onClick,
                 onOpenFavoriteRoute = onOpenFavoriteRoute,
             )
         }
@@ -786,10 +788,12 @@ private fun HomeTileBody(
     location: Location?,
     favoriteLists: List<ListEntity>,
     favoriteInventories: List<InventoryEntity>,
+    editMode: Boolean,
+    onClick: () -> Unit,
     onOpenFavoriteRoute: (String) -> Unit,
 ) {
     if (id == Destination.LIFE_MAP.name) {
-        LifeMapTileBody(location = location)
+        LifeMapTileBody(location = location, editMode = editMode, onClick = onClick)
         return
     }
 
@@ -913,7 +917,7 @@ private fun FavoriteBadges(items: List<FavoriteBadgeItem>, wide: Boolean, onOpen
  * landed) — never a fake/placeholder coordinate.
  */
 @Composable
-private fun LifeMapTileBody(location: Location?) {
+private fun LifeMapTileBody(location: Location?, editMode: Boolean, onClick: () -> Unit) {
     val colors = UrsTheme.colors
 
     UrsGlassCard(contentPadding = PaddingValues(0.dp), modifier = Modifier.fillMaxSize()) {
@@ -937,6 +941,21 @@ private fun LifeMapTileBody(location: Location?) {
                         )
                     }
                 }
+            }
+
+            // The embedded osmdroid MapView swallows single-finger touches
+            // over the map area before HomeTileItem's outer tap detector can
+            // register a completed tap, so without this only the title text
+            // was tap-navigable. A transparent catcher over the whole tile
+            // forwards a plain tap to the same open-Life-Map action. Omitted
+            // in edit mode so the tile's long-press move/resize gestures
+            // aren't intercepted.
+            if (!editMode) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .pointerInput(Unit) { detectTapGestures(onTap = { onClick() }) },
+                )
             }
         }
     }
