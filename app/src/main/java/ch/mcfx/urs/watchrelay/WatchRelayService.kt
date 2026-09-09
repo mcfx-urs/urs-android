@@ -19,10 +19,14 @@ import fi.iki.elonen.NanoHTTPD
 import java.time.LocalDate
 import java.time.LocalDateTime
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 private const val RELAY_PORT = 8787
 private const val BEER_FILL_PATH = "/api/watch/beer-fill"
 private const val CHORE_EVENT_PATH = "/api/watch/chore-event"
+private const val CHORE_TYPES_PATH = "/api/watch/chore-types"
 private const val AUDIO_NOTE_CHUNK_PATH = "/api/watch/audio-note-chunk"
 private const val TOKEN_HEADER = "x-relay-token"
 // The watch has no direct network access and the Zepp companion service
@@ -78,6 +82,10 @@ class WatchRelayService : Service() {
                     note = null,
                     source = "watch",
                 )
+            },
+            onListChoreTypes = {
+                container.choreRepository.listActiveTypesForWatch()
+                    .map { (typeId, name) -> WatchChoreType(typeId = typeId, name = name) }
             },
             // Convert the watch recorder's raw output to a standard Ogg-Opus
             // file, store it, and record the row. A conversion failure throws,
@@ -139,6 +147,10 @@ class WatchRelayService : Service() {
     }
 }
 
+/** One chore type as the watch menu needs it — see [CHORE_TYPES_PATH]. */
+@Serializable
+private data class WatchChoreType(val typeId: String, val name: String)
+
 /**
  * Bound to `127.0.0.1` only — reachable from any app on the same phone (not
  * just the Zepp App), not from the network. [TOKEN_HEADER] is the only
@@ -153,10 +165,12 @@ class WatchRelayService : Service() {
 private class RelayHttpServer(
     private val onBeerFill: suspend (volumeMl: Int) -> Unit,
     private val onChoreEvent: suspend (typeId: String) -> Unit,
+    private val onListChoreTypes: suspend () -> List<WatchChoreType>,
     private val onAudioNote: suspend (bytes: ByteArray, recordedAtMillis: Long?) -> Unit,
 ) : NanoHTTPD("127.0.0.1", RELAY_PORT) {
 
-    private val knownPaths = setOf(BEER_FILL_PATH, CHORE_EVENT_PATH, AUDIO_NOTE_CHUNK_PATH)
+    private val postPaths = setOf(BEER_FILL_PATH, CHORE_EVENT_PATH, AUDIO_NOTE_CHUNK_PATH)
+    private val json = Json
 
     // Chunked-upload reassembly state, keyed by the watch's x-upload-id.
     // In-memory only — a dropped connection or app restart mid-upload just
@@ -167,11 +181,26 @@ private class RelayHttpServer(
     private val chunkUploads = HashMap<String, ChunkUpload>()
 
     override fun serve(session: IHTTPSession): Response {
-        if (session.method != Method.POST || session.uri !in knownPaths) {
+        val isKnownPost = session.method == Method.POST && session.uri in postPaths
+        val isChoreTypesGet = session.method == Method.GET && session.uri == CHORE_TYPES_PATH
+        if (!isKnownPost && !isChoreTypesGet) {
             return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "not found")
         }
         if (session.headers[TOKEN_HEADER] != WATCH_RELAY_TOKEN) {
             return newFixedLengthResponse(Response.Status.UNAUTHORIZED, MIME_PLAINTEXT, "unauthorized")
+        }
+
+        // Read-only: the watch fetches the chore-type list to build its menu.
+        if (isChoreTypesGet) {
+            return runBlocking {
+                try {
+                    val body = json.encodeToString(onListChoreTypes())
+                    newFixedLengthResponse(Response.Status.OK, "application/json", body)
+                } catch (e: Exception) {
+                    android.util.Log.w("WatchRelay", "$CHORE_TYPES_PATH failed", e)
+                    newFixedLengthResponse(Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "failed: ${e.message}")
+                }
+            }
         }
 
         val action: (suspend () -> Unit) = when (session.uri) {
@@ -219,8 +248,8 @@ private class RelayHttpServer(
                     }
                 }
             }
-            // Unreachable: knownPaths above already filters to exactly the
-            // three literal paths handled in this when, so this only exists
+            // Unreachable: the guard above already narrows this to exactly
+            // the three POST paths handled in this when, so this only exists
             // to satisfy the compiler's exhaustiveness check on a String.
             else -> return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "not found")
         }
