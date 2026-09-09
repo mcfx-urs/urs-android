@@ -150,6 +150,7 @@
     <string name="note_export_share_text">Share as text</string>
     <string name="note_export_calendar_event">Create calendar event</string>
     <string name="note_export_no_app">No app available for this</string>
+    <string name="note_export_reminder_label">Reminder: %1$s</string>
 
     <string name="settings_title">Settings</string>
     <string name="settings_tile_account">Account</string>

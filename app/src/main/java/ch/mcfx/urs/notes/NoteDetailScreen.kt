@@ -384,12 +384,30 @@ private fun NoteExportMenuItem(text: String, onClick: () -> Unit) {
     )
 }
 
-/** Builds title + blank line + plain-text content and hands it to the system share sheet. */
+/**
+ * Builds title + blank line + plain-text content, followed by a footer line
+ * with the reminder date and time when the note has a reminder set, and
+ * hands it to the system share sheet.
+ */
 private fun shareNoteAsText(context: Context, form: NoteDetailFormState) {
+    val body = buildString {
+        append(form.title)
+        append("\n\n")
+        append(noteMarkupToPlainText(form.content))
+        if (form.reminderMillis != null) {
+            append("\n\n—\n")
+            append(
+                context.getString(
+                    R.string.note_export_reminder_label,
+                    "${form.reminderDate} ${form.reminderTime}",
+                ),
+            )
+        }
+    }
     val send = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
         putExtra(Intent.EXTRA_SUBJECT, form.title)
-        putExtra(Intent.EXTRA_TEXT, form.title + "\n\n" + noteMarkupToPlainText(form.content))
+        putExtra(Intent.EXTRA_TEXT, body)
     }
     context.startExportActivity(Intent.createChooser(send, null))
 }
