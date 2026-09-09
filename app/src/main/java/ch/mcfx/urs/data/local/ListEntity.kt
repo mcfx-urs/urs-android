@@ -25,6 +25,9 @@ data class ListEntity(
     val syncStatus: SyncStatus,
     // Shown as a quick-jump badge on the Shopping List home tile.
     val isFavorite: Boolean = false,
+    // Chosen icon id from IconCatalog; null falls back to the name's first
+    // character on the favorite badge. Local-only, like isFavorite.
+    val iconId: String? = null,
 )
 
 /**

@@ -557,6 +557,11 @@
     <string name="keep_editing">Keep editing</string>
     <string name="favorite_add">Add to favorites</string>
     <string name="favorite_remove">Remove from favorites</string>
+    <string name="icon_choose">Choose icon</string>
+    <string name="icon_picker_title">Choose an icon</string>
+    <string name="icon_picker_search">Search icons</string>
+    <string name="icon_picker_clear">Clear</string>
+    <string name="icon_picker_no_matches">No icons match</string>
     <string name="undo">Undo</string>
     <string name="edit">Edit</string>
 

@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Sharing a note as text now appends a footer with the reminder date and time when the note has a reminder set (#31).
 - Note tags are now included when sharing a note as text (in the footer) and when creating a calendar event from a note (appended to the description) (#32).
 - Watch relay serves the active chore types on a new `/api/watch/chore-types` endpoint, letting the watch build its Chores menu from the account instead of a hardcoded list (#61).
+- Shopping lists and inventories can be given an icon from a searchable picker ("Choose icon" in the long-press sheet); the favorite home-tile badge shows the icon instead of the name's first letter (#56).
 
 ### Changed
 

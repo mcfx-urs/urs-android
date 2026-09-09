@@ -63,6 +63,10 @@ class InventoriesViewModel(
     private val _pendingDeleteInventory = MutableStateFlow<InventoryEntity?>(null)
     val pendingDeleteInventory: StateFlow<InventoryEntity?> = _pendingDeleteInventory.asStateFlow()
 
+    // Opened from the action sheet's "Choose icon" row.
+    private val _iconPickerInventory = MutableStateFlow<InventoryEntity?>(null)
+    val iconPickerInventory: StateFlow<InventoryEntity?> = _iconPickerInventory.asStateFlow()
+
     private val _shareState = MutableStateFlow(InventoryShareState())
     val shareState: StateFlow<InventoryShareState> = _shareState.asStateFlow()
 
@@ -131,6 +135,21 @@ class InventoriesViewModel(
         val inventory = _actionSheetInventory.value ?: return
         _actionSheetInventory.value = null
         viewModelScope.launch { repository.setInventoryFavorite(inventory.id, !inventory.isFavorite) }
+    }
+
+    fun openIconPicker() {
+        _iconPickerInventory.value = _actionSheetInventory.value
+        _actionSheetInventory.value = null
+    }
+
+    fun closeIconPicker() {
+        _iconPickerInventory.value = null
+    }
+
+    fun setIconId(iconId: String?) {
+        val inventory = _iconPickerInventory.value ?: return
+        _iconPickerInventory.value = null
+        viewModelScope.launch { repository.setInventoryIconId(inventory.id, iconId) }
     }
 
     fun requestDelete() {

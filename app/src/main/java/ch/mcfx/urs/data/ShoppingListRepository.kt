@@ -72,6 +72,9 @@ class ShoppingListRepository(
 
     suspend fun setListFavorite(localId: Long, isFavorite: Boolean) = listDao.setFavorite(localId, isFavorite)
 
+    /** Chosen icon id from IconCatalog, or null to clear — local-only, never synced. */
+    suspend fun setListIconId(localId: Long, iconId: String?) = listDao.setIconId(localId, iconId)
+
     suspend fun getList(localId: Long): ListEntity? = listDao.getById(localId)
 
     /**
