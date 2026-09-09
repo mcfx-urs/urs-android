@@ -386,22 +386,25 @@ private fun NoteExportMenuItem(text: String, onClick: () -> Unit) {
 
 /**
  * Builds title + blank line + plain-text content, followed by a footer line
- * with the reminder date and time when the note has a reminder set, and
- * hands it to the system share sheet.
+ * with the reminder date and time (when the note has a reminder set) and the
+ * note's tags (when it has any), and hands it to the system share sheet.
  */
 private fun shareNoteAsText(context: Context, form: NoteDetailFormState) {
     val body = buildString {
         append(form.title)
         append("\n\n")
         append(noteMarkupToPlainText(form.content))
-        if (form.reminderMillis != null) {
+        val footer = buildList {
+            if (form.reminderMillis != null) {
+                add(context.getString(R.string.note_export_reminder_label, "${form.reminderDate} ${form.reminderTime}"))
+            }
+            if (form.tags.isNotEmpty()) {
+                add(context.getString(R.string.note_export_tags_label, form.tags.joinToString(", ")))
+            }
+        }
+        if (footer.isNotEmpty()) {
             append("\n\n—\n")
-            append(
-                context.getString(
-                    R.string.note_export_reminder_label,
-                    "${form.reminderDate} ${form.reminderTime}",
-                ),
-            )
+            append(footer.joinToString(" · "))
         }
     }
     val send = Intent(Intent.ACTION_SEND).apply {
@@ -427,11 +430,20 @@ private fun createNoteCalendarEvent(context: Context, form: NoteDetailFormState)
     val insert = Intent(Intent.ACTION_INSERT).apply {
         data = CalendarContract.Events.CONTENT_URI
         putExtra(CalendarContract.Events.TITLE, form.title)
-        putExtra(CalendarContract.Events.DESCRIPTION, noteMarkupToPlainText(form.content))
+        putExtra(CalendarContract.Events.DESCRIPTION, noteCalendarDescription(context, form))
         putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, begin)
         putExtra(CalendarContract.EXTRA_EVENT_END_TIME, begin + 60L * 60L * 1000L)
     }
     context.startExportActivity(insert)
+}
+
+/** Note content as plain text, with a trailing tags line when the note has any. */
+private fun noteCalendarDescription(context: Context, form: NoteDetailFormState): String = buildString {
+    append(noteMarkupToPlainText(form.content))
+    if (form.tags.isNotEmpty()) {
+        if (isNotEmpty()) append("\n\n")
+        append(context.getString(R.string.note_export_tags_label, form.tags.joinToString(", ")))
+    }
 }
 
 private fun Context.startExportActivity(intent: Intent) {
