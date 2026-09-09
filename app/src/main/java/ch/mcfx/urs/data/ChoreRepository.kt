@@ -26,6 +26,7 @@ import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
@@ -307,6 +308,22 @@ class ChoreRepository(
         } catch (_: Exception) {
             // Best-effort only — see doc comment.
         }
+    }
+
+    /**
+     * The active (non-archived) chore types the watch menu is built from: a
+     * best-effort [refreshFromBackend] first so a type created, renamed or
+     * archived on another device shows up, then the local cache — which
+     * still answers when offline. Each pair is (publicId, name); the
+     * publicId is what [logEvent] and the watch relay's chore-event
+     * endpoint expect.
+     */
+    suspend fun listActiveTypesForWatch(): List<Pair<String, String>> {
+        refreshFromBackend()
+        return observeTypes().first()
+            .filter { it.archivedAtMillis == null }
+            .sortedBy { it.name.lowercase() }
+            .map { it.publicId to it.name }
     }
 
     private fun currentUserId(): String = tokenStore.currentUserId.orEmpty()
