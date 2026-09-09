@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Watch relay accepts chunked audio-note uploads on a new `/api/watch/audio-note-chunk` endpoint, removing the note-length limit the single-request upload had (#41).
 - Location History: two combinable adaptive-interval toggles alongside the fixed capture interval — geofence-based (switches to a dense interval on leaving a circle around the last point, back to a sparse one once settled) and activity-based (pauses or throttles capture during detected stillness); a "Location capture" card on the About screen opens a dedicated terminal-style log screen with a live header (current activity/confidence and geofence tier, each with how long they've been in that state) above the detailed event trail, which also records every explicit GPS read app-wide (life-map capture, geofence re-centering, fuel-fill, and the ambient location refresh), tagged by source (#60).
 - Note reminder notifications have a "Done" action that clears the reminder without marking the note completed; completing a note from the app now also clears its reminder (#52).
+- Sharing a note as text now appends a footer with the reminder date and time when the note has a reminder set (#31).
 
 ### Changed
 
