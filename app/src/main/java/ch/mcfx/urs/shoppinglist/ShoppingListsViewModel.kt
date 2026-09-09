@@ -64,6 +64,10 @@ class ShoppingListsViewModel(
     private val _pendingDeleteList = MutableStateFlow<ListEntity?>(null)
     val pendingDeleteList: StateFlow<ListEntity?> = _pendingDeleteList.asStateFlow()
 
+    // Opened from the action sheet's "Choose icon" row.
+    private val _iconPickerList = MutableStateFlow<ListEntity?>(null)
+    val iconPickerList: StateFlow<ListEntity?> = _iconPickerList.asStateFlow()
+
     private val _shareState = MutableStateFlow(ListShareState())
     val shareState: StateFlow<ListShareState> = _shareState.asStateFlow()
 
@@ -139,6 +143,21 @@ class ShoppingListsViewModel(
         val list = _actionSheetList.value ?: return
         _actionSheetList.value = null
         viewModelScope.launch { repository.setListFavorite(list.id, !list.isFavorite) }
+    }
+
+    fun openIconPicker() {
+        _iconPickerList.value = _actionSheetList.value
+        _actionSheetList.value = null
+    }
+
+    fun closeIconPicker() {
+        _iconPickerList.value = null
+    }
+
+    fun setIconId(iconId: String?) {
+        val list = _iconPickerList.value ?: return
+        _iconPickerList.value = null
+        viewModelScope.launch { repository.setListIconId(list.id, iconId) }
     }
 
     fun requestDelete() {

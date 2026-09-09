@@ -90,7 +90,10 @@ import androidx.room.TypeConverters
     // v30: new LocationCaptureLogEntity table (GitHub issue #60, adaptive
     //      capture interval debug trail) — same destructive-fallback
     //      handling as every bump above.
-    version = 30,
+    // v31: iconId column added to ListEntity/InventoryEntity (GitHub issue
+    //      #56, searchable icon picker) — same destructive-fallback handling
+    //      as every bump above.
+    version = 31,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)

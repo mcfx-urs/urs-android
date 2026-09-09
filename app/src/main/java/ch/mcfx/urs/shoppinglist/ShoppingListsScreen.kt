@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Share
@@ -35,6 +36,7 @@ import ch.mcfx.urs.R
 import ch.mcfx.urs.data.local.ListEntity
 import ch.mcfx.urs.data.local.SyncStatus
 import ch.mcfx.urs.ui.components.UrsBottomSheet
+import ch.mcfx.urs.ui.icons.IconPickerSheet
 import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsFab
@@ -69,6 +71,7 @@ fun ShoppingListsScreen(
     val formState by viewModel.formState.collectAsStateWithLifecycle()
     val showForm by viewModel.showForm.collectAsStateWithLifecycle()
     val actionSheetList by viewModel.actionSheetList.collectAsStateWithLifecycle()
+    val iconPickerList by viewModel.iconPickerList.collectAsStateWithLifecycle()
     val pendingDeleteList by viewModel.pendingDeleteList.collectAsStateWithLifecycle()
     val shareState by viewModel.shareState.collectAsStateWithLifecycle()
 
@@ -106,8 +109,15 @@ fun ShoppingListsScreen(
                 onRename = { viewModel.openRenameForm(list) },
                 onShare = { viewModel.openShareSheet(list) },
                 onToggleFavorite = viewModel::toggleFavorite,
+                onChooseIcon = viewModel::openIconPicker,
                 onDelete = viewModel::requestDelete,
             )
+        }
+    }
+
+    iconPickerList?.let { list ->
+        UrsBottomSheet(onDismissRequest = viewModel::closeIconPicker) {
+            IconPickerSheet(selectedId = list.iconId, onSelect = viewModel::setIconId)
         }
     }
 
@@ -236,6 +246,7 @@ private fun ListActionSheet(
     onRename: () -> Unit,
     onShare: () -> Unit,
     onToggleFavorite: () -> Unit,
+    onChooseIcon: () -> Unit,
     onDelete: () -> Unit,
 ) {
     Column(modifier = Modifier.padding(horizontal = Spacing.l).padding(bottom = Spacing.l)) {
@@ -246,6 +257,7 @@ private fun ListActionSheet(
             icon = if (isFavorite) Icons.Filled.Star else Icons.Filled.StarBorder,
             onClick = onToggleFavorite,
         )
+        ActionSheetRow(label = stringResource(R.string.icon_choose), icon = Icons.Filled.Category, onClick = onChooseIcon)
         ActionSheetRow(
             label = stringResource(R.string.shoppinglist_list_delete),
             icon = Icons.Filled.Delete,

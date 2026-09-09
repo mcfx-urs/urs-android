@@ -19,6 +19,9 @@ interface ListDao {
     @Query("UPDATE list SET isFavorite = :isFavorite WHERE id = :id")
     suspend fun setFavorite(id: Long, isFavorite: Boolean)
 
+    @Query("UPDATE list SET iconId = :iconId WHERE id = :id")
+    suspend fun setIconId(id: Long, iconId: String?)
+
     @Query("SELECT * FROM list WHERE id = :id LIMIT 1")
     suspend fun getById(id: Long): ListEntity?
 
@@ -41,11 +44,17 @@ interface ListDao {
         lists.forEach { list ->
             val serverId = list.serverId ?: return@forEach
             val existingLocalId = findLocalIdByServerId(serverId)
-            // isFavorite is a local-only UI preference, never part of the
-            // server payload — carry the existing row's value forward so a
-            // backend refresh doesn't silently un-favorite it.
-            val existingIsFavorite = existingLocalId?.let { getById(it)?.isFavorite } ?: false
-            replace(list.copy(id = existingLocalId ?: 0, isFavorite = existingIsFavorite))
+            // isFavorite and iconId are local-only UI preferences, never part
+            // of the server payload — carry the existing row's values forward
+            // so a backend refresh doesn't silently reset them.
+            val existing = existingLocalId?.let { getById(it) }
+            replace(
+                list.copy(
+                    id = existingLocalId ?: 0,
+                    isFavorite = existing?.isFavorite ?: false,
+                    iconId = existing?.iconId,
+                ),
+            )
         }
         deleteSyncedAbsentFromServer(lists.mapNotNull { it.serverId })
     }

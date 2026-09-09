@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Share
@@ -34,6 +35,7 @@ import ch.mcfx.urs.R
 import ch.mcfx.urs.data.local.InventoryEntity
 import ch.mcfx.urs.data.local.SyncStatus
 import ch.mcfx.urs.ui.components.UrsBottomSheet
+import ch.mcfx.urs.ui.icons.IconPickerSheet
 import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsFab
@@ -62,6 +64,7 @@ fun InventoriesScreen(
     val formState by viewModel.formState.collectAsStateWithLifecycle()
     val showForm by viewModel.showForm.collectAsStateWithLifecycle()
     val actionSheetInventory by viewModel.actionSheetInventory.collectAsStateWithLifecycle()
+    val iconPickerInventory by viewModel.iconPickerInventory.collectAsStateWithLifecycle()
     val pendingDeleteInventory by viewModel.pendingDeleteInventory.collectAsStateWithLifecycle()
     val shareState by viewModel.shareState.collectAsStateWithLifecycle()
 
@@ -99,8 +102,15 @@ fun InventoriesScreen(
                 onRename = { viewModel.openRenameForm(inventory) },
                 onShare = { viewModel.openShareSheet(inventory) },
                 onToggleFavorite = viewModel::toggleFavorite,
+                onChooseIcon = viewModel::openIconPicker,
                 onDelete = viewModel::requestDelete,
             )
+        }
+    }
+
+    iconPickerInventory?.let { inventory ->
+        UrsBottomSheet(onDismissRequest = viewModel::closeIconPicker) {
+            IconPickerSheet(selectedId = inventory.iconId, onSelect = viewModel::setIconId)
         }
     }
 
@@ -227,6 +237,7 @@ private fun InventoryActionSheet(
     onRename: () -> Unit,
     onShare: () -> Unit,
     onToggleFavorite: () -> Unit,
+    onChooseIcon: () -> Unit,
     onDelete: () -> Unit,
 ) {
     Column(modifier = Modifier.padding(horizontal = Spacing.l).padding(bottom = Spacing.l)) {
@@ -237,6 +248,7 @@ private fun InventoryActionSheet(
             icon = if (isFavorite) Icons.Filled.Star else Icons.Filled.StarBorder,
             onClick = onToggleFavorite,
         )
+        ActionSheetRow(label = stringResource(R.string.icon_choose), icon = Icons.Filled.Category, onClick = onChooseIcon)
         ActionSheetRow(
             label = stringResource(R.string.inventory_delete),
             icon = Icons.Filled.Delete,

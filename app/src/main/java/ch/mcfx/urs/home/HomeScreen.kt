@@ -90,10 +90,12 @@ import ch.mcfx.urs.settings.SettingsRoutes
 import ch.mcfx.urs.shoppinglist.ShoppingListRoutes
 import ch.mcfx.urs.ui.components.UrsBottomSheet
 import ch.mcfx.urs.ui.components.UrsGlassCard
+import ch.mcfx.urs.ui.components.UrsIcon
 import ch.mcfx.urs.ui.components.UrsIconButton
 import ch.mcfx.urs.ui.components.UrsPill
 import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.components.ursScreenContentPadding
+import ch.mcfx.urs.ui.icons.IconCatalog
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Radius
 import ch.mcfx.urs.ui.tokens.Spacing
@@ -858,8 +860,12 @@ private fun HomeTileBody(
             }
 
             val favorites = when (id) {
-                Destination.SHOPPING_LIST.name -> favoriteLists.map { FavoriteBadgeItem(firstGlyph(it.name), ShoppingListRoutes.listDetail(it.publicId)) }
-                Destination.INVENTORY.name -> favoriteInventories.map { FavoriteBadgeItem(firstGlyph(it.name), InventoryRoutes.products(it.publicId, it.name)) }
+                Destination.SHOPPING_LIST.name -> favoriteLists.map {
+                    FavoriteBadgeItem(firstGlyph(it.name), IconCatalog.drawableFor(it.iconId), ShoppingListRoutes.listDetail(it.publicId))
+                }
+                Destination.INVENTORY.name -> favoriteInventories.map {
+                    FavoriteBadgeItem(firstGlyph(it.name), IconCatalog.drawableFor(it.iconId), InventoryRoutes.products(it.publicId, it.name))
+                }
                 else -> emptyList()
             }
             if (favorites.isNotEmpty()) {
@@ -874,7 +880,11 @@ private fun HomeTileBody(
     }
 }
 
-private data class FavoriteBadgeItem(val glyph: String, val route: String)
+private data class FavoriteBadgeItem(
+    val glyph: String,
+    val iconRes: Int?,
+    val route: String,
+)
 
 /** First character of a name, codepoint-aware so a multi-byte emoji isn't split. */
 private fun firstGlyph(name: String): String {
@@ -898,7 +908,16 @@ private fun FavoriteBadges(items: List<FavoriteBadgeItem>, wide: Boolean, onOpen
                     .clickable { onOpen(item.route) },
                 contentAlignment = Alignment.Center,
             ) {
-                UrsText(text = item.glyph, style = UrsTheme.typography.caption, color = colors.accent)
+                if (item.iconRes != null) {
+                    UrsIcon(
+                        painter = painterResource(item.iconRes),
+                        contentDescription = null,
+                        tint = colors.accent,
+                        modifier = Modifier.size(16.dp),
+                    )
+                } else {
+                    UrsText(text = item.glyph, style = UrsTheme.typography.caption, color = colors.accent)
+                }
             }
         }
     }

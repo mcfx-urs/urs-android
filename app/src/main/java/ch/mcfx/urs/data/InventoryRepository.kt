@@ -69,6 +69,9 @@ class InventoryRepository(
 
     suspend fun setInventoryFavorite(localId: Long, isFavorite: Boolean) = inventoryDao.setFavorite(localId, isFavorite)
 
+    /** Chosen icon id from IconCatalog, or null to clear — local-only, never synced. */
+    suspend fun setInventoryIconId(localId: Long, iconId: String?) = inventoryDao.setIconId(localId, iconId)
+
     // Empty string never matches a stored userId, so a (shouldn't-happen)
     // logged-out call just observes/writes nothing rather than crashing.
     private fun currentUserId(): String = authTokenStore.currentUserId.orEmpty()
