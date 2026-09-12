@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-09-12
+
 ### Added
 
 - Beer log: long-pressing an entry opens an edit sheet for adjusting its timestamp; amount stays as logged, and the timestamp can't be set in the future (#47).
