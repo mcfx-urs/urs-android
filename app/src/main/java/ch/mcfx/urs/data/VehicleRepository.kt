@@ -5,6 +5,7 @@ import ch.mcfx.urs.data.local.VehicleEntity
 import ch.mcfx.urs.data.remote.UrsApi
 import ch.mcfx.urs.data.remote.VehicleDto
 import ch.mcfx.urs.data.remote.VehiclePayload
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -15,9 +16,14 @@ import kotlinx.coroutines.flow.Flow
  * vanish from every picker while the backend still has it and its history.
  * Mirrors [FuelRepository]'s existing direct-REST pattern for filling
  * stations. Network failures (no connectivity) and HTTP errors (404/403/409)
- * propagate as-is — [ch.mcfx.urs.vehicle.VehicleViewModel] maps them to a
- * user-facing message, same [java.io.IOException]/[retrofit2.HttpException]
- * split already used by [ch.mcfx.urs.settings.ChangePasswordViewModel].
+ * on the create/update/delete calls themselves propagate as-is —
+ * [ch.mcfx.urs.vehicle.VehicleViewModel] maps them to a user-facing message,
+ * same [java.io.IOException]/[retrofit2.HttpException] split already used by
+ * [ch.mcfx.urs.settings.ChangePasswordViewModel]. [refreshFromBackend] itself
+ * is best-effort like every other repository's (standardized as part of
+ * GitHub issue #53) — a failure there just means the local cache stays
+ * stale until the next successful pull, it no longer fails the create/update
+ * call that triggered it.
  */
 class VehicleRepository(
     private val api: UrsApi,
@@ -45,8 +51,18 @@ class VehicleRepository(
         vehicleDao.deleteById(id)
     }
 
-    suspend fun refreshFromBackend() {
-        api.getVehicles().forEach { vehicleDao.upsert(it.toEntity()) }
+    /** @return `true` if the refresh completed cleanly (see [PullCoordinator]). */
+    suspend fun refreshFromBackend(): Boolean {
+        try {
+            api.getVehicles().forEach { vehicleDao.upsert(it.toEntity()) }
+            return true
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // Best-effort only — see this repository's doc comment.
+            android.util.Log.w("VehicleRepository", "refreshFromBackend failed", e)
+            return false
+        }
     }
 }
 

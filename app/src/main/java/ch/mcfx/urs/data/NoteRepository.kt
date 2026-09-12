@@ -202,7 +202,8 @@ class NoteRepository(
      * history. Without this, a note created on one device/install never
      * appears on another.
      */
-    suspend fun refreshFromBackend() {
+    /** @return `true` if the refresh completed cleanly (see [PullCoordinator]). */
+    suspend fun refreshFromBackend(): Boolean {
         try {
             api.getNotes().forEach { dto ->
                 val localId = noteDao.upsertFromServer(dto.toEntity(currentUserId()))
@@ -211,11 +212,14 @@ class NoteRepository(
                     noteTagDao.insertAll(dto.tags.map { NoteTagEntity(noteId = localId, tagName = it) })
                 }
             }
+            return true
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             // Best-effort only, same shape as ServiceRepository.refreshFromBackend
             // — stale cached data beats an empty or error screen.
+            android.util.Log.w("NoteRepository", "refreshFromBackend failed", e)
+            return false
         }
     }
 

@@ -92,11 +92,13 @@ fun FuelHubScreen(
                         // Bypasses WorkManager entirely — immediate,
                         // user-initiated, no backoff/constraints needed (those
                         // exist for the unattended periodic/connectivity-
-                        // triggered paths, see SyncWorker).
+                        // triggered paths, see SyncWorker). Push then pull,
+                        // same order as AboutViewModel.syncNow().
                         val app = context.applicationContext as UrsApplication
                         coroutineScope.launch {
                             syncing = true
                             app.container.syncManager.syncNow()
+                            app.container.pullCoordinator.pullAll()
                             syncing = false
                         }
                     },

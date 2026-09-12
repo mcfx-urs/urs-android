@@ -34,6 +34,7 @@ import ch.mcfx.urs.data.WorkTimeRepository
 import ch.mcfx.urs.data.local.AppDatabase
 import ch.mcfx.urs.home.HomeLayoutStore
 import ch.mcfx.urs.data.remote.UrsApi
+import ch.mcfx.urs.data.sync.PullCoordinator
 import ch.mcfx.urs.data.sync.ReachabilityChecker
 import ch.mcfx.urs.data.sync.SyncManager
 import ch.mcfx.urs.data.sync.SyncStatusStore
@@ -201,9 +202,19 @@ class AppContainer(context: Context) {
 
     val vpnConfigRepository = VpnConfigRepository(context, authTokenStore)
     val wireGuardManager = WireGuardManager(context, vpnConfigRepository)
+
+    // Late-bound in this class's init {} below, once pullCoordinator exists
+    // (it needs every repository, which are all constructed after
+    // networkGate) — same forward-reference shape as syncManager's
+    // onListConflictResolved further down.
+    private var onTunnelReachable: (() -> Unit)? = null
+
     val networkGate = NetworkGate(
         context, WifiSsidReader(context), vpnConfigRepository, wireGuardManager,
-        onConnectivityAvailable = { SyncWorker.enqueueOneTime(appContext) },
+        onConnectivityAvailable = {
+            SyncWorker.enqueueOneTime(appContext)
+            onTunnelReachable?.invoke()
+        },
     )
 
     val biometricGate = BiometricGate(context)
@@ -433,6 +444,24 @@ class AppContainer(context: Context) {
         json = json,
     )
 
+    // Everything from here down needs one repository or another — that's
+    // why it's built last, not with the other sync/network setup above (see
+    // PullCoordinator's own doc comment for what it does and why
+    // bakingRepository, above, is deliberately not in its list).
+    val pullCoordinator = PullCoordinator(
+        fuelRepository = fuelRepository,
+        vehicleRepository = vehicleRepository,
+        serviceRepository = serviceRepository,
+        inventoryRepository = inventoryRepository,
+        catalogRepository = catalogRepository,
+        shoppingListRepository = shoppingListRepository,
+        workTimeRepository = workTimeRepository,
+        locationHistoryRepository = locationHistoryRepository,
+        noteRepository = noteRepository,
+        choreRepository = choreRepository,
+        syncStatusStore = syncStatusStore,
+    )
+
     val choreReminderSettingsStore = ChoreReminderSettingsStore(context)
 
     val reminderStore = ReminderStore(context)
@@ -450,5 +479,12 @@ class AppContainer(context: Context) {
         syncManager.onListConflictResolved = {
             applicationScope.launch { shoppingListRepository.refreshFromBackend() }
         }
+        // See onTunnelReachable's own doc comment above for why this is
+        // late-bound instead of passed to NetworkGate directly. Runs
+        // alongside (not instead of) the SyncWorker.enqueueOneTime call in
+        // that same callback — this is the "feels instant" pull path,
+        // SyncWorker's periodic run is the 15-minute-floor backstop for
+        // whatever this one didn't manage to land.
+        onTunnelReachable = { applicationScope.launch { pullCoordinator.pullAll() } }
     }
 }

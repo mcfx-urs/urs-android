@@ -12,6 +12,7 @@ import ch.mcfx.urs.data.local.LocationCaptureLogDao
 import ch.mcfx.urs.data.local.OutboxDao
 import ch.mcfx.urs.data.local.OutboxMutationEntity
 import ch.mcfx.urs.data.local.OutboxStatus
+import ch.mcfx.urs.data.sync.PullCoordinator
 import ch.mcfx.urs.data.sync.ReachabilityChecker
 import ch.mcfx.urs.data.sync.SyncManager
 import ch.mcfx.urs.data.sync.SyncStatusStore
@@ -30,6 +31,8 @@ data class AboutSyncState(
     val pendingCount: Int,
     val failedCount: Int,
     val lastSyncedAt: Long?,
+    val lastPulledAt: Long?,
+    val lastPullHadErrors: Boolean,
 )
 
 /** One queued outbox mutation, resolved for display in the sync-details sheet. `verbRes`/`domainRes` are `R.string` ids. */
@@ -61,6 +64,7 @@ enum class LocationCaptureStatus { DISABLED, PAUSED, DENSE, SPARSE, FIXED }
 class AboutViewModel(
     private val reachabilityChecker: ReachabilityChecker,
     private val syncManager: SyncManager,
+    private val pullCoordinator: PullCoordinator,
     val wireGuardManager: WireGuardManager,
     outboxDao: OutboxDao,
     syncStatusStore: SyncStatusStore,
@@ -82,12 +86,20 @@ class AboutViewModel(
                 pendingCount = mutations.count { it.status != OutboxStatus.FAILED },
                 failedCount = mutations.count { it.status == OutboxStatus.FAILED },
                 lastSyncedAt = syncStatusStore.getLastSuccessAt(),
+                lastPulledAt = syncStatusStore.getLastPullAt(),
+                lastPullHadErrors = syncStatusStore.didLastPullHaveErrors(),
             )
         }
         .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5_000),
-            AboutSyncState(pendingCount = 0, failedCount = 0, lastSyncedAt = syncStatusStore.getLastSuccessAt()),
+            AboutSyncState(
+                pendingCount = 0,
+                failedCount = 0,
+                lastSyncedAt = syncStatusStore.getLastSuccessAt(),
+                lastPulledAt = syncStatusStore.getLastPullAt(),
+                lastPullHadErrors = syncStatusStore.didLastPullHaveErrors(),
+            ),
         )
 
     // observeAll() only ever holds not-yet-confirmed writes (a successful
@@ -132,13 +144,18 @@ class AboutViewModel(
         }
     }
 
-    /** Immediate, user-initiated outbox replay — mirrors the Fuel hub's "sync now" tile. No-ops while one is already running. */
+    /**
+     * Immediate, user-initiated push-then-pull — mirrors the Fuel hub's
+     * "sync now" tile. Push first so any pending local writes land before
+     * the pull re-fetches, not after. No-ops while one is already running.
+     */
     fun syncNow() {
         if (_isSyncing.value) return
         viewModelScope.launch {
             _isSyncing.value = true
             try {
                 syncManager.syncNow()
+                pullCoordinator.pullAll()
             } finally {
                 _isSyncing.value = false
             }
@@ -152,6 +169,7 @@ class AboutViewModel(
                 AboutViewModel(
                     reachabilityChecker = app.container.reachabilityChecker,
                     syncManager = app.container.syncManager,
+                    pullCoordinator = app.container.pullCoordinator,
                     wireGuardManager = app.container.wireGuardManager,
                     outboxDao = app.container.database.outboxDao(),
                     syncStatusStore = app.container.syncStatusStore,

@@ -295,7 +295,8 @@ class ChoreRepository(
      * events since an event references its type. Best-effort — a failure
      * leaves the cached data in place.
      */
-    suspend fun refreshFromBackend() {
+    /** @return `true` if the refresh completed cleanly (see [PullCoordinator]). */
+    suspend fun refreshFromBackend(): Boolean {
         syncManager.syncNow()
         val userId = currentUserId()
         try {
@@ -303,10 +304,13 @@ class ChoreRepository(
             trackerTypeDao.upsertFromServer(userId, types.map { it.toEntity(userId) })
             val events = emptyAsNull { api.getTrackerEvents() }
             trackerEventDao.upsertFromServer(userId, events.map { it.toEntity(userId) })
+            return true
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             // Best-effort only — see doc comment.
+            android.util.Log.w("ChoreRepository", "refreshFromBackend failed", e)
+            return false
         }
     }
 

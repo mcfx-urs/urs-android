@@ -19,6 +19,8 @@ import ch.mcfx.urs.data.VehicleRepository
 import ch.mcfx.urs.data.local.InventoryEntity
 import ch.mcfx.urs.data.local.ListEntity
 import ch.mcfx.urs.data.resolveDefaultVehicleId
+import ch.mcfx.urs.data.sync.PullCoordinator
+import ch.mcfx.urs.data.sync.SyncPhase
 import ch.mcfx.urs.fuel.FuelStats
 import ch.mcfx.urs.location.LocationProvider
 import ch.mcfx.urs.navigation.Destination
@@ -49,7 +51,13 @@ class HomeViewModel(
     private val homeLayoutStore: HomeLayoutStore,
     private val shoppingListRepository: ShoppingListRepository,
     private val inventoryRepository: InventoryRepository,
+    pullCoordinator: PullCoordinator,
 ) : ViewModel() {
+
+    // GitHub issue #53's status indicator (Home banner logo dot + hero
+    // moon tint) — this is a straight passthrough, HomeViewModel doesn't
+    // own any sync state itself.
+    val syncPhase: StateFlow<SyncPhase> = pullCoordinator.phase
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -186,6 +194,7 @@ class HomeViewModel(
                     app.container.homeLayoutStore,
                     app.container.shoppingListRepository,
                     app.container.inventoryRepository,
+                    app.container.pullCoordinator,
                 )
             }
         }

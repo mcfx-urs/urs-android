@@ -59,6 +59,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
@@ -69,6 +70,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -81,6 +84,7 @@ import ch.mcfx.urs.R
 import ch.mcfx.urs.data.local.InventoryEntity
 import ch.mcfx.urs.data.local.ListEntity
 import ch.mcfx.urs.data.local.publicId
+import ch.mcfx.urs.data.sync.SyncPhase
 import ch.mcfx.urs.fuel.FuelRoutes
 import ch.mcfx.urs.inventory.InventoryRoutes
 import ch.mcfx.urs.location.LOCATION_PERMISSIONS
@@ -182,6 +186,7 @@ fun HomeScreen(
     val editMode by viewModel.editMode.collectAsStateWithLifecycle()
     val selectedTileId by viewModel.selectedTileId.collectAsStateWithLifecycle()
     val showAddTilePicker by viewModel.showAddTilePicker.collectAsStateWithLifecycle()
+    val syncPhase by viewModel.syncPhase.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
     val locationPermissionLauncher = rememberLauncherForActivityResult(
@@ -207,6 +212,7 @@ fun HomeScreen(
             username = viewModel.username,
             isCollapsed = isHeaderCollapsed,
             editMode = editMode,
+            syncPhase = syncPhase,
             onSettingsClick = { onNavigateRoute(SettingsRoutes.HUB) },
             onAboutClick = { onNavigateRoute(SettingsRoutes.ABOUT) },
             onDoneClick = viewModel::exitEditMode,
@@ -275,11 +281,19 @@ private fun navigateTo(id: String, onNavigate: (Destination) -> Unit, onNavigate
     }
 }
 
+// GitHub issue #53's sync-status colors — the theme has no semantic
+// success/warning/error tokens yet (only background/surface/accent/border),
+// so these are plain literals rather than UrsTheme.colors entries.
+private val SyncOkColor = Color(0xFF3F7A55)
+private val SyncingColor = Color(0xFFC97A3D)
+private val SyncErrorColor = Color(0xFFB3401F)
+
 @Composable
 private fun HomeHeader(
     username: String?,
     isCollapsed: Boolean,
     editMode: Boolean,
+    syncPhase: SyncPhase,
     onSettingsClick: () -> Unit,
     onAboutClick: () -> Unit,
     onDoneClick: () -> Unit,
@@ -300,11 +314,31 @@ private fun HomeHeader(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
-                Image(
-                    painter = painterResource(R.drawable.urs_bear_logo),
-                    contentDescription = null,
-                    modifier = Modifier.size(28.dp),
-                )
+                Box {
+                    Image(
+                        painter = painterResource(R.drawable.urs_bear_logo),
+                        contentDescription = null,
+                        modifier = Modifier.size(28.dp),
+                    )
+                    // Sync status dot (GitHub issue #53) — always visible
+                    // regardless of scroll/collapse state, unlike the hero
+                    // moon tint below. contentDescription carries the state
+                    // for accessibility since color alone wouldn't.
+                    val (dotColor, dotDescription) = when (syncPhase) {
+                        SyncPhase.IDLE_OK -> SyncOkColor to stringResource(R.string.sync_status_ok)
+                        SyncPhase.SYNCING -> SyncingColor to stringResource(R.string.sync_status_syncing)
+                        SyncPhase.IDLE_ERROR -> SyncErrorColor to stringResource(R.string.sync_status_error)
+                    }
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .offset(x = 2.dp, y = (-2).dp)
+                            .size(9.dp)
+                            .border(1.dp, colors.background, CircleShape)
+                            .background(dotColor, CircleShape)
+                            .semantics { contentDescription = dotDescription },
+                    )
+                }
                 UrsText(stringResource(R.string.app_name), style = UrsTheme.typography.brand, color = colors.accent)
             }
             if (editMode) {
@@ -336,8 +370,18 @@ private fun HomeHeader(
                     .height(150.dp)
                     .clip(RoundedCornerShape(Radius.card)),
             ) {
+                // Same moon, tinted per sync phase (GitHub issue #53) — a
+                // baked variant per state rather than a runtime color
+                // filter, since the moon is partly behind the mountain
+                // silhouette in the artwork and a naive tint would bleed
+                // onto the bear/trees too.
+                val heroDrawable = when (syncPhase) {
+                    SyncPhase.IDLE_OK -> R.drawable.home_hero
+                    SyncPhase.SYNCING -> R.drawable.home_hero_syncing
+                    SyncPhase.IDLE_ERROR -> R.drawable.home_hero_error
+                }
                 Image(
-                    painter = painterResource(R.drawable.home_hero),
+                    painter = painterResource(heroDrawable),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
