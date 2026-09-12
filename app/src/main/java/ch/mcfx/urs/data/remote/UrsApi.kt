@@ -362,6 +362,54 @@ interface UrsApi {
     @DELETE("api/v1/tracker-event/{id}")
     suspend fun deleteTrackerEvent(@Path("id") id: String)
 
+    @POST("api/v1/kanban/board")
+    suspend fun createKanbanBoard(@Body payload: KanbanBoardCreatePayload): KanbanBoardDto
+
+    @GET("api/v1/kanban/board")
+    suspend fun getKanbanBoards(): List<KanbanBoardDto>
+
+    @GET("api/v1/kanban/board/{id}")
+    suspend fun getKanbanBoard(@Path("id") id: String): KanbanBoardDetailDto
+
+    @PUT("api/v1/kanban/board/{id}")
+    suspend fun renameKanbanBoard(@Path("id") id: String, @Body payload: KanbanBoardRenamePayload)
+
+    @DELETE("api/v1/kanban/board/{id}")
+    suspend fun deleteKanbanBoard(@Path("id") id: String)
+
+    @POST("api/v1/kanban/column")
+    suspend fun createKanbanColumn(@Body payload: KanbanColumnCreatePayload): KanbanColumnDto
+
+    @PUT("api/v1/kanban/column/{id}")
+    suspend fun renameKanbanColumn(@Path("id") id: String, @Body payload: KanbanColumnRenamePayload)
+
+    @PUT("api/v1/kanban/column/{id}/move")
+    suspend fun moveKanbanColumn(@Path("id") id: String, @Body payload: KanbanColumnMovePayload)
+
+    @DELETE("api/v1/kanban/column/{id}")
+    suspend fun deleteKanbanColumn(@Path("id") id: String)
+
+    @POST("api/v1/kanban/card")
+    suspend fun createKanbanCard(@Body payload: KanbanCardCreatePayload): KanbanCardDto
+
+    @PUT("api/v1/kanban/card/{id}")
+    suspend fun updateKanbanCard(@Path("id") id: String, @Body payload: KanbanCardUpdatePayload): KanbanCardDto
+
+    @PUT("api/v1/kanban/card/{id}/move")
+    suspend fun moveKanbanCard(@Path("id") id: String, @Body payload: KanbanCardMovePayload)
+
+    @DELETE("api/v1/kanban/card/{id}")
+    suspend fun deleteKanbanCard(@Path("id") id: String)
+
+    @POST("api/v1/kanban/checklist-item")
+    suspend fun createKanbanChecklistItem(@Body payload: KanbanChecklistItemCreatePayload): KanbanChecklistItemDto
+
+    @PUT("api/v1/kanban/checklist-item/{id}")
+    suspend fun updateKanbanChecklistItem(@Path("id") id: String, @Body payload: KanbanChecklistItemUpdatePayload)
+
+    @DELETE("api/v1/kanban/checklist-item/{id}")
+    suspend fun deleteKanbanChecklistItem(@Path("id") id: String)
+
     @POST("api/v1/admin/restart")
     suspend fun restartServer()
 

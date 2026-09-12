@@ -146,6 +146,9 @@ private val TILE_IMAGE: Map<String, Int> = mapOf(
     Destination.K.name to R.drawable.tile_k,
     Destination.GOKART.name to R.drawable.tile_gokart,
     Destination.LIFE_MAP.name to R.drawable.tile_life_map,
+    // Interim: reuses the K tile art until Kanban gets its own commissioned
+    // piece, same as Chores above.
+    Destination.KANBAN.name to R.drawable.tile_k,
 )
 
 private val TileHeight = 112.dp

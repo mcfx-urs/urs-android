@@ -15,6 +15,7 @@ object NotificationChannels {
     const val BAKING = "baking"
     const val NOTES = "notes"
     const val CHORES = "chores"
+    const val KANBAN = "kanban"
 
     private data class ChannelDef(
         val id: String,
@@ -52,6 +53,12 @@ object NotificationChannels {
             id = CHORES,
             name = "Chores",
             description = "Reminders when a recurring chore is overdue",
+            importance = NotificationManager.IMPORTANCE_DEFAULT,
+        ),
+        ChannelDef(
+            id = KANBAN,
+            name = "Kanban board",
+            description = "Due-date reminders for your Kanban cards",
             importance = NotificationManager.IMPORTANCE_DEFAULT,
         ),
     )

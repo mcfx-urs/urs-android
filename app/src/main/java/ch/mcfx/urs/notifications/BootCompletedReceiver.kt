@@ -36,6 +36,7 @@ class BootCompletedReceiver : BroadcastReceiver() {
                 app.container.reminderScheduler.rearmAndCheckMissed()
                 app.container.bakingRepository.rearmPendingStepAlarms()
                 app.container.noteRepository.rearmPendingReminders()
+                app.container.kanbanRepository.rearmPendingReminders()
             } finally {
                 pendingResult.finish()
             }

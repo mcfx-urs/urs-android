@@ -160,6 +160,13 @@
             android:name=".notifications.NoteReminderDoneReceiver"
             android:exported="false" />
 
+        <!-- One per Kanban card due date — fired by
+             AlarmManager.setExactAndAllowWhileIdle(), see
+             KanbanCardAlarmScheduler. -->
+        <receiver
+            android:name=".notifications.KanbanCardAlarmReceiver"
+            android:exported="false" />
+
         <!-- exported=true is required for BOOT_COMPLETED — the system, not
              another app, is what delivers this broadcast. -->
         <receiver

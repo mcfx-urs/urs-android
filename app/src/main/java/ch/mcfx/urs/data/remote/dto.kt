@@ -847,3 +847,108 @@ data class TrackerEventPayload(
     @SerialName("tracker_event_note") val note: String = "",
     @SerialName("tracker_event_source") val source: String = "manual",
 )
+
+@Serializable
+data class KanbanBoardDto(
+    @SerialName("kanban_board_id") val id: String,
+    @SerialName("kanban_board_user_id") val userId: String = "",
+    @SerialName("kanban_board_name") val name: String,
+    @SerialName("created_at") val createdAt: String = "",
+    @SerialName("updated_at") val updatedAt: String = "",
+)
+
+/** `GET /api/v1/kanban/board/{id}` — the board's own fields plus its full column/card tree. */
+@Serializable
+data class KanbanBoardDetailDto(
+    @SerialName("kanban_board_id") val id: String,
+    @SerialName("kanban_board_user_id") val userId: String = "",
+    @SerialName("kanban_board_name") val name: String,
+    @SerialName("created_at") val createdAt: String = "",
+    @SerialName("updated_at") val updatedAt: String = "",
+    val columns: List<KanbanColumnDto> = emptyList(),
+)
+
+@Serializable
+data class KanbanColumnDto(
+    @SerialName("kanban_column_id") val id: String,
+    @SerialName("kanban_column_board_id") val boardId: String,
+    @SerialName("kanban_column_name") val name: String,
+    @SerialName("kanban_column_index") val index: Int = 0,
+    val cards: List<KanbanCardDto> = emptyList(),
+    @SerialName("created_at") val createdAt: String = "",
+    @SerialName("updated_at") val updatedAt: String = "",
+)
+
+@Serializable
+data class KanbanCardDto(
+    @SerialName("kanban_card_id") val id: String,
+    @SerialName("kanban_card_column_id") val columnId: String,
+    @SerialName("kanban_card_note_id") val noteId: String = "",
+    @SerialName("kanban_card_title") val title: String,
+    @SerialName("kanban_card_description") val description: String = "",
+    @SerialName("kanban_card_due_date") val dueDate: String = "",
+    @SerialName("kanban_card_priority") val priority: String = "medium",
+    @SerialName("kanban_card_index") val index: Int = 0,
+    val tags: List<String> = emptyList(),
+    val checklist: List<KanbanChecklistItemDto> = emptyList(),
+    @SerialName("created_at") val createdAt: String = "",
+    @SerialName("updated_at") val updatedAt: String = "",
+)
+
+@Serializable
+data class KanbanChecklistItemDto(
+    @SerialName("kanban_checklist_item_id") val id: String,
+    @SerialName("kanban_checklist_item_card_id") val cardId: String = "",
+    @SerialName("kanban_checklist_item_text") val text: String,
+    @SerialName("kanban_checklist_item_done") val done: Boolean = false,
+    @SerialName("kanban_checklist_item_index") val index: Int = 0,
+)
+
+@Serializable
+data class KanbanBoardCreatePayload(val name: String)
+
+/** Shared shape for board/column rename requests — the JSON key already matches the field name. */
+@Serializable
+data class KanbanBoardRenamePayload(val name: String, @SerialName("updated_at") val updatedAt: String)
+
+@Serializable
+data class KanbanColumnCreatePayload(@SerialName("board_id") val boardId: String, val name: String)
+
+@Serializable
+data class KanbanColumnRenamePayload(val name: String, @SerialName("updated_at") val updatedAt: String)
+
+@Serializable
+data class KanbanColumnMovePayload(val index: Int)
+
+@Serializable
+data class KanbanCardCreatePayload(
+    @SerialName("column_id") val columnId: String,
+    val title: String,
+    val description: String = "",
+    @SerialName("due_date") val dueDate: String = "",
+    val priority: String = "medium",
+    @SerialName("note_id") val noteId: String = "",
+    val tags: List<String> = emptyList(),
+)
+
+// Shared by PUT /api/v1/kanban/card/{id} — column/index are untouched by
+// this endpoint, see KanbanCardMovePayload for repositioning.
+@Serializable
+data class KanbanCardUpdatePayload(
+    val title: String,
+    val description: String = "",
+    @SerialName("due_date") val dueDate: String = "",
+    val priority: String = "medium",
+    @SerialName("note_id") val noteId: String = "",
+    val tags: List<String> = emptyList(),
+    @SerialName("updated_at") val updatedAt: String,
+)
+
+@Serializable
+data class KanbanCardMovePayload(@SerialName("column_id") val columnId: String, val index: Int)
+
+@Serializable
+data class KanbanChecklistItemCreatePayload(@SerialName("card_id") val cardId: String, val text: String)
+
+@Serializable
+data class KanbanChecklistItemUpdatePayload(val text: String, val done: Boolean)

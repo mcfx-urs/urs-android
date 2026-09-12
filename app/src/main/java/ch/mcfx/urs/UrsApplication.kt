@@ -23,6 +23,7 @@ import ch.mcfx.urs.data.FuelRepository
 import ch.mcfx.urs.data.DefaultVehicleStore
 import ch.mcfx.urs.data.ImageGenRepository
 import ch.mcfx.urs.data.InventoryRepository
+import ch.mcfx.urs.data.KanbanRepository
 import ch.mcfx.urs.data.LocationHistoryRepository
 import ch.mcfx.urs.data.NoteRepository
 import ch.mcfx.urs.data.ServiceRepository
@@ -309,6 +310,10 @@ class AppContainer(context: Context) {
         noteDao = database.noteDao(),
         trackerTypeDao = database.trackerTypeDao(),
         trackerEventDao = database.trackerEventDao(),
+        kanbanBoardDao = database.kanbanBoardDao(),
+        kanbanColumnDao = database.kanbanColumnDao(),
+        kanbanCardDao = database.kanbanCardDao(),
+        kanbanChecklistItemDao = database.kanbanChecklistItemDao(),
         outboxDao = database.outboxDao(),
         reachabilityChecker = reachabilityChecker,
         syncStatusStore = syncStatusStore,
@@ -443,6 +448,19 @@ class AppContainer(context: Context) {
         applicationScope = applicationScope,
         json = json,
     )
+    val kanbanRepository = KanbanRepository(
+        context = appContext,
+        api = ursApi,
+        boardDao = database.kanbanBoardDao(),
+        columnDao = database.kanbanColumnDao(),
+        cardDao = database.kanbanCardDao(),
+        checklistDao = database.kanbanChecklistItemDao(),
+        tagDao = database.kanbanCardTagDao(),
+        outboxDao = database.outboxDao(),
+        syncManager = syncManager,
+        applicationScope = applicationScope,
+        json = json,
+    )
 
     // Everything from here down needs one repository or another — that's
     // why it's built last, not with the other sync/network setup above (see
@@ -459,6 +477,7 @@ class AppContainer(context: Context) {
         locationHistoryRepository = locationHistoryRepository,
         noteRepository = noteRepository,
         choreRepository = choreRepository,
+        kanbanRepository = kanbanRepository,
         syncStatusStore = syncStatusStore,
     )
 
@@ -478,6 +497,11 @@ class AppContainer(context: Context) {
         // inside a replay pass — see SyncManager.onListConflictResolved.
         syncManager.onListConflictResolved = {
             applicationScope.launch { shoppingListRepository.refreshFromBackend() }
+        }
+        // Same rationale as onListConflictResolved above, for the Kanban
+        // board/column/card equivalent.
+        syncManager.onKanbanConflictResolved = {
+            applicationScope.launch { kanbanRepository.refreshFromBackend() }
         }
         // See onTunnelReachable's own doc comment above for why this is
         // late-bound instead of passed to NetworkGate directly. Runs

@@ -29,7 +29,22 @@ enum class OutboxStatus { PENDING, SYNCING, FAILED }
  * [OutboxNoteCreatePayload] for [TYPE_CREATE_NOTE], [OutboxNoteUpdatePayload]
  * for [TYPE_UPDATE_NOTE], [OutboxNoteStatusPayload] for
  * [TYPE_UPDATE_NOTE_STATUS], [OutboxNoteDeletePayload] for [TYPE_DELETE_NOTE],
- * [OutboxBeerLogCreatePayload] for [TYPE_CREATE_BEER_LOG].
+ * [OutboxBeerLogCreatePayload] for [TYPE_CREATE_BEER_LOG],
+ * [OutboxKanbanBoardPayload]/[OutboxKanbanBoardUpdatePayload]/
+ * [OutboxKanbanBoardDeletePayload] for [TYPE_CREATE_KANBAN_BOARD]/
+ * [TYPE_UPDATE_KANBAN_BOARD]/[TYPE_DELETE_KANBAN_BOARD],
+ * [OutboxKanbanColumnPayload]/[OutboxKanbanColumnUpdatePayload]/
+ * [OutboxKanbanColumnMovePayload]/[OutboxKanbanColumnDeletePayload] for
+ * [TYPE_CREATE_KANBAN_COLUMN]/[TYPE_UPDATE_KANBAN_COLUMN]/
+ * [TYPE_MOVE_KANBAN_COLUMN]/[TYPE_DELETE_KANBAN_COLUMN],
+ * [OutboxKanbanCardPayload]/[OutboxKanbanCardUpdatePayload]/
+ * [OutboxKanbanCardMovePayload]/[OutboxKanbanCardDeletePayload] for
+ * [TYPE_CREATE_KANBAN_CARD]/[TYPE_UPDATE_KANBAN_CARD]/
+ * [TYPE_MOVE_KANBAN_CARD]/[TYPE_DELETE_KANBAN_CARD],
+ * [OutboxKanbanChecklistItemPayload]/[OutboxKanbanChecklistItemUpdatePayload]/
+ * [OutboxKanbanChecklistItemDeletePayload] for
+ * [TYPE_CREATE_KANBAN_CHECKLIST_ITEM]/[TYPE_UPDATE_KANBAN_CHECKLIST_ITEM]/
+ * [TYPE_DELETE_KANBAN_CHECKLIST_ITEM].
  * [createdAt] drives strict FIFO replay order (see `SyncManager`), not
  * wall-clock display.
  */
@@ -79,5 +94,19 @@ data class OutboxMutationEntity(
         const val TYPE_UPDATE_TRACKER_EVENT = "UPDATE_TRACKER_EVENT"
         const val TYPE_DELETE_TRACKER_EVENT = "DELETE_TRACKER_EVENT"
         const val TYPE_CREATE_BEER_LOG = "CREATE_BEER_LOG"
+        const val TYPE_CREATE_KANBAN_BOARD = "CREATE_KANBAN_BOARD"
+        const val TYPE_UPDATE_KANBAN_BOARD = "UPDATE_KANBAN_BOARD"
+        const val TYPE_DELETE_KANBAN_BOARD = "DELETE_KANBAN_BOARD"
+        const val TYPE_CREATE_KANBAN_COLUMN = "CREATE_KANBAN_COLUMN"
+        const val TYPE_UPDATE_KANBAN_COLUMN = "UPDATE_KANBAN_COLUMN"
+        const val TYPE_MOVE_KANBAN_COLUMN = "MOVE_KANBAN_COLUMN"
+        const val TYPE_DELETE_KANBAN_COLUMN = "DELETE_KANBAN_COLUMN"
+        const val TYPE_CREATE_KANBAN_CARD = "CREATE_KANBAN_CARD"
+        const val TYPE_UPDATE_KANBAN_CARD = "UPDATE_KANBAN_CARD"
+        const val TYPE_MOVE_KANBAN_CARD = "MOVE_KANBAN_CARD"
+        const val TYPE_DELETE_KANBAN_CARD = "DELETE_KANBAN_CARD"
+        const val TYPE_CREATE_KANBAN_CHECKLIST_ITEM = "CREATE_KANBAN_CHECKLIST_ITEM"
+        const val TYPE_UPDATE_KANBAN_CHECKLIST_ITEM = "UPDATE_KANBAN_CHECKLIST_ITEM"
+        const val TYPE_DELETE_KANBAN_CHECKLIST_ITEM = "DELETE_KANBAN_CHECKLIST_ITEM"
     }
 }

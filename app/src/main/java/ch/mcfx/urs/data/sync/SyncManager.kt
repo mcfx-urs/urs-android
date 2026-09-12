@@ -7,6 +7,10 @@ import ch.mcfx.urs.data.local.FillingStationDao
 import ch.mcfx.urs.data.local.FillingStationEntity
 import ch.mcfx.urs.data.local.InventoryDao
 import ch.mcfx.urs.data.local.InventoryProductDao
+import ch.mcfx.urs.data.local.KanbanBoardDao
+import ch.mcfx.urs.data.local.KanbanCardDao
+import ch.mcfx.urs.data.local.KanbanChecklistItemDao
+import ch.mcfx.urs.data.local.KanbanColumnDao
 import ch.mcfx.urs.data.local.ListDao
 import ch.mcfx.urs.data.local.ListItemDao
 import ch.mcfx.urs.data.local.LocationHistoryDao
@@ -23,6 +27,20 @@ import ch.mcfx.urs.data.local.OutboxInventoryDeletePayload
 import ch.mcfx.urs.data.local.OutboxInventoryPayload
 import ch.mcfx.urs.data.local.OutboxInventoryProductPayload
 import ch.mcfx.urs.data.local.OutboxInventoryUpdatePayload
+import ch.mcfx.urs.data.local.OutboxKanbanBoardDeletePayload
+import ch.mcfx.urs.data.local.OutboxKanbanBoardPayload
+import ch.mcfx.urs.data.local.OutboxKanbanBoardUpdatePayload
+import ch.mcfx.urs.data.local.OutboxKanbanCardDeletePayload
+import ch.mcfx.urs.data.local.OutboxKanbanCardMovePayload
+import ch.mcfx.urs.data.local.OutboxKanbanCardPayload
+import ch.mcfx.urs.data.local.OutboxKanbanCardUpdatePayload
+import ch.mcfx.urs.data.local.OutboxKanbanChecklistItemDeletePayload
+import ch.mcfx.urs.data.local.OutboxKanbanChecklistItemPayload
+import ch.mcfx.urs.data.local.OutboxKanbanChecklistItemUpdatePayload
+import ch.mcfx.urs.data.local.OutboxKanbanColumnDeletePayload
+import ch.mcfx.urs.data.local.OutboxKanbanColumnMovePayload
+import ch.mcfx.urs.data.local.OutboxKanbanColumnPayload
+import ch.mcfx.urs.data.local.OutboxKanbanColumnUpdatePayload
 import ch.mcfx.urs.data.local.OutboxListDeletePayload
 import ch.mcfx.urs.data.local.OutboxListItemDeletePayload
 import ch.mcfx.urs.data.local.OutboxListItemPayload
@@ -56,6 +74,9 @@ import ch.mcfx.urs.data.local.VehicleServiceTagEntity
 import ch.mcfx.urs.data.local.WorkTimeBreakEntity
 import ch.mcfx.urs.data.local.WorkTimeDao
 import ch.mcfx.urs.data.local.localInventoryId
+import ch.mcfx.urs.data.local.localKanbanBoardId
+import ch.mcfx.urs.data.local.localKanbanCardId
+import ch.mcfx.urs.data.local.localKanbanColumnId
 import ch.mcfx.urs.data.local.localListId
 import ch.mcfx.urs.data.local.publicId
 import ch.mcfx.urs.data.remote.BakePlanCreatePayload
@@ -66,6 +87,16 @@ import ch.mcfx.urs.data.remote.FillPayload
 import ch.mcfx.urs.data.remote.FillUpdatePayload
 import ch.mcfx.urs.data.remote.InventoryPayload
 import ch.mcfx.urs.data.remote.InventoryProductCreatePayload
+import ch.mcfx.urs.data.remote.KanbanBoardCreatePayload
+import ch.mcfx.urs.data.remote.KanbanBoardRenamePayload
+import ch.mcfx.urs.data.remote.KanbanCardCreatePayload
+import ch.mcfx.urs.data.remote.KanbanCardMovePayload
+import ch.mcfx.urs.data.remote.KanbanCardUpdatePayload
+import ch.mcfx.urs.data.remote.KanbanChecklistItemCreatePayload
+import ch.mcfx.urs.data.remote.KanbanChecklistItemUpdatePayload
+import ch.mcfx.urs.data.remote.KanbanColumnCreatePayload
+import ch.mcfx.urs.data.remote.KanbanColumnMovePayload
+import ch.mcfx.urs.data.remote.KanbanColumnRenamePayload
 import ch.mcfx.urs.data.remote.ListItemPayload
 import ch.mcfx.urs.data.remote.ListItemUpdatePayload
 import ch.mcfx.urs.data.remote.ListPayload
@@ -118,6 +149,10 @@ class SyncManager(
     private val noteDao: NoteDao,
     private val trackerTypeDao: TrackerTypeDao,
     private val trackerEventDao: TrackerEventDao,
+    private val kanbanBoardDao: KanbanBoardDao,
+    private val kanbanColumnDao: KanbanColumnDao,
+    private val kanbanCardDao: KanbanCardDao,
+    private val kanbanChecklistItemDao: KanbanChecklistItemDao,
     private val outboxDao: OutboxDao,
     private val reachabilityChecker: ReachabilityChecker,
     private val syncStatusStore: SyncStatusStore,
@@ -149,6 +184,13 @@ class SyncManager(
     // the syncNow() mutex.
     private var listUpdateConflictSeen = false
 
+    /** Same wiring/rationale as [onListConflictResolved], for the Kanban board/column/card equivalent. */
+    var onKanbanConflictResolved: (() -> Unit)? = null
+
+    // Set on a 409/404 in replayUpdateKanbanBoard/Column/Card, consumed at
+    // the end of replayOutbox — same shape as [listUpdateConflictSeen].
+    private var kanbanUpdateConflictSeen = false
+
     /** @return `true` if the backend was reachable and every queued mutation replayed cleanly. */
     suspend fun syncNow(): Boolean = mutex.withLock { replayOutbox() }
 
@@ -171,6 +213,10 @@ class SyncManager(
             // Deferred (see onListConflictResolved's doc) so the refresh runs
             // once this pass has released the mutex.
             onListConflictResolved?.invoke()
+        }
+        if (kanbanUpdateConflictSeen) {
+            kanbanUpdateConflictSeen = false
+            onKanbanConflictResolved?.invoke()
         }
         return allSucceeded
     }
@@ -214,6 +260,20 @@ class SyncManager(
                 OutboxMutationEntity.TYPE_UPDATE_TRACKER_EVENT -> replayUpdateTrackerEvent(mutation)
                 OutboxMutationEntity.TYPE_DELETE_TRACKER_EVENT -> replayDeleteTrackerEvent(mutation)
                 OutboxMutationEntity.TYPE_CREATE_BEER_LOG -> replayCreateBeerLog(mutation)
+                OutboxMutationEntity.TYPE_CREATE_KANBAN_BOARD -> replayCreateKanbanBoard(mutation)
+                OutboxMutationEntity.TYPE_UPDATE_KANBAN_BOARD -> replayUpdateKanbanBoard(mutation)
+                OutboxMutationEntity.TYPE_DELETE_KANBAN_BOARD -> replayDeleteKanbanBoard(mutation)
+                OutboxMutationEntity.TYPE_CREATE_KANBAN_COLUMN -> replayCreateKanbanColumn(mutation)
+                OutboxMutationEntity.TYPE_UPDATE_KANBAN_COLUMN -> replayUpdateKanbanColumn(mutation)
+                OutboxMutationEntity.TYPE_MOVE_KANBAN_COLUMN -> replayMoveKanbanColumn(mutation)
+                OutboxMutationEntity.TYPE_DELETE_KANBAN_COLUMN -> replayDeleteKanbanColumn(mutation)
+                OutboxMutationEntity.TYPE_CREATE_KANBAN_CARD -> replayCreateKanbanCard(mutation)
+                OutboxMutationEntity.TYPE_UPDATE_KANBAN_CARD -> replayUpdateKanbanCard(mutation)
+                OutboxMutationEntity.TYPE_MOVE_KANBAN_CARD -> replayMoveKanbanCard(mutation)
+                OutboxMutationEntity.TYPE_DELETE_KANBAN_CARD -> replayDeleteKanbanCard(mutation)
+                OutboxMutationEntity.TYPE_CREATE_KANBAN_CHECKLIST_ITEM -> replayCreateKanbanChecklistItem(mutation)
+                OutboxMutationEntity.TYPE_UPDATE_KANBAN_CHECKLIST_ITEM -> replayUpdateKanbanChecklistItem(mutation)
+                OutboxMutationEntity.TYPE_DELETE_KANBAN_CHECKLIST_ITEM -> replayDeleteKanbanChecklistItem(mutation)
                 else -> {
                     // Forward-compat placeholder — nothing else is queued today.
                     outboxDao.markFailed(mutation.id, "unknown outbox mutation type: ${mutation.type}")
@@ -997,6 +1057,240 @@ class SyncManager(
         return true
     }
 
+    // --- Kanban board (GitHub issue #62) — board/column/card create mirror
+    // replayCreateList's shape (response echoes the assigned id directly),
+    // update/move mirror replayUpdateList/replayUpdateListItem's
+    // last-write-wins handling (update only — move has no basis on the
+    // backend, see OutboxKanbanChecklistItemUpdatePayload's doc comment for
+    // why checklist items don't need it either).
+
+    private suspend fun replayCreateKanbanBoard(mutation: OutboxMutationEntity): Boolean {
+        val localBoard = kanbanBoardDao.getByOutboxId(mutation.id) ?: run {
+            outboxDao.delete(mutation.id)
+            return true
+        }
+        val payload = json.decodeFromString(OutboxKanbanBoardPayload.serializer(), mutation.payloadJson)
+        val response = api.createKanbanBoard(KanbanBoardCreatePayload(name = payload.name))
+        kanbanBoardDao.markSynced(localBoard.id, response.id)
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    private suspend fun replayUpdateKanbanBoard(mutation: OutboxMutationEntity): Boolean {
+        val payload = json.decodeFromString(OutboxKanbanBoardUpdatePayload.serializer(), mutation.payloadJson)
+        try {
+            api.renameKanbanBoard(
+                payload.serverId,
+                KanbanBoardRenamePayload(name = payload.name, updatedAt = mutation.createdAt.toUpdatedAtBasis()),
+            )
+        } catch (e: HttpException) {
+            if (e.code() != 409 && e.code() != 404) throw e
+            kanbanUpdateConflictSeen = true
+        }
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    private suspend fun replayDeleteKanbanBoard(mutation: OutboxMutationEntity): Boolean {
+        val payload = json.decodeFromString(OutboxKanbanBoardDeletePayload.serializer(), mutation.payloadJson)
+        api.deleteKanbanBoard(payload.serverId)
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    private suspend fun replayCreateKanbanColumn(mutation: OutboxMutationEntity): Boolean {
+        val localColumn = kanbanColumnDao.getByOutboxId(mutation.id) ?: run {
+            outboxDao.delete(mutation.id)
+            return true
+        }
+        val payload = json.decodeFromString(OutboxKanbanColumnPayload.serializer(), mutation.payloadJson)
+        val resolvedBoardId = resolveKanbanBoardId(payload.boardId) ?: run {
+            outboxDao.markFailed(mutation.id, "parent board not yet synced")
+            return false
+        }
+        val response = api.createKanbanColumn(KanbanColumnCreatePayload(boardId = resolvedBoardId, name = payload.name))
+        kanbanColumnDao.markSynced(localColumn.id, response.id, resolvedBoardId)
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    private suspend fun replayUpdateKanbanColumn(mutation: OutboxMutationEntity): Boolean {
+        val payload = json.decodeFromString(OutboxKanbanColumnUpdatePayload.serializer(), mutation.payloadJson)
+        try {
+            api.renameKanbanColumn(
+                payload.serverId,
+                KanbanColumnRenamePayload(name = payload.name, updatedAt = mutation.createdAt.toUpdatedAtBasis()),
+            )
+        } catch (e: HttpException) {
+            if (e.code() != 409 && e.code() != 404) throw e
+            kanbanUpdateConflictSeen = true
+        }
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    private suspend fun replayMoveKanbanColumn(mutation: OutboxMutationEntity): Boolean {
+        val payload = json.decodeFromString(OutboxKanbanColumnMovePayload.serializer(), mutation.payloadJson)
+        val column = kanbanColumnDao.getById(payload.localColumnId) ?: run {
+            outboxDao.delete(mutation.id)
+            return true
+        }
+        val serverId = column.serverId ?: run {
+            outboxDao.markFailed(mutation.id, "column not yet synced")
+            return false
+        }
+        try {
+            api.moveKanbanColumn(serverId, KanbanColumnMovePayload(index = payload.index))
+        } catch (e: HttpException) {
+            if (e.code() != 404) throw e
+        }
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    private suspend fun replayDeleteKanbanColumn(mutation: OutboxMutationEntity): Boolean {
+        val payload = json.decodeFromString(OutboxKanbanColumnDeletePayload.serializer(), mutation.payloadJson)
+        api.deleteKanbanColumn(payload.serverId)
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    private suspend fun replayCreateKanbanCard(mutation: OutboxMutationEntity): Boolean {
+        val localCard = kanbanCardDao.getByOutboxId(mutation.id) ?: run {
+            outboxDao.delete(mutation.id)
+            return true
+        }
+        val payload = json.decodeFromString(OutboxKanbanCardPayload.serializer(), mutation.payloadJson)
+        val resolvedColumnId = resolveKanbanColumnId(payload.columnId) ?: run {
+            outboxDao.markFailed(mutation.id, "parent column not yet synced")
+            return false
+        }
+        val response = api.createKanbanCard(
+            KanbanCardCreatePayload(
+                columnId = resolvedColumnId,
+                title = payload.title,
+                description = payload.description,
+                dueDate = payload.dueDate.orEmpty(),
+                priority = payload.priority,
+                noteId = payload.linkedNoteId.orEmpty(),
+                tags = payload.tags,
+            ),
+        )
+        kanbanCardDao.markSynced(localCard.id, response.id, resolvedColumnId)
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    // Identifies its target by localCardId, resolved to a serverId here at
+    // replay time — same shape as replayUpdateNote.
+    private suspend fun replayUpdateKanbanCard(mutation: OutboxMutationEntity): Boolean {
+        val payload = json.decodeFromString(OutboxKanbanCardUpdatePayload.serializer(), mutation.payloadJson)
+        val card = kanbanCardDao.getById(payload.localCardId) ?: run {
+            outboxDao.delete(mutation.id)
+            return true
+        }
+        val serverId = card.serverId ?: run {
+            outboxDao.markFailed(mutation.id, "card not yet synced")
+            return false
+        }
+        try {
+            api.updateKanbanCard(
+                serverId,
+                KanbanCardUpdatePayload(
+                    title = payload.title,
+                    description = payload.description,
+                    dueDate = payload.dueDate.orEmpty(),
+                    priority = payload.priority,
+                    noteId = payload.linkedNoteId.orEmpty(),
+                    tags = payload.tags,
+                    updatedAt = mutation.createdAt.toUpdatedAtBasis(),
+                ),
+            )
+            kanbanCardDao.clearPending(card.id)
+        } catch (e: HttpException) {
+            if (e.code() != 409 && e.code() != 404) throw e
+            kanbanUpdateConflictSeen = true
+        }
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    private suspend fun replayMoveKanbanCard(mutation: OutboxMutationEntity): Boolean {
+        val payload = json.decodeFromString(OutboxKanbanCardMovePayload.serializer(), mutation.payloadJson)
+        val card = kanbanCardDao.getById(payload.localCardId) ?: run {
+            outboxDao.delete(mutation.id)
+            return true
+        }
+        val serverId = card.serverId ?: run {
+            outboxDao.markFailed(mutation.id, "card not yet synced")
+            return false
+        }
+        val resolvedColumnId = resolveKanbanColumnId(payload.targetColumnId) ?: run {
+            outboxDao.markFailed(mutation.id, "target column not yet synced")
+            return false
+        }
+        try {
+            api.moveKanbanCard(serverId, KanbanCardMovePayload(columnId = resolvedColumnId, index = payload.index))
+        } catch (e: HttpException) {
+            if (e.code() != 404) throw e
+        }
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    private suspend fun replayDeleteKanbanCard(mutation: OutboxMutationEntity): Boolean {
+        val payload = json.decodeFromString(OutboxKanbanCardDeletePayload.serializer(), mutation.payloadJson)
+        api.deleteKanbanCard(payload.serverId)
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    private suspend fun replayCreateKanbanChecklistItem(mutation: OutboxMutationEntity): Boolean {
+        val localItem = kanbanChecklistItemDao.getByOutboxId(mutation.id) ?: run {
+            outboxDao.delete(mutation.id)
+            return true
+        }
+        val payload = json.decodeFromString(OutboxKanbanChecklistItemPayload.serializer(), mutation.payloadJson)
+        val resolvedCardId = resolveKanbanCardId(payload.cardId) ?: run {
+            outboxDao.markFailed(mutation.id, "parent card not yet synced")
+            return false
+        }
+        val response = api.createKanbanChecklistItem(KanbanChecklistItemCreatePayload(cardId = resolvedCardId, text = payload.text))
+        kanbanChecklistItemDao.markSynced(localItem.id, response.id, resolvedCardId)
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    // Identifies its target by localItemId, resolved to a serverId here at
+    // replay time — same shape as replayUpdateNote. No last-write-wins
+    // basis needed — see OutboxKanbanChecklistItemUpdatePayload's doc comment.
+    private suspend fun replayUpdateKanbanChecklistItem(mutation: OutboxMutationEntity): Boolean {
+        val payload = json.decodeFromString(OutboxKanbanChecklistItemUpdatePayload.serializer(), mutation.payloadJson)
+        val item = kanbanChecklistItemDao.getById(payload.localItemId) ?: run {
+            outboxDao.delete(mutation.id)
+            return true
+        }
+        val serverId = item.serverId ?: run {
+            outboxDao.markFailed(mutation.id, "checklist item not yet synced")
+            return false
+        }
+        try {
+            api.updateKanbanChecklistItem(serverId, KanbanChecklistItemUpdatePayload(text = payload.text, done = payload.done))
+            kanbanChecklistItemDao.clearPending(item.id)
+        } catch (e: HttpException) {
+            if (e.code() != 404) throw e
+        }
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    private suspend fun replayDeleteKanbanChecklistItem(mutation: OutboxMutationEntity): Boolean {
+        val payload = json.decodeFromString(OutboxKanbanChecklistItemDeletePayload.serializer(), mutation.payloadJson)
+        api.deleteKanbanChecklistItem(payload.serverId)
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
     private suspend fun resolveTrackerTypeId(value: String): String? {
         val localId = localTrackerTypeId(value) ?: return value
         return trackerTypeDao.getById(localId)?.serverId
@@ -1019,5 +1313,20 @@ class SyncManager(
     private suspend fun resolveInventoryId(value: String): String? {
         val localId = localInventoryId(value) ?: return value
         return inventoryDao.getById(localId)?.serverId
+    }
+
+    private suspend fun resolveKanbanBoardId(value: String): String? {
+        val localId = localKanbanBoardId(value) ?: return value
+        return kanbanBoardDao.getById(localId)?.serverId
+    }
+
+    private suspend fun resolveKanbanColumnId(value: String): String? {
+        val localId = localKanbanColumnId(value) ?: return value
+        return kanbanColumnDao.getById(localId)?.serverId
+    }
+
+    private suspend fun resolveKanbanCardId(value: String): String? {
+        val localId = localKanbanCardId(value) ?: return value
+        return kanbanCardDao.getById(localId)?.serverId
     }
 }

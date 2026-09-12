@@ -6,6 +6,7 @@ import ch.mcfx.urs.chores.ChoresRoutes
 import ch.mcfx.urs.vehicle.VehicleHubRoutes
 import ch.mcfx.urs.fuel.FuelRoutes
 import ch.mcfx.urs.inventory.InventoryRoutes
+import ch.mcfx.urs.kanban.KanbanRoutes
 import ch.mcfx.urs.notes.NotesRoutes
 import ch.mcfx.urs.settings.SettingsRoutes
 import ch.mcfx.urs.shoppinglist.ShoppingListRoutes
@@ -35,6 +36,7 @@ enum class Destination(
     NOTES(NotesRoutes.LIST, R.string.nav_notes, isAvailable = true),
     CHORES(ChoresRoutes.MONTH, R.string.nav_chores, isAvailable = true),
     VOICE_NOTES(VoiceNotesRoutes.LIST, R.string.nav_voice_notes, isAvailable = true),
+    KANBAN(KanbanRoutes.BOARDS, R.string.nav_kanban, isAvailable = true),
     // Placeholder only — purpose not decided yet, reserves a Home grid slot
     // the same way GOKART/PRICE_MONITOR already do for their own
     // not-yet-built features.

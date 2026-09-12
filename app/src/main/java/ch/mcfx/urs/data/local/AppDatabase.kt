@@ -32,6 +32,11 @@ import androidx.room.TypeConverters
         TrackerEventEntity::class,
         AudioNoteEntity::class,
         LocationCaptureLogEntity::class,
+        KanbanBoardEntity::class,
+        KanbanColumnEntity::class,
+        KanbanCardEntity::class,
+        KanbanChecklistItemEntity::class,
+        KanbanCardTagEntity::class,
     ],
     // Bumped for the isFullTank column on FillEntity, the life map
     // feature's LocationHistoryEntity (local capture + sync fields), and
@@ -93,7 +98,11 @@ import androidx.room.TypeConverters
     // v31: iconId column added to ListEntity/InventoryEntity (GitHub issue
     //      #56, searchable icon picker) — same destructive-fallback handling
     //      as every bump above.
-    version = 31,
+    // v32: new KanbanBoardEntity/KanbanColumnEntity/KanbanCardEntity/
+    //      KanbanChecklistItemEntity/KanbanCardTagEntity tables (GitHub
+    //      issue #62, Kanban board) — same destructive-fallback handling
+    //      as every bump above.
+    version = 32,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -122,4 +131,9 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun trackerEventDao(): TrackerEventDao
     abstract fun audioNoteDao(): AudioNoteDao
     abstract fun locationCaptureLogDao(): LocationCaptureLogDao
+    abstract fun kanbanBoardDao(): KanbanBoardDao
+    abstract fun kanbanColumnDao(): KanbanColumnDao
+    abstract fun kanbanCardDao(): KanbanCardDao
+    abstract fun kanbanChecklistItemDao(): KanbanChecklistItemDao
+    abstract fun kanbanCardTagDao(): KanbanCardTagDao
 }

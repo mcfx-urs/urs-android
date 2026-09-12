@@ -65,6 +65,9 @@ import kotlinx.coroutines.launch
 import ch.mcfx.urs.inventory.InventoriesScreen
 import ch.mcfx.urs.inventory.InventoryRoutes
 import ch.mcfx.urs.inventory.ProductListScreen
+import ch.mcfx.urs.kanban.KanbanBoardDetailScreen
+import ch.mcfx.urs.kanban.KanbanBoardsScreen
+import ch.mcfx.urs.kanban.KanbanRoutes
 import ch.mcfx.urs.lifemap.LifeMapScreen
 import ch.mcfx.urs.obd.ObdLiveScreen
 import ch.mcfx.urs.obd.ObdRoutes
@@ -431,6 +434,18 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                         deepLinks = listOf(navDeepLink { uriPattern = "urs://${Destination.CHORES.route}" }),
                     ) { ChoresScreen() }
                     composable(Destination.VOICE_NOTES.route) { VoiceNotesScreen() }
+                    composable(Destination.KANBAN.route) {
+                        KanbanBoardsScreen(
+                            onOpenBoard = { board -> navController.navigate(KanbanRoutes.boardDetail(board.publicId)) },
+                        )
+                    }
+                    composable(
+                        route = KanbanRoutes.BOARD_DETAIL,
+                        arguments = listOf(navArgument("boardId") { type = NavType.StringType }),
+                    ) { backStackEntry ->
+                        val boardId = backStackEntry.arguments?.getString("boardId") ?: return@composable
+                        KanbanBoardDetailScreen(boardId = boardId)
+                    }
                     composable(Destination.BEER.route) { BeerScreen() }
                     composable(Destination.WORK_TIME.route) {
                         WorkTimeScreen(
@@ -595,6 +610,10 @@ private val NOTES_ROUTE_LABELS = mapOf(
     NotesRoutes.HISTORY to R.string.notes_history_title,
 )
 
+private val KANBAN_ROUTE_LABELS = mapOf(
+    KanbanRoutes.BOARD_DETAIL to R.string.kanban_board_detail_title,
+)
+
 // Home, Fuel, Inventory and Shopping List currently get the accent-colored
 // top-bar/drawer-icon treatment; every Fuel/Inventory/Shopping List subpage
 // route is prefixed accordingly, so a prefix check covers those too without
@@ -617,4 +636,5 @@ private fun currentScreenLabel(route: String): Int =
         ?: SHOPPING_LIST_ROUTE_LABELS[route]
         ?: BAKING_ROUTE_LABELS[route]
         ?: NOTES_ROUTE_LABELS[route]
+        ?: KANBAN_ROUTE_LABELS[route]
         ?: R.string.app_name
