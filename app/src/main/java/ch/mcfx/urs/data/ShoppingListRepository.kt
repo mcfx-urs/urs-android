@@ -346,18 +346,20 @@ class ShoppingListRepository(
      * letting it linger forever. PENDING/FAILED rows are never touched —
      * they exist solely via the outbox replay path above.
      */
-    suspend fun refreshFromBackend() {
+    /** @return `true` if the list and every list's items refreshed cleanly (see [PullCoordinator]). */
+    suspend fun refreshFromBackend(): Boolean {
         syncManager.syncNow()
-        refreshQuietly {
+        val listsOk = refreshQuietly {
             val lists = emptyAsNull { api.getLists() }
             listDao.upsertFromServer(lists.map { it.toEntity() })
         }
-        listDao.observeAll().first().mapNotNull { it.serverId }.forEach { listId ->
+        val itemsOk = listDao.observeAll().first().mapNotNull { it.serverId }.map { listId ->
             refreshQuietly {
                 val items = emptyAsNull { api.getListItems(listId) }
                 listItemDao.upsertFromServer(listId, items.map { it.toEntity() })
             }
-        }
+        }.all { it }
+        return listsOk && itemsOk
     }
 
     /**
@@ -383,13 +385,16 @@ class ShoppingListRepository(
         }
     }
 
-    private suspend fun refreshQuietly(block: suspend () -> Unit) {
+    private suspend fun refreshQuietly(block: suspend () -> Unit): Boolean {
         try {
             block()
+            return true
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             // Best-effort only — see refreshFromBackend's doc comment.
+            android.util.Log.w("ShoppingListRepository", "refreshFromBackend failed", e)
+            return false
         }
     }
 

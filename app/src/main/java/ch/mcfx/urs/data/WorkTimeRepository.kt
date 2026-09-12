@@ -205,8 +205,10 @@ class WorkTimeRepository(
      * touches PENDING/FAILED rows, which exist solely via the outbox replay
      * path above.
      */
-    suspend fun refreshFromBackend() {
-        val userId = tokenStore.currentUserId ?: return
+    /** @return `true` if both entries and month overrides refreshed cleanly (see [PullCoordinator]); also `true` if there's no logged-in user yet, since there's nothing to fail. */
+    suspend fun refreshFromBackend(): Boolean {
+        val userId = tokenStore.currentUserId ?: return true
+        var allOk = true
         try {
             api.getWorkTimeEntries(userId, "100", "DESC")
                 .forEach { dto ->
@@ -214,8 +216,10 @@ class WorkTimeRepository(
                 }
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             // Best-effort only — see doc comment above.
+            android.util.Log.w("WorkTimeRepository", "refreshFromBackend failed", e)
+            allOk = false
         }
         try {
             val overrides = api.getWorkTimeMonthOverrides(userId)
@@ -228,9 +232,12 @@ class WorkTimeRepository(
             )
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             // Best-effort only — see doc comment above.
+            android.util.Log.w("WorkTimeRepository", "refreshFromBackend failed", e)
+            allOk = false
         }
+        return allOk
     }
 
     /**

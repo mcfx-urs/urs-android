@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Note tags are now included when sharing a note as text (in the footer) and when creating a calendar event from a note (appended to the description) (#32).
 - Watch relay serves the active chore types on a new `/api/watch/chore-types` endpoint, letting the watch build its Chores menu from the account instead of a hardcoded list (#61).
 - Shopping lists and inventories can be given an icon from a searchable picker ("Choose icon" in the long-press sheet); the favorite home-tile badge shows the icon instead of the name's first letter (#56).
+- Data is now pulled from the server on tunnel-reachable, on the periodic 15-minute sync, and on manual "Sync now" — not only when each screen happened to be opened — so a fresh install or a post-migration wipe no longer shows empty screens until every one is visited manually; sync status shows as a dot on the Home logo and a tint on the Home hero moon (#53).
 
 ### Changed
 

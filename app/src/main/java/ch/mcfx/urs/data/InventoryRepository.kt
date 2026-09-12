@@ -298,27 +298,33 @@ class InventoryRepository(
      * shows something for whichever inventory screen the user opens next.
      * Never touches PENDING/FAILED rows, which exist solely via the outbox
      * replay path above.
+     *
+     * @return `true` if the inventory list and every inventory's products refreshed cleanly (see [PullCoordinator]).
      */
-    suspend fun refreshFromBackend() {
-        refreshQuietly {
+    suspend fun refreshFromBackend(): Boolean {
+        val inventoriesOk = refreshQuietly {
             val inventories = emptyAsNull { api.getInventories() }
             inventoryDao.upsertFromServer(inventories.map { it.toEntity(currentUserId()) })
         }
-        inventoryDao.observeAll(currentUserId()).first().mapNotNull { it.serverId }.forEach { inventoryId ->
+        val productsOk = inventoryDao.observeAll(currentUserId()).first().mapNotNull { it.serverId }.map { inventoryId ->
             refreshQuietly {
                 val products = emptyAsNull { api.getInventoryProducts(inventoryId) }
                 inventoryProductDao.upsertFromServer(products.map { it.toEntity() })
             }
-        }
+        }.all { it }
+        return inventoriesOk && productsOk
     }
 
-    private suspend fun refreshQuietly(block: suspend () -> Unit) {
+    private suspend fun refreshQuietly(block: suspend () -> Unit): Boolean {
         try {
             block()
+            return true
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             // Best-effort only — see refreshFromBackend's doc comment.
+            android.util.Log.w("InventoryRepository", "refreshFromBackend failed", e)
+            return false
         }
     }
 

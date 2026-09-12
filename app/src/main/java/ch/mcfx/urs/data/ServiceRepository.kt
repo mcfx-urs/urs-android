@@ -198,15 +198,19 @@ class ServiceRepository(
      * Never touches PENDING/FAILED rows, which exist solely via the outbox
      * replay path above.
      */
-    suspend fun refreshFromBackend() {
+    /** @return `true` if the refresh completed cleanly (see [PullCoordinator]). */
+    suspend fun refreshFromBackend(): Boolean {
         try {
             api.getVehicleServices().forEach { dto ->
                 vehicleServiceDao.upsertFromServer(dto.toEntity(), dto.tags.map { it.toEntity() })
             }
+            return true
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             // Best-effort only — see doc comment above.
+            android.util.Log.w("ServiceRepository", "refreshFromBackend failed", e)
+            return false
         }
     }
 }

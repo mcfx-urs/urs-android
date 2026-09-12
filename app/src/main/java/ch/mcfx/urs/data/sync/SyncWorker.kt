@@ -16,19 +16,24 @@ import ch.mcfx.urs.UrsApplication
 import java.util.concurrent.TimeUnit
 
 /**
- * Durability backstop for the offline fill outbox: even if the app is never
- * reopened while connectivity briefly returns, this eventually replays
- * whatever is still queued. [PeriodicWorkRequestBuilder]'s 15-minute floor
- * means this is *not* the "feels instant" path — see [enqueueOneTime],
- * layered alongside this via [ch.mcfx.urs.vpn.NetworkGate]'s existing
- * connectivity callback.
+ * Durability backstop for the offline fill outbox *and* the pull side
+ * (GitHub issue #53): even if the app is never reopened while connectivity
+ * briefly returns, this eventually replays whatever is still queued and
+ * re-pulls whatever a previous [PullCoordinator.pullAll] attempt failed on.
+ * [PeriodicWorkRequestBuilder]'s 15-minute floor means this is *not* the
+ * "feels instant" path — see [enqueueOneTime], layered alongside this via
+ * [ch.mcfx.urs.vpn.NetworkGate]'s existing connectivity callback. Returning
+ * [Result.retry] on a pull failure reuses WorkManager's own exponential
+ * backoff (already configured below) rather than this class implementing
+ * its own retry/backoff scheduling.
  */
 class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
         val app = applicationContext as UrsApplication
-        val succeeded = app.container.syncManager.syncNow()
-        return if (succeeded) Result.success() else Result.retry()
+        val pushOk = app.container.syncManager.syncNow()
+        val pullOk = app.container.pullCoordinator.pullAll()
+        return if (pushOk && pullOk) Result.success() else Result.retry()
     }
 
     companion object {

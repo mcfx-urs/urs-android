@@ -5,6 +5,9 @@
     <string name="coming_soon">soon</string>
 
     <string name="nav_home">Home</string>
+    <string name="sync_status_ok">Synced</string>
+    <string name="sync_status_syncing">Syncing…</string>
+    <string name="sync_status_error">Last sync had an error</string>
     <string name="home_welcome_eyebrow">Welcome</string>
     <string name="home_new_fuel_fill">New Fuel Fill</string>
     <string name="home_days_since_beer">Last beer: %1$d days ago</string>

@@ -55,16 +55,19 @@ class CatalogRepository(
      * successful call. Refreshes both products and categories together —
      * either screen that needs one of the two (Inventory, Shopping List)
      * ends up warming both, so neither ever waits on a second trigger.
+     *
+     * @return `true` if both products and categories refreshed cleanly (see [PullCoordinator]).
      */
-    suspend fun refreshFromBackend() {
-        refreshQuietly {
+    suspend fun refreshFromBackend(): Boolean {
+        val productsOk = refreshQuietly {
             val products = emptyAsNull { api.getCatalogProducts() }
             catalogProductDao.upsertAll(products.map { it.toEntity() })
         }
-        refreshQuietly {
+        val categoriesOk = refreshQuietly {
             val categories = emptyAsNull { api.getCatalogCategories() }
             catalogCategoryDao.upsertAll(categories.map { it.toEntity() })
         }
+        return productsOk && categoriesOk
     }
 
     /**
@@ -204,13 +207,16 @@ class CatalogRepository(
         return response.body()?.quantity?.toIntOrNull()
     }
 
-    private suspend fun refreshQuietly(block: suspend () -> Unit) {
+    private suspend fun refreshQuietly(block: suspend () -> Unit): Boolean {
         try {
             block()
+            return true
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             // Best-effort only — see refreshFromBackend's doc comment.
+            android.util.Log.w("CatalogRepository", "refreshFromBackend failed", e)
+            return false
         }
     }
 

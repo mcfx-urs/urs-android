@@ -38,10 +38,9 @@ class LocationHistoryRepository(
      * the UI or surfacing an error on failure, same best-effort shape as
      * [FuelRepository.refreshFromBackend].
      */
-    suspend fun refreshFromBackend() {
-        refreshQuietly {
-            locationHistoryDao.reconcileFromServer(fetchAllPages().map { it.toEntity() })
-        }
+    /** @return `true` if the refresh completed cleanly (see [PullCoordinator]). */
+    suspend fun refreshFromBackend(): Boolean = refreshQuietly {
+        locationHistoryDao.reconcileFromServer(fetchAllPages().map { it.toEntity() })
     }
 
     /**
@@ -69,13 +68,16 @@ class LocationHistoryRepository(
         return allPoints
     }
 
-    private suspend fun refreshQuietly(block: suspend () -> Unit) {
+    private suspend fun refreshQuietly(block: suspend () -> Unit): Boolean {
         try {
             block()
+            return true
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             // Best-effort only — see refreshFromBackend's doc comment.
+            android.util.Log.w("LocationHistoryRepository", "refreshFromBackend failed", e)
+            return false
         }
     }
 

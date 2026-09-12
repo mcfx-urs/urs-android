@@ -319,23 +319,29 @@ class FuelRepository(
      * surfacing an error on failure: stale cached data beats an empty or
      * error screen. Never touches PENDING/FAILED rows, which exist solely
      * via the outbox replay path above.
+     *
+     * @return `true` if every domain below refreshed cleanly (see [PullCoordinator]).
      */
-    suspend fun refreshFromBackend() {
-        refreshQuietly { api.getFillingStations().forEach { fillingStationDao.upsert(it.toEntity()) } }
-        refreshQuietly { emptyAsNull { api.getFills() }.forEach { fillDao.upsertFromServer(it.toEntity()) } }
-        refreshQuietly {
+    suspend fun refreshFromBackend(): Boolean {
+        var allOk = refreshQuietly { api.getFillingStations().forEach { fillingStationDao.upsert(it.toEntity()) } }
+        allOk = refreshQuietly { emptyAsNull { api.getFills() }.forEach { fillDao.upsertFromServer(it.toEntity()) } } && allOk
+        allOk = refreshQuietly {
             api.getCurrencies().takeIf { it.isNotEmpty() }?.let { currencyDao.upsertAll(it.map(CurrencyDto::toEntity)) }
-        }
-        refreshQuietly { api.getVehicles().takeIf { it.isNotEmpty() }?.let { vehicleDao.upsertAll(it.map(VehicleDto::toEntity)) } }
+        } && allOk
+        allOk = refreshQuietly { api.getVehicles().takeIf { it.isNotEmpty() }?.let { vehicleDao.upsertAll(it.map(VehicleDto::toEntity)) } } && allOk
+        return allOk
     }
 
-    private suspend fun refreshQuietly(block: suspend () -> Unit) {
+    private suspend fun refreshQuietly(block: suspend () -> Unit): Boolean {
         try {
             block()
+            return true
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             // Best-effort only — see refreshFromBackend's doc comment.
+            android.util.Log.w("FuelRepository", "refreshFromBackend failed", e)
+            return false
         }
     }
 
