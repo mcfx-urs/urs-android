@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -137,17 +138,20 @@ private fun BoardColumnsRow(detail: KanbanBoardDetail, viewModel: KanbanBoardDet
     val columnStepPx = with(density) { KanbanColumnWidth.toPx() } + columnSpacingPx
     val cardSpacingPx = with(density) { Spacing.s.toPx() }
 
-    // Local, drag-adjusted ordering — keyed narrowly on just the id shape
-    // (which column/card ids exist, and which column each card is currently
-    // in), not the full entities, same shape as ChoresScreen.StatsStrip's
-    // own orderedIds: a field-only change elsewhere (e.g. a sibling card's
-    // syncStatus flipping PENDING->SYNCED mid-drag) must not reset an
-    // in-progress drag's own local reorder, only a real id-set change
-    // (a card/column actually added, removed, or moved server-side) should.
+    // Column/card membership always mirrors the real, persisted board — a
+    // held card or column is only ever a *visual* float (graphicsLayer
+    // translation) on top of this, never a live re-parent into a different
+    // column's list. Which column/index a drag actually lands on is decided
+    // exactly once, in onDragEnd, from the final accumulated offset — never
+    // while the gesture is still held. Anything else (re-parenting mid-drag,
+    // as an earlier version of this screen did) means Compose treats the
+    // drag as crossing into a different composable subtree, which can drop
+    // the live pointerInput gesture entirely and/or flap back and forth
+    // around the crossing threshold on ordinary finger jitter.
     val columnIdShape = detail.columns.map { it.column.id }
     val cardIdShape = detail.columns.map { it.column.id to it.cards.map { c -> c.card.id } }
-    var orderedColumnIds by remember(columnIdShape) { mutableStateOf(columnIdShape) }
-    var cardIdsByColumn by remember(cardIdShape) { mutableStateOf(cardIdShape.toMap()) }
+    val orderedColumnIds = columnIdShape
+    val cardIdsByColumn = cardIdShape.toMap()
     // Pure display/lookup maps, deliberately not gated on the narrow id
     // shape above — these must always reflect the latest field values (a
     // card's title/tags/etc.) even while some other card is mid-drag.
@@ -169,56 +173,36 @@ private fun BoardColumnsRow(detail: KanbanBoardDetail, viewModel: KanbanBoardDet
             modifier = Modifier
                 .fillMaxWidth()
                 .onGloballyPositioned { cardHeightsPx[cardId] = it.size.height }
-                .graphicsLayer { translationY = if (isDragging) cardDragOffset.y else 0f }
+                .graphicsLayer {
+                    translationX = if (isDragging) cardDragOffset.x else 0f
+                    translationY = if (isDragging) cardDragOffset.y else 0f
+                }
                 .zIndex(if (isDragging) 1f else 0f)
                 .pointerInput(cardId) {
                     detectDragGesturesAfterLongPress(
                         onDragStart = { draggingCardId = cardId; cardDragOffset = Offset.Zero },
+                        // The only place a move is actually decided/saved — see the
+                        // comment on cardIdsByColumn's declaration above for why.
                         onDragEnd = {
                             draggingCardId = null
+                            val offset = cardDragOffset
                             cardDragOffset = Offset.Zero
-                            val targetColumnId = cardIdsByColumn.entries.firstOrNull { cardId in it.value }?.key ?: return@detectDragGesturesAfterLongPress
-                            val targetIndex = cardIdsByColumn.getValue(targetColumnId).indexOf(cardId)
+                            val sourceColumnId = cardIdsByColumn.entries.firstOrNull { cardId in it.value }?.key
+                                ?: return@detectDragGesturesAfterLongPress
+                            val sourceIndex = cardIdsByColumn.getValue(sourceColumnId).indexOf(cardId)
+                            val sourceColumnIndex = orderedColumnIds.indexOf(sourceColumnId)
+                            val columnShift = if (columnStepPx > 0f) (offset.x / columnStepPx).roundToInt() else 0
+                            val targetColumnIndex = (sourceColumnIndex + columnShift).coerceIn(0, orderedColumnIds.lastIndex)
+                            val targetColumnId = orderedColumnIds[targetColumnIndex]
                             val targetColumnPublicId = columnById[targetColumnId]?.column?.publicId ?: return@detectDragGesturesAfterLongPress
+                            val stepY = (cardHeightsPx[cardId] ?: 0) + cardSpacingPx
+                            val indexShift = if (stepY > 0f) (offset.y / stepY).roundToInt() else 0
+                            val targetSiblingCount = cardIdsByColumn[targetColumnId].orEmpty().count { it != cardId }
+                            val targetIndex = (sourceIndex + indexShift).coerceIn(0, targetSiblingCount)
                             viewModel.moveCard(cardId, targetColumnPublicId, targetIndex)
                         },
                         onDragCancel = { draggingCardId = null; cardDragOffset = Offset.Zero },
-                        onDrag = { change, delta ->
-                            change.consume()
-                            cardDragOffset += delta
-                            val currentColumnId = cardIdsByColumn.entries.firstOrNull { cardId in it.value }?.key
-                                ?: return@detectDragGesturesAfterLongPress
-                            val currentColumnIndex = orderedColumnIds.indexOf(currentColumnId)
-                            if (columnStepPx > 0f && currentColumnIndex >= 0) {
-                                val columnShift = (cardDragOffset.x / columnStepPx).roundToInt()
-                                val targetColumnIndex = (currentColumnIndex + columnShift).coerceIn(0, orderedColumnIds.lastIndex)
-                                val targetColumnId = orderedColumnIds[targetColumnIndex]
-                                if (targetColumnId != currentColumnId) {
-                                    cardIdsByColumn = cardIdsByColumn.toMutableMap().apply {
-                                        this[currentColumnId] = this[currentColumnId].orEmpty() - cardId
-                                        this[targetColumnId] = this[targetColumnId].orEmpty() + cardId
-                                    }
-                                    cardDragOffset =
-                                        cardDragOffset.copy(x = cardDragOffset.x - (targetColumnIndex - currentColumnIndex) * columnStepPx)
-                                }
-                            }
-
-                            val activeColumnId = cardIdsByColumn.entries.firstOrNull { cardId in it.value }?.key
-                                ?: return@detectDragGesturesAfterLongPress
-                            val list = cardIdsByColumn.getValue(activeColumnId)
-                            val currentIndex = list.indexOf(cardId)
-                            val stepY = (cardHeightsPx[cardId] ?: 0) + cardSpacingPx
-                            if (stepY > 0f && currentIndex >= 0) {
-                                val indexShift = (cardDragOffset.y / stepY).roundToInt()
-                                val targetIndex = (currentIndex + indexShift).coerceIn(0, list.lastIndex)
-                                if (targetIndex != currentIndex) {
-                                    cardIdsByColumn = cardIdsByColumn.toMutableMap().apply {
-                                        this[activeColumnId] = list.toMutableList().apply { add(targetIndex, removeAt(currentIndex)) }
-                                    }
-                                    cardDragOffset = cardDragOffset.copy(y = cardDragOffset.y - (targetIndex - currentIndex) * stepY)
-                                }
-                            }
-                        },
+                        onDrag = { change, delta -> change.consume(); cardDragOffset += delta },
                     )
                 }
                 .clickable { viewModel.openCardEditor(cardWithDetails.card, cardWithDetails.tags) },
@@ -240,26 +224,19 @@ private fun BoardColumnsRow(detail: KanbanBoardDetail, viewModel: KanbanBoardDet
                 .pointerInput(columnId) {
                     detectDragGesturesAfterLongPress(
                         onDragStart = { draggingColumnId = columnId; columnDragOffsetX = 0f },
+                        // Decided only here, from the final offset — see cardIdsByColumn's
+                        // doc comment above for why not live during the hold.
                         onDragEnd = {
                             draggingColumnId = null
+                            val offsetX = columnDragOffsetX
                             columnDragOffsetX = 0f
-                            val targetIndex = orderedColumnIds.indexOf(columnId)
+                            val currentIndex = orderedColumnIds.indexOf(columnId)
+                            if (currentIndex < 0 || columnStepPx <= 0f) return@detectDragGesturesAfterLongPress
+                            val targetIndex = (currentIndex + (offsetX / columnStepPx).roundToInt()).coerceIn(0, orderedColumnIds.lastIndex)
                             viewModel.moveColumn(columnId, targetIndex)
                         },
                         onDragCancel = { draggingColumnId = null; columnDragOffsetX = 0f },
-                        onDrag = { change, delta ->
-                            change.consume()
-                            columnDragOffsetX += delta.x
-                            if (columnStepPx <= 0f) return@detectDragGesturesAfterLongPress
-                            val currentIndex = orderedColumnIds.indexOf(columnId)
-                            if (currentIndex < 0) return@detectDragGesturesAfterLongPress
-                            val targetIndex =
-                                (currentIndex + (columnDragOffsetX / columnStepPx).roundToInt()).coerceIn(0, orderedColumnIds.lastIndex)
-                            if (targetIndex != currentIndex) {
-                                orderedColumnIds = orderedColumnIds.toMutableList().apply { add(targetIndex, removeAt(currentIndex)) }
-                                columnDragOffsetX -= (targetIndex - currentIndex) * columnStepPx
-                            }
-                        },
+                        onDrag = { change, delta -> change.consume(); columnDragOffsetX += delta.x },
                     )
                 }
                 .clickable { viewModel.openColumnActionSheet(columnWithCards.column) }
@@ -285,16 +262,27 @@ private fun BoardColumnsRow(detail: KanbanBoardDetail, viewModel: KanbanBoardDet
     ) {
         orderedColumnIds.forEach { columnId ->
             val columnWithCards = columnById[columnId] ?: return@forEach
-            Column(
-                modifier = Modifier.width(KanbanColumnWidth),
-                verticalArrangement = Arrangement.spacedBy(Spacing.s),
-            ) {
-                ColumnHeader(columnWithCards)
-                cardIdsByColumn[columnId].orEmpty().forEach { cardId ->
-                    val cardWithDetails = cardById[cardId] ?: return@forEach
-                    CardTile(cardWithDetails)
+            // Keyed by columnId (not just positional) — without this, reordering
+            // columns (or a card crossing into a column that shifts this one's
+            // slot) makes Compose reuse this composable's slot for a *different*
+            // column's data, which cancels and restarts the columnId-keyed
+            // pointerInput below mid-gesture instead of letting the drag continue.
+            key(columnId) {
+                Column(
+                    modifier = Modifier.width(KanbanColumnWidth),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.s),
+                ) {
+                    ColumnHeader(columnWithCards)
+                    cardIdsByColumn[columnId].orEmpty().forEach { cardId ->
+                        val cardWithDetails = cardById[cardId] ?: return@forEach
+                        // Same reasoning as the columnId key above — a card that
+                        // crosses into a different column's list must keep its own
+                        // identity (and its live drag pointerInput) rather than
+                        // having some other card's composable slot reused for it.
+                        key(cardId) { CardTile(cardWithDetails) }
+                    }
+                    AddCardRow(onClick = { viewModel.openCreateCardEditor(columnWithCards.column.publicId) })
                 }
-                AddCardRow(onClick = { viewModel.openCreateCardEditor(columnWithCards.column.publicId) })
             }
         }
         AddColumnTile(onClick = viewModel::openCreateColumnForm)

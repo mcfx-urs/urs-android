@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Kanban card/column drag: dragging into a different column live-reparented it into that column's list, which dropped the in-progress gesture (visible as the card flipping back and forth across the boundary) and, on a cancelled gesture, could leave it rendered in the wrong column without ever saving the move. The column/position a drag lands on is now decided once, on release, instead of live while still held.
+
 ## [0.25.0] - 2026-09-13
 
 ### Added
