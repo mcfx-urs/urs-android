@@ -30,6 +30,11 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # The action's default `tools platform-tools` tries to install the
+          # long-deprecated standalone `tools` package, which Google has
+          # since pulled from the SDK repository manifest entirely.
+          packages: "platform-tools"
 
       # Signing credentials never live in the repo (see keystore.properties,
       # gitignored) — for CI they come from encrypted repository secrets,
