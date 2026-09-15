@@ -23,6 +23,17 @@ val keystoreProperties = Properties().apply {
     }
 }
 
+// Shared secret with urs-zepp's watch-relay client, kept out of source the
+// same way as the signing credentials above — absent for a fresh clone,
+// which is fine: the relay endpoint (opt-in, off by default) just rejects
+// every request with an empty token instead of the real one.
+val relayPropertiesFile = rootProject.file("relay.properties")
+val relayProperties = Properties().apply {
+    if (relayPropertiesFile.exists()) {
+        load(relayPropertiesFile.inputStream())
+    }
+}
+
 // A fresh joke per build, shown on the About screen — fetched at Gradle
 // configuration time, not at app runtime, so it needs no network
 // permission/error-state handling in the app itself. Hits the public
@@ -72,6 +83,11 @@ android {
             "String",
             "BUILD_TIME",
             "\"${SimpleDateFormat("dd.MM.yyyy HH:mm:ss").format(Date())}\"",
+        )
+        buildConfigField(
+            "String",
+            "WATCH_RELAY_TOKEN",
+            (relayProperties.getProperty("watchRelayToken") ?: "").toJavaStringLiteral(),
         )
     }
 

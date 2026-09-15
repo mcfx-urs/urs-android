@@ -52,6 +52,14 @@ jobs:
           keyPassword=${{ secrets.RELEASE_KEY_PASSWORD }}
           PROPS
 
+      # Same out-of-source pattern as the signing credentials above, for the
+      # watch-relay shared secret (see relay.properties, app/build.gradle.kts).
+      - name: Write relay.properties
+        run: |
+          cat > relay.properties <<PROPS
+          watchRelayToken=${{ secrets.WATCH_RELAY_TOKEN }}
+          PROPS
+
       - name: Build signed release APK
         run: ./gradlew assembleRelease
 
@@ -85,4 +93,4 @@ jobs:
 
       - name: Clean up signing material
         if: always()
-        run: rm -f release.jks keystore.properties
+        run: rm -f release.jks keystore.properties relay.properties

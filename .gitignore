@@ -15,6 +15,9 @@ local.properties
 *.keystore
 keystore.properties
 
+# Watch-relay shared secret (see relay.properties, app/build.gradle.kts)
+relay.properties
+
 # Misc
 captures/
 .DS_Store
