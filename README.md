@@ -50,7 +50,7 @@ and sync design fit together.
   tags, optional link to a note), synced offline via the same
   outbox pattern as the rest of the app.
 - **Watch companion relay** — a local HTTP relay so
-  [urs-zepp](https://github.com/3lefeint/urs-zepp) (the Amazfit watch
+  [urs-zepp](https://github.com/mcfx-urs/urs-zepp) (the Amazfit watch
   companion) can log beers and chores and upload audio notes without
   its own network access or login session.
 - **Settings** — WireGuard VPN setup (including QR-code scanning),
@@ -63,11 +63,11 @@ a spot for each as "coming soon" until it lands.
 
 ## The urs family
 
-- [urs-web](https://github.com/3lefeint/urs-web) — browser companion
+- [urs-web](https://github.com/mcfx-urs/urs-web) — browser companion
   for tasks awkward on a phone, home-network only.
-- [urs-zepp](https://github.com/3lefeint/urs-zepp) — Zepp OS mini-app
+- [urs-zepp](https://github.com/mcfx-urs/urs-zepp) — Zepp OS mini-app
   for Amazfit watches, relayed through this app.
-- [urs-backend](https://github.com/3lefeint/urs-backend) — issue
+- [urs-backend](https://github.com/mcfx-urs/urs-backend) — issue
   tracker for the backend; the Go/MariaDB REST API itself is
   self-hosted, not on GitHub.
 

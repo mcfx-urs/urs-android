@@ -10,10 +10,10 @@ urs is a household app family split across several repositories:
 
 - **This repo (`urs-android`)** — the primary, offline-capable client,
   native Kotlin/Compose.
-- **[urs-web](https://github.com/3lefeint/urs-web)** — a browser
+- **[urs-web](https://github.com/mcfx-urs/urs-web)** — a browser
   companion (React/TypeScript) for tasks awkward on a phone, thin
   client, home-network only.
-- **[urs-zepp](https://github.com/3lefeint/urs-zepp)** — a Zepp OS
+- **[urs-zepp](https://github.com/mcfx-urs/urs-zepp)** — a Zepp OS
   mini-app for Amazfit watches, for quick logging from the wrist. It
   has no network access or login session of its own — this app relays
   its requests (see "Watch companion relay" below).
@@ -21,7 +21,7 @@ urs is a household app family split across several repositories:
   MariaDB, deployed on Kubernetes. Never exposed to the public
   internet; see "Network reachability" below. Code lives on
   self-hosted GitLab, not on GitHub — the public
-  [urs-backend](https://github.com/3lefeint/urs-backend) repo is only
+  [urs-backend](https://github.com/mcfx-urs/urs-backend) repo is only
   an issue tracker for it.
 
 ```mermaid

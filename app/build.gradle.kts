@@ -53,7 +53,7 @@ fun fetchDadJoke(): String {
         connection.setRequestProperty("Accept", "application/json")
         // icanhazdadjoke.com asks API clients to send an identifying
         // User-Agent; a request without one can be served HTML or throttled.
-        connection.setRequestProperty("User-Agent", "urs-android (https://github.com/3lefeint/urs-android)")
+        connection.setRequestProperty("User-Agent", "urs-android (https://github.com/mcfx-urs/urs-android)")
         val body = connection.inputStream.bufferedReader().use { it.readText() }
         connection.disconnect()
         Regex("\"joke\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"").find(body)
