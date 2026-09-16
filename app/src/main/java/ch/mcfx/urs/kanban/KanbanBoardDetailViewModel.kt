@@ -17,6 +17,7 @@ import ch.mcfx.urs.data.local.NoteEntity
 import ch.mcfx.urs.data.local.publicId
 import java.time.LocalDate
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -26,6 +27,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+// How long the card-saved confirmation bar stays up before it dismisses
+// itself.
+private const val SaveConfirmationTimeoutMillis = 2500L
 
 sealed interface KanbanBoardDetailUiState {
     data object Loading : KanbanBoardDetailUiState
@@ -90,6 +95,16 @@ class KanbanBoardDetailViewModel(
 
     private val _availableNotes = MutableStateFlow<List<NoteEntity>>(emptyList())
     val availableNotes: StateFlow<List<NoteEntity>> = _availableNotes.asStateFlow()
+
+    // Transient "card saved" feedback, shown after the card editor sheet has
+    // already closed — self-clears after SaveConfirmationTimeoutMillis. A
+    // plain trigger flag rather than a pre-formatted message string: the
+    // confirmation text is static (no card-specific content to interpolate,
+    // unlike shoppinglist's AddedConfirmBar), and no ViewModel in this app
+    // resolves string resources itself — the screen renders the actual
+    // string via stringResource, matching that existing pattern.
+    private val _saveConfirmation = MutableStateFlow(false)
+    val saveConfirmation: StateFlow<Boolean> = _saveConfirmation.asStateFlow()
 
     /**
      * The live checklist for whichever card [cardEditor] currently has open
@@ -267,11 +282,20 @@ class KanbanBoardDetailViewModel(
                     repository.createCard(form.columnId, form.title.trim(), form.description, dueDate, form.priority, form.linkedNoteId, form.tags)
                 }
                 _cardEditor.value = null
+                showSaveConfirmation()
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
                 _cardEditor.update { it?.copy(submitting = false, submitFailed = true) }
             }
+        }
+    }
+
+    private fun showSaveConfirmation() {
+        _saveConfirmation.value = true
+        viewModelScope.launch {
+            delay(SaveConfirmationTimeoutMillis)
+            _saveConfirmation.value = false
         }
     }
 

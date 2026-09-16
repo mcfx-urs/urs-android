@@ -802,6 +802,7 @@
     <string name="kanban_card_add">Add card</string>
     <string name="kanban_card_new_title">New card</string>
     <string name="kanban_card_edit_title">Edit card</string>
+    <string name="kanban_card_saved">Card saved</string>
     <string name="kanban_card_field_title">Title</string>
     <string name="kanban_card_field_description">Description</string>
     <string name="kanban_card_field_tags">Tags</string>

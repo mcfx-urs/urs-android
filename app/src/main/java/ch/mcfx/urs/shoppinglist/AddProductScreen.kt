@@ -37,6 +37,7 @@ import ch.mcfx.urs.data.local.CatalogProductEntity
 import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsCheckbox
+import ch.mcfx.urs.ui.components.UrsConfirmBar
 import ch.mcfx.urs.ui.components.UrsFilterChip
 import ch.mcfx.urs.ui.components.UrsIconButton
 import ch.mcfx.urs.ui.components.UrsSquareTile
@@ -112,29 +113,19 @@ private fun AddedConfirmBar(
     onUndo: () -> Unit,
     onEdit: () -> Unit,
 ) {
-    UrsCard(
-        modifier = Modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(horizontal = Spacing.l, vertical = Spacing.s),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(Spacing.s),
-        ) {
-            UrsText(message, style = UrsTheme.typography.body, modifier = Modifier.weight(1f))
-            UrsText(
-                stringResource(R.string.undo),
-                style = UrsTheme.typography.body,
-                color = UrsTheme.colors.accent,
-                modifier = Modifier.clickable(onClick = onUndo).padding(Spacing.s),
-            )
-            UrsText(
-                stringResource(R.string.edit),
-                style = UrsTheme.typography.body,
-                color = UrsTheme.colors.accent,
-                modifier = Modifier.clickable(onClick = onEdit).padding(Spacing.s),
-            )
-        }
+    UrsConfirmBar(message = message) {
+        UrsText(
+            stringResource(R.string.undo),
+            style = UrsTheme.typography.body,
+            color = UrsTheme.colors.accent,
+            modifier = Modifier.clickable(onClick = onUndo).padding(Spacing.s),
+        )
+        UrsText(
+            stringResource(R.string.edit),
+            style = UrsTheme.typography.body,
+            color = UrsTheme.colors.accent,
+            modifier = Modifier.clickable(onClick = onEdit).padding(Spacing.s),
+        )
     }
 }
 

@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Added a save confirmation bar after editing or saving a Kanban card (#78)
 - Added a brightness slider to the Life Map track colour picker, so black and other dark shades are reachable (#65)
 - Added an intensity-gradient mode for the Life Map track (one colour varying brightness instead of blending between three hues) (#66)
 - Added a custom time range picker (from/to date + time) to the Life Map controls sheet, alongside the existing presets (#76)

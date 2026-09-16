@@ -61,6 +61,7 @@ import ch.mcfx.urs.ui.components.UrsBottomSheet
 import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsCheckbox
+import ch.mcfx.urs.ui.components.UrsConfirmBar
 import ch.mcfx.urs.ui.components.UrsDateField
 import ch.mcfx.urs.ui.components.UrsDropdownField
 import ch.mcfx.urs.ui.components.UrsIcon
@@ -87,6 +88,7 @@ fun KanbanBoardDetailScreen(
     viewModel: KanbanBoardDetailViewModel = viewModel(factory = KanbanBoardDetailViewModel.Factory),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val saveConfirmation by viewModel.saveConfirmation.collectAsStateWithLifecycle()
     LaunchedEffect(boardId) { viewModel.loadBoard(boardId) }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -98,6 +100,13 @@ fun KanbanBoardDetailScreen(
                 color = UrsTheme.colors.onSurfaceMuted,
             )
             is KanbanBoardDetailUiState.Data -> BoardDetailContent(detail = state.detail, viewModel = viewModel)
+        }
+
+        if (saveConfirmation) {
+            UrsConfirmBar(
+                message = stringResource(R.string.kanban_card_saved),
+                modifier = Modifier.align(Alignment.BottomCenter).padding(Spacing.l),
+            )
         }
     }
 
