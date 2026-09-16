@@ -208,6 +208,20 @@ fun HomeScreen(
         }
     }
 
+    // Beer quick-stat refresh (#67): once on entering Home (covers
+    // navigating back from another screen after logging a beer) and again
+    // on ON_RESUME (covers the app sitting on Home across a day boundary
+    // or a watch-relay log while backgrounded).
+    LaunchedEffect(Unit) { viewModel.refreshBeerStat() }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) viewModel.refreshBeerStat()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     val scrollState = rememberScrollState()
     val isHeaderCollapsed = scrollState.value > HeaderCollapseThresholdPx
 
