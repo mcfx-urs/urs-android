@@ -168,6 +168,17 @@ class HomeViewModel(
         }
     }
 
+    // Re-fetched independently of the init-block quick-stats above (#67):
+    // Home's ViewModel instance survives navigating away and back (nav
+    // graph uses saveState/restoreState), so the beer stat would otherwise
+    // stay frozen at whatever it was on first load.
+    fun refreshBeerStat() {
+        viewModelScope.launch {
+            val beerEntries = runCatching { beerRepository.getEntries() }.getOrDefault(emptyList())
+            _uiState.value = _uiState.value.copy(sinceLastBeer = BeerStats.sinceLast(beerEntries))
+        }
+    }
+
     // Location permission is requested proactively here (once, not
     // on every Home visit) rather than contextually in the fuel-add form,
     // so the ambient LocationProvider is already warm by the time any

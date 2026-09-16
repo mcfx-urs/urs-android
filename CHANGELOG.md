@@ -9,6 +9,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Changed the beer-log home tile to show minutes/hours instead of "0 days ago" for logs within the same day (#69)
 
+### Fixed
+
+- Fixed the Home beer tile not refreshing after logging a new beer or across a day boundary until the app was restarted (#67)
+
 ## [1.0.0] - 2026-09-15
 
 ### Added
