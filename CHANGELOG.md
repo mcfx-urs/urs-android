@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Fixed the Notes screen being able to trigger multiple concurrent syncs on a single visit; also removed a duplicate connectivity-available trigger firing on every Wi-Fi capability tick (#71)
 - Fixed a beer log entered via the watch relay only syncing on the next periodic sync instead of immediately (#68)
 - Fixed the Home beer tile not refreshing when a beer is logged via the watch relay while Home is already the foreground screen
+- Fixed the Beer screen's list/stats not refreshing when a beer is logged via the watch relay while that screen is already open
 
 ## [1.1.0] - 2026-09-16
 

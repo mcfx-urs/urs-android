@@ -48,6 +48,11 @@ class BeerViewModel(
 
     init {
         load()
+        // Covers a beer logged via the watch relay while this screen is
+        // already open (same signal Home's quick-stat tile reacts to, see
+        // BeerRepository.logged) — otherwise the list/stats stay stale until
+        // the screen is left and re-entered.
+        viewModelScope.launch { repository.logged.collect { load() } }
     }
 
     fun load() {
