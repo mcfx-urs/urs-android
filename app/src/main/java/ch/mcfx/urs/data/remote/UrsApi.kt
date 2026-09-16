@@ -222,8 +222,16 @@ interface UrsApi {
     @GET("api/v1/recently-used-product")
     suspend fun getRecentlyUsedProducts(@Query("list_id") listId: String): List<RecentlyUsedProductDto>
 
+    // Scoped server-side to the caller's own row (see urs-backend#3) — a
+    // single object, not a list.
     @GET("api/v1/getuser")
-    suspend fun getUsers(): List<UserDto>
+    suspend fun getUser(): UserDto
+
+    // Name-only projection of every user, for the household-member-picker
+    // use case (UrsShareSheet) — never the caller-only sensitive fields
+    // getUser returns.
+    @GET("api/v1/household-users")
+    suspend fun getHouseholdUsers(): List<HouseholdUserDto>
 
     @PUT("api/v1/user/default-vehicle")
     suspend fun updateUserDefaultVehicle(@Body payload: UserDefaultVehiclePayload)

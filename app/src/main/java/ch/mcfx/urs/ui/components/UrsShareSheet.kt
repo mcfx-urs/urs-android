@@ -12,7 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import ch.mcfx.urs.R
-import ch.mcfx.urs.data.remote.UserDto
+import ch.mcfx.urs.data.remote.HouseholdUserDto
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Spacing
 
@@ -30,7 +30,7 @@ import ch.mcfx.urs.ui.tokens.Spacing
 @Composable
 fun UrsShareSheet(
     title: String,
-    members: List<UserDto>,
+    members: List<HouseholdUserDto>,
     sharedUserIds: Set<String>,
     onToggleShare: (userId: String, currentlyShared: Boolean) -> Unit,
     modifier: Modifier = Modifier,
@@ -49,7 +49,7 @@ fun UrsShareSheet(
             )
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(Spacing.s)) {
-                items(members, key = UserDto::id) { member ->
+                items(members, key = HouseholdUserDto::id) { member ->
                     val shared = member.id in sharedUserIds
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.xs),

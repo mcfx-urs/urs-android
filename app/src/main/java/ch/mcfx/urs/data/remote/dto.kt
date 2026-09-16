@@ -538,15 +538,13 @@ data class WorkTimeEntryPayload(
     @SerialName("breaks") val breaks: List<WorkTimeBreakPayload> = emptyList(),
 )
 
-// Only the fields the settings screen's default-daily-target-hours field
-// needs — GET /api/v1/getuser returns the full user row, but nothing else in
-// this app reads a user profile yet.
+// GET /api/v1/getuser returns only the caller's own row (scoped
+// server-side, see urs-backend#3) — the wage/tax fields below are never
+// visible for any other user. See HouseholdUserDto for the all-users,
+// name-only projection the member picker uses instead.
 @Serializable
 data class UserDto(
     @SerialName("user_id") val id: String,
-    // Only used for display so far (UrsShareSheet's member picker) —
-    // every other field below predates that and is read straight off the
-    // full GET /getuser response, which also always includes this.
     @SerialName("user_name") val userName: String = "",
     @SerialName("user_default_daily_target_hours") val defaultDailyTargetHours: String = "",
     @SerialName("user_employment_percent") val employmentPercent: String = "",
@@ -559,6 +557,17 @@ data class UserDto(
     @SerialName("user_suva_nbu_deduction_percent") val suvaNbuDeductionPercent: String = "",
     @SerialName("user_ktg_deduction_percent") val ktgDeductionPercent: String = "",
     @SerialName("user_default_vehicle_id") val defaultVehicleId: String = "",
+)
+
+// GET /api/v1/household-users — the deliberately narrow projection for the
+// household-member-picker use case (UrsShareSheet), which needs every
+// user's name but never their wage/tax fields (see UserDto).
+@Serializable
+data class HouseholdUserDto(
+    @SerialName("user_id") val id: String,
+    @SerialName("user_name") val userName: String = "",
+    @SerialName("user_firstname") val firstName: String = "",
+    @SerialName("user_lastname") val lastName: String = "",
 )
 
 @Serializable

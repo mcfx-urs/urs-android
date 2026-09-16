@@ -11,7 +11,7 @@ import ch.mcfx.urs.data.InventoryRepository
 import ch.mcfx.urs.data.UserRepository
 import ch.mcfx.urs.data.local.InventoryEntity
 import ch.mcfx.urs.data.local.publicId
-import ch.mcfx.urs.data.remote.UserDto
+import ch.mcfx.urs.data.remote.HouseholdUserDto
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,7 +37,7 @@ data class InventoryFormState(
 /** Share-sheet state for one inventory — see [ch.mcfx.urs.ui.components.UrsShareSheet]. */
 data class InventoryShareState(
     val inventory: InventoryEntity? = null,
-    val members: List<UserDto> = emptyList(),
+    val members: List<HouseholdUserDto> = emptyList(),
     val sharedUserIds: Set<String> = emptySet(),
 )
 

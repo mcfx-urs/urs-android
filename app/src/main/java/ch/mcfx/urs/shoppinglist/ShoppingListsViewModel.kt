@@ -12,7 +12,7 @@ import ch.mcfx.urs.data.ShoppingListRepository
 import ch.mcfx.urs.data.UserRepository
 import ch.mcfx.urs.data.local.ListEntity
 import ch.mcfx.urs.data.local.publicId
-import ch.mcfx.urs.data.remote.UserDto
+import ch.mcfx.urs.data.remote.HouseholdUserDto
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -38,7 +38,7 @@ data class ListFormState(
 /** Share-sheet state for one list — see [ch.mcfx.urs.ui.components.UrsShareSheet]. */
 data class ListShareState(
     val list: ListEntity? = null,
-    val members: List<UserDto> = emptyList(),
+    val members: List<HouseholdUserDto> = emptyList(),
     val sharedUserIds: Set<String> = emptySet(),
 )
 

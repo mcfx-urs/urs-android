@@ -1,10 +1,10 @@
 package ch.mcfx.urs.data
 
 import ch.mcfx.urs.auth.AuthTokenStore
+import ch.mcfx.urs.data.remote.HouseholdUserDto
 import ch.mcfx.urs.data.remote.LogLevelDto
 import ch.mcfx.urs.data.remote.UrsApi
 import ch.mcfx.urs.data.remote.UserDefaultDailyTargetHoursPayload
-import ch.mcfx.urs.data.remote.UserDto
 import ch.mcfx.urs.data.remote.UserDefaultVehiclePayload
 import ch.mcfx.urs.data.remote.UserEmploymentPercentPayload
 import ch.mcfx.urs.data.remote.UserHourlyWagePayload
@@ -37,9 +37,8 @@ class UserRepository(
 
     /** Pulls the server's current default vehicle into the local cache. Lets network errors propagate; callers guard. */
     suspend fun refreshDefaultVehicleId() {
-        val userId = tokenStore.currentUserId ?: return
         val serverValue = try {
-            api.getUsers().firstOrNull { it.id == userId }?.defaultVehicleId
+            api.getUser().defaultVehicleId
         } catch (_: SerializationException) {
             return
         }
@@ -55,19 +54,17 @@ class UserRepository(
     // Household member picker for UrsShareSheet — every other user
     // this account could share an inventory/list with. Same
     // empty-list-as-null backend quirk as everywhere else in this app.
-    suspend fun getAllUsers(): List<UserDto> =
+    suspend fun getAllUsers(): List<HouseholdUserDto> =
         try {
-            api.getUsers()
+            api.getHouseholdUsers()
         } catch (_: SerializationException) {
             emptyList()
         }
 
     suspend fun getWorkSettings(): WorkSettings {
-        val userId = tokenStore.currentUserId
         val user = try {
-            api.getUsers().firstOrNull { it.id == userId }
+            api.getUser()
         } catch (_: SerializationException) {
-            // The backend encodes an empty result set as JSON `null` instead of `[]`.
             null
         }
         return WorkSettings(
