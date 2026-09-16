@@ -109,7 +109,14 @@ android {
             // of conflicting with it over the same package name/signature.
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
-            val baseUrl = "https://urs-backend-stg.mcfx.ch/"
+            // Overridable via -PlocalBackendUrl=... (ursctl's "against local
+            // backend" build action uses this to point at
+            // http://10.0.2.2:<port>/, the emulator's alias for the host
+            // machine's loopback) — falls back to the normal staging backend
+            // when not set. Needs networkSecurityConfigDebug's cleartext
+            // exception, since a local backend has no TLS cert.
+            val baseUrl = (project.findProperty("localBackendUrl") as String?)
+                ?: "https://urs-backend-stg.mcfx.ch/"
             buildConfigField("String", "BASE_URL", "\"$baseUrl\"")
             buildConfigField("String", "JOKE_OF_THE_DAY", fetchDadJoke().toJavaStringLiteral())
         }
