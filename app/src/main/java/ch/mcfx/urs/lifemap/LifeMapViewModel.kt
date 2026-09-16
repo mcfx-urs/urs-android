@@ -10,6 +10,7 @@ import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.data.LocationHistoryRepository
 import ch.mcfx.urs.data.local.LocationHistoryDao
 import ch.mcfx.urs.data.local.LocationHistoryEntity
+import ch.mcfx.urs.location.GradientMode
 import ch.mcfx.urs.location.LocationHistorySettingsStore
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -64,6 +65,24 @@ data class LifeMapPointsState(val range: TimeRange, val points: List<LocationHis
 /** Track rendering options, read from [LocationHistorySettingsStore] when the screen opens. */
 data class TrackStyle(val gradientStops: List<Int>, val haloEnabled: Boolean)
 
+/** Oldest-point brightness as a fraction of the base colour's own value — never fully black unless the base colour itself is. */
+private const val INTENSITY_MIN_VALUE_FRACTION = 0.25f
+
+/**
+ * Two stops sharing [baseArgb]'s hue/saturation, varying only value (GitHub
+ * issue #66) — dim for the oldest point, the base colour's own brightness for
+ * the newest. Two stops are enough for a smooth ramp here (unlike the HUE
+ * mode's three fixed hues): [LifeMapScreen]'s blendGradientStops already
+ * linearly interpolates between them per segment.
+ */
+private fun intensityGradientStops(baseArgb: Int): List<Int> {
+    val hsv = FloatArray(3)
+    android.graphics.Color.colorToHSV(baseArgb, hsv)
+    val dim = hsv.copyOf().also { it[2] *= INTENSITY_MIN_VALUE_FRACTION }
+    val alpha = android.graphics.Color.alpha(baseArgb)
+    return listOf(android.graphics.Color.HSVToColor(alpha, dim), baseArgb)
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class LifeMapViewModel(
     private val locationHistoryDao: LocationHistoryDao,
@@ -79,7 +98,16 @@ class LifeMapViewModel(
 
     // Read once at construction — changing these lives in Location History
     // settings, which recreates this ViewModel on the way back here.
-    val trackStyle: TrackStyle = TrackStyle(settingsStore.trackColors(), settingsStore.isTrackHaloEnabled())
+    val trackStyle: TrackStyle = TrackStyle(
+        gradientStops = when (settingsStore.gradientMode()) {
+            GradientMode.HUE -> settingsStore.trackColors()
+            // Reuses the "newest" hue-mode stop as the intensity base colour
+            // (see LocationHistorySettingsScreen) rather than a separate
+            // stored colour — one fewer setting to keep in sync.
+            GradientMode.INTENSITY -> intensityGradientStops(settingsStore.trackColors().last())
+        },
+        haloEnabled = settingsStore.isTrackHaloEnabled(),
+    )
 
     private val _mutedMap = MutableStateFlow(settingsStore.isMutedMap())
     val mutedMap: StateFlow<Boolean> = _mutedMap.asStateFlow()

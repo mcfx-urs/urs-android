@@ -46,8 +46,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
 import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsCheckbox
+import ch.mcfx.urs.location.GradientMode
 import ch.mcfx.urs.ui.components.UrsColorWheelDialog
 import ch.mcfx.urs.ui.components.UrsDropdownField
+import ch.mcfx.urs.ui.components.UrsFilterChip
 import ch.mcfx.urs.ui.components.UrsOutlinedButton
 import ch.mcfx.urs.ui.components.UrsPill
 import ch.mcfx.urs.ui.components.UrsText
@@ -84,6 +86,7 @@ fun LocationHistorySettingsScreen(
     val stationaryThresholdMeters by viewModel.stationaryThresholdMeters.collectAsStateWithLifecycle()
     val precisionModeEnabled by viewModel.precisionModeEnabled.collectAsStateWithLifecycle()
     val trackColors by viewModel.trackColors.collectAsStateWithLifecycle()
+    val gradientMode by viewModel.gradientMode.collectAsStateWithLifecycle()
     val trackHaloEnabled by viewModel.trackHaloEnabled.collectAsStateWithLifecycle()
     var editingTrackStop by remember { mutableStateOf<Int?>(null) }
 
@@ -381,30 +384,64 @@ fun LocationHistorySettingsScreen(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
-                UrsText(stringResource(R.string.location_history_track_colors), style = UrsTheme.typography.body)
-                UrsText(
-                    stringResource(R.string.location_history_track_colors_hint),
-                    style = UrsTheme.typography.caption,
-                    color = colors.onSurfaceMuted,
-                )
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.m),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    trackColors.forEachIndexed { index, argb ->
-                        if (index > 0) {
-                            UrsText("→", style = UrsTheme.typography.body, color = colors.onSurfaceMuted)
-                        }
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(Color(argb))
-                                .border(2.dp, colors.onSurfaceMuted.copy(alpha = 0.4f), CircleShape)
-                                .clickable { editingTrackStop = index },
-                        )
-                    }
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
+                    UrsFilterChip(
+                        label = stringResource(R.string.location_history_gradient_mode_hue),
+                        selected = gradientMode == GradientMode.HUE,
+                        onClick = { viewModel.setGradientMode(GradientMode.HUE) },
+                    )
+                    UrsFilterChip(
+                        label = stringResource(R.string.location_history_gradient_mode_intensity),
+                        selected = gradientMode == GradientMode.INTENSITY,
+                        onClick = { viewModel.setGradientMode(GradientMode.INTENSITY) },
+                    )
                 }
+
+                if (gradientMode == GradientMode.HUE) {
+                    UrsText(stringResource(R.string.location_history_track_colors), style = UrsTheme.typography.body)
+                    UrsText(
+                        stringResource(R.string.location_history_track_colors_hint),
+                        style = UrsTheme.typography.caption,
+                        color = colors.onSurfaceMuted,
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.m),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        trackColors.forEachIndexed { index, argb ->
+                            if (index > 0) {
+                                UrsText("→", style = UrsTheme.typography.body, color = colors.onSurfaceMuted)
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(argb))
+                                    .border(2.dp, colors.onSurfaceMuted.copy(alpha = 0.4f), CircleShape)
+                                    .clickable { editingTrackStop = index },
+                            )
+                        }
+                    }
+                } else {
+                    // Reuses the "newest" hue-mode stop (index 2) as the
+                    // intensity base colour — see LifeMapViewModel — so this
+                    // mode needs no separate stored colour of its own.
+                    UrsText(stringResource(R.string.location_history_track_base_color), style = UrsTheme.typography.body)
+                    UrsText(
+                        stringResource(R.string.location_history_track_base_color_hint),
+                        style = UrsTheme.typography.caption,
+                        color = colors.onSurfaceMuted,
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(Color(trackColors[2]))
+                            .border(2.dp, colors.onSurfaceMuted.copy(alpha = 0.4f), CircleShape)
+                            .clickable { editingTrackStop = 2 },
+                    )
+                }
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,

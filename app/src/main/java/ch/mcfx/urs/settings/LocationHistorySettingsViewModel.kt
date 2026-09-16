@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import ch.mcfx.urs.UrsApplication
+import ch.mcfx.urs.location.GradientMode
 import ch.mcfx.urs.location.LocationActivityRecognitionManager
 import ch.mcfx.urs.location.LocationCapture
 import ch.mcfx.urs.location.LocationCaptureModeManager
@@ -42,6 +43,9 @@ class LocationHistorySettingsViewModel(
 
     private val _trackColors = MutableStateFlow(settingsStore.trackColors())
     val trackColors: StateFlow<List<Int>> = _trackColors.asStateFlow()
+
+    private val _gradientMode = MutableStateFlow(settingsStore.gradientMode())
+    val gradientMode: StateFlow<GradientMode> = _gradientMode.asStateFlow()
 
     private val _trackHaloEnabled = MutableStateFlow(settingsStore.isTrackHaloEnabled())
     val trackHaloEnabled: StateFlow<Boolean> = _trackHaloEnabled.asStateFlow()
@@ -186,6 +190,11 @@ class LocationHistorySettingsViewModel(
     fun setTrackColor(index: Int, argb: Int) {
         settingsStore.setTrackColor(index, argb)
         _trackColors.value = settingsStore.trackColors()
+    }
+
+    fun setGradientMode(mode: GradientMode) {
+        settingsStore.setGradientMode(mode)
+        _gradientMode.value = mode
     }
 
     fun setTrackHaloEnabled(enabled: Boolean) {

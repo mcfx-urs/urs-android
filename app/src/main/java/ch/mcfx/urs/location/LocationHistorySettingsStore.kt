@@ -48,6 +48,7 @@ private const val KEY_TRACK_COLOR_MID = "track_color_mid"
 private const val KEY_TRACK_COLOR_NEW = "track_color_new"
 private const val KEY_TRACK_HALO_ENABLED = "track_halo_enabled"
 private const val KEY_MUTED_MAP = "muted_map"
+private const val KEY_GRADIENT_MODE = "gradient_mode"
 
 // Default life-map track gradient, oldest -> newest: cyan -> blue -> magenta.
 // Deliberately a hue family that OSM Carto's own road/label/landuse colours
@@ -55,6 +56,9 @@ private const val KEY_MUTED_MAP = "muted_map"
 const val DEFAULT_TRACK_COLOR_OLD = 0xFF00E5FF.toInt()
 const val DEFAULT_TRACK_COLOR_MID = 0xFF2962FF.toInt()
 const val DEFAULT_TRACK_COLOR_NEW = 0xFFD500F9.toInt()
+
+/** Alternative to blending between hues (GitHub issue #66): vary one colour's brightness along the track instead. */
+enum class GradientMode { HUE, INTENSITY }
 
 /**
  * Two-scalar settings store for the life map's periodic capture (enabled +
@@ -115,6 +119,14 @@ class LocationHistorySettingsStore(context: Context) {
 
     fun setTrackHaloEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_TRACK_HALO_ENABLED, enabled).apply()
+    }
+
+    /** Whether the track gradient blends between the three stops below (HUE) or varies one colour's brightness (INTENSITY). */
+    fun gradientMode(): GradientMode =
+        if (prefs.getString(KEY_GRADIENT_MODE, null) == GradientMode.INTENSITY.name) GradientMode.INTENSITY else GradientMode.HUE
+
+    fun setGradientMode(mode: GradientMode) {
+        prefs.edit().putString(KEY_GRADIENT_MODE, mode.name).apply()
     }
 
     /** Desaturate the base map tiles so any track colour stands out — toggled on the Life Map screen itself. */
