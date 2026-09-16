@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- Changed Kanban board columns to a glass-style card look, matching urs-web's Kanban design (#81)
+
 ### Added
 
 - Added a changelog viewer to the About screen (#82)

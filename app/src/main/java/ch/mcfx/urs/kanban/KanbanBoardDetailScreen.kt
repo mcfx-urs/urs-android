@@ -64,6 +64,7 @@ import ch.mcfx.urs.ui.components.UrsCheckbox
 import ch.mcfx.urs.ui.components.UrsConfirmBar
 import ch.mcfx.urs.ui.components.UrsDateField
 import ch.mcfx.urs.ui.components.UrsDropdownField
+import ch.mcfx.urs.ui.components.UrsGlassCard
 import ch.mcfx.urs.ui.components.UrsIcon
 import ch.mcfx.urs.ui.components.UrsIconButton
 import ch.mcfx.urs.ui.components.UrsOutlinedButton
@@ -278,24 +279,26 @@ private fun BoardColumnsRow(detail: KanbanBoardDetail, viewModel: KanbanBoardDet
             // column's data, which cancels and restarts the columnId-keyed
             // pointerInput below mid-gesture instead of letting the drag continue.
             key(columnId) {
-                Column(
+                UrsGlassCard(
                     modifier = Modifier.width(KanbanColumnWidth).fillMaxHeight(),
-                    verticalArrangement = Arrangement.spacedBy(Spacing.s),
+                    contentPadding = PaddingValues(horizontal = Spacing.s, vertical = Spacing.xs),
                 ) {
-                    ColumnHeader(columnWithCards)
-                    Column(
-                        modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(Spacing.s),
-                    ) {
-                        cardIdsByColumn[columnId].orEmpty().forEach { cardId ->
-                            val cardWithDetails = cardById[cardId] ?: return@forEach
-                            // Same reasoning as the columnId key above — a card that
-                            // crosses into a different column's list must keep its own
-                            // identity (and its live drag pointerInput) rather than
-                            // having some other card's composable slot reused for it.
-                            key(cardId) { CardTile(cardWithDetails) }
+                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.s)) {
+                        ColumnHeader(columnWithCards)
+                        Column(
+                            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(Spacing.s),
+                        ) {
+                            cardIdsByColumn[columnId].orEmpty().forEach { cardId ->
+                                val cardWithDetails = cardById[cardId] ?: return@forEach
+                                // Same reasoning as the columnId key above — a card that
+                                // crosses into a different column's list must keep its own
+                                // identity (and its live drag pointerInput) rather than
+                                // having some other card's composable slot reused for it.
+                                key(cardId) { CardTile(cardWithDetails) }
+                            }
+                            AddCardRow(onClick = { viewModel.openCreateCardEditor(columnWithCards.column.publicId) })
                         }
-                        AddCardRow(onClick = { viewModel.openCreateCardEditor(columnWithCards.column.publicId) })
                     }
                 }
             }

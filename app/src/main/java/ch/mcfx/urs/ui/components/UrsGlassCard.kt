@@ -22,9 +22,10 @@ import ch.mcfx.urs.ui.tokens.Spacing
  * Glass-look card — same shadow/clip shell as [UrsCard], but a diagonal
  * accent-tinted gradient wash over the surface color and an accent-tinted
  * border on every theme, instead of a flat fill. No real blur
- * (`Modifier.blur`/`RenderEffect` needs API 31+, this app's `minSdk` is 26)
- * — the glass read comes entirely from the gradient + transparency + border,
- * so it looks identical on every supported API level.
+ * (`Modifier.blur`/`RenderEffect` needs API 31+; this app's `minSdk` is 34,
+ * so it would actually be available here — not used regardless, since the
+ * gradient + transparency + border read alone already matches the intended
+ * look without needing a per-frame blur pass).
  */
 @Composable
 fun UrsGlassCard(
