@@ -2,14 +2,20 @@ package ch.mcfx.urs.lifemap
 
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -19,7 +25,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
@@ -33,9 +41,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
 import ch.mcfx.urs.data.local.LocationHistoryEntity
 import ch.mcfx.urs.location.LocationUtils
-import ch.mcfx.urs.ui.components.UrsCard
+import ch.mcfx.urs.ui.components.UrsBottomSheet
 import ch.mcfx.urs.ui.components.UrsDropdownField
-import ch.mcfx.urs.ui.components.UrsFilterChip
+import ch.mcfx.urs.ui.components.UrsIcon
+import ch.mcfx.urs.ui.components.UrsIconButton
 import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Spacing
@@ -112,9 +121,11 @@ fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewM
     val points = pointsState.points
     val mutedMap by viewModel.mutedMap.collectAsStateWithLifecycle()
     val trackStyle = viewModel.trackStyle
-    // Halo colour tracks the active theme — the dark palette is the only one
-    // with a non-transparent border colour (same check UrsCard/UrsBottomSheet use).
-    val haloColorArgb = if (UrsTheme.colors.border.alpha > 0f) 0xFF0A0A0A.toInt() else 0xFFF7F7F7.toInt()
+    val colors = UrsTheme.colors
+    // Only the dark palette has a non-transparent border colour (same check UrsCard/UrsBottomSheet use).
+    val darkTheme = colors.border.alpha > 0f
+    val haloColorArgb = if (darkTheme) 0xFF0A0A0A.toInt() else 0xFFF7F7F7.toInt()
+    var controlsSheetOpen by remember { mutableStateOf(false) }
 
     val rangeLabels = mapOf(
         TimeRange.LAST_DAY to stringResource(R.string.life_map_range_last_day),
@@ -126,14 +137,14 @@ fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewM
         TimeRange.ALL to stringResource(R.string.life_map_range_all),
     )
 
-    // Full-bleed map with the range picker floating on top, rather than a
-    // Column splitting layout space between the two: osmdroid's MapView
-    // calls requestLayout() on its own on every zoom/pan, and when it shared
-    // a weighted Column slot with the dropdown, that self-triggered relayout
-    // let the MapView grow past its allocated share and cover the field
-    // above it. A fillMaxSize map has no sibling slot to grow into, and the
-    // dropdown is composed after it in the same Box so it always paints on
-    // top.
+    // Full-bleed map with a single compact controls toggle floating on top,
+    // rather than a Column splitting layout space between the two: osmdroid's
+    // MapView calls requestLayout() on its own on every zoom/pan, and when it
+    // shared a weighted Column slot with the dropdown, that self-triggered
+    // relayout let the MapView grow past its allocated share and cover the
+    // field above it. A fillMaxSize map has no sibling slot to grow into,
+    // and the controls are composed after it in the same Box so they always
+    // paint on top.
     Box(modifier = Modifier.fillMaxSize()) {
         LifeMapView(
             points = pointsState.points,
@@ -157,34 +168,74 @@ fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewM
             )
         }
 
-        Column(
+        // Standalone circular surface, not UrsCard/UrsFab — same
+        // shadow/clip/background/border treatment as both, just tinted
+        // neutral (UrsFab's accent fill would read as a primary action here,
+        // not a secondary "open controls" affordance).
+        Box(
             modifier = Modifier
-                .align(Alignment.TopCenter)
-                .fillMaxWidth()
-                .padding(Spacing.l),
-            verticalArrangement = Arrangement.spacedBy(Spacing.s),
+                .align(Alignment.TopEnd)
+                .padding(Spacing.l)
+                .shadow(
+                    elevation = 6.dp,
+                    shape = CircleShape,
+                    ambientColor = colors.shadowColor.copy(alpha = colors.shadowAlpha),
+                    spotColor = colors.shadowColor.copy(alpha = colors.shadowAlpha),
+                )
+                .clip(CircleShape)
+                .background(colors.surface)
+                .then(if (darkTheme) Modifier.border(1.dp, colors.border, CircleShape) else Modifier),
         ) {
-            UrsCard(modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(0.dp)) {
-                UrsDropdownField(
-                    label = stringResource(R.string.life_map_range_label),
-                    options = TimeRange.entries,
-                    selectedLabel = rangeLabels[selectedRange],
-                    optionLabel = { rangeLabels[it] ?: it.name },
-                    onSelect = viewModel::selectRange,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
-                UrsFilterChip(
-                    label = stringResource(R.string.life_map_map_style_standard),
-                    selected = !mutedMap,
-                    onClick = { viewModel.setMutedMap(false) },
-                )
-                UrsFilterChip(
-                    label = stringResource(R.string.life_map_map_style_muted),
-                    selected = mutedMap,
-                    onClick = { viewModel.setMutedMap(true) },
-                )
+            UrsIconButton(
+                onClick = { controlsSheetOpen = true },
+                contentDescription = stringResource(R.string.life_map_controls_label),
+                imageVector = Icons.Filled.Tune,
+            )
+        }
+
+        if (controlsSheetOpen) {
+            UrsBottomSheet(onDismissRequest = { controlsSheetOpen = false }) {
+                Column(
+                    modifier = Modifier.padding(horizontal = Spacing.l).padding(bottom = Spacing.l),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.m),
+                ) {
+                    UrsText(
+                        text = stringResource(R.string.life_map_controls_label),
+                        style = UrsTheme.typography.cardTitle,
+                    )
+                    UrsDropdownField(
+                        label = stringResource(R.string.life_map_range_label),
+                        options = TimeRange.entries,
+                        selectedLabel = rangeLabels[selectedRange],
+                        optionLabel = { rangeLabels[it] ?: it.name },
+                        onSelect = viewModel::selectRange,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    // Single icon toggle replacing the former pair of
+                    // standard/muted filter chips (GitHub issue #75) — tapping
+                    // anywhere in the row flips mutedMap directly, the icon's
+                    // tint and the label text both reflect the current state.
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { viewModel.setMutedMap(!mutedMap) }
+                            .padding(vertical = Spacing.s),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+                    ) {
+                        UrsIcon(
+                            imageVector = Icons.Filled.Layers,
+                            contentDescription = null,
+                            tint = if (mutedMap) colors.accent else colors.onSurface,
+                        )
+                        UrsText(
+                            text = stringResource(
+                                if (mutedMap) R.string.life_map_map_style_muted else R.string.life_map_map_style_standard,
+                            ),
+                            style = UrsTheme.typography.body,
+                        )
+                    }
+                }
             }
         }
     }

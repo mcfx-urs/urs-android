@@ -350,6 +350,7 @@
     <string name="watch_relay_notification_title">Watch relay active</string>
     <string name="watch_relay_notification_body">Listening for quick actions from your watch</string>
 
+    <string name="life_map_controls_label">Map controls</string>
     <string name="life_map_range_label">Time range</string>
     <string name="life_map_range_last_day">Last day</string>
     <string name="life_map_range_last_week">Last week</string>

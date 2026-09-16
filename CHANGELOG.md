@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - Changed the Life Map track gradient to interpolate by cumulative track distance instead of point count, subdividing long segments so the ramp stays smooth across them too (#64)
+- Changed the Life Map overlay controls from a permanently visible top bar into a single icon that opens a bottom sheet, so the map area stays free of controls (#75)
 
 ### Fixed
 
