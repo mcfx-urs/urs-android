@@ -187,6 +187,15 @@ class SyncManager(
     /** Same wiring/rationale as [onListConflictResolved], for the Kanban board/column/card equivalent. */
     var onKanbanConflictResolved: (() -> Unit)? = null
 
+    /**
+     * Invoked once a queued beer log has actually synced to the backend
+     * (not on every replay pass — only when [replayCreateBeerLog] succeeds),
+     * so Home's quick-stat tile can refresh with data the backend actually
+     * has, rather than racing ahead of the sync. Same late-binding/
+     * applicationScope.launch wiring as [onListConflictResolved].
+     */
+    var onBeerLogSynced: (() -> Unit)? = null
+
     // Set on a 409/404 in replayUpdateKanbanBoard/Column/Card, consumed at
     // the end of replayOutbox — same shape as [listUpdateConflictSeen].
     private var kanbanUpdateConflictSeen = false
@@ -1054,6 +1063,7 @@ class SyncManager(
         val payload = json.decodeFromString(OutboxBeerLogCreatePayload.serializer(), mutation.payloadJson)
         api.createBeerLog(BeerLogPayload(amountMl = payload.amountMl.toString(), date = payload.date))
         outboxDao.delete(mutation.id)
+        onBeerLogSynced?.invoke()
         return true
     }
 

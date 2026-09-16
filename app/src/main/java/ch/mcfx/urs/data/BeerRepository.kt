@@ -6,6 +6,8 @@ import ch.mcfx.urs.data.local.OutboxMutationEntity
 import ch.mcfx.urs.data.remote.BeerLogDateUpdatePayload
 import ch.mcfx.urs.data.remote.BeerLogDto
 import ch.mcfx.urs.data.remote.UrsApi
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -15,6 +17,21 @@ class BeerRepository(
     private val outboxDao: OutboxDao,
     private val json: Json,
 ) {
+
+    // There is no local Room row for beer logs to observe reactively (see
+    // logBeer's own comment), so this is the only signal a caller outside
+    // BeerViewModel (Home's quick-stat tile) has that a new entry actually
+    // landed on the backend — including one logged via the watch relay while
+    // Home is already the foreground screen, which neither re-enters Home
+    // nor triggers ON_RESUME. Fired by SyncManager once the create-beer-log
+    // mutation has synced (not by logBeer() itself, which only queues to the
+    // outbox — emitting there raced ahead of the actual backend write).
+    private val _logged = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val logged: SharedFlow<Unit> = _logged
+
+    suspend fun notifyLogged() {
+        _logged.emit(Unit)
+    }
 
     suspend fun getEntries(): List<BeerLogDto> = emptyAsNull { api.getBeerLog() }
 

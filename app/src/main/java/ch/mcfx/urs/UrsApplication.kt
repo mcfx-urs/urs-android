@@ -503,6 +503,12 @@ class AppContainer(context: Context) {
         syncManager.onKanbanConflictResolved = {
             applicationScope.launch { kanbanRepository.refreshFromBackend() }
         }
+        // Lets Home's quick-stat tile pick up a beer log the moment it
+        // actually syncs — including one logged via the watch relay while
+        // Home is already the foreground screen. See BeerRepository.logged.
+        syncManager.onBeerLogSynced = {
+            applicationScope.launch { beerRepository.notifyLogged() }
+        }
         // See onTunnelReachable's own doc comment above for why this is
         // late-bound instead of passed to NetworkGate directly. Runs
         // alongside (not instead of) the SyncWorker.enqueueOneTime call in

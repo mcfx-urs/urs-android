@@ -150,6 +150,11 @@ class HomeViewModel(
     init {
         viewModelScope.launch { shoppingListRepository.observeFavoriteLists().collect { _favoriteLists.value = it } }
         viewModelScope.launch { inventoryRepository.observeFavoriteInventories().collect { _favoriteInventories.value = it } }
+        // Covers a beer logged via the watch relay while Home is already the
+        // foreground screen (see BeerRepository.logged's doc) — HomeScreen's
+        // enter/resume triggers (#67) don't fire in that case since Home
+        // never leaves and never backgrounds.
+        viewModelScope.launch { beerRepository.logged.collect { refreshBeerStat() } }
         viewModelScope.launch {
             val fills = runCatching { fuelRepository.getFills() }.getOrDefault(emptyList())
             val since = LocalDate.now().minusMonths(QUICK_STAT_WINDOW_MONTHS)
