@@ -73,6 +73,7 @@ import ch.mcfx.urs.obd.ObdLiveScreen
 import ch.mcfx.urs.obd.ObdRoutes
 import ch.mcfx.urs.obd.ObdSetupScreen
 import ch.mcfx.urs.settings.AboutScreen
+import ch.mcfx.urs.settings.ChangelogScreen
 import ch.mcfx.urs.settings.AccountSettingsScreen
 import ch.mcfx.urs.settings.AdminScreen
 import ch.mcfx.urs.settings.DefaultVehicleSettingsScreen
@@ -491,9 +492,11 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                     composable(SettingsRoutes.ABOUT) {
                         AboutScreen(
                             onOpenLocationCaptureLog = { navController.navigate(SettingsRoutes.LOCATION_CAPTURE_LOG) },
+                            onOpenChangelog = { navController.navigate(SettingsRoutes.CHANGELOG) },
                         )
                     }
                     composable(SettingsRoutes.LOCATION_CAPTURE_LOG) { LocationCaptureLogScreen() }
+                    composable(SettingsRoutes.CHANGELOG) { ChangelogScreen() }
                     composable(SettingsRoutes.LOCATION_HISTORY) { LocationHistorySettingsScreen() }
                     composable(SettingsRoutes.WATCH_RELAY) { WatchRelaySettingsScreen() }
                     composable(SettingsRoutes.THEME) { ThemeSettingsScreen() }
@@ -566,6 +569,7 @@ private val SETTINGS_ROUTE_LABELS = mapOf(
     SettingsRoutes.ABOUT to R.string.settings_tile_about,
     SettingsRoutes.LOCATION_HISTORY to R.string.settings_tile_location_history,
     SettingsRoutes.LOCATION_CAPTURE_LOG to R.string.about_location_capture_details_title,
+    SettingsRoutes.CHANGELOG to R.string.about_changelog_title,
     SettingsRoutes.WATCH_RELAY to R.string.settings_tile_watch_relay,
     SettingsRoutes.THEME to R.string.settings_tile_theme,
     SettingsRoutes.LANGUAGE to R.string.settings_tile_language,

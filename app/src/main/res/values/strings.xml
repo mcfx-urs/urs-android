@@ -206,6 +206,8 @@
     <string name="about_location_capture_status_sparse">Sparse (settled)</string>
     <string name="about_location_capture_status_fixed">Fixed interval</string>
     <string name="about_location_capture_details_title">Location capture log</string>
+    <string name="about_changelog_row">Changelog</string>
+    <string name="about_changelog_title">Changelog</string>
     <string name="about_location_capture_empty">No events yet.</string>
     <string name="about_sync_never">Never synced yet</string>
     <string name="about_sync_last_synced">Last synced %1$s</string>

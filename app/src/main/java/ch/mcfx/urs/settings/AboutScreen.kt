@@ -54,7 +54,11 @@ private fun formatEpochMillis(epochMillis: Long): String =
     Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).format(TimestampFormat)
 
 @Composable
-fun AboutScreen(onOpenLocationCaptureLog: () -> Unit, viewModel: AboutViewModel = viewModel(factory = AboutViewModel.Factory)) {
+fun AboutScreen(
+    onOpenLocationCaptureLog: () -> Unit,
+    onOpenChangelog: () -> Unit,
+    viewModel: AboutViewModel = viewModel(factory = AboutViewModel.Factory),
+) {
     val colors = UrsTheme.colors
     val version = BuildConfig.VERSION_NAME.substringBefore("-")
     val buildType = BuildConfig.BUILD_TYPE.replaceFirstChar { it.uppercase() }
@@ -119,6 +123,12 @@ fun AboutScreen(onOpenLocationCaptureLog: () -> Unit, viewModel: AboutViewModel 
                     BackendStateRow(backendState, onRecheck = viewModel::recheckBackend)
                     VpnStateRow(vpnState)
                     LocationCaptureStateRow(locationCaptureStatus, onClick = onOpenLocationCaptureLog)
+                }
+            }
+
+            UrsCard(modifier = Modifier.fillMaxWidth().padding(top = Spacing.m).clickable(onClick = onOpenChangelog)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    UrsText(stringResource(R.string.about_changelog_row), style = UrsTheme.typography.body, color = colors.accent)
                 }
             }
         }

@@ -15,6 +15,7 @@ object SettingsRoutes {
     const val ABOUT = "settings/about"
     const val LOCATION_HISTORY = "settings/location-history"
     const val LOCATION_CAPTURE_LOG = "settings/location-capture-log"
+    const val CHANGELOG = "settings/changelog"
     const val WATCH_RELAY = "settings/watch-relay"
     const val THEME = "settings/theme"
     const val LANGUAGE = "settings/language"

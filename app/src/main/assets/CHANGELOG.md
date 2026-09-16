@@ -10,24 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Added a changelog viewer to the About screen (#82)
 - Added favorite Kanban boards as quick-jump badges on the Home Kanban tile (#80)
 - Added a save confirmation bar after editing or saving a Kanban card (#78)
-- Added a brightness slider to the Life Map track colour picker, so black and other dark shades are reachable (#65)
-- Added an intensity-gradient mode for the Life Map track (one colour varying brightness instead of blending between three hues) (#66)
-- Added a custom time range picker (from/to date + time) to the Life Map controls sheet, alongside the existing presets (#76)
-- Added a share button to each voice note, exposing the recording via the system share sheet (#59)
-
-### Changed
-
-- Changed the Life Map track gradient to interpolate by cumulative track distance instead of point count, subdividing long segments so the ramp stays smooth across them too (#64)
-- Changed the Life Map overlay controls from a permanently visible top bar into a single icon that opens a bottom sheet, so the map area stays free of controls (#75)
 
 ### Fixed
 
 - Fixed Kanban board columns not filling the screen height, so long card lists pushed past the visible area instead of scrolling within their column (#77)
-- Fixed note tags briefly disappearing during sync by wrapping the tag delete+insert pair in a single transaction (#70)
-- Fixed the Notes screen being able to trigger multiple concurrent syncs on a single visit; also removed a duplicate connectivity-available trigger firing on every Wi-Fi capability tick (#71)
-- Fixed a beer log entered via the watch relay only syncing on the next periodic sync instead of immediately (#68)
-- Fixed the Home beer tile not refreshing when a beer is logged via the watch relay while Home is already the foreground screen
-- Fixed the Beer screen's list/stats not refreshing when a beer is logged via the watch relay while that screen is already open
 
 ## [1.1.0] - 2026-09-16
 
