@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Fixed Kanban board columns not filling the screen height, so long card lists pushed past the visible area instead of scrolling within their column (#77)
 - Fixed note tags briefly disappearing during sync by wrapping the tag delete+insert pair in a single transaction (#70)
 - Fixed the Notes screen being able to trigger multiple concurrent syncs on a single visit; also removed a duplicate connectivity-available trigger firing on every Wi-Fi capability tick (#71)
 - Fixed a beer log entered via the watch relay only syncing on the next periodic sync instead of immediately (#68)

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -111,7 +112,7 @@ private fun BoardDetailContent(detail: KanbanBoardDetail, viewModel: KanbanBoard
             style = UrsTheme.typography.screenTitle,
             modifier = Modifier.padding(horizontal = Spacing.l, vertical = Spacing.m),
         )
-        BoardColumnsRow(detail = detail, viewModel = viewModel)
+        BoardColumnsRow(detail = detail, viewModel = viewModel, modifier = Modifier.weight(1f))
     }
 }
 
@@ -132,7 +133,7 @@ private fun BoardDetailContent(detail: KanbanBoardDetail, viewModel: KanbanBoard
  * callbacks down through parameters.
  */
 @Composable
-private fun BoardColumnsRow(detail: KanbanBoardDetail, viewModel: KanbanBoardDetailViewModel) {
+private fun BoardColumnsRow(detail: KanbanBoardDetail, viewModel: KanbanBoardDetailViewModel, modifier: Modifier = Modifier) {
     val density = LocalDensity.current
     val columnSpacingPx = with(density) { Spacing.m.toPx() }
     val columnStepPx = with(density) { KanbanColumnWidth.toPx() } + columnSpacingPx
@@ -254,7 +255,7 @@ private fun BoardColumnsRow(detail: KanbanBoardDetail, viewModel: KanbanBoardDet
     }
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
             .padding(horizontal = Spacing.l, vertical = Spacing.s),
@@ -269,19 +270,24 @@ private fun BoardColumnsRow(detail: KanbanBoardDetail, viewModel: KanbanBoardDet
             // pointerInput below mid-gesture instead of letting the drag continue.
             key(columnId) {
                 Column(
-                    modifier = Modifier.width(KanbanColumnWidth),
+                    modifier = Modifier.width(KanbanColumnWidth).fillMaxHeight(),
                     verticalArrangement = Arrangement.spacedBy(Spacing.s),
                 ) {
                     ColumnHeader(columnWithCards)
-                    cardIdsByColumn[columnId].orEmpty().forEach { cardId ->
-                        val cardWithDetails = cardById[cardId] ?: return@forEach
-                        // Same reasoning as the columnId key above — a card that
-                        // crosses into a different column's list must keep its own
-                        // identity (and its live drag pointerInput) rather than
-                        // having some other card's composable slot reused for it.
-                        key(cardId) { CardTile(cardWithDetails) }
+                    Column(
+                        modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.s),
+                    ) {
+                        cardIdsByColumn[columnId].orEmpty().forEach { cardId ->
+                            val cardWithDetails = cardById[cardId] ?: return@forEach
+                            // Same reasoning as the columnId key above — a card that
+                            // crosses into a different column's list must keep its own
+                            // identity (and its live drag pointerInput) rather than
+                            // having some other card's composable slot reused for it.
+                            key(cardId) { CardTile(cardWithDetails) }
+                        }
+                        AddCardRow(onClick = { viewModel.openCreateCardEditor(columnWithCards.column.publicId) })
                     }
-                    AddCardRow(onClick = { viewModel.openCreateCardEditor(columnWithCards.column.publicId) })
                 }
             }
         }
