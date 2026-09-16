@@ -35,7 +35,7 @@ private const val QUICK_STAT_WINDOW_MONTHS = 6L
 
 data class HomeUiState(
     val fuelAvgConsumptionL100Km: Float? = null,
-    val daysSinceLastBeer: Long? = null,
+    val sinceLastBeer: BeerStats.SinceLast? = null,
 )
 
 // Home only needs lightweight cross-feature quick-stats for its tiles (e.g.
@@ -163,7 +163,7 @@ class HomeViewModel(
             val defaultVehicleId = resolveDefaultVehicleId(userRepository.defaultVehicleId.value, vehicleIds)
             _uiState.value = HomeUiState(
                 fuelAvgConsumptionL100Km = FuelStats.averageConsumptionL100Km(fills, since = since, vehicleId = defaultVehicleId),
-                daysSinceLastBeer = BeerStats.daysSinceLast(beerEntries),
+                sinceLastBeer = BeerStats.sinceLast(beerEntries),
             )
         }
     }

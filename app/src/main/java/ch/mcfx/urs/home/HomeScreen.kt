@@ -81,6 +81,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
+import ch.mcfx.urs.beer.BeerStats
 import ch.mcfx.urs.data.local.InventoryEntity
 import ch.mcfx.urs.data.local.ListEntity
 import ch.mcfx.urs.data.local.publicId
@@ -424,7 +425,13 @@ private fun HomeHeader(
 @Composable
 private fun quickStat(id: String, state: HomeUiState): String? = when (id) {
     NEW_FUEL_FILL_TILE_ID -> state.fuelAvgConsumptionL100Km?.let { stringResource(R.string.fuel_avg_consumption_6mo, it) }
-    Destination.BEER.name -> state.daysSinceLastBeer?.let { stringResource(R.string.home_days_since_beer, it) }
+    Destination.BEER.name -> when (val since = state.sinceLastBeer) {
+        null -> null
+        is BeerStats.SinceLast.JustNow -> stringResource(R.string.home_just_now_beer)
+        is BeerStats.SinceLast.Minutes -> stringResource(R.string.home_minutes_since_beer, since.n)
+        is BeerStats.SinceLast.Hours -> stringResource(R.string.home_hours_since_beer, since.n)
+        is BeerStats.SinceLast.Days -> stringResource(R.string.home_days_since_beer, since.n)
+    }
     else -> null
 }
 

@@ -10,6 +10,9 @@
     <string name="sync_status_error">Last sync had an error</string>
     <string name="home_welcome_eyebrow">Welcome</string>
     <string name="home_new_fuel_fill">New Fuel Fill</string>
+    <string name="home_just_now_beer">Last beer: just now</string>
+    <string name="home_minutes_since_beer">Last beer: %1$d minutes ago</string>
+    <string name="home_hours_since_beer">Last beer: %1$d hours ago</string>
     <string name="home_days_since_beer">Last beer: %1$d days ago</string>
     <string name="home_edit_done">Done</string>
     <string name="home_edit_add_tile">Add tile</string>
