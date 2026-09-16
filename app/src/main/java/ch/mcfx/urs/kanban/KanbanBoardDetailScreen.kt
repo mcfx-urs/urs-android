@@ -57,6 +57,10 @@ import ch.mcfx.urs.data.local.KanbanCardEntity
 import ch.mcfx.urs.data.local.KanbanChecklistItemEntity
 import ch.mcfx.urs.data.local.NoteEntity
 import ch.mcfx.urs.data.local.publicId
+import ch.mcfx.urs.notes.richtext.RichTextField
+import ch.mcfx.urs.notes.richtext.RichTextFieldState
+import ch.mcfx.urs.notes.richtext.RichTextLinkSheetHost
+import ch.mcfx.urs.notes.richtext.rememberRichTextFieldState
 import ch.mcfx.urs.ui.components.UrsBottomSheet
 import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsCard
@@ -90,6 +94,13 @@ fun KanbanBoardDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val saveConfirmation by viewModel.saveConfirmation.collectAsStateWithLifecycle()
+    val cardEditor by viewModel.cardEditor.collectAsStateWithLifecycle()
+    // Hoisted to this screen-level function (not KanbanBoardDetailOverlays,
+    // where the card editor sheet itself lives) so RichTextLinkSheetHost
+    // below can be placed as a sibling of the sheet, not nested inside it —
+    // see that function's own doc comment for why a nested UrsBottomSheet
+    // would get squeezed into the outer sheet's already-narrow constraints.
+    val richTextState = rememberRichTextFieldState(cardEditor?.description ?: "")
     LaunchedEffect(boardId) { viewModel.loadBoard(boardId) }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -111,7 +122,9 @@ fun KanbanBoardDetailScreen(
         }
     }
 
-    KanbanBoardDetailOverlays(viewModel = viewModel)
+    KanbanBoardDetailOverlays(viewModel = viewModel, cardEditor = cardEditor, richTextState = richTextState)
+
+    RichTextLinkSheetHost(state = richTextState, onValueChange = viewModel::setCardDescription)
 }
 
 @Composable
@@ -378,12 +391,15 @@ private fun AddColumnTile(onClick: () -> Unit) {
 
 /** Every bottom sheet / dialog overlay this screen can show, driven entirely by [viewModel] state. */
 @Composable
-private fun KanbanBoardDetailOverlays(viewModel: KanbanBoardDetailViewModel) {
+private fun KanbanBoardDetailOverlays(
+    viewModel: KanbanBoardDetailViewModel,
+    cardEditor: KanbanCardFormState?,
+    richTextState: RichTextFieldState,
+) {
     val showColumnForm by viewModel.showColumnForm.collectAsStateWithLifecycle()
     val columnFormState by viewModel.columnFormState.collectAsStateWithLifecycle()
     val actionSheetColumn by viewModel.actionSheetColumn.collectAsStateWithLifecycle()
     val columnNotEmptyError by viewModel.columnNotEmptyError.collectAsStateWithLifecycle()
-    val cardEditor by viewModel.cardEditor.collectAsStateWithLifecycle()
     val cardEditorChecklist by viewModel.cardEditorChecklist.collectAsStateWithLifecycle()
     val availableNotes by viewModel.availableNotes.collectAsStateWithLifecycle()
 
@@ -416,6 +432,7 @@ private fun KanbanBoardDetailOverlays(viewModel: KanbanBoardDetailViewModel) {
                 form = form,
                 checklist = cardEditorChecklist,
                 availableNotes = availableNotes,
+                richTextState = richTextState,
                 viewModel = viewModel,
                 onRequestDelete = viewModel::deleteCurrentCard,
             )
@@ -482,14 +499,16 @@ private fun CardEditorSheet(
     form: KanbanCardFormState,
     checklist: List<KanbanChecklistItemEntity>,
     availableNotes: List<NoteEntity>,
+    richTextState: RichTextFieldState,
     viewModel: KanbanBoardDetailViewModel,
     onRequestDelete: () -> Unit,
 ) {
+    val formScrollState = rememberScrollState()
     Column(
         modifier = Modifier
             .padding(horizontal = Spacing.xl)
             .padding(bottom = Spacing.xxl)
-            .verticalScroll(rememberScrollState()),
+            .verticalScroll(formScrollState),
         verticalArrangement = Arrangement.spacedBy(Spacing.m),
     ) {
         UrsText(
@@ -505,10 +524,11 @@ private fun CardEditorSheet(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        UrsTextField(
-            value = form.description,
+        RichTextField(
+            state = richTextState,
             onValueChange = viewModel::setCardDescription,
             label = stringResource(R.string.kanban_card_field_description),
+            formScrollState = formScrollState,
             modifier = Modifier.fillMaxWidth(),
         )
 

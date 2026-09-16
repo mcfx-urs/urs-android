@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Changed the Kanban card description field to a rich-text editor, matching Notes (#79)
 - Changed Kanban board columns to a glass-style card look, matching urs-web's Kanban design (#81)
 
 ### Added
