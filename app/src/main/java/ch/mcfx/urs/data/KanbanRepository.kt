@@ -100,6 +100,10 @@ class KanbanRepository(
 
     fun observeBoards(): Flow<List<KanbanBoardEntity>> = boardDao.observeAll().map { it.sortedBy { b -> b.name.alphabeticSortKey() } }
 
+    fun observeFavoriteBoards(): Flow<List<KanbanBoardEntity>> = boardDao.observeFavorites()
+
+    suspend fun setBoardFavorite(localId: Long, isFavorite: Boolean) = boardDao.setFavorite(localId, isFavorite)
+
     /** Resolves a board's [publicId] (a real serverId, or a not-yet-synced stand-in) back to its stable local row id. */
     suspend fun resolveLocalBoardId(boardId: String): Long? = localKanbanBoardId(boardId) ?: boardDao.findLocalIdByServerId(boardId)
 

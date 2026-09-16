@@ -83,11 +83,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
 import ch.mcfx.urs.beer.BeerStats
 import ch.mcfx.urs.data.local.InventoryEntity
+import ch.mcfx.urs.data.local.KanbanBoardEntity
 import ch.mcfx.urs.data.local.ListEntity
 import ch.mcfx.urs.data.local.publicId
 import ch.mcfx.urs.data.sync.SyncPhase
 import ch.mcfx.urs.fuel.FuelRoutes
 import ch.mcfx.urs.inventory.InventoryRoutes
+import ch.mcfx.urs.kanban.KanbanRoutes
 import ch.mcfx.urs.location.LOCATION_PERMISSIONS
 import ch.mcfx.urs.location.hasLocationPermission
 import ch.mcfx.urs.navigation.Destination
@@ -185,6 +187,7 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val favoriteLists by viewModel.favoriteLists.collectAsStateWithLifecycle()
     val favoriteInventories by viewModel.favoriteInventories.collectAsStateWithLifecycle()
+    val favoriteBoards by viewModel.favoriteBoards.collectAsStateWithLifecycle()
     val location by viewModel.currentLocation.collectAsStateWithLifecycle()
     val layout by viewModel.layout.collectAsStateWithLifecycle()
     val editMode by viewModel.editMode.collectAsStateWithLifecycle()
@@ -259,6 +262,7 @@ fun HomeScreen(
                 uiState = uiState,
                 favoriteLists = favoriteLists,
                 favoriteInventories = favoriteInventories,
+                favoriteBoards = favoriteBoards,
                 location = location,
                 onTileClick = { id ->
                     if (editMode) viewModel.toggleSelected(id) else navigateTo(id, onNavigate, onNavigateRoute)
@@ -467,6 +471,7 @@ private fun HomeTileGrid(
     uiState: HomeUiState,
     favoriteLists: List<ListEntity>,
     favoriteInventories: List<InventoryEntity>,
+    favoriteBoards: List<KanbanBoardEntity>,
     location: Location?,
     onTileClick: (String) -> Unit,
     onLongPress: (String) -> Unit,
@@ -494,6 +499,7 @@ private fun HomeTileGrid(
                             uiState = uiState,
                             favoriteLists = favoriteLists,
                             favoriteInventories = favoriteInventories,
+                            favoriteBoards = favoriteBoards,
                             location = location,
                             colWidthPx = colWidthPx,
                             tileHeightPx = tileHeightPx,
@@ -540,6 +546,7 @@ private fun HomeTileItem(
     uiState: HomeUiState,
     favoriteLists: List<ListEntity>,
     favoriteInventories: List<InventoryEntity>,
+    favoriteBoards: List<KanbanBoardEntity>,
     location: Location?,
     colWidthPx: Int,
     tileHeightPx: Int,
@@ -706,6 +713,7 @@ private fun HomeTileItem(
                 location = location,
                 favoriteLists = if (editMode) emptyList() else favoriteLists,
                 favoriteInventories = if (editMode) emptyList() else favoriteInventories,
+                favoriteBoards = if (editMode) emptyList() else favoriteBoards,
                 editMode = editMode,
                 onClick = onClick,
                 onOpenFavoriteRoute = onOpenFavoriteRoute,
@@ -858,6 +866,7 @@ private fun HomeTileBody(
     location: Location?,
     favoriteLists: List<ListEntity>,
     favoriteInventories: List<InventoryEntity>,
+    favoriteBoards: List<KanbanBoardEntity>,
     editMode: Boolean,
     onClick: () -> Unit,
     onOpenFavoriteRoute: (String) -> Unit,
@@ -933,6 +942,9 @@ private fun HomeTileBody(
                 }
                 Destination.INVENTORY.name -> favoriteInventories.map {
                     FavoriteBadgeItem(firstGlyph(it.name), IconCatalog.drawableFor(it.iconId), InventoryRoutes.products(it.publicId, it.name))
+                }
+                Destination.KANBAN.name -> favoriteBoards.map {
+                    FavoriteBadgeItem(firstGlyph(it.name), IconCatalog.drawableFor(it.iconId), KanbanRoutes.boardDetail(it.publicId))
                 }
                 else -> emptyList()
             }

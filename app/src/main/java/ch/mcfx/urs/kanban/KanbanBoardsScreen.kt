@@ -16,6 +16,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -93,7 +95,9 @@ fun KanbanBoardsScreen(
     actionSheetBoard?.let { board ->
         UrsBottomSheet(onDismissRequest = viewModel::closeActionSheet) {
             BoardActionSheet(
+                isFavorite = board.isFavorite,
                 onRename = { viewModel.openRenameForm(board) },
+                onToggleFavorite = viewModel::toggleFavorite,
                 onDelete = viewModel::requestDelete,
             )
         }
@@ -208,9 +212,14 @@ private fun BoardForm(form: KanbanBoardFormState, viewModel: KanbanBoardsViewMod
 }
 
 @Composable
-private fun BoardActionSheet(onRename: () -> Unit, onDelete: () -> Unit) {
+private fun BoardActionSheet(isFavorite: Boolean, onRename: () -> Unit, onToggleFavorite: () -> Unit, onDelete: () -> Unit) {
     Column(modifier = Modifier.padding(horizontal = Spacing.l).padding(bottom = Spacing.l)) {
         ActionSheetRow(label = stringResource(R.string.kanban_board_rename), icon = Icons.Filled.Edit, onClick = onRename)
+        ActionSheetRow(
+            label = stringResource(if (isFavorite) R.string.favorite_remove else R.string.favorite_add),
+            icon = if (isFavorite) Icons.Filled.Star else Icons.Filled.StarBorder,
+            onClick = onToggleFavorite,
+        )
         ActionSheetRow(
             label = stringResource(R.string.kanban_board_delete),
             icon = Icons.Filled.Delete,

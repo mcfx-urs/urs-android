@@ -13,6 +13,12 @@ interface KanbanBoardDao {
     @Query("SELECT * FROM kanban_board")
     fun observeAll(): Flow<List<KanbanBoardEntity>>
 
+    @Query("SELECT * FROM kanban_board WHERE isFavorite = 1 ORDER BY name ASC")
+    fun observeFavorites(): Flow<List<KanbanBoardEntity>>
+
+    @Query("UPDATE kanban_board SET isFavorite = :isFavorite WHERE id = :id")
+    suspend fun setFavorite(id: Long, isFavorite: Boolean)
+
     @Query("SELECT * FROM kanban_board WHERE id = :id LIMIT 1")
     fun observeById(id: Long): Flow<KanbanBoardEntity?>
 
@@ -46,13 +52,23 @@ interface KanbanBoardDao {
      * *one* board's own row at a time. Calling [upsertFromServer] with a
      * singleton list there would incorrectly reconcile away every other
      * already-synced board, since that method treats its input as the
-     * complete server snapshot.
+     * complete server snapshot. Also carries the existing row's
+     * [KanbanBoardEntity.isFavorite]/[KanbanBoardEntity.iconId] forward,
+     * since those are local-only UI preferences never part of the server
+     * payload — same rationale as [ListDao.upsertFromServer].
      */
     @Transaction
     suspend fun upsertOne(board: KanbanBoardEntity) {
         val serverId = board.serverId ?: return
         val existingLocalId = findLocalIdByServerId(serverId)
-        replace(board.copy(id = existingLocalId ?: 0))
+        val existing = existingLocalId?.let { getById(it) }
+        replace(
+            board.copy(
+                id = existingLocalId ?: 0,
+                isFavorite = existing?.isFavorite ?: false,
+                iconId = existing?.iconId,
+            ),
+        )
     }
 
     // Reconciliation half of [upsertFromServer], scoped globally since a

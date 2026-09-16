@@ -102,7 +102,10 @@ import androidx.room.TypeConverters
     //      KanbanChecklistItemEntity/KanbanCardTagEntity tables (GitHub
     //      issue #62, Kanban board) — same destructive-fallback handling
     //      as every bump above.
-    version = 32,
+    // v33: isFavorite/iconId columns added to KanbanBoardEntity (GitHub
+    //      issue #80, Home tile quick-jump badges) — same destructive-fallback
+    //      handling as every bump above.
+    version = 33,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)

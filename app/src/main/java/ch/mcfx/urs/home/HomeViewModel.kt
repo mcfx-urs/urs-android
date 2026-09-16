@@ -13,10 +13,12 @@ import ch.mcfx.urs.beer.BeerStats
 import ch.mcfx.urs.data.BeerRepository
 import ch.mcfx.urs.data.FuelRepository
 import ch.mcfx.urs.data.InventoryRepository
+import ch.mcfx.urs.data.KanbanRepository
 import ch.mcfx.urs.data.ShoppingListRepository
 import ch.mcfx.urs.data.UserRepository
 import ch.mcfx.urs.data.VehicleRepository
 import ch.mcfx.urs.data.local.InventoryEntity
+import ch.mcfx.urs.data.local.KanbanBoardEntity
 import ch.mcfx.urs.data.local.ListEntity
 import ch.mcfx.urs.data.resolveDefaultVehicleId
 import ch.mcfx.urs.data.sync.PullCoordinator
@@ -51,6 +53,7 @@ class HomeViewModel(
     private val homeLayoutStore: HomeLayoutStore,
     private val shoppingListRepository: ShoppingListRepository,
     private val inventoryRepository: InventoryRepository,
+    private val kanbanRepository: KanbanRepository,
     pullCoordinator: PullCoordinator,
 ) : ViewModel() {
 
@@ -70,6 +73,9 @@ class HomeViewModel(
 
     private val _favoriteInventories = MutableStateFlow<List<InventoryEntity>>(emptyList())
     val favoriteInventories: StateFlow<List<InventoryEntity>> = _favoriteInventories.asStateFlow()
+
+    private val _favoriteBoards = MutableStateFlow<List<KanbanBoardEntity>>(emptyList())
+    val favoriteBoards: StateFlow<List<KanbanBoardEntity>> = _favoriteBoards.asStateFlow()
 
     val layout: StateFlow<List<HomeTilePlacement>> = homeLayoutStore.layout
 
@@ -150,6 +156,7 @@ class HomeViewModel(
     init {
         viewModelScope.launch { shoppingListRepository.observeFavoriteLists().collect { _favoriteLists.value = it } }
         viewModelScope.launch { inventoryRepository.observeFavoriteInventories().collect { _favoriteInventories.value = it } }
+        viewModelScope.launch { kanbanRepository.observeFavoriteBoards().collect { _favoriteBoards.value = it } }
         // Covers a beer logged via the watch relay while Home is already the
         // foreground screen (see BeerRepository.logged's doc) — HomeScreen's
         // enter/resume triggers (#67) don't fire in that case since Home
@@ -210,6 +217,7 @@ class HomeViewModel(
                     app.container.homeLayoutStore,
                     app.container.shoppingListRepository,
                     app.container.inventoryRepository,
+                    app.container.kanbanRepository,
                     app.container.pullCoordinator,
                 )
             }

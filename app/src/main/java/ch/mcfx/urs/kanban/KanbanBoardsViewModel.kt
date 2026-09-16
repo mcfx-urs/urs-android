@@ -107,6 +107,12 @@ class KanbanBoardsViewModel(private val repository: KanbanRepository) : ViewMode
         _actionSheetBoard.value = null
     }
 
+    fun toggleFavorite() {
+        val board = _actionSheetBoard.value ?: return
+        _actionSheetBoard.value = null
+        viewModelScope.launch { repository.setBoardFavorite(board.id, !board.isFavorite) }
+    }
+
     fun requestDelete() {
         val board = _actionSheetBoard.value ?: return
         _actionSheetBoard.value = null
