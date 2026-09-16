@@ -319,8 +319,12 @@
     <string name="location_history_precision_mode_description">Uses exact alarms instead of the default battery-friendly scheduling, so captures land on schedule instead of drifting under Doze/battery standby. Check Settings → Apps → urs → App battery usage before/after to see the actual cost for your usage.</string>
     <string name="location_history_exact_alarm_permission_label">Exact alarm access</string>
     <string name="location_history_track_appearance">Track appearance</string>
+    <string name="location_history_gradient_mode_hue">Hue</string>
+    <string name="location_history_gradient_mode_intensity">Intensity</string>
     <string name="location_history_track_colors">Track line colours</string>
     <string name="location_history_track_colors_hint">Oldest to newest segment. Tap a colour to change it.</string>
+    <string name="location_history_track_base_color">Track colour</string>
+    <string name="location_history_track_base_color_hint">Varies from dim to full brightness, oldest to newest. Tap the colour to change it.</string>
     <string name="location_history_track_color_pick">Pick a colour</string>
     <string name="location_history_track_halo">Contrasting outline</string>
     <string name="location_history_adaptive_section_title">Adaptive interval</string>
@@ -549,6 +553,8 @@
     <string name="stats_chart_price">Fuel price development</string>
     <string name="stats_l100km">%1$.1f L/100km</string>
     <string name="stats_empty">Not enough data yet.</string>
+
+    <string name="color_wheel_brightness_label">Brightness</string>
 
     <string name="save">Save</string>
     <string name="saving">Saving…</string>

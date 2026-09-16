@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -43,17 +45,19 @@ import kotlin.math.hypot
 import kotlin.math.min
 import kotlin.math.sin
 
-private fun colorToHueSat(argb: Int): Pair<Float, Float> {
+private fun colorToHsv(argb: Int): Triple<Float, Float, Float> {
     val hsv = FloatArray(3)
     android.graphics.Color.colorToHSV(argb, hsv)
-    return hsv[0] to hsv[1]
+    return Triple(hsv[0], hsv[1], hsv[2])
 }
 
 /**
- * Centered modal for picking one vivid colour by hue (angle) and saturation
- * (distance from centre) on a wheel — value is fixed at full, since the only
- * caller (the Life Map track gradient) always wants bright colours. Same
- * centered-overlay treatment as [UrsErrorDialog].
+ * Centered modal for picking one colour by hue (angle) and saturation
+ * (distance from centre) on a wheel, plus a brightness (HSV value) slider
+ * below it — the wheel itself always renders at full value for legibility
+ * (GitHub issue #65: value used to be fixed at 1 with no control at all,
+ * making black/dark shades structurally unreachable). Same centered-overlay
+ * treatment as [UrsErrorDialog].
  */
 @Composable
 fun UrsColorWheelDialog(
@@ -62,10 +66,11 @@ fun UrsColorWheelDialog(
     onDismiss: () -> Unit,
     title: String? = null,
 ) {
-    val (initHue, initSat) = remember(initialColor) { colorToHueSat(initialColor) }
+    val (initHue, initSat, initValue) = remember(initialColor) { colorToHsv(initialColor) }
     var hue by remember(initialColor) { mutableFloatStateOf(initHue) }
     var sat by remember(initialColor) { mutableFloatStateOf(initSat) }
-    val current = Color.hsv(hue, sat.coerceIn(0f, 1f), 1f)
+    var value by remember(initialColor) { mutableFloatStateOf(initValue) }
+    val current = Color.hsv(hue, sat.coerceIn(0f, 1f), value.coerceIn(0f, 1f))
 
     fun updateFrom(pos: Offset, size: Size) {
         val cx = size.width / 2f
@@ -126,6 +131,19 @@ fun UrsColorWheelDialog(
                     drawCircle(Color.Black, radius = 9.dp.toPx(), center = sel, style = Stroke(width = 2.dp.toPx()))
                 }
             }
+
+            Spacer(Modifier.height(Spacing.m))
+            UrsText(stringResource(R.string.color_wheel_brightness_label), style = UrsTheme.typography.caption, color = UrsTheme.colors.onSurfaceMuted)
+            Slider(
+                value = value,
+                onValueChange = { value = it },
+                colors = SliderDefaults.colors(
+                    thumbColor = UrsTheme.colors.accent,
+                    activeTrackColor = UrsTheme.colors.accent,
+                    inactiveTrackColor = UrsTheme.colors.onSurfaceMuted.copy(alpha = 0.3f),
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            )
 
             Spacer(Modifier.height(Spacing.m))
             Row(

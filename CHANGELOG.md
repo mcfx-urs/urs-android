@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Added a brightness slider to the Life Map track colour picker, so black and other dark shades are reachable (#65)
+
 ### Fixed
 
 - Fixed note tags briefly disappearing during sync by wrapping the tag delete+insert pair in a single transaction (#70)
