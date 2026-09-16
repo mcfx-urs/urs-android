@@ -362,6 +362,14 @@
     <string name="life_map_empty">No location history yet.</string>
     <string name="life_map_map_style_standard">Standard</string>
     <string name="life_map_map_style_muted">Muted</string>
+    <string name="life_map_range_custom">Custom range</string>
+    <string name="life_map_range_custom_button">Pick a custom range</string>
+    <string name="life_map_range_custom_from_date">From date</string>
+    <string name="life_map_range_custom_from_time">From time</string>
+    <string name="life_map_range_custom_to_date">To date</string>
+    <string name="life_map_range_custom_to_time">To time</string>
+    <string name="life_map_range_custom_error">The start must be before the end.</string>
+    <string name="life_map_range_custom_apply">Apply</string>
 
     <string name="vpn_title">VPN</string>
     <string name="vpn_description">The backend is only reachable over WireGuard — paste your client config below (or scan its QR code) once. On a saved home Wi-Fi network, the app skips VPN entirely; anywhere else it brings the tunnel up automatically before reaching the backend.</string>

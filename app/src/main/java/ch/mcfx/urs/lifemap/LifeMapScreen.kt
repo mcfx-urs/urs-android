@@ -14,12 +14,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -28,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
@@ -42,12 +45,20 @@ import ch.mcfx.urs.R
 import ch.mcfx.urs.data.local.LocationHistoryEntity
 import ch.mcfx.urs.location.LocationUtils
 import ch.mcfx.urs.ui.components.UrsBottomSheet
+import ch.mcfx.urs.ui.components.UrsButton
+import ch.mcfx.urs.ui.components.UrsDateField
 import ch.mcfx.urs.ui.components.UrsDropdownField
 import ch.mcfx.urs.ui.components.UrsIcon
 import ch.mcfx.urs.ui.components.UrsIconButton
 import ch.mcfx.urs.ui.components.UrsText
+import ch.mcfx.urs.ui.components.UrsTimeField
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Spacing
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import kotlin.math.ceil
 import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
@@ -110,6 +121,23 @@ private fun interpolateGeoPoint(from: GeoPoint, to: GeoPoint, t: Double): GeoPoi
         from.longitude + (to.longitude - from.longitude) * t,
     )
 
+// No "error" role in the design system's palette yet — same local-constant pattern already used elsewhere (e.g. NoteDetailScreen).
+private val FormErrorColor = Color(0xFFD64545)
+
+private val CustomRangeTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+
+/** Same ISO-date / 24h-`HH:mm` string convention [UrsDateField]/[UrsTimeField] use everywhere else in this app. */
+private fun millisToDateAndTime(millis: Long): Pair<String, String> {
+    val dateTime = LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(millis), ZoneId.systemDefault())
+    return dateTime.toLocalDate().toString() to dateTime.toLocalTime().format(CustomRangeTimeFormatter)
+}
+
+private fun dateAndTimeToMillis(date: String, time: String): Long? {
+    val localDate = runCatching { LocalDate.parse(date) }.getOrNull() ?: return null
+    val localTime = runCatching { LocalTime.parse(time, CustomRangeTimeFormatter) }.getOrNull() ?: return null
+    return LocalDateTime.of(localDate, localTime).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+}
+
 @Composable
 fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewModel.Factory)) {
     // selectedRange drives only the dropdown label — it updates the instant
@@ -126,6 +154,23 @@ fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewM
     val darkTheme = colors.border.alpha > 0f
     val haloColorArgb = if (darkTheme) 0xFF0A0A0A.toInt() else 0xFFF7F7F7.toInt()
     var controlsSheetOpen by remember { mutableStateOf(false) }
+    var customRangeSheetOpen by remember { mutableStateOf(false) }
+    var customFromDate by remember { mutableStateOf("") }
+    var customFromTime by remember { mutableStateOf("") }
+    var customToDate by remember { mutableStateOf("") }
+    var customToTime by remember { mutableStateOf("") }
+    var customRangeError by remember { mutableStateOf(false) }
+    // Two decoupled auto-advance pairs (GitHub issue #76 follow-up), not one
+    // long chain: From Date confirmed opens To Date; separately, From Time
+    // confirmed opens To Time. From Date and From Time are each always
+    // opened by hand — one starts the date pair, the other the time pair,
+    // independently of each other. Cancelling a dialog never bumps anything,
+    // so a pair simply stops there; every field also stays individually
+    // tappable at any time, in any order, so a user who only needs to change
+    // e.g. the times (dates already correct) can just tap those two fields
+    // directly.
+    var toDateOpenSignal by remember { mutableIntStateOf(0) }
+    var toTimeOpenSignal by remember { mutableIntStateOf(0) }
 
     val rangeLabels = mapOf(
         TimeRange.LAST_DAY to stringResource(R.string.life_map_range_last_day),
@@ -203,14 +248,63 @@ fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewM
                         text = stringResource(R.string.life_map_controls_label),
                         style = UrsTheme.typography.cardTitle,
                     )
-                    UrsDropdownField(
-                        label = stringResource(R.string.life_map_range_label),
-                        options = TimeRange.entries,
-                        selectedLabel = rangeLabels[selectedRange],
-                        optionLabel = { rangeLabels[it] ?: it.name },
-                        onSelect = viewModel::selectRange,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    Row(
+                        verticalAlignment = Alignment.Bottom,
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+                    ) {
+                        UrsDropdownField(
+                            label = stringResource(R.string.life_map_range_label),
+                            options = TimeRange.entries,
+                            // Only a Preset selection maps onto one of the 7
+                            // dropdown options — an active Custom pick (GitHub
+                            // issue #76) has no matching entry, so it falls
+                            // back to a dedicated "Custom range" label instead
+                            // of leaving the field blank.
+                            selectedLabel = when (val range = selectedRange) {
+                                is LifeMapRange.Preset -> rangeLabels[range.range]
+                                is LifeMapRange.Custom -> stringResource(R.string.life_map_range_custom)
+                            },
+                            optionLabel = { rangeLabels[it] ?: it.name },
+                            onSelect = viewModel::selectRange,
+                            modifier = Modifier.weight(1f),
+                        )
+                        // Opens the from/to sheet below — prefills it from the
+                        // currently active custom range, or from the last day
+                        // as a starting point otherwise.
+                        UrsIconButton(
+                            onClick = {
+                                val (fromMillis, toMillis) = when (val range = selectedRange) {
+                                    is LifeMapRange.Custom -> range.fromMillis to range.toMillis
+                                    is LifeMapRange.Preset -> TimeRange.LAST_DAY.toSinceMillis() to System.currentTimeMillis()
+                                }
+                                val (fromDate, fromTime) = millisToDateAndTime(fromMillis)
+                                val (toDate, toTime) = millisToDateAndTime(toMillis)
+                                customFromDate = fromDate
+                                customFromTime = fromTime
+                                customToDate = toDate
+                                customToTime = toTime
+                                customRangeError = false
+                                // Reset both auto-advance pairs, not just the
+                                // field values: a leftover non-zero signal
+                                // from a previous pass through this sheet
+                                // fires immediately on the freshly-composed
+                                // field below (LaunchedEffect always runs
+                                // once on first composition, regardless of
+                                // whether its key "changed" — there's no
+                                // prior value for a brand-new composable
+                                // instance to compare against), popping the
+                                // To Date/To Time dialogs open in the
+                                // background the instant the sheet reappears
+                                // instead of waiting for an actual confirm.
+                                toDateOpenSignal = 0
+                                toTimeOpenSignal = 0
+                                controlsSheetOpen = false
+                                customRangeSheetOpen = true
+                            },
+                            contentDescription = stringResource(R.string.life_map_range_custom_button),
+                            imageVector = Icons.Filled.DateRange,
+                        )
+                    }
                     // Single icon toggle replacing the former pair of
                     // standard/muted filter chips (GitHub issue #75) — tapping
                     // anywhere in the row flips mutedMap directly, the icon's
@@ -238,6 +332,77 @@ fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewM
                 }
             }
         }
+
+        if (customRangeSheetOpen) {
+            UrsBottomSheet(onDismissRequest = { customRangeSheetOpen = false }) {
+                Column(
+                    modifier = Modifier.padding(horizontal = Spacing.l).padding(bottom = Spacing.l),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.m),
+                ) {
+                    UrsText(
+                        text = stringResource(R.string.life_map_range_custom),
+                        style = UrsTheme.typography.cardTitle,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.m)) {
+                        UrsDateField(
+                            value = customFromDate,
+                            onValueChange = {
+                                customFromDate = it
+                                toDateOpenSignal++
+                            },
+                            label = stringResource(R.string.life_map_range_custom_from_date),
+                            modifier = Modifier.weight(1f),
+                        )
+                        UrsTimeField(
+                            value = customFromTime,
+                            onValueChange = {
+                                customFromTime = it
+                                toTimeOpenSignal++
+                            },
+                            label = stringResource(R.string.life_map_range_custom_from_time),
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.m)) {
+                        UrsDateField(
+                            value = customToDate,
+                            onValueChange = { customToDate = it },
+                            label = stringResource(R.string.life_map_range_custom_to_date),
+                            modifier = Modifier.weight(1f),
+                            openSignal = toDateOpenSignal,
+                        )
+                        UrsTimeField(
+                            value = customToTime,
+                            onValueChange = { customToTime = it },
+                            label = stringResource(R.string.life_map_range_custom_to_time),
+                            modifier = Modifier.weight(1f),
+                            openSignal = toTimeOpenSignal,
+                        )
+                    }
+                    if (customRangeError) {
+                        UrsText(
+                            text = stringResource(R.string.life_map_range_custom_error),
+                            style = UrsTheme.typography.body,
+                            color = FormErrorColor,
+                        )
+                    }
+                    UrsButton(
+                        text = stringResource(R.string.life_map_range_custom_apply),
+                        onClick = {
+                            val fromMillis = dateAndTimeToMillis(customFromDate, customFromTime)
+                            val toMillis = dateAndTimeToMillis(customToDate, customToTime)
+                            if (fromMillis != null && toMillis != null && fromMillis < toMillis) {
+                                viewModel.selectCustomRange(fromMillis, toMillis)
+                                customRangeSheetOpen = false
+                            } else {
+                                customRangeError = true
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -251,7 +416,7 @@ fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewM
 @Composable
 private fun LifeMapView(
     points: List<LocationHistoryEntity>,
-    selectedRange: TimeRange,
+    selectedRange: LifeMapRange,
     gradientStopsArgb: List<Int>,
     haloEnabled: Boolean,
     haloColorArgb: Int,
@@ -325,7 +490,7 @@ private fun LifeMapView(
     // snapshot happened to run last, correct or stale depending on timing.
     // With range and points now always paired, this effect only ever sees
     // valid combinations, so a plain "already fit this range" guard is safe.
-    var lastFitRange by remember { mutableStateOf<TimeRange?>(null) }
+    var lastFitRange by remember { mutableStateOf<LifeMapRange?>(null) }
     LaunchedEffect(selectedRange, points) {
         if (points.isNotEmpty() && selectedRange != lastFitRange) {
             mapView.post {

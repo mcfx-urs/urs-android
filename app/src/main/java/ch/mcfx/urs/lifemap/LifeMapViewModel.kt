@@ -41,6 +41,19 @@ enum class TimeRange(private val days: Long?) {
 }
 
 /**
+ * Either one of the fixed [TimeRange] presets, or an explicit [Custom]
+ * from/to instant pair picked via the custom-range sheet (GitHub issue #76)
+ * — [LifeMapPointsState.range] and [LifeMapViewModel.selectedRange] use this
+ * instead of a bare [TimeRange] so a custom pick and the preset dropdown can
+ * share the same "what's currently active" slot. Picking a preset always
+ * replaces an active custom pick and vice versa — there's no "both" state.
+ */
+sealed interface LifeMapRange {
+    data class Preset(val range: TimeRange) : LifeMapRange
+    data class Custom(val fromMillis: Long, val toMillis: Long) : LifeMapRange
+}
+
+/**
  * [points] bundled together with the exact [range] they were queried for —
  * never exposed as two independently-updating StateFlows. [selectedRange]
  * (below) updates the instant the user picks a new range, so the dropdown
@@ -60,7 +73,7 @@ enum class TimeRange(private val days: Long?) {
  * ever observes a (range, points) pair that was already consistent at
  * emission time — there is no intermediate mismatched state to race against.
  */
-data class LifeMapPointsState(val range: TimeRange, val points: List<LocationHistoryEntity>)
+data class LifeMapPointsState(val range: LifeMapRange, val points: List<LocationHistoryEntity>)
 
 /** Track rendering options, read from [LocationHistorySettingsStore] when the screen opens. */
 data class TrackStyle(val gradientStops: List<Int>, val haloEnabled: Boolean)
@@ -90,10 +103,10 @@ class LifeMapViewModel(
     private val settingsStore: LocationHistorySettingsStore,
 ) : ViewModel() {
 
-    private val _selectedRange = MutableStateFlow(TimeRange.LAST_DAY)
-    val selectedRange: StateFlow<TimeRange> = _selectedRange.asStateFlow()
+    private val _selectedRange = MutableStateFlow<LifeMapRange>(LifeMapRange.Preset(TimeRange.LAST_DAY))
+    val selectedRange: StateFlow<LifeMapRange> = _selectedRange.asStateFlow()
 
-    private val _pointsState = MutableStateFlow(LifeMapPointsState(TimeRange.LAST_DAY, emptyList()))
+    private val _pointsState = MutableStateFlow(LifeMapPointsState(LifeMapRange.Preset(TimeRange.LAST_DAY), emptyList()))
     val pointsState: StateFlow<LifeMapPointsState> = _pointsState.asStateFlow()
 
     // Read once at construction — changing these lives in Location History
@@ -120,14 +133,22 @@ class LifeMapViewModel(
         viewModelScope.launch {
             _selectedRange
                 .flatMapLatest { range ->
-                    locationHistoryDao.observeSince(range.toSinceMillis()).map { LifeMapPointsState(range, it) }
+                    val points = when (range) {
+                        is LifeMapRange.Preset -> locationHistoryDao.observeSince(range.range.toSinceMillis())
+                        is LifeMapRange.Custom -> locationHistoryDao.observeBetween(range.fromMillis, range.toMillis)
+                    }
+                    points.map { LifeMapPointsState(range, it) }
                 }
                 .collect { _pointsState.value = it }
         }
     }
 
     fun selectRange(range: TimeRange) {
-        _selectedRange.value = range
+        _selectedRange.value = LifeMapRange.Preset(range)
+    }
+
+    fun selectCustomRange(fromMillis: Long, toMillis: Long) {
+        _selectedRange.value = LifeMapRange.Custom(fromMillis, toMillis)
     }
 
     fun setMutedMap(muted: Boolean) {

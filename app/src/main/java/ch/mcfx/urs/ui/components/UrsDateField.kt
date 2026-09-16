@@ -18,6 +18,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,11 +65,24 @@ fun UrsDateField(
     modifier: Modifier = Modifier,
     /** `false` disables opening the dialog at all — e.g. a date the backend won't let this edit move. */
     enabled: Boolean = true,
+    /**
+     * Bump to a new value from outside (e.g. an incrementing counter) to open
+     * this field's dialog programmatically — e.g. chaining straight into the
+     * next field once its predecessor was just confirmed (see the Life Map
+     * custom-range sheet, GitHub issue #76). `0`, the default, never opens
+     * anything on its own; only a *change* does, so this is safe to leave
+     * wired permanently rather than resetting it after each use.
+     */
+    openSignal: Int = 0,
 ) {
     val colors = UrsTheme.colors
     var showDialog by remember { mutableStateOf(false) }
     val shape = RoundedCornerShape(Radius.row)
     val hasValue = value.isNotEmpty()
+
+    LaunchedEffect(openSignal) {
+        if (openSignal != 0 && enabled) showDialog = true
+    }
 
     Column(modifier = modifier) {
         // Always rendered, regardless of value — same reasoning as

@@ -16,6 +16,10 @@ interface LocationHistoryDao {
     @Query("SELECT * FROM location_history WHERE capturedAt >= :sinceMillis ORDER BY capturedAt ASC")
     fun observeSince(sinceMillis: Long): Flow<List<LocationHistoryEntity>>
 
+    /** Explicit from/to window (GitHub issue #76) — unlike [observeSince], bounded on both ends, not just "until now". */
+    @Query("SELECT * FROM location_history WHERE capturedAt >= :sinceMillis AND capturedAt <= :untilMillis ORDER BY capturedAt ASC")
+    fun observeBetween(sinceMillis: Long, untilMillis: Long): Flow<List<LocationHistoryEntity>>
+
     @Query("SELECT * FROM location_history ORDER BY capturedAt DESC LIMIT 1")
     suspend fun getLatest(): LocationHistoryEntity?
 
