@@ -32,12 +32,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
 import ch.mcfx.urs.data.local.LocationHistoryEntity
+import ch.mcfx.urs.location.LocationUtils
 import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsDropdownField
 import ch.mcfx.urs.ui.components.UrsFilterChip
 import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Spacing
+import kotlin.math.ceil
 import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
@@ -48,6 +50,23 @@ private const val DEFAULT_ZOOM = 12.0
 
 /** Extra margin around the fitted points' bounding box so the outermost points don't sit flush against the screen edge. */
 private const val BOUNDING_BOX_PADDING_SCALE = 1.25f
+
+/**
+ * Below this length, a segment isn't split further — no point paying for
+ * sub-polylines the eye can't tell apart. Bounds how far the gradient
+ * subdivision (below) can drive total overlay count up for closely-spaced
+ * points, which already need no help (see the comment above the render loop).
+ */
+private const val MIN_GRADIENT_CHUNK_METERS = 50.0
+
+/**
+ * Upper bound on how many pieces one real (point-to-point) segment can be
+ * split into, regardless of its length. Without this, a single very long
+ * gap (long capture interval, or a stationary pause) could alone balloon the
+ * overlay count into the thousands for no real gain — that stretch has no
+ * actual GPS samples in it either way, just a straight-line interpolation.
+ */
+private const val MAX_GRADIENT_CHUNKS_PER_SEGMENT = 30
 
 // "Muted" base-map filter: drop most of the tile colour and lift it toward
 // white, so a bright track sits clearly on top. Applied to osmdroid's tiles
@@ -74,6 +93,13 @@ private fun blendGradientStops(stops: List<Int>, fraction: Float): Int {
     val index = scaled.toInt().coerceIn(0, stops.size - 2)
     return ColorUtils.blendARGB(stops[index], stops[index + 1], scaled - index)
 }
+
+/** Straight-line (non-geodesic) interpolation — plenty accurate at the short, sub-segment scale this is used for. */
+private fun interpolateGeoPoint(from: GeoPoint, to: GeoPoint, t: Double): GeoPoint =
+    GeoPoint(
+        from.latitude + (to.latitude - from.latitude) * t,
+        from.longitude + (to.longitude - from.longitude) * t,
+    )
 
 @Composable
 fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewModel.Factory)) {
@@ -296,30 +322,67 @@ private fun LifeMapView(
             }
 
             // No native multi-color polyline in osmdroid — approximate the
-            // age gradient with one short segment per consecutive point
-            // pair, each coloured by that segment's index among the
-            // currently-loaded points (points is already ascending, per
-            // LocationHistoryDao.observeSince's ORDER BY capturedAt), not by
-            // elapsed wall-clock time. A time-based fraction collapsed to a
-            // near-solid colour across an entire short trip whenever it sat
-            // far from the loaded set's other points on the clock (e.g. two
-            // separate trips either side of a long stationary gap, where
-            // capture briefly pauses — confirmed on-device as two flat
-            // loops with no visible transition) — linear-by-point-count
-            // instead means every segment gets an equal share of the
-            // gradient regardless of how much real time passed since the
-            // previous fix.
+            // age gradient with short sub-segments, each coloured by its own
+            // share of the total track *distance* (GitHub issue #64), not
+            // point index or elapsed wall-clock time (a time-based fraction
+            // collapsed to a near-solid colour across an entire short trip
+            // whenever it sat far from the loaded set's other points on the
+            // clock — confirmed on-device as two flat loops either side of a
+            // long stationary gap, with no visible transition).
+            //
+            // Each real (point-to-point) segment — points is already
+            // ascending, per LocationHistoryDao.observeSince's ORDER BY
+            // capturedAt — is further split into MIN_GRADIENT_CHUNK_METERS-
+            // sized pieces (capped at MAX_GRADIENT_CHUNKS_PER_SEGMENT) so a
+            // single long segment (sparse fixes, a big capture interval, a
+            // stationary-pause gap) still shows a smooth ramp across its own
+            // length instead of one flat block — that stretch has no real
+            // GPS samples in it either way, so this is a straight-line
+            // interpolation between the two real endpoints, not new data.
+            // Falls back to point-count if every point sits at the same spot
+            // (zero total distance) so the fraction never divides by zero.
             if (points.size >= 2) {
                 val lastIndex = points.size - 1
-                for (i in 1 until points.size) {
-                    val fraction = i.toFloat() / lastIndex
-                    view.overlays.add(
-                        Polyline(view).apply {
-                            setPoints(listOf(geoPoints[i - 1], geoPoints[i]))
-                            outlinePaint.color = blendGradientStops(gradientStopsArgb, fraction)
-                            outlinePaint.strokeWidth = 3f * density
-                        },
+                val segmentDistancesKm = (1 until points.size).map { i ->
+                    LocationUtils.haversineKm(
+                        points[i - 1].latitude, points[i - 1].longitude,
+                        points[i].latitude, points[i].longitude,
                     )
+                }
+                val totalDistanceKm = segmentDistancesKm.sum()
+                var cumulativeDistanceKm = 0.0
+                for (i in 1 until points.size) {
+                    val segmentKm = segmentDistancesKm[i - 1]
+                    val segmentStartKm = cumulativeDistanceKm
+                    cumulativeDistanceKm += segmentKm
+
+                    val chunkCount = if (totalDistanceKm <= 0.0) {
+                        1
+                    } else {
+                        ceil((segmentKm * 1000.0) / MIN_GRADIENT_CHUNK_METERS).toInt()
+                            .coerceIn(1, MAX_GRADIENT_CHUNKS_PER_SEGMENT)
+                    }
+                    for (chunk in 1..chunkCount) {
+                        val tStart = (chunk - 1).toDouble() / chunkCount
+                        val tEnd = chunk.toDouble() / chunkCount
+                        val fraction = if (totalDistanceKm > 0.0) {
+                            ((segmentStartKm + segmentKm * tEnd) / totalDistanceKm).toFloat()
+                        } else {
+                            i.toFloat() / lastIndex
+                        }
+                        view.overlays.add(
+                            Polyline(view).apply {
+                                setPoints(
+                                    listOf(
+                                        interpolateGeoPoint(geoPoints[i - 1], geoPoints[i], tStart),
+                                        interpolateGeoPoint(geoPoints[i - 1], geoPoints[i], tEnd),
+                                    ),
+                                )
+                                outlinePaint.color = blendGradientStops(gradientStopsArgb, fraction)
+                                outlinePaint.strokeWidth = 3f * density
+                            },
+                        )
+                    }
                 }
             }
             view.invalidate()

@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Added a brightness slider to the Life Map track colour picker, so black and other dark shades are reachable (#65)
 - Added an intensity-gradient mode for the Life Map track (one colour varying brightness instead of blending between three hues) (#66)
 
+### Changed
+
+- Changed the Life Map track gradient to interpolate by cumulative track distance instead of point count, subdividing long segments so the ramp stays smooth across them too (#64)
+
 ### Fixed
 
 - Fixed note tags briefly disappearing during sync by wrapping the tag delete+insert pair in a single transaction (#70)
