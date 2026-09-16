@@ -121,6 +121,8 @@
     <string name="voice_notes_play">Play</string>
     <string name="voice_notes_pause">Pause</string>
     <string name="voice_notes_delete">Delete voice note</string>
+    <string name="voice_notes_share">Share voice note</string>
+    <string name="voice_notes_share_no_app">No app can receive the recording.</string>
     <string name="notes_filter_all_tags">All tags</string>
     <string name="note_detail_title_new">New note</string>
     <string name="note_detail_title_edit">Edit note</string>

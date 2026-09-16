@@ -1,5 +1,8 @@
 package ch.mcfx.urs.voicenotes
 
+import android.content.Context
+import android.content.Intent
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,12 +19,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
@@ -32,6 +38,7 @@ import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.components.ursScreenContentPadding
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Spacing
+import java.io.File
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -80,6 +87,7 @@ private fun VoiceNoteRow(
     onDelete: () -> Unit,
 ) {
     val colors = UrsTheme.colors
+    val context = LocalContext.current
     UrsCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(Spacing.m)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             UrsIconButton(
@@ -132,6 +140,12 @@ private fun VoiceNoteRow(
                 }
             }
             UrsIconButton(
+                onClick = { shareVoiceNote(context, note) },
+                contentDescription = stringResource(R.string.voice_notes_share),
+                imageVector = Icons.Filled.Share,
+                tint = colors.onSurfaceMuted,
+            )
+            UrsIconButton(
                 onClick = onDelete,
                 contentDescription = stringResource(R.string.voice_notes_delete),
                 imageVector = Icons.Filled.Delete,
@@ -139,6 +153,23 @@ private fun VoiceNoteRow(
             )
         }
     }
+}
+
+/**
+ * Exposes the recording via the app's [FileProvider] (GitHub issue #59) —
+ * `filesDir/audio-notes/` is app-private and otherwise unreachable to any
+ * other app — and opens the system share sheet with a `content://` URI.
+ * Never hands out the raw `file://` path.
+ */
+private fun shareVoiceNote(context: Context, note: AudioNoteEntity) {
+    val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", File(note.filePath))
+    val sendIntent = Intent(Intent.ACTION_SEND).apply {
+        type = "audio/ogg"
+        putExtra(Intent.EXTRA_STREAM, uri)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    runCatching { context.startActivity(Intent.createChooser(sendIntent, null)) }
+        .onFailure { Toast.makeText(context, R.string.voice_notes_share_no_app, Toast.LENGTH_SHORT).show() }
 }
 
 private fun formatMs(ms: Long): String {

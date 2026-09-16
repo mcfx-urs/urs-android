@@ -2,4 +2,6 @@
 <paths>
     <!-- Chores ICS export writes here before handing files to the share sheet. -->
     <cache-path name="chores-ics" path="chores-ics/" />
+    <!-- Voice note recordings (GitHub issue #59) — shared read-only, never written to via this path. -->
+    <files-path name="audio-notes" path="audio-notes/" />
 </paths>
