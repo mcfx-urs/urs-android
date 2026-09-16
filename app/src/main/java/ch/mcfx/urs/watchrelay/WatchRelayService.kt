@@ -73,6 +73,7 @@ class WatchRelayService : Service() {
         server = RelayHttpServer(
             onBeerFill = { volumeMl ->
                 container.beerRepository.logBeer(volumeMl, LocalDateTime.now().format(BeerStats.DATE_FORMAT))
+                container.syncManager.syncNow()
             },
             onChoreEvent = { typeId ->
                 container.choreRepository.logEvent(
