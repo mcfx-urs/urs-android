@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-09-16
+
 ### Security
 
 - Switched the household-member picker to the new `GET /api/v1/household-users` endpoint; `GET /api/v1/getuser` now only ever returns the caller's own profile (#72)
