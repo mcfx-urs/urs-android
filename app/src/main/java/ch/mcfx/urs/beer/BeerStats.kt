@@ -20,6 +20,13 @@ object BeerStats {
 
     data class Bucket(val label: String, val count: Int)
 
+    sealed class SinceLast {
+        data object JustNow : SinceLast()
+        data class Minutes(val n: Long) : SinceLast()
+        data class Hours(val n: Long) : SinceLast()
+        data class Days(val n: Long) : SinceLast()
+    }
+
     fun parseDateTime(raw: String): LocalDateTime? = runCatching { LocalDateTime.parse(raw, DATE_FORMAT) }.getOrNull()
 
     fun dailyCounts(entries: List<BeerLogDto>, today: LocalDate = LocalDate.now(), days: Int = 30): List<Bucket> {
@@ -42,10 +49,20 @@ object BeerStats {
 
     // Null if there's no logged entry at all — HomeScreen's subtitle simply
     // omits itself in that case, same convention as fuelAvgConsumptionL100Km.
-    fun daysSinceLast(entries: List<BeerLogDto>, today: LocalDate = LocalDate.now()): Long? =
-        entries.mapNotNull { parseDateTime(it.date)?.toLocalDate() }
-            .maxOrNull()
-            ?.let { ChronoUnit.DAYS.between(it, today) }
+    // Below one calendar day old, elapsed time is computed from the full
+    // timestamp (not just the date) so a beer logged minutes ago doesn't
+    // read as "0 days ago".
+    fun sinceLast(entries: List<BeerLogDto>, now: LocalDateTime = LocalDateTime.now()): SinceLast? {
+        val last = entries.mapNotNull { parseDateTime(it.date) }.maxOrNull() ?: return null
+        val dayDiff = ChronoUnit.DAYS.between(last.toLocalDate(), now.toLocalDate())
+        if (dayDiff > 0) return SinceLast.Days(dayDiff)
+        val minutes = ChronoUnit.MINUTES.between(last, now)
+        return when {
+            minutes < 10 -> SinceLast.JustNow
+            minutes < 60 -> SinceLast.Minutes(minutes)
+            else -> SinceLast.Hours(ChronoUnit.HOURS.between(last, now))
+        }
+    }
 
     fun totalLitersThisYear(entries: List<BeerLogDto>, year: Int = LocalDate.now().year): Double =
         entries
