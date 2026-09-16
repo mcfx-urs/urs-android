@@ -188,13 +188,21 @@ class NetworkGate(
         networkCallback = callback
     }
 
+    // onCapabilitiesChanged fires on every routine capability tick (RSSI-only
+    // updates included, see ensureReachableLocked()'s own comment on this),
+    // not just on a genuine connectivity change. ensureReachableLocked()
+    // already calls onConnectivityAvailable() itself on every outcome that's
+    // actually reachable (OnHomeNetwork, already-Connected, freshly
+    // Connected) — an unconditional extra call here fired it a second time on
+    // every such tick, and even on outcomes that aren't reachable at all
+    // (e.g. ConnectFailed), triggering a redundant PullCoordinator.pullAll()
+    // pass each time (GitHub issue #71).
     @RequiresApi(Build.VERSION_CODES.S)
     private fun wifiCallbackWithLocationInfo(scope: CoroutineScope): ConnectivityManager.NetworkCallback =
         object : ConnectivityManager.NetworkCallback(FLAG_INCLUDE_LOCATION_INFO) {
             override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
                 ssidReader.onWifiCapabilitiesChanged(capabilities)
                 scope.launch { ensureReachable() }
-                onConnectivityAvailable()
             }
 
             override fun onLost(network: Network) {
@@ -208,7 +216,6 @@ class NetworkGate(
             override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
                 ssidReader.onWifiCapabilitiesChanged(capabilities)
                 scope.launch { ensureReachable() }
-                onConnectivityAvailable()
             }
 
             override fun onLost(network: Network) {

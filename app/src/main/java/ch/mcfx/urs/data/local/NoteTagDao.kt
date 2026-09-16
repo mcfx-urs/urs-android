@@ -3,6 +3,7 @@ package ch.mcfx.urs.data.local
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -34,4 +35,16 @@ interface NoteTagDao {
 
     @Query("DELETE FROM note_tag WHERE noteId = :noteId")
     suspend fun deleteByNoteId(noteId: Long)
+
+    /**
+     * Atomic delete+insert for a note's tag set — without [Transaction],
+     * Room's Flow invalidation tracker can re-run an observer between the
+     * delete committing and the insert committing, observed as the tag list
+     * briefly going empty on the Notes screen (GitHub issue #70).
+     */
+    @Transaction
+    suspend fun replaceTags(noteId: Long, tags: List<NoteTagEntity>) {
+        deleteByNoteId(noteId)
+        insertAll(tags)
+    }
 }

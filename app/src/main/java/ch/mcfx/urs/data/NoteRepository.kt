@@ -27,6 +27,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -94,8 +96,7 @@ class NoteRepository(
     suspend fun updateNote(localId: Long, title: String, content: String, reminderAtMillis: Long?, tags: List<String>) {
         val current = noteDao.getById(localId) ?: return
         noteDao.updateFields(localId, title, content, reminderAtMillis, SyncStatus.PENDING)
-        noteTagDao.deleteByNoteId(localId)
-        noteTagDao.insertAll(tags.map { NoteTagEntity(noteId = localId, tagName = it) })
+        noteTagDao.replaceTags(localId, tags.map { NoteTagEntity(noteId = localId, tagName = it) })
 
         NoteAlarmScheduler.cancel(context, alarmIdFor(localId))
         if (reminderAtMillis != null && current.status == STATUS_ACTIVE) {
@@ -202,24 +203,32 @@ class NoteRepository(
      * history. Without this, a note created on one device/install never
      * appears on another.
      */
+    /**
+     * [Mutex]-guarded, same shape as [SyncManager.syncNow] and
+     * [PullCoordinator.pullAll] — [NotesViewModel][ch.mcfx.urs.notes.NotesViewModel]'s
+     * own refresh-on-entry and [PullCoordinator]'s app-wide pull can both call
+     * this independently, and without serializing them, two concurrent passes
+     * interleaved their `note`/`note_tag` upserts (GitHub issue #71).
+     */
+    private val refreshMutex = Mutex()
+
     /** @return `true` if the refresh completed cleanly (see [PullCoordinator]). */
-    suspend fun refreshFromBackend(): Boolean {
+    suspend fun refreshFromBackend(): Boolean = refreshMutex.withLock {
         try {
             api.getNotes().forEach { dto ->
                 val localId = noteDao.upsertFromServer(dto.toEntity(currentUserId()))
                 if (localId >= 0) {
-                    noteTagDao.deleteByNoteId(localId)
-                    noteTagDao.insertAll(dto.tags.map { NoteTagEntity(noteId = localId, tagName = it) })
+                    noteTagDao.replaceTags(localId, dto.tags.map { NoteTagEntity(noteId = localId, tagName = it) })
                 }
             }
-            return true
+            true
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             // Best-effort only, same shape as ServiceRepository.refreshFromBackend
             // — stale cached data beats an empty or error screen.
             android.util.Log.w("NoteRepository", "refreshFromBackend failed", e)
-            return false
+            false
         }
     }
 

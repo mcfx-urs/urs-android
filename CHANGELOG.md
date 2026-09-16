@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed note tags briefly disappearing during sync by wrapping the tag delete+insert pair in a single transaction (#70)
+- Fixed the Notes screen being able to trigger multiple concurrent syncs on a single visit; also removed a duplicate connectivity-available trigger firing on every Wi-Fi capability tick (#71)
+
 ## [1.1.0] - 2026-09-16
 
 ### Security
