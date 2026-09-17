@@ -6,6 +6,7 @@ import ch.mcfx.urs.chores.ChoresRoutes
 import ch.mcfx.urs.vehicle.VehicleHubRoutes
 import ch.mcfx.urs.fuel.FuelRoutes
 import ch.mcfx.urs.inventory.InventoryRoutes
+import ch.mcfx.urs.journal.JournalRoutes
 import ch.mcfx.urs.kanban.KanbanRoutes
 import ch.mcfx.urs.notes.NotesRoutes
 import ch.mcfx.urs.settings.SettingsRoutes
@@ -35,6 +36,7 @@ enum class Destination(
     BAKING(BakingRoutes.PLANS, R.string.nav_baking, isAvailable = true),
     NOTES(NotesRoutes.LIST, R.string.nav_notes, isAvailable = true),
     CHORES(ChoresRoutes.MONTH, R.string.nav_chores, isAvailable = true),
+    JOURNAL(JournalRoutes.MONTH, R.string.nav_journal, isAvailable = true),
     VOICE_NOTES(VoiceNotesRoutes.LIST, R.string.nav_voice_notes, isAvailable = true),
     KANBAN(KanbanRoutes.BOARDS, R.string.nav_kanban, isAvailable = true),
     // Placeholder only — purpose not decided yet, reserves a Home grid slot

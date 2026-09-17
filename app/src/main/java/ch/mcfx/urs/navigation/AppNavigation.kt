@@ -44,6 +44,10 @@ import ch.mcfx.urs.baking.BakingHistoryScreen
 import ch.mcfx.urs.baking.BakingHubScreen
 import ch.mcfx.urs.baking.BakingRoutes
 import ch.mcfx.urs.chores.ChoresScreen
+import ch.mcfx.urs.journal.JournalDayScreen
+import ch.mcfx.urs.journal.JournalOverviewScreen
+import ch.mcfx.urs.journal.JournalRoutes
+import ch.mcfx.urs.journal.JournalScreen
 import ch.mcfx.urs.notes.NoteDetailScreen
 import ch.mcfx.urs.notes.NotesHistoryScreen
 import ch.mcfx.urs.notes.NotesHubScreen
@@ -434,6 +438,20 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                         // Reached by the overdue-chore reminder notification.
                         deepLinks = listOf(navDeepLink { uriPattern = "urs://${Destination.CHORES.route}" }),
                     ) { ChoresScreen() }
+                    composable(Destination.JOURNAL.route) {
+                        JournalScreen(
+                            onOpenDay = { date -> navController.navigate(JournalRoutes.day(date.toString())) },
+                            onOpenOverview = { navController.navigate(JournalRoutes.OVERVIEW) },
+                        )
+                    }
+                    composable(
+                        route = JournalRoutes.DAY,
+                        arguments = listOf(navArgument("date") { type = NavType.StringType }),
+                    ) { backStackEntry ->
+                        val date = backStackEntry.arguments?.getString("date") ?: return@composable
+                        JournalDayScreen(date = java.time.LocalDate.parse(date))
+                    }
+                    composable(JournalRoutes.OVERVIEW) { JournalOverviewScreen() }
                     composable(Destination.VOICE_NOTES.route) { VoiceNotesScreen() }
                     composable(Destination.KANBAN.route) {
                         KanbanBoardsScreen(

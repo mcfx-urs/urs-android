@@ -23,6 +23,13 @@ import androidx.room.PrimaryKey
  *
  * [userId] filters [TrackerTypeDao]'s observe queries, same per-user
  * privacy defense-in-depth as [NoteEntity.userId].
+ *
+ * [domainId] is the parent [TrackerDomainEntity.publicId] (GitHub issue #83,
+ * Journal) — a real `tracker_domain_id` or a stand-in until the domain's own
+ * create has synced, resolved at replay time same as
+ * [TrackerEventEntity.trackerTypeId]. Nullable only because a type created
+ * before Journal existed has none until the next [TrackerTypeDao.upsertFromServer]
+ * refresh backfills it — Journal's own type editor always sets one.
  */
 @Entity(tableName = "tracker_type")
 data class TrackerTypeEntity(
@@ -37,6 +44,7 @@ data class TrackerTypeEntity(
     val expectedIntervalDays: Int? = null,
     val archivedAtMillis: Long? = null,
     val lastExportedAtMillis: Long? = null,
+    val domainId: String? = null,
     val syncStatus: SyncStatus,
 )
 

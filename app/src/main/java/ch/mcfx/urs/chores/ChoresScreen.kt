@@ -462,7 +462,10 @@ private fun ExportSheet(onExport: (exportAll: Boolean) -> Unit) {
 // chooser — the closest available signal that the share wasn't cancelled —
 // so onTargetSelected (which marks the types exported) only runs then,
 // never just because the chooser was launched.
-private fun shareIcsExport(context: Context, export: IcsExport, onTargetSelected: () -> Unit) {
+// Visible across the module (not just this package) so Journal's own export
+// button (GitHub issue #83) can reuse it unchanged — same .ics build/share
+// mechanics, just triggered from a different screen.
+internal fun shareIcsExport(context: Context, export: IcsExport, onTargetSelected: () -> Unit) {
     if (export.files.isEmpty()) {
         Toast.makeText(context, R.string.chores_export_nothing, Toast.LENGTH_SHORT).show()
         return

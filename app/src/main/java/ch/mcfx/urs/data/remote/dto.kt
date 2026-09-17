@@ -817,6 +817,7 @@ data class LogLevelDto(
 data class TrackerTypeDto(
     @SerialName("tracker_type_id") val id: String,
     @SerialName("tracker_type_user_id") val userId: String = "",
+    @SerialName("tracker_type_domain_id") val domainId: String = "",
     @SerialName("tracker_type_name") val name: String,
     @SerialName("tracker_type_color") val color: String,
     @SerialName("tracker_type_icon") val icon: String,
@@ -829,6 +830,7 @@ data class TrackerTypeDto(
 // Shared by POST and PUT /api/v1/tracker-type — same body shape both ways.
 @Serializable
 data class TrackerTypePayload(
+    @SerialName("tracker_type_domain_id") val domainId: String = "",
     @SerialName("tracker_type_name") val name: String,
     @SerialName("tracker_type_color") val color: String,
     @SerialName("tracker_type_icon") val icon: String,
@@ -842,7 +844,9 @@ data class TrackerEventDto(
     @SerialName("tracker_event_user_id") val userId: String = "",
     @SerialName("tracker_event_tracker_type_id") val trackerTypeId: String,
     @SerialName("tracker_event_occurred_on") val occurredOn: String,
+    @SerialName("tracker_event_occurred_on_end") val occurredOnEnd: String = "",
     @SerialName("tracker_event_occurred_at") val occurredAt: String = "",
+    @SerialName("tracker_event_occurred_at_end") val occurredAtEnd: String = "",
     @SerialName("tracker_event_note") val note: String = "",
     @SerialName("tracker_event_source") val source: String = "manual",
 )
@@ -852,9 +856,31 @@ data class TrackerEventDto(
 data class TrackerEventPayload(
     @SerialName("tracker_event_tracker_type_id") val trackerTypeId: String,
     @SerialName("tracker_event_occurred_on") val occurredOn: String,
+    @SerialName("tracker_event_occurred_on_end") val occurredOnEnd: String = "",
     @SerialName("tracker_event_occurred_at") val occurredAt: String = "",
+    @SerialName("tracker_event_occurred_at_end") val occurredAtEnd: String = "",
     @SerialName("tracker_event_note") val note: String = "",
     @SerialName("tracker_event_source") val source: String = "manual",
+)
+
+// --- Journal domains (GitHub issue #83) ---
+
+@Serializable
+data class TrackerDomainDto(
+    @SerialName("journal_domain_id") val id: String,
+    @SerialName("journal_domain_user_id") val userId: String = "",
+    @SerialName("journal_domain_name") val name: String,
+    @SerialName("journal_domain_color") val color: String,
+    @SerialName("journal_domain_icon") val icon: String,
+    @SerialName("journal_domain_position") val position: Int = 0,
+)
+
+// Shared by POST and PUT /api/v1/journal-domain.
+@Serializable
+data class TrackerDomainPayload(
+    @SerialName("journal_domain_name") val name: String,
+    @SerialName("journal_domain_color") val color: String,
+    @SerialName("journal_domain_icon") val icon: String,
 )
 
 @Serializable

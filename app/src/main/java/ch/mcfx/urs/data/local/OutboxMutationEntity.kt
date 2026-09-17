@@ -44,7 +44,10 @@ enum class OutboxStatus { PENDING, SYNCING, FAILED }
  * [OutboxKanbanChecklistItemPayload]/[OutboxKanbanChecklistItemUpdatePayload]/
  * [OutboxKanbanChecklistItemDeletePayload] for
  * [TYPE_CREATE_KANBAN_CHECKLIST_ITEM]/[TYPE_UPDATE_KANBAN_CHECKLIST_ITEM]/
- * [TYPE_DELETE_KANBAN_CHECKLIST_ITEM].
+ * [TYPE_DELETE_KANBAN_CHECKLIST_ITEM],
+ * [OutboxTrackerDomainCreatePayload]/[OutboxTrackerDomainUpdatePayload]/
+ * [OutboxTrackerDomainDeletePayload] for [TYPE_CREATE_TRACKER_DOMAIN]/
+ * [TYPE_UPDATE_TRACKER_DOMAIN]/[TYPE_DELETE_TRACKER_DOMAIN].
  * [createdAt] drives strict FIFO replay order (see `SyncManager`), not
  * wall-clock display.
  */
@@ -108,5 +111,8 @@ data class OutboxMutationEntity(
         const val TYPE_CREATE_KANBAN_CHECKLIST_ITEM = "CREATE_KANBAN_CHECKLIST_ITEM"
         const val TYPE_UPDATE_KANBAN_CHECKLIST_ITEM = "UPDATE_KANBAN_CHECKLIST_ITEM"
         const val TYPE_DELETE_KANBAN_CHECKLIST_ITEM = "DELETE_KANBAN_CHECKLIST_ITEM"
+        const val TYPE_CREATE_TRACKER_DOMAIN = "CREATE_TRACKER_DOMAIN"
+        const val TYPE_UPDATE_TRACKER_DOMAIN = "UPDATE_TRACKER_DOMAIN"
+        const val TYPE_DELETE_TRACKER_DOMAIN = "DELETE_TRACKER_DOMAIN"
     }
 }

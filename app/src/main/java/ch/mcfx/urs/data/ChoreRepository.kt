@@ -3,6 +3,9 @@ package ch.mcfx.urs.data
 import ch.mcfx.urs.auth.AuthTokenStore
 import ch.mcfx.urs.data.local.OutboxDao
 import ch.mcfx.urs.data.local.OutboxMutationEntity
+import ch.mcfx.urs.data.local.OutboxTrackerDomainCreatePayload
+import ch.mcfx.urs.data.local.OutboxTrackerDomainDeletePayload
+import ch.mcfx.urs.data.local.OutboxTrackerDomainUpdatePayload
 import ch.mcfx.urs.data.local.OutboxTrackerEventCreatePayload
 import ch.mcfx.urs.data.local.OutboxTrackerEventDeletePayload
 import ch.mcfx.urs.data.local.OutboxTrackerEventUpdatePayload
@@ -11,11 +14,15 @@ import ch.mcfx.urs.data.local.OutboxTrackerTypeCreatePayload
 import ch.mcfx.urs.data.local.OutboxTrackerTypeReactivatePayload
 import ch.mcfx.urs.data.local.OutboxTrackerTypeUpdatePayload
 import ch.mcfx.urs.data.local.SyncStatus
+import ch.mcfx.urs.data.local.TrackerDomainDao
+import ch.mcfx.urs.data.local.TrackerDomainEntity
 import ch.mcfx.urs.data.local.TrackerEventDao
 import ch.mcfx.urs.data.local.TrackerEventEntity
 import ch.mcfx.urs.data.local.TrackerTypeDao
 import ch.mcfx.urs.data.local.TrackerTypeEntity
 import ch.mcfx.urs.data.local.publicId
+import ch.mcfx.urs.data.remote.TrackerDomainDto
+import ch.mcfx.urs.data.remote.TrackerDomainPayload
 import ch.mcfx.urs.data.remote.TrackerEventDto
 import ch.mcfx.urs.data.remote.TrackerTypeDto
 import ch.mcfx.urs.data.remote.UrsApi
@@ -43,6 +50,7 @@ class ChoreRepository(
     private val api: UrsApi,
     private val trackerTypeDao: TrackerTypeDao,
     private val trackerEventDao: TrackerEventDao,
+    private val trackerDomainDao: TrackerDomainDao,
     private val outboxDao: OutboxDao,
     private val syncManager: SyncManager,
     private val tokenStore: AuthTokenStore,
@@ -54,13 +62,88 @@ class ChoreRepository(
 
     fun observeEvents(): Flow<List<TrackerEventEntity>> = trackerEventDao.observeForUser(currentUserId())
 
+    fun observeDomains(): Flow<List<TrackerDomainEntity>> = trackerDomainDao.observeForUser(currentUserId())
+
     suspend fun getType(localId: Long): TrackerTypeEntity? = trackerTypeDao.getById(localId)
 
     suspend fun getEvent(localId: Long): TrackerEventEntity? = trackerEventDao.getById(localId)
 
+    suspend fun getDomain(localId: Long): TrackerDomainEntity? = trackerDomainDao.getById(localId)
+
+    // --- Journal domains (GitHub issue #83) ---
+
+    suspend fun createDomain(name: String, color: String, icon: String) {
+        val outboxId = outboxDao.insert(
+            OutboxMutationEntity(
+                type = OutboxMutationEntity.TYPE_CREATE_TRACKER_DOMAIN,
+                payloadJson = json.encodeToString(OutboxTrackerDomainCreatePayload(name = name, color = color, icon = icon)),
+                createdAt = System.currentTimeMillis(),
+            ),
+        )
+        trackerDomainDao.upsert(
+            TrackerDomainEntity(
+                outboxId = outboxId,
+                userId = currentUserId(),
+                name = name,
+                color = color,
+                icon = icon,
+                position = trackerDomainDao.nextPosition(currentUserId()),
+                syncStatus = SyncStatus.PENDING,
+            ),
+        )
+        applicationScope.launch { syncManager.syncNow() }
+    }
+
+    suspend fun updateDomain(localId: Long, name: String, color: String, icon: String) {
+        val current = trackerDomainDao.getById(localId) ?: return
+
+        val outboxId = if (current.serverId == null) {
+            current.outboxId?.let {
+                outboxDao.updatePayload(it, json.encodeToString(OutboxTrackerDomainCreatePayload(name = name, color = color, icon = icon)))
+            }
+            current.outboxId
+        } else {
+            current.outboxId?.let { outboxDao.delete(it) }
+            outboxDao.insert(
+                OutboxMutationEntity(
+                    type = OutboxMutationEntity.TYPE_UPDATE_TRACKER_DOMAIN,
+                    payloadJson = json.encodeToString(
+                        OutboxTrackerDomainUpdatePayload(serverId = current.serverId, name = name, color = color, icon = icon),
+                    ),
+                    createdAt = System.currentTimeMillis(),
+                ),
+            )
+        }
+        trackerDomainDao.updateFields(localId, name, color, icon, SyncStatus.PENDING, outboxId)
+        applicationScope.launch { syncManager.syncNow() }
+    }
+
+    suspend fun deleteDomain(localId: Long) {
+        val current = trackerDomainDao.getById(localId) ?: return
+        current.outboxId?.let { outboxDao.delete(it) }
+        trackerDomainDao.delete(localId)
+
+        val serverId = current.serverId ?: return
+        outboxDao.insert(
+            OutboxMutationEntity(
+                type = OutboxMutationEntity.TYPE_DELETE_TRACKER_DOMAIN,
+                payloadJson = json.encodeToString(OutboxTrackerDomainDeletePayload(serverId = serverId)),
+                createdAt = System.currentTimeMillis(),
+            ),
+        )
+        applicationScope.launch { syncManager.syncNow() }
+    }
+
     // --- Types ---
 
-    suspend fun createType(name: String, color: String, icon: String, calendar: String?, expectedIntervalDays: Int?) {
+    suspend fun createType(
+        name: String,
+        color: String,
+        icon: String,
+        calendar: String?,
+        expectedIntervalDays: Int?,
+        domainId: String? = null,
+    ) {
         val outboxId = outboxDao.insert(
             OutboxMutationEntity(
                 type = OutboxMutationEntity.TYPE_CREATE_TRACKER_TYPE,
@@ -71,6 +154,7 @@ class ChoreRepository(
                         icon = icon,
                         calendar = calendar,
                         expectedIntervalDays = expectedIntervalDays,
+                        domainId = domainId,
                     ),
                 ),
                 createdAt = System.currentTimeMillis(),
@@ -85,6 +169,7 @@ class ChoreRepository(
                 icon = icon,
                 calendar = calendar,
                 expectedIntervalDays = expectedIntervalDays,
+                domainId = domainId,
                 syncStatus = SyncStatus.PENDING,
             ),
         )
@@ -98,8 +183,10 @@ class ChoreRepository(
         icon: String,
         calendar: String?,
         expectedIntervalDays: Int?,
+        domainId: String? = null,
     ) {
         val current = trackerTypeDao.getById(localId) ?: return
+        val effectiveDomainId = domainId ?: current.domainId
 
         val outboxId = if (current.serverId == null) {
             current.outboxId?.let {
@@ -112,6 +199,7 @@ class ChoreRepository(
                             icon = icon,
                             calendar = calendar,
                             expectedIntervalDays = expectedIntervalDays,
+                            domainId = effectiveDomainId,
                         ),
                     ),
                 )
@@ -130,13 +218,14 @@ class ChoreRepository(
                             icon = icon,
                             calendar = calendar,
                             expectedIntervalDays = expectedIntervalDays,
+                            domainId = effectiveDomainId,
                         ),
                     ),
                     createdAt = System.currentTimeMillis(),
                 ),
             )
         }
-        trackerTypeDao.updateFields(localId, name, color, icon, calendar, expectedIntervalDays, SyncStatus.PENDING, outboxId)
+        trackerTypeDao.updateFields(localId, name, color, icon, calendar, expectedIntervalDays, effectiveDomainId, SyncStatus.PENDING, outboxId)
         applicationScope.launch { syncManager.syncNow() }
     }
 
@@ -207,7 +296,15 @@ class ChoreRepository(
 
     // --- Events ---
 
-    suspend fun logEvent(typeId: String, occurredOn: String, occurredAt: String?, note: String?, source: String = "manual") {
+    suspend fun logEvent(
+        typeId: String,
+        occurredOn: String,
+        occurredAt: String?,
+        note: String?,
+        source: String = "manual",
+        occurredOnEnd: String? = null,
+        occurredAtEnd: String? = null,
+    ) {
         val outboxId = outboxDao.insert(
             OutboxMutationEntity(
                 type = OutboxMutationEntity.TYPE_CREATE_TRACKER_EVENT,
@@ -215,7 +312,9 @@ class ChoreRepository(
                     OutboxTrackerEventCreatePayload(
                         trackerTypeId = typeId,
                         occurredOn = occurredOn,
+                        occurredOnEnd = occurredOnEnd,
                         occurredAt = occurredAt,
+                        occurredAtEnd = occurredAtEnd,
                         note = note,
                         source = source,
                     ),
@@ -229,7 +328,9 @@ class ChoreRepository(
                 userId = currentUserId(),
                 trackerTypeId = typeId,
                 occurredOn = occurredOn,
+                occurredOnEnd = occurredOnEnd,
                 occurredAt = occurredAt,
+                occurredAtEnd = occurredAtEnd,
                 note = note,
                 source = source,
                 syncStatus = SyncStatus.PENDING,
@@ -238,7 +339,15 @@ class ChoreRepository(
         applicationScope.launch { syncManager.syncNow() }
     }
 
-    suspend fun updateEvent(localId: Long, typeId: String, occurredOn: String, occurredAt: String?, note: String?) {
+    suspend fun updateEvent(
+        localId: Long,
+        typeId: String,
+        occurredOn: String,
+        occurredAt: String?,
+        note: String?,
+        occurredOnEnd: String? = null,
+        occurredAtEnd: String? = null,
+    ) {
         val current = trackerEventDao.getById(localId) ?: return
 
         val outboxId = if (current.serverId == null) {
@@ -246,7 +355,14 @@ class ChoreRepository(
                 outboxDao.updatePayload(
                     it,
                     json.encodeToString(
-                        OutboxTrackerEventCreatePayload(trackerTypeId = typeId, occurredOn = occurredOn, occurredAt = occurredAt, note = note),
+                        OutboxTrackerEventCreatePayload(
+                            trackerTypeId = typeId,
+                            occurredOn = occurredOn,
+                            occurredOnEnd = occurredOnEnd,
+                            occurredAt = occurredAt,
+                            occurredAtEnd = occurredAtEnd,
+                            note = note,
+                        ),
                     ),
                 )
             }
@@ -261,7 +377,9 @@ class ChoreRepository(
                             serverId = current.serverId,
                             trackerTypeId = typeId,
                             occurredOn = occurredOn,
+                            occurredOnEnd = occurredOnEnd,
                             occurredAt = occurredAt,
+                            occurredAtEnd = occurredAtEnd,
                             note = note,
                         ),
                     ),
@@ -269,7 +387,7 @@ class ChoreRepository(
                 ),
             )
         }
-        trackerEventDao.updateFields(localId, typeId, occurredOn, occurredAt, note, SyncStatus.PENDING, outboxId)
+        trackerEventDao.updateFields(localId, typeId, occurredOn, occurredOnEnd, occurredAt, occurredAtEnd, note, SyncStatus.PENDING, outboxId)
         applicationScope.launch { syncManager.syncNow() }
     }
 
@@ -291,15 +409,17 @@ class ChoreRepository(
 
     /**
      * Drains the outbox first (same reasoning as
-     * [ShoppingListRepository.refreshFromBackend]), then pulls types before
-     * events since an event references its type. Best-effort — a failure
-     * leaves the cached data in place.
+     * [ShoppingListRepository.refreshFromBackend]), then pulls domains, then
+     * types (which reference a domain), then events (which reference a
+     * type). Best-effort — a failure leaves the cached data in place.
      */
     /** @return `true` if the refresh completed cleanly (see [PullCoordinator]). */
     suspend fun refreshFromBackend(): Boolean {
         syncManager.syncNow()
         val userId = currentUserId()
         try {
+            val domains = emptyAsNull { api.getTrackerDomains() }
+            trackerDomainDao.upsertFromServer(userId, domains.map { it.toEntity(userId) })
             val types = emptyAsNull { api.getTrackerTypes() }
             trackerTypeDao.upsertFromServer(userId, types.map { it.toEntity(userId) })
             val events = emptyAsNull { api.getTrackerEvents() }
@@ -361,6 +481,18 @@ private fun TrackerTypeDto.toEntity(userId: String) = TrackerTypeEntity(
     expectedIntervalDays = expectedIntervalDays.toIntOrNull(),
     archivedAtMillis = archivedAt.ifBlank { null }?.toArchivedMillisOrNull(),
     lastExportedAtMillis = lastExportedAt.ifBlank { null }?.toArchivedMillisOrNull(),
+    domainId = domainId.ifBlank { null },
+    syncStatus = SyncStatus.SYNCED,
+)
+
+private fun TrackerDomainDto.toEntity(userId: String) = TrackerDomainEntity(
+    serverId = id,
+    outboxId = null,
+    userId = userId,
+    name = name,
+    color = color,
+    icon = icon,
+    position = position,
     syncStatus = SyncStatus.SYNCED,
 )
 
@@ -370,7 +502,9 @@ private fun TrackerEventDto.toEntity(userId: String) = TrackerEventEntity(
     userId = userId,
     trackerTypeId = trackerTypeId,
     occurredOn = occurredOn,
+    occurredOnEnd = occurredOnEnd.ifBlank { null },
     occurredAt = occurredAt.ifBlank { null },
+    occurredAtEnd = occurredAtEnd.ifBlank { null },
     note = note.ifBlank { null },
     source = source.ifBlank { "manual" },
     syncStatus = SyncStatus.SYNCED,

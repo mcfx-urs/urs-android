@@ -145,6 +145,9 @@ private val TILE_IMAGE: Map<String, Int> = mapOf(
     // Interim: reuses the K tile art until Chores gets its own commissioned
     // piece (GitHub issue #27, part B).
     Destination.CHORES.name to R.drawable.tile_k,
+    // Interim: reuses the K tile art too, same as Chores/Kanban above
+    // (GitHub issue #83, Journal).
+    Destination.JOURNAL.name to R.drawable.tile_k,
     Destination.PRICE_MONITOR.name to R.drawable.tile_price_monitor,
     Destination.K.name to R.drawable.tile_k,
     Destination.GOKART.name to R.drawable.tile_gokart,

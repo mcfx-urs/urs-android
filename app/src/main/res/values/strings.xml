@@ -34,6 +34,7 @@
     <string name="nav_baking">Baking</string>
     <string name="nav_notes">Notes</string>
     <string name="nav_chores">Chores and Stuff</string>
+    <string name="nav_journal">Journal</string>
     <string name="nav_voice_notes">Voice Notes</string>
     <string name="nav_kanban">Kanban Board</string>
     <string name="nav_settings">Settings</string>
@@ -89,6 +90,23 @@
     <string name="chores_stat_overdue">overdue</string>
     <string name="chores_overdue_notification_title">Chore overdue</string>
     <string name="chores_overdue_notification_body">%1$s is overdue.</string>
+
+    <string name="journal_filter_title">Filter</string>
+    <string name="journal_overview_link">Overview</string>
+    <string name="journal_overview_title">Overview</string>
+    <string name="journal_no_domains">No domains yet.</string>
+    <string name="journal_ungrouped_types">Ungrouped</string>
+    <string name="journal_add_type">+ Add type</string>
+    <string name="journal_add_domain">+ Add domain</string>
+    <string name="journal_new_domain">New domain</string>
+    <string name="journal_domain_name_label">Name</string>
+    <string name="journal_domain_label">Domain</string>
+    <string name="journal_domain_has_no_types">This domain has no types yet.</string>
+    <string name="journal_add_entry">Log an entry</string>
+    <string name="journal_start_date_label">From</string>
+    <string name="journal_end_date_label">To</string>
+    <string name="journal_end_time_label">End time</string>
+    <string name="journal_all_day">All day</string>
 
     <string name="baking_step_alarm_body">Time for your next baking step</string>
     <string name="baking_history">History</string>

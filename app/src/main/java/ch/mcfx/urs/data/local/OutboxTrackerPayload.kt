@@ -9,6 +9,7 @@ data class OutboxTrackerTypeCreatePayload(
     val icon: String,
     val calendar: String? = null,
     val expectedIntervalDays: Int? = null,
+    val domainId: String? = null,
 )
 
 // serverId identifies the target directly (rename/recolour only happens
@@ -22,6 +23,7 @@ data class OutboxTrackerTypeUpdatePayload(
     val icon: String,
     val calendar: String? = null,
     val expectedIntervalDays: Int? = null,
+    val domainId: String? = null,
 )
 
 @Serializable
@@ -40,7 +42,9 @@ data class OutboxTrackerTypeReactivatePayload(
 data class OutboxTrackerEventCreatePayload(
     val trackerTypeId: String,
     val occurredOn: String,
+    val occurredOnEnd: String? = null,
     val occurredAt: String? = null,
+    val occurredAtEnd: String? = null,
     val note: String? = null,
     val source: String = "manual",
 )
@@ -50,7 +54,9 @@ data class OutboxTrackerEventUpdatePayload(
     val serverId: String,
     val trackerTypeId: String,
     val occurredOn: String,
+    val occurredOnEnd: String? = null,
     val occurredAt: String? = null,
+    val occurredAtEnd: String? = null,
     val note: String? = null,
 )
 
@@ -58,5 +64,27 @@ data class OutboxTrackerEventUpdatePayload(
 // is captured eagerly here — same as OutboxListItemDeletePayload.
 @Serializable
 data class OutboxTrackerEventDeletePayload(
+    val serverId: String,
+)
+
+// --- Journal domains (GitHub issue #83) ---
+
+@Serializable
+data class OutboxTrackerDomainCreatePayload(
+    val name: String,
+    val color: String,
+    val icon: String,
+)
+
+@Serializable
+data class OutboxTrackerDomainUpdatePayload(
+    val serverId: String,
+    val name: String,
+    val color: String,
+    val icon: String,
+)
+
+@Serializable
+data class OutboxTrackerDomainDeletePayload(
     val serverId: String,
 )

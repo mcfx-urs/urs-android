@@ -52,7 +52,7 @@ interface TrackerTypeDao {
 
     @Query(
         "UPDATE tracker_type SET name = :name, color = :color, icon = :icon, calendar = :calendar, " +
-            "expectedIntervalDays = :expectedIntervalDays, syncStatus = :syncStatus, outboxId = :outboxId WHERE id = :id",
+            "expectedIntervalDays = :expectedIntervalDays, domainId = :domainId, syncStatus = :syncStatus, outboxId = :outboxId WHERE id = :id",
     )
     suspend fun updateFields(
         id: Long,
@@ -61,6 +61,7 @@ interface TrackerTypeDao {
         icon: String,
         calendar: String?,
         expectedIntervalDays: Int?,
+        domainId: String?,
         syncStatus: SyncStatus,
         outboxId: Long?,
     )

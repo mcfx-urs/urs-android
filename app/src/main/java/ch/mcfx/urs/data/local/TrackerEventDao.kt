@@ -60,14 +60,16 @@ interface TrackerEventDao {
     suspend fun markSynced(id: Long, serverId: String, trackerTypeId: String)
 
     @Query(
-        "UPDATE tracker_event SET trackerTypeId = :trackerTypeId, occurredOn = :occurredOn, occurredAt = :occurredAt, " +
-            "note = :note, syncStatus = :syncStatus, outboxId = :outboxId WHERE id = :id",
+        "UPDATE tracker_event SET trackerTypeId = :trackerTypeId, occurredOn = :occurredOn, occurredOnEnd = :occurredOnEnd, " +
+            "occurredAt = :occurredAt, occurredAtEnd = :occurredAtEnd, note = :note, syncStatus = :syncStatus, outboxId = :outboxId WHERE id = :id",
     )
     suspend fun updateFields(
         id: Long,
         trackerTypeId: String,
         occurredOn: String,
+        occurredOnEnd: String?,
         occurredAt: String?,
+        occurredAtEnd: String?,
         note: String?,
         syncStatus: SyncStatus,
         outboxId: Long?,

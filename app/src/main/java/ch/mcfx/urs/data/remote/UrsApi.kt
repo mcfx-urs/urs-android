@@ -370,6 +370,18 @@ interface UrsApi {
     @DELETE("api/v1/tracker-event/{id}")
     suspend fun deleteTrackerEvent(@Path("id") id: String)
 
+    @POST("api/v1/journal-domain")
+    suspend fun createTrackerDomain(@Body payload: TrackerDomainPayload): TrackerDomainDto
+
+    @GET("api/v1/journal-domain")
+    suspend fun getTrackerDomains(): List<TrackerDomainDto>
+
+    @PUT("api/v1/journal-domain/{id}")
+    suspend fun updateTrackerDomain(@Path("id") id: String, @Body payload: TrackerDomainPayload)
+
+    @DELETE("api/v1/journal-domain/{id}")
+    suspend fun deleteTrackerDomain(@Path("id") id: String)
+
     @POST("api/v1/kanban/board")
     suspend fun createKanbanBoard(@Body payload: KanbanBoardCreatePayload): KanbanBoardDto
 

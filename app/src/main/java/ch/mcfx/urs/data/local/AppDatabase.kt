@@ -37,6 +37,7 @@ import androidx.room.TypeConverters
         KanbanCardEntity::class,
         KanbanChecklistItemEntity::class,
         KanbanCardTagEntity::class,
+        TrackerDomainEntity::class,
     ],
     // Bumped for the isFullTank column on FillEntity, the life map
     // feature's LocationHistoryEntity (local capture + sync fields), and
@@ -110,7 +111,11 @@ import androidx.room.TypeConverters
     //      LocationCaptureLogEntity (GitHub issue #86, richer capture
     //      logging for battery analysis) — same destructive-fallback
     //      handling as every bump above.
-    version = 34,
+    // v35: new TrackerDomainEntity table; domainId column added to
+    //      TrackerTypeEntity; occurredOnEnd/occurredAtEnd columns added to
+    //      TrackerEventEntity (GitHub issue #83, Journal) — same
+    //      destructive-fallback handling as every bump above.
+    version = 35,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -144,4 +149,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun kanbanCardDao(): KanbanCardDao
     abstract fun kanbanChecklistItemDao(): KanbanChecklistItemDao
     abstract fun kanbanCardTagDao(): KanbanCardTagDao
+    abstract fun trackerDomainDao(): TrackerDomainDao
 }

@@ -53,6 +53,9 @@ import ch.mcfx.urs.data.local.OutboxNoteCreatePayload
 import ch.mcfx.urs.data.local.OutboxNoteDeletePayload
 import ch.mcfx.urs.data.local.OutboxNoteStatusPayload
 import ch.mcfx.urs.data.local.OutboxNoteUpdatePayload
+import ch.mcfx.urs.data.local.OutboxTrackerDomainCreatePayload
+import ch.mcfx.urs.data.local.OutboxTrackerDomainDeletePayload
+import ch.mcfx.urs.data.local.OutboxTrackerDomainUpdatePayload
 import ch.mcfx.urs.data.local.OutboxTrackerEventCreatePayload
 import ch.mcfx.urs.data.local.OutboxTrackerEventDeletePayload
 import ch.mcfx.urs.data.local.OutboxTrackerEventUpdatePayload
@@ -60,8 +63,10 @@ import ch.mcfx.urs.data.local.OutboxTrackerTypeArchivePayload
 import ch.mcfx.urs.data.local.OutboxTrackerTypeCreatePayload
 import ch.mcfx.urs.data.local.OutboxTrackerTypeReactivatePayload
 import ch.mcfx.urs.data.local.OutboxTrackerTypeUpdatePayload
+import ch.mcfx.urs.data.local.TrackerDomainDao
 import ch.mcfx.urs.data.local.TrackerEventDao
 import ch.mcfx.urs.data.local.TrackerTypeDao
+import ch.mcfx.urs.data.local.localTrackerDomainId
 import ch.mcfx.urs.data.local.localTrackerTypeId
 import ch.mcfx.urs.data.local.OutboxVehicleServiceDeletePayload
 import ch.mcfx.urs.data.local.OutboxVehicleServicePayload
@@ -103,6 +108,7 @@ import ch.mcfx.urs.data.remote.ListPayload
 import ch.mcfx.urs.data.remote.LocationHistoryPayload
 import ch.mcfx.urs.data.remote.NoteCreatePayload
 import ch.mcfx.urs.data.remote.NoteStatusPatchPayload
+import ch.mcfx.urs.data.remote.TrackerDomainPayload
 import ch.mcfx.urs.data.remote.TrackerEventPayload
 import ch.mcfx.urs.data.remote.TrackerTypePayload
 import ch.mcfx.urs.data.remote.UrsApi
@@ -149,6 +155,7 @@ class SyncManager(
     private val noteDao: NoteDao,
     private val trackerTypeDao: TrackerTypeDao,
     private val trackerEventDao: TrackerEventDao,
+    private val trackerDomainDao: TrackerDomainDao,
     private val kanbanBoardDao: KanbanBoardDao,
     private val kanbanColumnDao: KanbanColumnDao,
     private val kanbanCardDao: KanbanCardDao,
@@ -268,6 +275,9 @@ class SyncManager(
                 OutboxMutationEntity.TYPE_CREATE_TRACKER_EVENT -> replayCreateTrackerEvent(mutation)
                 OutboxMutationEntity.TYPE_UPDATE_TRACKER_EVENT -> replayUpdateTrackerEvent(mutation)
                 OutboxMutationEntity.TYPE_DELETE_TRACKER_EVENT -> replayDeleteTrackerEvent(mutation)
+                OutboxMutationEntity.TYPE_CREATE_TRACKER_DOMAIN -> replayCreateTrackerDomain(mutation)
+                OutboxMutationEntity.TYPE_UPDATE_TRACKER_DOMAIN -> replayUpdateTrackerDomain(mutation)
+                OutboxMutationEntity.TYPE_DELETE_TRACKER_DOMAIN -> replayDeleteTrackerDomain(mutation)
                 OutboxMutationEntity.TYPE_CREATE_BEER_LOG -> replayCreateBeerLog(mutation)
                 OutboxMutationEntity.TYPE_CREATE_KANBAN_BOARD -> replayCreateKanbanBoard(mutation)
                 OutboxMutationEntity.TYPE_UPDATE_KANBAN_BOARD -> replayUpdateKanbanBoard(mutation)
@@ -965,8 +975,15 @@ class SyncManager(
             return true
         }
         val payload = json.decodeFromString(OutboxTrackerTypeCreatePayload.serializer(), mutation.payloadJson)
+        val resolvedDomainId = payload.domainId?.let {
+            resolveTrackerDomainId(it) ?: run {
+                outboxDao.markFailed(mutation.id, "parent tracker domain not yet synced")
+                return false
+            }
+        }
         val response = api.createTrackerType(
             TrackerTypePayload(
+                domainId = resolvedDomainId.orEmpty(),
                 name = payload.name,
                 color = payload.color,
                 icon = payload.icon,
@@ -981,9 +998,16 @@ class SyncManager(
 
     private suspend fun replayUpdateTrackerType(mutation: OutboxMutationEntity): Boolean {
         val payload = json.decodeFromString(OutboxTrackerTypeUpdatePayload.serializer(), mutation.payloadJson)
+        val resolvedDomainId = payload.domainId?.let {
+            resolveTrackerDomainId(it) ?: run {
+                outboxDao.markFailed(mutation.id, "parent tracker domain not yet synced")
+                return false
+            }
+        }
         api.updateTrackerType(
             payload.serverId,
             TrackerTypePayload(
+                domainId = resolvedDomainId.orEmpty(),
                 name = payload.name,
                 color = payload.color,
                 icon = payload.icon,
@@ -1023,7 +1047,9 @@ class SyncManager(
             TrackerEventPayload(
                 trackerTypeId = resolvedTypeId,
                 occurredOn = payload.occurredOn,
+                occurredOnEnd = payload.occurredOnEnd.orEmpty(),
                 occurredAt = payload.occurredAt.orEmpty(),
+                occurredAtEnd = payload.occurredAtEnd.orEmpty(),
                 note = payload.note.orEmpty(),
                 source = payload.source,
             ),
@@ -1044,7 +1070,9 @@ class SyncManager(
             TrackerEventPayload(
                 trackerTypeId = resolvedTypeId,
                 occurredOn = payload.occurredOn,
+                occurredOnEnd = payload.occurredOnEnd.orEmpty(),
                 occurredAt = payload.occurredAt.orEmpty(),
+                occurredAtEnd = payload.occurredAtEnd.orEmpty(),
                 note = payload.note.orEmpty(),
             ),
         )
@@ -1055,6 +1083,34 @@ class SyncManager(
     private suspend fun replayDeleteTrackerEvent(mutation: OutboxMutationEntity): Boolean {
         val payload = json.decodeFromString(OutboxTrackerEventDeletePayload.serializer(), mutation.payloadJson)
         api.deleteTrackerEvent(payload.serverId)
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    // --- Journal domains (GitHub issue #83) ---
+
+    private suspend fun replayCreateTrackerDomain(mutation: OutboxMutationEntity): Boolean {
+        val localDomain = trackerDomainDao.getByOutboxId(mutation.id) ?: run {
+            outboxDao.delete(mutation.id)
+            return true
+        }
+        val payload = json.decodeFromString(OutboxTrackerDomainCreatePayload.serializer(), mutation.payloadJson)
+        val response = api.createTrackerDomain(TrackerDomainPayload(name = payload.name, color = payload.color, icon = payload.icon))
+        trackerDomainDao.markSynced(localDomain.id, response.id)
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    private suspend fun replayUpdateTrackerDomain(mutation: OutboxMutationEntity): Boolean {
+        val payload = json.decodeFromString(OutboxTrackerDomainUpdatePayload.serializer(), mutation.payloadJson)
+        api.updateTrackerDomain(payload.serverId, TrackerDomainPayload(name = payload.name, color = payload.color, icon = payload.icon))
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    private suspend fun replayDeleteTrackerDomain(mutation: OutboxMutationEntity): Boolean {
+        val payload = json.decodeFromString(OutboxTrackerDomainDeletePayload.serializer(), mutation.payloadJson)
+        api.deleteTrackerDomain(payload.serverId)
         outboxDao.delete(mutation.id)
         return true
     }
@@ -1304,6 +1360,11 @@ class SyncManager(
     private suspend fun resolveTrackerTypeId(value: String): String? {
         val localId = localTrackerTypeId(value) ?: return value
         return trackerTypeDao.getById(localId)?.serverId
+    }
+
+    private suspend fun resolveTrackerDomainId(value: String): String? {
+        val localId = localTrackerDomainId(value) ?: return value
+        return trackerDomainDao.getById(localId)?.serverId
     }
 
     private fun Long.toBakingDateString(): String =
