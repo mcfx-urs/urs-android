@@ -779,6 +779,15 @@ data class BakePlanStepPatchPayload(
     @SerialName("snoozed_at") val snoozedAt: String? = null,
 )
 
+// Server-assigned and never changes once created (GitHub issue #85 /
+// mcfx-urs/urs-backend#7) - the client only ever sends a tag's name (see
+// NoteCreatePayload below), never a color.
+@Serializable
+data class NoteTagDto(
+    val name: String,
+    val color: String,
+)
+
 @Serializable
 data class NoteDto(
     @SerialName("note_id") val id: String,
@@ -788,7 +797,7 @@ data class NoteDto(
     @SerialName("note_reminder_at") val reminderAt: String = "",
     @SerialName("note_status") val status: String,
     @SerialName("note_completed_at") val completedAt: String = "",
-    val tags: List<String> = emptyList(),
+    val tags: List<NoteTagDto> = emptyList(),
 )
 
 // Shared by POST /api/v1/note (create) and PUT /api/v1/note/{id} (update) —

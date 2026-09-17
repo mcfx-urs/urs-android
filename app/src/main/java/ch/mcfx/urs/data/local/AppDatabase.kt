@@ -115,7 +115,9 @@ import androidx.room.TypeConverters
     //      TrackerTypeEntity; occurredOnEnd/occurredAtEnd columns added to
     //      TrackerEventEntity (GitHub issue #83, Journal) — same
     //      destructive-fallback handling as every bump above.
-    version = 35,
+    // v36: color column added to NoteTagEntity (GitHub issue #85) — same
+    //      destructive-fallback handling as every bump above.
+    version = 36,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)

@@ -86,7 +86,10 @@ class NoteRepository(
                 syncStatus = SyncStatus.PENDING,
             ),
         )
-        noteTagDao.insertAll(tags.map { NoteTagEntity(noteId = localId, tagName = it) })
+        // Color unknown for a brand-new local-optimistic tag until the next
+        // refreshFromBackend() pull resolves it - blank falls back to UrsPill's
+        // own default styling, same as any other not-yet-synced placeholder.
+        noteTagDao.insertAll(tags.map { NoteTagEntity(noteId = localId, tagName = it, color = "") })
         reminderAtMillis?.let {
             NoteAlarmScheduler.scheduleNoteAlarm(context, alarmIdFor(localId), it, localIdStandIn(localId), title)
         }
@@ -96,7 +99,8 @@ class NoteRepository(
     suspend fun updateNote(localId: Long, title: String, content: String, reminderAtMillis: Long?, tags: List<String>) {
         val current = noteDao.getById(localId) ?: return
         noteDao.updateFields(localId, title, content, reminderAtMillis, SyncStatus.PENDING)
-        noteTagDao.replaceTags(localId, tags.map { NoteTagEntity(noteId = localId, tagName = it) })
+        // Same local-optimistic placeholder as createNote - corrected by the next refreshFromBackend() pull.
+        noteTagDao.replaceTags(localId, tags.map { NoteTagEntity(noteId = localId, tagName = it, color = "") })
 
         NoteAlarmScheduler.cancel(context, alarmIdFor(localId))
         if (reminderAtMillis != null && current.status == STATUS_ACTIVE) {
@@ -218,7 +222,7 @@ class NoteRepository(
             api.getNotes().forEach { dto ->
                 val localId = noteDao.upsertFromServer(dto.toEntity(currentUserId()))
                 if (localId >= 0) {
-                    noteTagDao.replaceTags(localId, dto.tags.map { NoteTagEntity(noteId = localId, tagName = it) })
+                    noteTagDao.replaceTags(localId, dto.tags.map { NoteTagEntity(noteId = localId, tagName = it.name, color = it.color) })
                 }
             }
             true

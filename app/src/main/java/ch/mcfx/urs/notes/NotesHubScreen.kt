@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
+import ch.mcfx.urs.chores.parseChoreColor
 import ch.mcfx.urs.data.local.NoteWithTags
 import ch.mcfx.urs.data.local.publicId
 import ch.mcfx.urs.ui.components.UrsCard
@@ -75,9 +76,10 @@ fun NotesHubScreen(
                     )
                 }
 
-                val allTags = remember(state.notes) { state.notes.flatMap { it.tags }.map { it.tagName }.distinct().sorted() }
+                val tagColorsByName = remember(state.notes) { state.notes.flatMap { it.tags }.associate { it.tagName to it.color } }
+                val allTags = remember(tagColorsByName) { tagColorsByName.keys.sorted() }
                 if (allTags.isNotEmpty()) {
-                    TagFilterRow(tags = allTags, selected = tagFilter, onSelect = viewModel::setTagFilter)
+                    TagFilterRow(tags = allTags, tagColors = tagColorsByName, selected = tagFilter, onSelect = viewModel::setTagFilter)
                 }
 
                 val visible = if (tagFilter == null) state.notes else state.notes.filter { note -> note.tags.any { it.tagName == tagFilter } }
@@ -95,23 +97,24 @@ fun NotesHubScreen(
 }
 
 @Composable
-private fun TagFilterRow(tags: List<String>, selected: String?, onSelect: (String?) -> Unit) {
+private fun TagFilterRow(tags: List<String>, tagColors: Map<String, String>, selected: String?, onSelect: (String?) -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = Spacing.l),
         horizontalArrangement = Arrangement.spacedBy(Spacing.s),
     ) {
-        FilterChip(stringResource(R.string.notes_filter_all_tags), selected == null) { onSelect(null) }
-        tags.forEach { tag -> FilterChip(tag, selected == tag) { onSelect(tag) } }
+        FilterChip(stringResource(R.string.notes_filter_all_tags), selected == null, tagColor = null) { onSelect(null) }
+        tags.forEach { tag -> FilterChip(tag, selected == tag, tagColor = tagColors[tag]) { onSelect(tag) } }
     }
     Spacer(Modifier.height(Spacing.s))
 }
 
 @Composable
-private fun FilterChip(label: String, selected: Boolean, onClick: () -> Unit) {
+private fun FilterChip(label: String, selected: Boolean, tagColor: String?, onClick: () -> Unit) {
+    val baseColor = tagColor?.takeIf { it.isNotBlank() }?.let(::parseChoreColor) ?: UrsTheme.colors.accent
     UrsPill(
         text = label,
-        containerColor = if (selected) UrsTheme.colors.accent else UrsTheme.colors.accent.copy(alpha = 0.15f),
-        contentColor = if (selected) UrsTheme.colors.onAccent else UrsTheme.colors.accent,
+        containerColor = if (selected) baseColor else baseColor.copy(alpha = 0.15f),
+        contentColor = if (selected) UrsTheme.colors.onAccent else baseColor,
         modifier = Modifier.clickable(onClick = onClick),
     )
 }
@@ -148,7 +151,10 @@ internal fun NoteRow(noteWithTags: NoteWithTags, onClick: () -> Unit) {
             }
             if (noteWithTags.tags.isNotEmpty()) {
                 Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                    noteWithTags.tags.forEach { tag -> UrsPill(text = tag.tagName) }
+                    noteWithTags.tags.forEach { tag ->
+                        val color = tag.color.takeIf { it.isNotBlank() }?.let(::parseChoreColor) ?: UrsTheme.colors.accent
+                        UrsPill(text = tag.tagName, containerColor = color.copy(alpha = 0.15f), contentColor = color)
+                    }
                 }
             }
         }

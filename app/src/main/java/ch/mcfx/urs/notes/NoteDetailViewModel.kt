@@ -27,6 +27,10 @@ data class NoteDetailFormState(
     val title: String = "",
     val content: String = "",
     val tags: List<String> = emptyList(),
+    // Persisted tags' own colors, keyed by name (GitHub issue #85) - a tag
+    // typed in this session but not yet saved has no entry, so its pill
+    // falls back to the editor's default styling until the note is saved.
+    val tagColors: Map<String, String> = emptyMap(),
     val tagInput: String = "",
     val tagSuggestions: List<String> = emptyList(),
     val reminderEnabled: Boolean = false,
@@ -91,6 +95,7 @@ class NoteDetailViewModel(private val repository: NoteRepository) : ViewModel() 
                 title = note.title,
                 content = note.content,
                 tags = noteWithTags.tags.map { it.tagName },
+                tagColors = noteWithTags.tags.associate { it.tagName to it.color },
                 reminderEnabled = note.reminderAtMillis != null,
                 reminderDate = date,
                 reminderTime = time,

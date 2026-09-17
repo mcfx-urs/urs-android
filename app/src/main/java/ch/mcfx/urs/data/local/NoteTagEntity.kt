@@ -14,10 +14,15 @@ import androidx.room.PrimaryKey
  * (not its [NoteEntity.publicId]) — unlike a bake plan step, a tag has no
  * server identity of its own to re-parent when the note syncs, so there's
  * nothing gained from tracking the public id the way steps do.
+ *
+ * [color] is server-assigned and never changes once a tag name first exists
+ * for a user (GitHub issue #85 / mcfx-urs/urs-backend#7) - a hex string,
+ * parsed client-side wherever the tag renders as a pill.
  */
 @Entity(tableName = "note_tag")
 data class NoteTagEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val noteId: Long,
     val tagName: String,
+    val color: String,
 )
