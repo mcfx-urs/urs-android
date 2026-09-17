@@ -32,6 +32,21 @@ object LocationCaptureModeManager {
         return store.intervalMinutes()
     }
 
+    /**
+     * A short, comma-joined label for whichever sub-states are actually
+     * toggled on (e.g. "moving,geofence-dense", or "fixed" when neither
+     * adaptive toggle is enabled) — attached directly to capture log entries
+     * (GitHub issue #86) instead of requiring the reader to cross-reference
+     * the nearest earlier `INTERVAL`/`PAUSED` entry.
+     */
+    fun currentModeLabel(store: LocationHistorySettingsStore): String {
+        val parts = buildList {
+            if (store.isActivityPauseEnabled()) add(if (store.isCurrentlyStill()) "still" else "moving")
+            if (store.isGeofenceAdaptiveEnabled()) add(if (store.isGeofenceDense()) "geofence-dense" else "geofence-sparse")
+        }
+        return parts.ifEmpty { listOf("fixed") }.joinToString(",")
+    }
+
     fun applyEffectiveCapture(context: Context, reason: String) {
         val app = context.applicationContext as UrsApplication
         val store = app.container.locationHistorySettingsStore

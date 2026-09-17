@@ -209,6 +209,9 @@
     <string name="about_changelog_row">Changelog</string>
     <string name="about_changelog_title">Changelog</string>
     <string name="about_location_capture_empty">No events yet.</string>
+    <string name="about_location_capture_export">Export log</string>
+    <string name="about_location_capture_export_nothing">No log entries to export.</string>
+    <string name="about_location_capture_export_no_app">No app can receive the export.</string>
     <string name="about_sync_never">Never synced yet</string>
     <string name="about_sync_last_synced">Last synced %1$s</string>
     <string name="about_sync_pending_count">%1$d pending</string>

@@ -9,6 +9,11 @@ private const val DEFAULT_INTERVAL_MINUTES = 60L
 private const val KEY_STATIONARY_THRESHOLD_METERS = "stationary_threshold_meters"
 private const val DEFAULT_STATIONARY_THRESHOLD_METERS = 50L
 private const val KEY_PRECISION_MODE_ENABLED = "precision_mode_enabled"
+// Stamped at the start of every LocationCaptureWorker run (GitHub issue #86)
+// so the *next* run can log how far its own actual start drifted from one
+// interval after this one — WorkManager's periodic/self-chained scheduling
+// gives no other way to know what a run's own "scheduled for" time was.
+private const val KEY_LAST_CAPTURE_RUN_MILLIS = "last_capture_run_millis"
 
 // Adaptive-interval toggles (GitHub issue #60) — see LocationCaptureModeManager
 // for how these combine into one effective interval.
@@ -81,6 +86,13 @@ class LocationHistorySettingsStore(context: Context) {
 
     fun setIntervalMinutes(minutes: Long) {
         prefs.edit().putLong(KEY_INTERVAL_MINUTES, minutes).apply()
+    }
+
+    /** 0L means no prior run recorded yet (first run since install/data-clear). */
+    fun lastCaptureRunMillis(): Long = prefs.getLong(KEY_LAST_CAPTURE_RUN_MILLIS, 0L)
+
+    fun setLastCaptureRunMillis(millis: Long) {
+        prefs.edit().putLong(KEY_LAST_CAPTURE_RUN_MILLIS, millis).apply()
     }
 
     /** 0 disables the filter — every capture is stored regardless of distance from the last point. */

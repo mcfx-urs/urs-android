@@ -43,25 +43,36 @@ class LocationCapture(private val context: Context, private val debugLog: Locati
     /**
      * @param source short caller tag for the debug log, e.g. "history-worker",
      *   "history-geofence-center", "fuel-fill", "ambient-refresh".
+     * @param mode the active capture mode (e.g. "moving,geofence-dense") for
+     *   callers that have one — see [LocationCaptureModeManager.currentModeLabel]
+     *   (GitHub issue #86); left `null` for callers this doesn't apply to
+     *   (ad-hoc fuel-stop capture, the ambient refresh).
+     * @param scheduledForMillis this run's expected trigger time, for drift logging
+     *   (GitHub issue #86) — same caller-supplied value as `mode`, left `null` where
+     *   there's no schedule to drift against. Logged on every outcome below, not only
+     *   a successful fix, so a timeout or a stationary-dedup skip still leaves drift
+     *   data behind — previously only a stored point did.
      * @return `null` on missing permission, no available provider, or a ~10s timeout with no fix.
      */
     @SuppressLint("MissingPermission") // guarded by hasPermission() above
-    suspend fun captureLocation(source: String): Location? {
+    suspend fun captureLocation(source: String, mode: String? = null, scheduledForMillis: Long? = null): Location? {
+        val skippedAt = System.currentTimeMillis()
         if (!hasPermission()) {
-            debugLog.log("GPS_READ_SKIPPED", "$source: no location permission")
+            debugLog.logCapture("GPS_READ_SKIPPED", "$source: no location permission", mode, skippedAt, skippedAt, scheduledForMillis)
             return null
         }
         val locationManager = ContextCompat.getSystemService(context, LocationManager::class.java)
         if (locationManager == null) {
-            debugLog.log("GPS_READ_SKIPPED", "$source: no LocationManager")
+            debugLog.logCapture("GPS_READ_SKIPPED", "$source: no LocationManager", mode, skippedAt, skippedAt, scheduledForMillis)
             return null
         }
         val provider = preferredProvider(locationManager)
         if (provider == null) {
-            debugLog.log("GPS_READ_SKIPPED", "$source: no location provider enabled")
+            debugLog.logCapture("GPS_READ_SKIPPED", "$source: no location provider enabled", mode, skippedAt, skippedAt, scheduledForMillis)
             return null
         }
 
+        val startMillis = System.currentTimeMillis()
         val location = withTimeoutOrNull(TIMEOUT_MILLIS) {
             suspendCancellableCoroutine { continuation ->
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -84,13 +95,25 @@ class LocationCapture(private val context: Context, private val debugLog: Locati
                 }
             }
         }
+        val endMillis = System.currentTimeMillis()
 
         if (location == null) {
-            debugLog.log("GPS_READ_TIMEOUT", "$source: no fix via $provider within ${TIMEOUT_MILLIS / 1000}s")
+            debugLog.logCapture(
+                "GPS_READ_TIMEOUT",
+                "$source: no fix via $provider within ${TIMEOUT_MILLIS / 1000}s",
+                mode,
+                startMillis,
+                endMillis,
+                scheduledForMillis,
+            )
         } else {
-            debugLog.log(
+            debugLog.logCapture(
                 "GPS_READ",
                 "$source: %.5f, %.5f (±%.0fm, %s)".format(location.latitude, location.longitude, location.accuracy, provider),
+                mode,
+                startMillis,
+                endMillis,
+                scheduledForMillis,
             )
         }
         return location

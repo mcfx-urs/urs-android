@@ -5,9 +5,11 @@ import androidx.room.Insert
 import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
 
-// Raised from 200 (GitHub issue #60) to accommodate the activity-recognition
-// poll heartbeat logged on every ~30s callback, not just on state changes.
-private const val MAX_LOG_ENTRIES = 500
+// Switched from a fixed 500-row cap to a 7-day time-based retention window
+// (GitHub issue #86) — the previous cap could fill within a single day of
+// active movement at a 1-minute interval, evicting data before it could be
+// exported.
+const val LOCATION_CAPTURE_LOG_RETENTION_MILLIS = 7L * 24 * 60 * 60 * 1000
 
 @Dao
 interface LocationCaptureLogDao {
@@ -15,13 +17,14 @@ interface LocationCaptureLogDao {
     @Insert
     suspend fun insert(entity: LocationCaptureLogEntity): Long
 
-    @Query("SELECT * FROM location_capture_log ORDER BY timestampMillis DESC LIMIT $MAX_LOG_ENTRIES")
+    @Query("SELECT * FROM location_capture_log ORDER BY timestampMillis DESC")
     fun observeRecent(): Flow<List<LocationCaptureLogEntity>>
 
-    /** Keeps only the [MAX_LOG_ENTRIES] most recent rows — call after every insert. */
-    @Query(
-        "DELETE FROM location_capture_log WHERE id NOT IN " +
-            "(SELECT id FROM location_capture_log ORDER BY timestampMillis DESC LIMIT $MAX_LOG_ENTRIES)",
-    )
-    suspend fun trim()
+    /** One-shot read of the full retained log, oldest first — for export (GitHub issue #86). */
+    @Query("SELECT * FROM location_capture_log ORDER BY timestampMillis ASC")
+    suspend fun getAllForExport(): List<LocationCaptureLogEntity>
+
+    /** Deletes rows older than [LOCATION_CAPTURE_LOG_RETENTION_MILLIS] — call after every insert. */
+    @Query("DELETE FROM location_capture_log WHERE timestampMillis < :cutoffMillis")
+    suspend fun trim(cutoffMillis: Long)
 }

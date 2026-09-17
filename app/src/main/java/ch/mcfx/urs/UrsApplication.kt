@@ -319,7 +319,7 @@ class AppContainer(context: Context) {
         syncStatusStore = syncStatusStore,
         json = json,
     )
-    val locationCaptureDebugLog = LocationCaptureDebugLog(database.locationCaptureLogDao(), applicationScope)
+    val locationCaptureDebugLog = LocationCaptureDebugLog(context, database.locationCaptureLogDao(), applicationScope)
     val locationCapture = LocationCapture(context, locationCaptureDebugLog)
     val locationProvider = LocationProvider(context, locationCapture)
     val locationHistorySettingsStore = LocationHistorySettingsStore(context)

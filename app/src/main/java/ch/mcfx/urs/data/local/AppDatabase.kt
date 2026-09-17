@@ -105,7 +105,12 @@ import androidx.room.TypeConverters
     // v33: isFavorite/iconId columns added to KanbanBoardEntity (GitHub
     //      issue #80, Home tile quick-jump badges) — same destructive-fallback
     //      handling as every bump above.
-    version = 33,
+    // v34: mode/startMillis/endMillis/scheduledForMillis/batteryPercent/
+    //      isCharging/isPowerSaveMode/isDeviceIdleMode columns added to
+    //      LocationCaptureLogEntity (GitHub issue #86, richer capture
+    //      logging for battery analysis) — same destructive-fallback
+    //      handling as every bump above.
+    version = 34,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)

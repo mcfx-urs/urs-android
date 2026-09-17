@@ -1,17 +1,22 @@
 package ch.mcfx.urs.settings
 
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -21,10 +26,12 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
+import ch.mcfx.urs.ui.components.UrsIconButton
 import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.theme.UrsColors
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Spacing
+import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -50,13 +57,25 @@ fun LocationCaptureLogScreen(viewModel: LocationCaptureLogViewModel = viewModel(
     val entries by viewModel.entries.collectAsStateWithLifecycle()
     val currentState by viewModel.currentState.collectAsStateWithLifecycle()
     val colors = UrsTheme.colors
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = Spacing.l, vertical = Spacing.m)) {
-        UrsText(
-            stringResource(R.string.about_location_capture_details_title),
-            style = UrsTheme.typography.screenTitle,
-            modifier = Modifier.padding(bottom = Spacing.m),
-        )
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
+            UrsText(
+                stringResource(R.string.about_location_capture_details_title),
+                style = UrsTheme.typography.screenTitle,
+                modifier = Modifier.weight(1f).padding(bottom = Spacing.m),
+            )
+            // Exports the full retained log (GitHub issue #86), not just what's
+            // currently displayed — the two can differ once the log grows past
+            // what's comfortable to keep composed on screen.
+            UrsIconButton(
+                onClick = { scope.launch { shareLocationCaptureLogExport(context, viewModel.exportEntries()) } },
+                contentDescription = stringResource(R.string.about_location_capture_export),
+                imageVector = Icons.Filled.Share,
+            )
+        }
         LocationCaptureCurrentStateHeader(currentState, colors)
         if (entries.isEmpty()) {
             UrsText(
@@ -122,7 +141,26 @@ private fun LocationCaptureLogLine(entry: LocationCaptureLogEntryUi, colors: Urs
             UrsText(text = entry.eventType, style = LogEventStyle, color = eventColor(entry.eventType, colors))
         }
         UrsText(text = entry.detail, style = LogDetailStyle, color = colors.onSurface)
+        captureContextLine(entry)?.let { UrsText(text = it, style = LogDetailStyle, color = colors.onSurfaceMuted) }
     }
+}
+
+// mode/timing/battery (GitHub issue #86) are only populated for
+// capture-attempt/worker-run entries — see LocationCaptureLogEntity's own
+// doc comment — so most rows show no second line at all.
+private fun captureContextLine(entry: LocationCaptureLogEntryUi): String? {
+    val parts = buildList {
+        entry.mode?.let { add(it) }
+        if (entry.startMillis != null && entry.endMillis != null) add("${entry.endMillis - entry.startMillis}ms")
+        if (entry.scheduledForMillis != null && entry.startMillis != null) {
+            add("drift ${entry.startMillis - entry.scheduledForMillis}ms")
+        }
+        entry.batteryPercent?.let { add("$it%") }
+        entry.isCharging?.let { if (it) add("charging") }
+        entry.isPowerSaveMode?.let { if (it) add("power-save") }
+        entry.isDeviceIdleMode?.let { if (it) add("doze") }
+    }
+    return parts.takeIf { it.isNotEmpty() }?.joinToString(" · ")
 }
 
 // _ERROR/_SKIPPED/_TIMEOUT event types (see LocationGeofenceManager/

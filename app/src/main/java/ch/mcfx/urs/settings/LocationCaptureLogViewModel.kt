@@ -14,8 +14,26 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
-/** One row of the adaptive-interval debug trail (GitHub issue #60), read back for [LocationCaptureLogScreen]. */
-data class LocationCaptureLogEntryUi(val id: Long, val timestampMillis: Long, val eventType: String, val detail: String)
+/**
+ * One row of the adaptive-interval debug trail (GitHub issue #60), read back
+ * for [LocationCaptureLogScreen]. The fields below GitHub issue #86 added
+ * are only populated for capture-attempt/worker-run entries — see
+ * [ch.mcfx.urs.data.local.LocationCaptureLogEntity]'s own doc comment.
+ */
+data class LocationCaptureLogEntryUi(
+    val id: Long,
+    val timestampMillis: Long,
+    val eventType: String,
+    val detail: String,
+    val mode: String?,
+    val startMillis: Long?,
+    val endMillis: Long?,
+    val scheduledForMillis: Long?,
+    val batteryPercent: Int?,
+    val isCharging: Boolean?,
+    val isPowerSaveMode: Boolean?,
+    val isDeviceIdleMode: Boolean?,
+)
 
 /**
  * Live snapshot of the two adaptive-interval toggles' own sub-state (owner
@@ -37,12 +55,29 @@ data class LocationCaptureCurrentStateUi(
 
 /** Backs the dedicated "Location capture log" screen — a plain, live-updating read of [LocationCaptureLogDao]. */
 class LocationCaptureLogViewModel(
-    locationCaptureLogDao: LocationCaptureLogDao,
+    private val locationCaptureLogDao: LocationCaptureLogDao,
     private val settingsStore: LocationHistorySettingsStore,
 ) : ViewModel() {
 
     val entries: StateFlow<List<LocationCaptureLogEntryUi>> = locationCaptureLogDao.observeRecent()
-        .map { entries -> entries.map { LocationCaptureLogEntryUi(it.id, it.timestampMillis, it.eventType, it.detail) } }
+        .map { entries ->
+            entries.map {
+                LocationCaptureLogEntryUi(
+                    id = it.id,
+                    timestampMillis = it.timestampMillis,
+                    eventType = it.eventType,
+                    detail = it.detail,
+                    mode = it.mode,
+                    startMillis = it.startMillis,
+                    endMillis = it.endMillis,
+                    scheduledForMillis = it.scheduledForMillis,
+                    batteryPercent = it.batteryPercent,
+                    isCharging = it.isCharging,
+                    isPowerSaveMode = it.isPowerSaveMode,
+                    isDeviceIdleMode = it.isDeviceIdleMode,
+                )
+            }
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     // Recomputed on every log write, same rationale as AboutViewModel's own
@@ -54,6 +89,9 @@ class LocationCaptureLogViewModel(
     val currentState: StateFlow<LocationCaptureCurrentStateUi> = locationCaptureLogDao.observeRecent()
         .map { currentState() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), currentState())
+
+    /** The full retained log (not just what's displayed), oldest first — for CSV export (GitHub issue #86). */
+    suspend fun exportEntries() = locationCaptureLogDao.getAllForExport()
 
     private fun currentState() = LocationCaptureCurrentStateUi(
         activityEnabled = settingsStore.isActivityPauseEnabled(),

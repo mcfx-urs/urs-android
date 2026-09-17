@@ -31,6 +31,18 @@ class LocationCaptureWorker(context: Context, params: WorkerParameters) : Corout
     override suspend fun doWork(): Result {
         val app = applicationContext as UrsApplication
         val store = app.container.locationHistorySettingsStore
+
+        // Scheduling-drift tracking (GitHub issue #86): the previous run's own
+        // start time plus its own interval is this run's expected trigger
+        // time — the closest approximation available, since neither periodic
+        // nor self-chained WorkManager scheduling exposes a run's "originally
+        // scheduled for" time directly. Read before overwriting.
+        val runStartMillis = System.currentTimeMillis()
+        val previousRunMillis = store.lastCaptureRunMillis()
+        val scheduledForMillis = previousRunMillis.takeIf { it > 0L }?.plus(store.intervalMinutes() * 60_000L)
+        store.setLastCaptureRunMillis(runStartMillis)
+        val mode = LocationCaptureModeManager.currentModeLabel(store)
+
         if (!store.isEnabled()) return Result.success()
 
         // Below WorkManager's 15-minute periodic-work floor, this worker
@@ -60,7 +72,14 @@ class LocationCaptureWorker(context: Context, params: WorkerParameters) : Corout
         // undo that.
         val intervalMinutes = LocationCaptureModeManager.effectiveIntervalMinutes(store)
         if (intervalMinutes == null) {
-            app.container.locationCaptureDebugLog.log("SKIPPED", "paused")
+            app.container.locationCaptureDebugLog.logCapture(
+                "SKIPPED",
+                "paused",
+                mode = mode,
+                startMillis = runStartMillis,
+                endMillis = runStartMillis,
+                scheduledForMillis = scheduledForMillis,
+            )
             return Result.success()
         }
         if (!store.isPrecisionModeEnabled() && intervalMinutes < LocationCaptureScheduler.PERIODIC_FLOOR_MINUTES) {
@@ -71,7 +90,7 @@ class LocationCaptureWorker(context: Context, params: WorkerParameters) : Corout
         // doc comment) just leaves a gap in the track for this run — not
         // worth Result.retry()'s backoff churn, since a permanently-missing
         // permission would otherwise retry forever.
-        val location = app.container.locationCapture.captureLocation("history-worker") ?: return Result.success()
+        val location = app.container.locationCapture.captureLocation("history-worker", mode, scheduledForMillis) ?: return Result.success()
 
         // Drop unreliable fixes outright, before they can ever look like a
         // spurious jump in the track.
@@ -120,7 +139,14 @@ class LocationCaptureWorker(context: Context, params: WorkerParameters) : Corout
                 syncStatus = SyncStatus.PENDING,
             ),
         )
-        app.container.locationCaptureDebugLog.log("FIRED", "every $intervalMinutes min")
+        app.container.locationCaptureDebugLog.logCapture(
+            "FIRED",
+            "every $intervalMinutes min",
+            mode = mode,
+            startMillis = runStartMillis,
+            endMillis = System.currentTimeMillis(),
+            scheduledForMillis = scheduledForMillis,
+        )
 
         if (store.isGeofenceAdaptiveEnabled() && store.isGeofenceDense()) {
             maybeSettle(app, store, location)

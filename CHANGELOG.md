@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Added export (CSV, via the share sheet), per-capture timing, active-mode context, and a battery/power-state snapshot to the Life Map GPS capture log, and switched its retention from a fixed 500-row cap to a 7-day window (#86)
+
 ## [1.2.0] - 2026-09-17
 
 ### Changed
