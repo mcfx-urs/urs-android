@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 
 - Notes: the tag filter no longer resets when opening a note and pressing back (#84)
+- Life Map: the still/moving activity classification now requires several consecutive agreeing polls before switching the capture interval, instead of reacting to every single poll
 
 ## [1.2.0] - 2026-09-17
 

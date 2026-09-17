@@ -42,6 +42,12 @@ private const val KEY_ACTIVITY_IS_STILL = "activity_is_still"
 // Stamped by setCurrentlyStill() whenever it actually flips (owner
 // follow-up to GitHub issue #60) — 0L means never flipped.
 private const val KEY_ACTIVITY_IS_STILL_SINCE = "activity_is_still_since"
+// Consecutive-poll counter for the still/not-still debounce in
+// LocationActivityRecognitionReceiver — how many polls in a row have
+// disagreed with the currently committed isCurrentlyStill() value. Reset to
+// 0 once a poll agrees with the committed value again, or once the streak
+// reaches STILL_CONFIRM_POLLS and the flip actually commits.
+private const val KEY_ACTIVITY_PENDING_STILL_STREAK = "activity_pending_still_streak"
 // The raw classification behind isCurrentlyStill(), refreshed on every poll
 // (not just on a STILL/not-STILL flip) so "what is it seeing right now" is
 // always current, e.g. "walking (82%)" rather than just a still/not-still bit.
@@ -219,6 +225,12 @@ class LocationHistorySettingsStore(context: Context) {
 
     /** 0L until the still/not-still state has flipped at least once. */
     fun activityStillSinceMillis(): Long = prefs.getLong(KEY_ACTIVITY_IS_STILL_SINCE, 0L)
+
+    fun pendingStillStreak(): Int = prefs.getInt(KEY_ACTIVITY_PENDING_STILL_STREAK, 0)
+
+    fun setPendingStillStreak(streak: Int) {
+        prefs.edit().putInt(KEY_ACTIVITY_PENDING_STILL_STREAK, streak).apply()
+    }
 
     /** Null until the first activity-recognition callback has been received. */
     fun lastActivityLabel(): String? = prefs.getString(KEY_ACTIVITY_LAST_LABEL, null)
