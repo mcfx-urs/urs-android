@@ -12,6 +12,7 @@ import ch.mcfx.urs.auth.AuthRepository
 import ch.mcfx.urs.auth.AuthTokenStore
 import ch.mcfx.urs.auth.BiometricGate
 import ch.mcfx.urs.chores.ChoreOrderStore
+import ch.mcfx.urs.data.AssetRepository
 import ch.mcfx.urs.chores.ChoreOverdueWorker
 import ch.mcfx.urs.chores.ChoreReminderSettingsStore
 import ch.mcfx.urs.data.AudioNoteRepository
@@ -316,6 +317,9 @@ class AppContainer(context: Context) {
         kanbanColumnDao = database.kanbanColumnDao(),
         kanbanCardDao = database.kanbanCardDao(),
         kanbanChecklistItemDao = database.kanbanChecklistItemDao(),
+        assetDao = database.assetDao(),
+        assetComponentDao = database.assetComponentDao(),
+        assetCommentDao = database.assetCommentDao(),
         outboxDao = database.outboxDao(),
         reachabilityChecker = reachabilityChecker,
         syncStatusStore = syncStatusStore,
@@ -468,6 +472,16 @@ class AppContainer(context: Context) {
         applicationScope = applicationScope,
         json = json,
     )
+    val assetRepository = AssetRepository(
+        api = ursApi,
+        assetDao = database.assetDao(),
+        componentDao = database.assetComponentDao(),
+        commentDao = database.assetCommentDao(),
+        outboxDao = database.outboxDao(),
+        syncManager = syncManager,
+        applicationScope = applicationScope,
+        json = json,
+    )
 
     // Everything from here down needs one repository or another — that's
     // why it's built last, not with the other sync/network setup above (see
@@ -486,6 +500,7 @@ class AppContainer(context: Context) {
         choreRepository = choreRepository,
         kanbanRepository = kanbanRepository,
         tagRepository = tagRepository,
+        assetRepository = assetRepository,
         syncStatusStore = syncStatusStore,
     )
 

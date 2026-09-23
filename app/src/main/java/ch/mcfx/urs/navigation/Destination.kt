@@ -1,6 +1,7 @@
 package ch.mcfx.urs.navigation
 
 import ch.mcfx.urs.R
+import ch.mcfx.urs.assets.AssetsRoutes
 import ch.mcfx.urs.baking.BakingRoutes
 import ch.mcfx.urs.chores.ChoresRoutes
 import ch.mcfx.urs.vehicle.VehicleHubRoutes
@@ -39,6 +40,7 @@ enum class Destination(
     JOURNAL(JournalRoutes.MONTH, R.string.nav_journal, isAvailable = true),
     VOICE_NOTES(VoiceNotesRoutes.LIST, R.string.nav_voice_notes, isAvailable = true),
     KANBAN(KanbanRoutes.BOARDS, R.string.nav_kanban, isAvailable = true),
+    ASSETS(AssetsRoutes.LIST, R.string.nav_assets, isAvailable = true),
     // Placeholder only — purpose not decided yet, reserves a Home grid slot
     // the same way GOKART/PRICE_MONITOR already do for their own
     // not-yet-built features.

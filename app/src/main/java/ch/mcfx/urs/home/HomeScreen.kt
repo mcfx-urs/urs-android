@@ -148,6 +148,9 @@ private val TILE_IMAGE: Map<String, Int> = mapOf(
     // Interim: reuses the K tile art too, same as Chores/Kanban above
     // (GitHub issue #83, Journal).
     Destination.JOURNAL.name to R.drawable.tile_k,
+    // Interim: reuses the K tile art until Assets gets its own commissioned
+    // piece (mcfx-urs/urs-android#89).
+    Destination.ASSETS.name to R.drawable.tile_k,
     Destination.PRICE_MONITOR.name to R.drawable.tile_price_monitor,
     Destination.K.name to R.drawable.tile_k,
     Destination.GOKART.name to R.drawable.tile_gokart,

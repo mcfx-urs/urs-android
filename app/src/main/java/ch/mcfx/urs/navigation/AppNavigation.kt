@@ -37,6 +37,9 @@ import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
 import ch.mcfx.urs.R
 import ch.mcfx.urs.UrsApplication
+import ch.mcfx.urs.assets.AssetAddScreen
+import ch.mcfx.urs.assets.AssetsRoutes
+import ch.mcfx.urs.assets.AssetsScreen
 import ch.mcfx.urs.auth.BiometricUnlockScreen
 import ch.mcfx.urs.auth.LoginScreen
 import ch.mcfx.urs.baking.BakePlanDetailScreen
@@ -469,6 +472,22 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                         val boardId = backStackEntry.arguments?.getString("boardId") ?: return@composable
                         KanbanBoardDetailScreen(boardId = boardId)
                     }
+                    composable(Destination.ASSETS.route) {
+                        AssetsScreen(
+                            onAddAsset = { navController.navigate(AssetsRoutes.ADD) },
+                            onEditAsset = { assetId -> navController.navigate(AssetsRoutes.edit(assetId)) },
+                        )
+                    }
+                    composable(AssetsRoutes.ADD) {
+                        AssetAddScreen(onDone = { navController.popBackStack() })
+                    }
+                    composable(
+                        route = AssetsRoutes.EDIT,
+                        arguments = listOf(navArgument("assetId") { type = NavType.LongType }),
+                    ) { backStackEntry ->
+                        val assetId = backStackEntry.arguments?.getLong("assetId") ?: return@composable
+                        AssetAddScreen(assetId = assetId, onDone = { navController.popBackStack() })
+                    }
                     composable(Destination.BEER.route) { BeerScreen() }
                     composable(Destination.WORK_TIME.route) {
                         WorkTimeScreen(
@@ -641,6 +660,10 @@ private val KANBAN_ROUTE_LABELS = mapOf(
     KanbanRoutes.BOARD_DETAIL to R.string.kanban_board_detail_title,
 )
 
+private val ASSETS_ROUTE_LABELS = mapOf(
+    AssetsRoutes.ADD to R.string.assets_add_title,
+)
+
 // Home, Fuel, Inventory and Shopping List currently get the accent-colored
 // top-bar/drawer-icon treatment; every Fuel/Inventory/Shopping List subpage
 // route is prefixed accordingly, so a prefix check covers those too without
@@ -664,4 +687,5 @@ private fun currentScreenLabel(route: String): Int =
         ?: BAKING_ROUTE_LABELS[route]
         ?: NOTES_ROUTE_LABELS[route]
         ?: KANBAN_ROUTE_LABELS[route]
+        ?: ASSETS_ROUTE_LABELS[route]
         ?: R.string.app_name

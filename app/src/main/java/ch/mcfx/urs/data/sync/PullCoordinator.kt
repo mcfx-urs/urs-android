@@ -1,6 +1,7 @@
 package ch.mcfx.urs.data.sync
 
 import android.util.Log
+import ch.mcfx.urs.data.AssetRepository
 import ch.mcfx.urs.data.CatalogRepository
 import ch.mcfx.urs.data.ChoreRepository
 import ch.mcfx.urs.data.FuelRepository
@@ -62,6 +63,7 @@ class PullCoordinator(
     private val choreRepository: ChoreRepository,
     private val kanbanRepository: KanbanRepository,
     private val tagRepository: TagRepository,
+    private val assetRepository: AssetRepository,
     private val syncStatusStore: SyncStatusStore,
 ) {
     // Guards against two pullAll() calls (e.g. a connectivity event and a
@@ -106,6 +108,7 @@ class PullCoordinator(
         pull("Chore") { choreRepository.refreshFromBackend() }
         pull("Kanban") { kanbanRepository.refreshFromBackend() }
         pull("Tag") { tagRepository.refreshFromBackend() }
+        pull("Asset") { assetRepository.refreshFromBackend() }
 
         syncStatusStore.recordPullFinished(hadErrors = anyFailed)
         _phase.value = if (anyFailed) SyncPhase.IDLE_ERROR else SyncPhase.IDLE_OK

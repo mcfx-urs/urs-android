@@ -47,7 +47,15 @@ enum class OutboxStatus { PENDING, SYNCING, FAILED }
  * [TYPE_DELETE_KANBAN_CHECKLIST_ITEM],
  * [OutboxTrackerDomainCreatePayload]/[OutboxTrackerDomainUpdatePayload]/
  * [OutboxTrackerDomainDeletePayload] for [TYPE_CREATE_TRACKER_DOMAIN]/
- * [TYPE_UPDATE_TRACKER_DOMAIN]/[TYPE_DELETE_TRACKER_DOMAIN].
+ * [TYPE_UPDATE_TRACKER_DOMAIN]/[TYPE_DELETE_TRACKER_DOMAIN],
+ * [OutboxAssetPayload]/[OutboxAssetUpdatePayload]/[OutboxAssetDeletePayload]
+ * for [TYPE_CREATE_ASSET]/[TYPE_UPDATE_ASSET]/[TYPE_DELETE_ASSET],
+ * [OutboxAssetComponentPayload]/[OutboxAssetComponentUpdatePayload]/
+ * [OutboxAssetComponentDeletePayload] for [TYPE_CREATE_ASSET_COMPONENT]/
+ * [TYPE_UPDATE_ASSET_COMPONENT]/[TYPE_DELETE_ASSET_COMPONENT],
+ * [OutboxAssetCommentPayload]/[OutboxAssetCommentUpdatePayload]/
+ * [OutboxAssetCommentDeletePayload] for [TYPE_CREATE_ASSET_COMMENT]/
+ * [TYPE_UPDATE_ASSET_COMMENT]/[TYPE_DELETE_ASSET_COMMENT].
  * [createdAt] drives strict FIFO replay order (see `SyncManager`), not
  * wall-clock display.
  */
@@ -114,5 +122,14 @@ data class OutboxMutationEntity(
         const val TYPE_CREATE_TRACKER_DOMAIN = "CREATE_TRACKER_DOMAIN"
         const val TYPE_UPDATE_TRACKER_DOMAIN = "UPDATE_TRACKER_DOMAIN"
         const val TYPE_DELETE_TRACKER_DOMAIN = "DELETE_TRACKER_DOMAIN"
+        const val TYPE_CREATE_ASSET = "CREATE_ASSET"
+        const val TYPE_UPDATE_ASSET = "UPDATE_ASSET"
+        const val TYPE_DELETE_ASSET = "DELETE_ASSET"
+        const val TYPE_CREATE_ASSET_COMPONENT = "CREATE_ASSET_COMPONENT"
+        const val TYPE_UPDATE_ASSET_COMPONENT = "UPDATE_ASSET_COMPONENT"
+        const val TYPE_DELETE_ASSET_COMPONENT = "DELETE_ASSET_COMPONENT"
+        const val TYPE_CREATE_ASSET_COMMENT = "CREATE_ASSET_COMMENT"
+        const val TYPE_UPDATE_ASSET_COMMENT = "UPDATE_ASSET_COMMENT"
+        const val TYPE_DELETE_ASSET_COMMENT = "DELETE_ASSET_COMMENT"
     }
 }

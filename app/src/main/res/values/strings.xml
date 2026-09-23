@@ -37,6 +37,7 @@
     <string name="nav_journal">Journal</string>
     <string name="nav_voice_notes">Voice Notes</string>
     <string name="nav_kanban">Kanban Board</string>
+    <string name="nav_assets">Assets</string>
     <string name="nav_settings">Settings</string>
 
     <string name="chores_prev_month">Previous month</string>
@@ -853,4 +854,37 @@
     <string name="kanban_checklist_item_delete">Delete item</string>
     <string name="kanban_card_delete">Delete card</string>
     <string name="kanban_card_alarm_body">Due today</string>
+
+    <string name="assets_add_title">Add Asset</string>
+    <string name="assets_name">Name</string>
+    <string name="assets_category">Category</string>
+    <string name="assets_location">Location</string>
+    <string name="assets_status">Status</string>
+    <string name="assets_status_active">Active</string>
+    <string name="assets_status_sold">Sold</string>
+    <string name="assets_status_disposed">Disposed</string>
+    <string name="assets_status_lost">Lost</string>
+    <string name="assets_field_tags">Tags</string>
+    <string name="assets_remove_tag">Remove tag %1$s</string>
+    <string name="assets_first_purchase">First purchase (optional)</string>
+    <string name="assets_components">Components</string>
+    <string name="assets_component_description">Description</string>
+    <string name="assets_component_manufacturer">Manufacturer / model</string>
+    <string name="assets_component_price">Price (CHF)</string>
+    <string name="assets_component_date">Purchase date</string>
+    <string name="assets_component_dealer">Dealer</string>
+    <string name="assets_component_add">Add component</string>
+    <string name="assets_component_delete">Delete component</string>
+    <string name="assets_comments">Comments</string>
+    <string name="assets_comment_add">Add comment</string>
+    <string name="assets_comment_delete">Delete comment</string>
+    <string name="assets_filter_all">All</string>
+    <string name="assets_filter_category">Category</string>
+    <string name="assets_filter_status">Status</string>
+    <string name="assets_total_value">Total value</string>
+    <string name="assets_list_empty">No assets yet.</string>
+    <string name="assets_edit">Edit</string>
+    <string name="assets_delete">Delete</string>
+    <string name="assets_delete_confirm_title">Delete this asset?</string>
+    <string name="assets_delete_confirm_body">This also removes its components and comments. This cannot be undone.</string>
 </resources>

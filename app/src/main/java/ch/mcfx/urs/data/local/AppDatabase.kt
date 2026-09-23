@@ -37,6 +37,9 @@ import androidx.room.TypeConverters
         KanbanCardEntity::class,
         KanbanChecklistItemEntity::class,
         TrackerDomainEntity::class,
+        AssetEntity::class,
+        AssetComponentEntity::class,
+        AssetCommentEntity::class,
     ],
     // Bumped for the isFullTank column on FillEntity, the life map
     // feature's LocationHistoryEntity (local capture + sync fields), and
@@ -124,7 +127,10 @@ import androidx.room.TypeConverters
     //      added to FillEntity (mcfx-urs/urs-android#87, fuel container
     //      tracking) — same destructive-fallback handling as every bump
     //      above.
-    version = 38,
+    // v39: new AssetEntity/AssetComponentEntity/AssetCommentEntity tables
+    //      (mcfx-urs/urs-android#89, personal-possession value tracking) —
+    //      same destructive-fallback handling as every bump above.
+    version = 39,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -158,4 +164,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun kanbanCardDao(): KanbanCardDao
     abstract fun kanbanChecklistItemDao(): KanbanChecklistItemDao
     abstract fun trackerDomainDao(): TrackerDomainDao
+    abstract fun assetDao(): AssetDao
+    abstract fun assetComponentDao(): AssetComponentDao
+    abstract fun assetCommentDao(): AssetCommentDao
 }

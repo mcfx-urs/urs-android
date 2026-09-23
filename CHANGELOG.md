@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Mark a vehicle as a fuel container (e.g. a jerry can) and pour fuel from it into a real vehicle's tank via a new "Transfer from Container" flow, with the cost computed automatically as a weighted-average price per liter from the container's own purchase/withdrawal history (#87)
 - Home screen's "New fill-up" tile has a direct shortcut badge to the Transfer flow, same as Shopping List/Inventory/Kanban's favorite-item badges (#87)
 - The Transfer flow shows the picked container's current computed stock (liters and average price per liter) once a source is selected (#87)
+- New Assets feature (#89): track personal possessions by acquisition value for insurance/overview purposes — a list screen with category/status filters and a running grand total, and an add/edit form with an editable component list (each with its own manufacturer/price/purchase date) and comment list. Creating an asset accepts its first component inline in the same form.
 
 ### Changed
 

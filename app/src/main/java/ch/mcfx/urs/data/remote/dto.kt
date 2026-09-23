@@ -1016,3 +1016,95 @@ data class KanbanChecklistItemCreatePayload(@SerialName("card_id") val cardId: S
 
 @Serializable
 data class KanbanChecklistItemUpdatePayload(val text: String, val done: Boolean)
+
+// --- Assets (mcfx-urs/urs-android#89) ---
+
+// Assets' own per-user tag pool entry — deliberately separate from the
+// shared Notes/Kanban TagDto (mcfx-urs/urs-backend#11), no color.
+@Serializable
+data class AssetTagDto(val name: String)
+
+@Serializable
+data class AssetComponentDto(
+    @SerialName("asset_component_id") val id: String = "",
+    @SerialName("asset_component_description") val description: String,
+    @SerialName("asset_component_manufacturer") val manufacturer: String = "",
+    @SerialName("asset_component_price") val price: String,
+    @SerialName("asset_component_purchase_date") val purchaseDate: String,
+    @SerialName("asset_component_dealer") val dealer: String = "",
+)
+
+@Serializable
+data class AssetCommentDto(
+    @SerialName("asset_comment_id") val id: String = "",
+    @SerialName("asset_comment_text") val text: String,
+    @SerialName("asset_comment_date") val date: String,
+)
+
+@Serializable
+data class AssetDto(
+    @SerialName("asset_id") val id: String,
+    @SerialName("asset_user_id") val userId: String = "",
+    @SerialName("asset_name") val name: String,
+    @SerialName("asset_category") val category: String,
+    @SerialName("asset_location") val location: String = "",
+    @SerialName("asset_status") val status: String = "active",
+    @SerialName("asset_total_value") val totalValue: String = "0.00",
+    val components: List<AssetComponentDto> = emptyList(),
+    val comments: List<AssetCommentDto> = emptyList(),
+    val tags: List<AssetTagDto> = emptyList(),
+    @SerialName("created_at") val created: String = "",
+    @SerialName("updated_at") val updated: String = "",
+)
+
+// Creating an asset accepts its initial components inline in the same
+// request — see OutboxAssetPayload's doc comment.
+@Serializable
+data class AssetCreatePayload(
+    @SerialName("asset_name") val name: String,
+    @SerialName("asset_category") val category: String,
+    @SerialName("asset_location") val location: String = "",
+    val components: List<AssetComponentDto> = emptyList(),
+    val tags: List<String> = emptyList(),
+)
+
+@Serializable
+data class AssetUpdatePayload(
+    @SerialName("asset_name") val name: String,
+    @SerialName("asset_category") val category: String,
+    @SerialName("asset_location") val location: String = "",
+    @SerialName("asset_status") val status: String,
+    val tags: List<String> = emptyList(),
+)
+
+@Serializable
+data class AssetComponentCreatePayload(
+    @SerialName("asset_id") val assetId: String,
+    @SerialName("asset_component_description") val description: String,
+    @SerialName("asset_component_manufacturer") val manufacturer: String = "",
+    @SerialName("asset_component_price") val price: String,
+    @SerialName("asset_component_purchase_date") val purchaseDate: String,
+    @SerialName("asset_component_dealer") val dealer: String = "",
+)
+
+@Serializable
+data class AssetComponentUpdatePayload(
+    @SerialName("asset_component_description") val description: String,
+    @SerialName("asset_component_manufacturer") val manufacturer: String = "",
+    @SerialName("asset_component_price") val price: String,
+    @SerialName("asset_component_purchase_date") val purchaseDate: String,
+    @SerialName("asset_component_dealer") val dealer: String = "",
+)
+
+@Serializable
+data class AssetCommentCreatePayload(
+    @SerialName("asset_id") val assetId: String,
+    @SerialName("asset_comment_text") val text: String,
+    @SerialName("asset_comment_date") val date: String,
+)
+
+@Serializable
+data class AssetCommentUpdatePayload(
+    @SerialName("asset_comment_text") val text: String,
+    @SerialName("asset_comment_date") val date: String,
+)

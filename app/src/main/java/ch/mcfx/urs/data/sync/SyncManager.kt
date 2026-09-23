@@ -1,5 +1,8 @@
 package ch.mcfx.urs.data.sync
 
+import ch.mcfx.urs.data.local.AssetCommentDao
+import ch.mcfx.urs.data.local.AssetComponentDao
+import ch.mcfx.urs.data.local.AssetDao
 import ch.mcfx.urs.data.local.BakePlanDao
 import ch.mcfx.urs.data.local.BakePlanStepDao
 import ch.mcfx.urs.data.local.FillDao
@@ -15,6 +18,15 @@ import ch.mcfx.urs.data.local.ListDao
 import ch.mcfx.urs.data.local.ListItemDao
 import ch.mcfx.urs.data.local.LocationHistoryDao
 import ch.mcfx.urs.data.local.NoteDao
+import ch.mcfx.urs.data.local.OutboxAssetCommentDeletePayload
+import ch.mcfx.urs.data.local.OutboxAssetCommentPayload
+import ch.mcfx.urs.data.local.OutboxAssetCommentUpdatePayload
+import ch.mcfx.urs.data.local.OutboxAssetComponentDeletePayload
+import ch.mcfx.urs.data.local.OutboxAssetComponentPayload
+import ch.mcfx.urs.data.local.OutboxAssetComponentUpdatePayload
+import ch.mcfx.urs.data.local.OutboxAssetDeletePayload
+import ch.mcfx.urs.data.local.OutboxAssetPayload
+import ch.mcfx.urs.data.local.OutboxAssetUpdatePayload
 import ch.mcfx.urs.data.local.OutboxBakePlanCancelPayload
 import ch.mcfx.urs.data.local.OutboxBeerLogCreatePayload
 import ch.mcfx.urs.data.local.OutboxBakePlanPayload
@@ -78,6 +90,7 @@ import ch.mcfx.urs.data.local.VehicleServiceDao
 import ch.mcfx.urs.data.local.VehicleServiceTagEntity
 import ch.mcfx.urs.data.local.WorkTimeBreakEntity
 import ch.mcfx.urs.data.local.WorkTimeDao
+import ch.mcfx.urs.data.local.localAssetId
 import ch.mcfx.urs.data.local.localInventoryId
 import ch.mcfx.urs.data.local.localKanbanBoardId
 import ch.mcfx.urs.data.local.localKanbanCardId
@@ -92,6 +105,13 @@ import ch.mcfx.urs.data.remote.FillPayload
 import ch.mcfx.urs.data.remote.FillUpdatePayload
 import ch.mcfx.urs.data.remote.InventoryPayload
 import ch.mcfx.urs.data.remote.InventoryProductCreatePayload
+import ch.mcfx.urs.data.remote.AssetCommentCreatePayload
+import ch.mcfx.urs.data.remote.AssetCommentUpdatePayload
+import ch.mcfx.urs.data.remote.AssetComponentCreatePayload
+import ch.mcfx.urs.data.remote.AssetComponentDto
+import ch.mcfx.urs.data.remote.AssetComponentUpdatePayload
+import ch.mcfx.urs.data.remote.AssetCreatePayload
+import ch.mcfx.urs.data.remote.AssetUpdatePayload
 import ch.mcfx.urs.data.remote.KanbanBoardCreatePayload
 import ch.mcfx.urs.data.remote.KanbanBoardRenamePayload
 import ch.mcfx.urs.data.remote.KanbanCardCreatePayload
@@ -160,6 +180,9 @@ class SyncManager(
     private val kanbanColumnDao: KanbanColumnDao,
     private val kanbanCardDao: KanbanCardDao,
     private val kanbanChecklistItemDao: KanbanChecklistItemDao,
+    private val assetDao: AssetDao,
+    private val assetComponentDao: AssetComponentDao,
+    private val assetCommentDao: AssetCommentDao,
     private val outboxDao: OutboxDao,
     private val reachabilityChecker: ReachabilityChecker,
     private val syncStatusStore: SyncStatusStore,
@@ -293,6 +316,15 @@ class SyncManager(
                 OutboxMutationEntity.TYPE_CREATE_KANBAN_CHECKLIST_ITEM -> replayCreateKanbanChecklistItem(mutation)
                 OutboxMutationEntity.TYPE_UPDATE_KANBAN_CHECKLIST_ITEM -> replayUpdateKanbanChecklistItem(mutation)
                 OutboxMutationEntity.TYPE_DELETE_KANBAN_CHECKLIST_ITEM -> replayDeleteKanbanChecklistItem(mutation)
+                OutboxMutationEntity.TYPE_CREATE_ASSET -> replayCreateAsset(mutation)
+                OutboxMutationEntity.TYPE_UPDATE_ASSET -> replayUpdateAsset(mutation)
+                OutboxMutationEntity.TYPE_DELETE_ASSET -> replayDeleteAsset(mutation)
+                OutboxMutationEntity.TYPE_CREATE_ASSET_COMPONENT -> replayCreateAssetComponent(mutation)
+                OutboxMutationEntity.TYPE_UPDATE_ASSET_COMPONENT -> replayUpdateAssetComponent(mutation)
+                OutboxMutationEntity.TYPE_DELETE_ASSET_COMPONENT -> replayDeleteAssetComponent(mutation)
+                OutboxMutationEntity.TYPE_CREATE_ASSET_COMMENT -> replayCreateAssetComment(mutation)
+                OutboxMutationEntity.TYPE_UPDATE_ASSET_COMMENT -> replayUpdateAssetComment(mutation)
+                OutboxMutationEntity.TYPE_DELETE_ASSET_COMMENT -> replayDeleteAssetComment(mutation)
                 else -> {
                     // Forward-compat placeholder — nothing else is queued today.
                     outboxDao.markFailed(mutation.id, "unknown outbox mutation type: ${mutation.type}")
@@ -1362,6 +1394,163 @@ class SyncManager(
         api.deleteKanbanChecklistItem(payload.serverId)
         outboxDao.delete(mutation.id)
         return true
+    }
+
+    // Creates the asset together with any inline initial components in one
+    // POST — see OutboxAssetPayload's doc comment. The response's components
+    // array preserves submission order, so pendingComponents.zip(...) below
+    // is a safe positional correlation (no client-side temp id exists to
+    // match on instead).
+    private suspend fun replayCreateAsset(mutation: OutboxMutationEntity): Boolean {
+        val localAsset = assetDao.getByOutboxId(mutation.id) ?: run {
+            outboxDao.delete(mutation.id)
+            return true
+        }
+        val payload = json.decodeFromString(OutboxAssetPayload.serializer(), mutation.payloadJson)
+        val oldPublicId = localAsset.publicId
+        val response = api.createAsset(
+            AssetCreatePayload(
+                name = payload.name,
+                category = payload.category,
+                location = payload.location,
+                tags = payload.tags,
+                components = payload.components.map {
+                    AssetComponentDto(description = it.description, manufacturer = it.manufacturer, price = it.price, purchaseDate = it.purchaseDate, dealer = it.dealer)
+                },
+            ),
+        )
+        assetDao.markSynced(localAsset.id, response.id)
+        assetDao.updateTotalValue(localAsset.id, response.totalValue)
+
+        val pendingComponents = assetComponentDao.getPendingInlineByAssetId(oldPublicId)
+        pendingComponents.zip(response.components).forEach { (local, remote) ->
+            assetComponentDao.markSynced(local.id, remote.id, response.id)
+        }
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    // Identifies its target by localAssetId, resolved to a serverId here at
+    // replay time — same shape as replayUpdateNote. No last-write-wins basis
+    // on this endpoint, same reasoning as replayUpdateVehicleService.
+    private suspend fun replayUpdateAsset(mutation: OutboxMutationEntity): Boolean {
+        val payload = json.decodeFromString(OutboxAssetUpdatePayload.serializer(), mutation.payloadJson)
+        val asset = assetDao.getById(payload.localAssetId) ?: run {
+            outboxDao.delete(mutation.id)
+            return true
+        }
+        val serverId = asset.serverId ?: run {
+            outboxDao.markFailed(mutation.id, "asset not yet synced")
+            return false
+        }
+        try {
+            api.updateAsset(serverId, AssetUpdatePayload(name = payload.name, category = payload.category, location = payload.location, status = payload.status, tags = payload.tags))
+            assetDao.clearPending(asset.id)
+        } catch (e: HttpException) {
+            if (e.code() != 404) throw e
+        }
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    private suspend fun replayDeleteAsset(mutation: OutboxMutationEntity): Boolean {
+        val payload = json.decodeFromString(OutboxAssetDeletePayload.serializer(), mutation.payloadJson)
+        api.deleteAsset(payload.serverId)
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    private suspend fun replayCreateAssetComponent(mutation: OutboxMutationEntity): Boolean {
+        val localComponent = assetComponentDao.getByOutboxId(mutation.id) ?: run {
+            outboxDao.delete(mutation.id)
+            return true
+        }
+        val payload = json.decodeFromString(OutboxAssetComponentPayload.serializer(), mutation.payloadJson)
+        val resolvedAssetId = resolveAssetId(payload.assetId) ?: run {
+            outboxDao.markFailed(mutation.id, "parent asset not yet synced")
+            return false
+        }
+        val response = api.createAssetComponent(
+            AssetComponentCreatePayload(assetId = resolvedAssetId, description = payload.description, manufacturer = payload.manufacturer, price = payload.price, purchaseDate = payload.purchaseDate, dealer = payload.dealer),
+        )
+        assetComponentDao.markSynced(localComponent.id, response.id, resolvedAssetId)
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    private suspend fun replayUpdateAssetComponent(mutation: OutboxMutationEntity): Boolean {
+        val payload = json.decodeFromString(OutboxAssetComponentUpdatePayload.serializer(), mutation.payloadJson)
+        val component = assetComponentDao.getById(payload.localComponentId) ?: run {
+            outboxDao.delete(mutation.id)
+            return true
+        }
+        val serverId = component.serverId ?: run {
+            outboxDao.markFailed(mutation.id, "component not yet synced")
+            return false
+        }
+        try {
+            api.updateAssetComponent(serverId, AssetComponentUpdatePayload(description = payload.description, manufacturer = payload.manufacturer, price = payload.price, purchaseDate = payload.purchaseDate, dealer = payload.dealer))
+            assetComponentDao.clearPending(component.id)
+        } catch (e: HttpException) {
+            if (e.code() != 404) throw e
+        }
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    private suspend fun replayDeleteAssetComponent(mutation: OutboxMutationEntity): Boolean {
+        val payload = json.decodeFromString(OutboxAssetComponentDeletePayload.serializer(), mutation.payloadJson)
+        api.deleteAssetComponent(payload.serverId)
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    private suspend fun replayCreateAssetComment(mutation: OutboxMutationEntity): Boolean {
+        val localComment = assetCommentDao.getByOutboxId(mutation.id) ?: run {
+            outboxDao.delete(mutation.id)
+            return true
+        }
+        val payload = json.decodeFromString(OutboxAssetCommentPayload.serializer(), mutation.payloadJson)
+        val resolvedAssetId = resolveAssetId(payload.assetId) ?: run {
+            outboxDao.markFailed(mutation.id, "parent asset not yet synced")
+            return false
+        }
+        val response = api.createAssetComment(AssetCommentCreatePayload(assetId = resolvedAssetId, text = payload.text, date = payload.date))
+        assetCommentDao.markSynced(localComment.id, response.id, resolvedAssetId)
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    private suspend fun replayUpdateAssetComment(mutation: OutboxMutationEntity): Boolean {
+        val payload = json.decodeFromString(OutboxAssetCommentUpdatePayload.serializer(), mutation.payloadJson)
+        val comment = assetCommentDao.getById(payload.localCommentId) ?: run {
+            outboxDao.delete(mutation.id)
+            return true
+        }
+        val serverId = comment.serverId ?: run {
+            outboxDao.markFailed(mutation.id, "comment not yet synced")
+            return false
+        }
+        try {
+            api.updateAssetComment(serverId, AssetCommentUpdatePayload(text = payload.text, date = payload.date))
+            assetCommentDao.clearPending(comment.id)
+        } catch (e: HttpException) {
+            if (e.code() != 404) throw e
+        }
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    private suspend fun replayDeleteAssetComment(mutation: OutboxMutationEntity): Boolean {
+        val payload = json.decodeFromString(OutboxAssetCommentDeletePayload.serializer(), mutation.payloadJson)
+        api.deleteAssetComment(payload.serverId)
+        outboxDao.delete(mutation.id)
+        return true
+    }
+
+    private suspend fun resolveAssetId(value: String): String? {
+        val localId = localAssetId(value) ?: return value
+        return assetDao.getById(localId)?.serverId
     }
 
     private suspend fun resolveTrackerTypeId(value: String): String? {

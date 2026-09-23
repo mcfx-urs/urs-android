@@ -436,6 +436,36 @@ interface UrsApi {
     @DELETE("api/v1/kanban/checklist-item/{id}")
     suspend fun deleteKanbanChecklistItem(@Path("id") id: String)
 
+    @POST("api/v1/asset")
+    suspend fun createAsset(@Body payload: AssetCreatePayload): AssetDto
+
+    @GET("api/v1/asset")
+    suspend fun getAssets(): List<AssetDto>
+
+    @PUT("api/v1/asset/{id}")
+    suspend fun updateAsset(@Path("id") id: String, @Body payload: AssetUpdatePayload)
+
+    @DELETE("api/v1/asset/{id}")
+    suspend fun deleteAsset(@Path("id") id: String)
+
+    @POST("api/v1/asset-component")
+    suspend fun createAssetComponent(@Body payload: AssetComponentCreatePayload): AssetComponentDto
+
+    @PUT("api/v1/asset-component/{id}")
+    suspend fun updateAssetComponent(@Path("id") id: String, @Body payload: AssetComponentUpdatePayload)
+
+    @DELETE("api/v1/asset-component/{id}")
+    suspend fun deleteAssetComponent(@Path("id") id: String)
+
+    @POST("api/v1/asset-comment")
+    suspend fun createAssetComment(@Body payload: AssetCommentCreatePayload): AssetCommentDto
+
+    @PUT("api/v1/asset-comment/{id}")
+    suspend fun updateAssetComment(@Path("id") id: String, @Body payload: AssetCommentUpdatePayload)
+
+    @DELETE("api/v1/asset-comment/{id}")
+    suspend fun deleteAssetComment(@Path("id") id: String)
+
     @POST("api/v1/admin/restart")
     suspend fun restartServer()
 
