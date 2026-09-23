@@ -32,15 +32,15 @@ class LocationCaptureWorker(context: Context, params: WorkerParameters) : Corout
         val app = applicationContext as UrsApplication
         val store = app.container.locationHistorySettingsStore
 
-        // Scheduling-drift tracking (GitHub issue #86): the previous run's own
-        // start time plus its own interval is this run's expected trigger
-        // time — the closest approximation available, since neither periodic
-        // nor self-chained WorkManager scheduling exposes a run's "originally
-        // scheduled for" time directly. Read before overwriting.
+        // Scheduling-drift tracking (GitHub issue #86, fixed for interval
+        // switches in #88): whichever LocationCaptureScheduler call actually
+        // armed this run stamped its own trigger time — read that back
+        // instead of recomputing it from the *current* interval, which can
+        // have changed (e.g. an activity-based interval switching back)
+        // since this run was scheduled, and would otherwise misreport that
+        // change as scheduling drift.
         val runStartMillis = System.currentTimeMillis()
-        val previousRunMillis = store.lastCaptureRunMillis()
-        val scheduledForMillis = previousRunMillis.takeIf { it > 0L }?.plus(store.intervalMinutes() * 60_000L)
-        store.setLastCaptureRunMillis(runStartMillis)
+        val scheduledForMillis = store.nextScheduledForMillis().takeIf { it > 0L }
         val mode = LocationCaptureModeManager.currentModeLabel(store)
 
         if (!store.isEnabled()) return Result.success()
@@ -82,8 +82,15 @@ class LocationCaptureWorker(context: Context, params: WorkerParameters) : Corout
             )
             return Result.success()
         }
-        if (!store.isPrecisionModeEnabled() && intervalMinutes < LocationCaptureScheduler.PERIODIC_FLOOR_MINUTES) {
-            LocationCaptureScheduler.scheduleNext(applicationContext, intervalMinutes, ExistingWorkPolicy.APPEND_OR_REPLACE)
+        if (!store.isPrecisionModeEnabled()) {
+            if (intervalMinutes < LocationCaptureScheduler.PERIODIC_FLOOR_MINUTES) {
+                LocationCaptureScheduler.scheduleNext(applicationContext, intervalMinutes, ExistingWorkPolicy.APPEND_OR_REPLACE)
+            } else {
+                // Periodic WorkManager mode re-triggers itself automatically —
+                // nothing else stamps the next expected fire time, so this run
+                // does it based on its own effective interval.
+                store.setNextScheduledForMillis(runStartMillis + intervalMinutes * 60_000L)
+            }
         }
 
         // A missing permission or a timed-out fix (see LocationCapture's own

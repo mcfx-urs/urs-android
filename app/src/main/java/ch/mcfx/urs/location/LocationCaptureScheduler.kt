@@ -11,6 +11,7 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import ch.mcfx.urs.UrsApplication
 import java.util.concurrent.TimeUnit
 
 /**
@@ -58,6 +59,7 @@ object LocationCaptureScheduler {
                 val request = PeriodicWorkRequestBuilder<LocationCaptureWorker>(intervalMinutes, TimeUnit.MINUTES).build()
                 WorkManager.getInstance(context)
                     .enqueueUniquePeriodicWork(WORK_NAME, ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE, request)
+                stampNextScheduledFor(context, System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(intervalMinutes))
             }
             else -> scheduleNext(context, intervalMinutes, ExistingWorkPolicy.REPLACE)
         }
@@ -69,6 +71,7 @@ object LocationCaptureScheduler {
             .setInitialDelay(intervalMinutes, TimeUnit.MINUTES)
             .build()
         WorkManager.getInstance(context).enqueueUniqueWork(WORK_NAME, policy, request)
+        stampNextScheduledFor(context, System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(intervalMinutes))
     }
 
     /**
@@ -86,6 +89,19 @@ object LocationCaptureScheduler {
         if (!canScheduleExactAlarms(context)) return
         val triggerAtMillis = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(intervalMinutes)
         alarmManager(context)?.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, alarmPendingIntent(context))
+        stampNextScheduledFor(context, triggerAtMillis)
+    }
+
+    /**
+     * Records this scheduling call's own trigger time (GitHub issue #88) so
+     * the run it produces can read back the interval that was *actually*
+     * applied when it was armed, instead of recomputing drift from whatever
+     * the settings say by the time the run fires — those can have moved on
+     * (e.g. an activity-based interval switching back) since this call.
+     */
+    private fun stampNextScheduledFor(context: Context, triggerAtMillis: Long) {
+        val app = context.applicationContext as UrsApplication
+        app.container.locationHistorySettingsStore.setNextScheduledForMillis(triggerAtMillis)
     }
 
     // canScheduleExactAlarms() itself requires API 31 — below that, exact
