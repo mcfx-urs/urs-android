@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-09-23
+
 ### Added
 
 - Mark a vehicle as a fuel container (e.g. a jerry can) and pour fuel from it into a real vehicle's tank via a new "Transfer from Container" flow, with the cost computed automatically as a weighted-average price per liter from the container's own purchase/withdrawal history (#87)
