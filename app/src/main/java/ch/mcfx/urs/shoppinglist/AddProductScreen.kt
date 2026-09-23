@@ -1,5 +1,6 @@
 package ch.mcfx.urs.shoppinglist
 
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -34,16 +35,22 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
 import ch.mcfx.urs.data.local.CatalogCategoryEntity
 import ch.mcfx.urs.data.local.CatalogProductEntity
+import ch.mcfx.urs.settings.PortraitCaptureActivity
+import ch.mcfx.urs.ui.components.CatalogImagePicker
+import ch.mcfx.urs.ui.components.UrsBottomSheet
 import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsCheckbox
 import ch.mcfx.urs.ui.components.UrsConfirmBar
 import ch.mcfx.urs.ui.components.UrsFilterChip
 import ch.mcfx.urs.ui.components.UrsIconButton
+import ch.mcfx.urs.ui.components.UrsOutlinedButton
 import ch.mcfx.urs.ui.components.UrsSquareTile
 import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.components.UrsTextField
 import ch.mcfx.urs.ui.theme.UrsTheme
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import ch.mcfx.urs.ui.tokens.Radius
 import ch.mcfx.urs.ui.tokens.Spacing
 import kotlinx.coroutines.delay
@@ -69,6 +76,9 @@ fun AddProductScreen(
 ) {
     val lastAdded by viewModel.lastAdded.collectAsStateWithLifecycle()
     val addedMessageFormat = stringResource(R.string.shoppinglist_add_product_added)
+    val imageSuggestionsOpen by viewModel.imageSuggestionsOpen.collectAsStateWithLifecycle()
+    val suggestionImages by viewModel.images.collectAsStateWithLifecycle()
+    val suggestionQuery by viewModel.query.collectAsStateWithLifecycle()
 
     // A custom bar rather than a material3 Snackbar: it needs two actions
     // (Undo + Edit), and Snackbar carries only one. Dismisses itself after a
@@ -102,6 +112,26 @@ fun AddProductScreen(
                     onEditAdded(added.addedItemLocalId)
                     viewModel.dismissAddedFeedback()
                 },
+            )
+        }
+    }
+
+    if (imageSuggestionsOpen) {
+        UrsBottomSheet(onDismissRequest = viewModel::cancelImageSuggestions) {
+            UrsText(
+                text = stringResource(R.string.product_image_suggestions_title),
+                style = UrsTheme.typography.cardTitle,
+                modifier = Modifier.padding(horizontal = Spacing.l, vertical = Spacing.m),
+            )
+            CatalogImagePicker(
+                images = suggestionImages,
+                initialQuery = suggestionQuery,
+                onSelect = viewModel::confirmQuickCreateWithImage,
+            )
+            UrsOutlinedButton(
+                text = stringResource(R.string.product_image_suggestions_skip),
+                onClick = { viewModel.confirmQuickCreateWithImage(null) },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.l, vertical = Spacing.m),
             )
         }
     }
@@ -139,6 +169,7 @@ private fun BrowseMode(viewModel: AddProductViewModel, modifier: Modifier = Modi
     val listProductIds by viewModel.listProductIds.collectAsStateWithLifecycle()
     val quantityOnHand by viewModel.quantityOnHand.collectAsStateWithLifecycle()
     val quickCreating by viewModel.quickCreating.collectAsStateWithLifecycle()
+    val scanning by viewModel.scanning.collectAsStateWithLifecycle()
 
     val searchFocusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -160,6 +191,24 @@ private fun BrowseMode(viewModel: AddProductViewModel, modifier: Modifier = Modi
             label = stringResource(R.string.shoppinglist_add_product_search),
             focusRequester = searchFocusRequester,
             singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        val scanLauncher = rememberLauncherForActivityResult(ScanContract()) { result ->
+            result.contents?.let { viewModel.onBarcodeScanned(it) }
+        }
+        UrsOutlinedButton(
+            text = stringResource(if (scanning) R.string.product_scanning else R.string.product_scan_barcode),
+            enabled = !scanning,
+            onClick = {
+                scanLauncher.launch(
+                    ScanOptions()
+                        .setDesiredBarcodeFormats(ScanOptions.PRODUCT_CODE_TYPES)
+                        .setBeepEnabled(false)
+                        .setOrientationLocked(true)
+                        .setCaptureActivity(PortraitCaptureActivity::class.java),
+                )
+            },
             modifier = Modifier.fillMaxWidth(),
         )
 

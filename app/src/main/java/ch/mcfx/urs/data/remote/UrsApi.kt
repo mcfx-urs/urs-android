@@ -151,6 +151,13 @@ interface UrsApi {
     @DELETE("api/v1/catalog-product/{id}")
     suspend fun deleteCatalogProduct(@Path("id") id: String)
 
+    // 404 (no local catalog match) is a normal, expected outcome of a
+    // barcode scan, not an error — wrapped in Response<...> so
+    // CatalogRepository.lookupByBarcode can check the status code directly
+    // instead of catching an HttpException for routine control flow.
+    @GET("api/v1/catalog-product/barcode/{barcode}")
+    suspend fun getCatalogProductByBarcode(@Path("barcode") barcode: String): Response<CatalogProductDto>
+
     @GET("api/v1/catalog-category")
     suspend fun getCatalogCategories(): List<CatalogCategoryDto>
 

@@ -99,9 +99,9 @@ class CatalogRepository(
      * that row and only failing later, confusingly, when an image gets
      * attached.
      */
-    suspend fun createProduct(name: String, catalogCategoryId: String?, requireNew: Boolean = false): CatalogProductEntity {
+    suspend fun createProduct(name: String, catalogCategoryId: String?, requireNew: Boolean = false, barcode: String? = null): CatalogProductEntity {
         val response = api.createCatalogProduct(
-            NewCatalogProductPayload(name = name, catalogCategoryId = catalogCategoryId.orEmpty(), requireNew = requireNew),
+            NewCatalogProductPayload(name = name, catalogCategoryId = catalogCategoryId.orEmpty(), requireNew = requireNew, barcode = barcode.orEmpty()),
         )
         val entity = CatalogProductEntity(
             id = response.id,
@@ -109,6 +109,7 @@ class CatalogRepository(
             catalogCategoryId = response.catalogCategoryId.ifEmpty { null },
             name = response.name,
             source = "manual",
+            barcode = response.barcode.ifEmpty { null },
         )
         catalogProductDao.upsertOne(entity)
         return entity
@@ -120,16 +121,41 @@ class CatalogRepository(
      * [createProduct]; the local cache is updated from the request's own
      * inputs rather than re-fetching, mirroring how create already works.
      */
-    suspend fun updateProduct(id: String, name: String, catalogCategoryId: String?, catalogImageId: String?) {
+    suspend fun updateProduct(id: String, name: String, catalogCategoryId: String?, catalogImageId: String?, barcode: String? = null) {
         api.updateCatalogProduct(
             id,
             CatalogProductUpdatePayload(
                 name = name,
                 catalogCategoryId = catalogCategoryId.orEmpty(),
                 catalogImageId = catalogImageId.orEmpty(),
+                barcode = barcode.orEmpty(),
             ),
         )
-        catalogProductDao.updateFields(id, name, catalogCategoryId, catalogImageId?.toIntOrNull())
+        catalogProductDao.updateFields(id, name, catalogCategoryId, catalogImageId?.toIntOrNull(), barcode)
+    }
+
+    /**
+     * Barcode-scan lookup (mcfx-urs/urs-android#91) — checks the local cache
+     * first (a barcode already resolved once needs no network round-trip),
+     * then falls back to a live backend lookup. Returns `null` on a genuine
+     * 404 (no match, the normal "never scanned before" outcome) as well as
+     * on any other failure (offline, etc.) — the caller can't tell those
+     * apart today, which is fine: either way it falls through to the Open
+     * Food Facts / manual-entry path.
+     */
+    suspend fun lookupByBarcode(barcode: String): CatalogProductEntity? {
+        catalogProductDao.getByBarcode(barcode)?.let { return it }
+        val response = try {
+            api.getCatalogProductByBarcode(barcode)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            return null
+        }
+        if (!response.isSuccessful) return null
+        val entity = response.body()?.toEntity() ?: return null
+        catalogProductDao.upsertOne(entity)
+        return entity
     }
 
     /** Delete a manually-created product — Product Management's delete action. */
@@ -242,6 +268,7 @@ private fun CatalogProductDto.toEntity() = CatalogProductEntity(
     recentNote2 = recentNote2.ifEmpty { null },
     recentNote3 = recentNote3.ifEmpty { null },
     source = source,
+    barcode = barcode.ifEmpty { null },
 )
 
 private fun CatalogCategoryDto.toEntity() = CatalogCategoryEntity(

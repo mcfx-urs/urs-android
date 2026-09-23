@@ -31,9 +31,16 @@ import ch.mcfx.urs.ui.tokens.Spacing
  * scrolling the grid stays the default way to browse, this only filters it.
  * An image with no linked name has nothing to match, so it drops out of any
  * non-blank search rather than showing up as an unexplained unlabeled hit.
+ *
+ * [initialQuery] seeds the search field instead of leaving it blank — used
+ * by the barcode-scan quick-create flows (mcfx-urs/urs-android#91) to open
+ * this picker pre-filtered to the resolved product name, surfacing
+ * same-name existing images as one-tap suggestions instead of only "browse
+ * everything". Still a plain, editable search field afterward — no separate
+ * "suggestions" mode.
  */
 @Composable
-fun CatalogImagePicker(images: List<CatalogImageDto>, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
+fun CatalogImagePicker(images: List<CatalogImageDto>, onSelect: (String) -> Unit, modifier: Modifier = Modifier, initialQuery: String = "") {
     if (images.isEmpty()) {
         UrsText(
             text = stringResource(R.string.product_management_image_picker_empty),
@@ -43,7 +50,7 @@ fun CatalogImagePicker(images: List<CatalogImageDto>, onSelect: (String) -> Unit
         return
     }
 
-    var query by remember { mutableStateOf("") }
+    var query by remember { mutableStateOf(initialQuery) }
     val filtered = remember(images, query) {
         if (query.isBlank()) images else images.filter { it.linkedNames.contains(query, ignoreCase = true) }
     }

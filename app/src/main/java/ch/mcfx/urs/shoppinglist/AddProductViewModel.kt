@@ -8,10 +8,12 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.data.CatalogRepository
+import ch.mcfx.urs.data.OpenFoodFactsRepository
 import ch.mcfx.urs.data.ShoppingListRepository
 import ch.mcfx.urs.data.alphabeticSortKey
 import ch.mcfx.urs.data.local.CatalogCategoryEntity
 import ch.mcfx.urs.data.local.CatalogProductEntity
+import ch.mcfx.urs.data.remote.CatalogImageDto
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -53,6 +55,7 @@ data class AddedFeedback(val productName: String, val addedItemLocalId: Long)
 class AddProductViewModel(
     private val shoppingListRepository: ShoppingListRepository,
     private val catalogRepository: CatalogRepository,
+    private val openFoodFactsRepository: OpenFoodFactsRepository,
     private val listId: String,
 ) : ViewModel() {
 
@@ -87,6 +90,30 @@ class AddProductViewModel(
 
     private val _quickCreating = MutableStateFlow(false)
     val quickCreating: StateFlow<Boolean> = _quickCreating.asStateFlow()
+
+    // Set once a barcode scan resolved to "no local match" — carried into
+    // quickCreate() so the eventual new product still gets the scanned
+    // barcode attached (mcfx-urs/urs-android#91). Cleared on every
+    // selectResult()/quickCreate() so a later manual search isn't mistaken
+    // for a continuation of an earlier scan.
+    private val _scannedBarcode = MutableStateFlow<String?>(null)
+    val scannedBarcode: StateFlow<String?> = _scannedBarcode.asStateFlow()
+
+    private val _scanning = MutableStateFlow(false)
+    val scanning: StateFlow<Boolean> = _scanning.asStateFlow()
+
+    // Image-suggestion step (mcfx-urs/urs-android#91 point 4) — only entered
+    // from quickCreate() when the product being created came from a barcode
+    // scan (_scannedBarcode != null); a plain manual quick-create (typed
+    // name, no scan) skips straight to performQuickCreate as before.
+    private val _imageSuggestionsOpen = MutableStateFlow(false)
+    val imageSuggestionsOpen: StateFlow<Boolean> = _imageSuggestionsOpen.asStateFlow()
+
+    private val _images = MutableStateFlow<List<CatalogImageDto>>(emptyList())
+    val images: StateFlow<List<CatalogImageDto>> = _images.asStateFlow()
+
+    private var pendingCreateName: String? = null
+    private var pendingCreateCategoryId: String? = null
 
     init {
         viewModelScope.launch {
@@ -155,6 +182,7 @@ class AddProductViewModel(
     // different results in a row never needs the FAB to be tapped again.
     fun selectResult(product: CatalogProductEntity) {
         _query.value = ""
+        _scannedBarcode.value = null
         viewModelScope.launch {
             val localId = shoppingListRepository.addCatalogProduct(listId, product, note = null, quantity = null, onSale = false)
             _lastAdded.value = AddedFeedback(product.name, localId)
@@ -176,16 +204,59 @@ class AddProductViewModel(
      * "Search found nothing" quick-create path — a direct, synchronous REST
      * call (see [CatalogRepository.createProduct]'s doc comment), tied to
      * whichever category was being browsed when this fires (if any) — then
-     * added to the list immediately, same as [selectResult].
+     * added to the list immediately, same as [selectResult]. A scanned
+     * barcode with no catalog match routes through the image-suggestion step
+     * first (mcfx-urs/urs-android#91 point 4) instead of creating right away.
      */
     fun quickCreate() {
         val name = _query.value.trim()
         if (name.isBlank() || _quickCreating.value) return
+        val barcode = _scannedBarcode.value
+        if (barcode != null) {
+            pendingCreateName = name
+            pendingCreateCategoryId = _selectedCategory.value?.id
+            viewModelScope.launch {
+                _images.value = try {
+                    catalogRepository.getImages()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    emptyList()
+                }
+                _imageSuggestionsOpen.value = true
+            }
+            return
+        }
+        performQuickCreate(name, _selectedCategory.value?.id, barcode = null, imageId = null)
+    }
+
+    /** Image-suggestion sheet's outcome — `imageId` null on "Skip", the picked [CatalogImageDto.id] otherwise. */
+    fun confirmQuickCreateWithImage(imageId: String?) {
+        val name = pendingCreateName ?: return
+        val categoryId = pendingCreateCategoryId
+        _imageSuggestionsOpen.value = false
+        pendingCreateName = null
+        pendingCreateCategoryId = null
+        performQuickCreate(name, categoryId, barcode = _scannedBarcode.value, imageId = imageId)
+    }
+
+    /** Closes the image-suggestion sheet without creating anything — e.g. a back-press/scrim dismiss. */
+    fun cancelImageSuggestions() {
+        _imageSuggestionsOpen.value = false
+        pendingCreateName = null
+        pendingCreateCategoryId = null
+    }
+
+    private fun performQuickCreate(name: String, categoryId: String?, barcode: String?, imageId: String?) {
         viewModelScope.launch {
             _quickCreating.value = true
             try {
-                val product = catalogRepository.createProduct(name = name, catalogCategoryId = _selectedCategory.value?.id)
+                val product = catalogRepository.createProduct(name = name, catalogCategoryId = categoryId, barcode = barcode)
+                if (imageId != null) {
+                    catalogRepository.updateProduct(product.id, product.name, product.catalogCategoryId, imageId, barcode)
+                }
                 _query.value = ""
+                _scannedBarcode.value = null
                 val localId = shoppingListRepository.addCatalogProduct(listId, product, note = null, quantity = null, onSale = false)
                 _lastAdded.value = AddedFeedback(product.name, localId)
             } catch (e: CancellationException) {
@@ -198,11 +269,46 @@ class AddProductViewModel(
         }
     }
 
+    /**
+     * Barcode scan result (mcfx-urs/urs-android#91) — same shape as
+     * [ch.mcfx.urs.inventory.ProductsViewModel.onBarcodeScanned]: a local/
+     * backend catalog match adds immediately (same outcome as
+     * [selectResult]); no match queries Open Food Facts to prefill the
+     * search/quick-create query, storing the scanned barcode either way for
+     * [quickCreate] to attach.
+     */
+    fun onBarcodeScanned(barcode: String) {
+        _scanning.value = true
+        viewModelScope.launch {
+            val existing = try {
+                catalogRepository.lookupByBarcode(barcode)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                null
+            }
+            if (existing != null) {
+                _scanning.value = false
+                selectResult(existing)
+                return@launch
+            }
+            val offResult = openFoodFactsRepository.lookup(barcode)
+            _query.value = offResult?.name.orEmpty()
+            _scannedBarcode.value = barcode
+            _scanning.value = false
+        }
+    }
+
     companion object {
         fun factory(listId: String): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as UrsApplication
-                AddProductViewModel(app.container.shoppingListRepository, app.container.catalogRepository, listId)
+                AddProductViewModel(
+                    app.container.shoppingListRepository,
+                    app.container.catalogRepository,
+                    app.container.openFoodFactsRepository,
+                    listId,
+                )
             }
         }
     }

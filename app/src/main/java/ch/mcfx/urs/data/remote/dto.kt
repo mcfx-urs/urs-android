@@ -262,6 +262,8 @@ data class CatalogProductDto(
     @SerialName("catalog_product_recent_note_1") val recentNote1: String = "",
     @SerialName("catalog_product_recent_note_2") val recentNote2: String = "",
     @SerialName("catalog_product_recent_note_3") val recentNote3: String = "",
+    // "" = not scanned/attached yet (mcfx-urs/urs-backend#12).
+    @SerialName("catalog_product_barcode") val barcode: String = "",
 )
 
 @Serializable
@@ -275,6 +277,9 @@ data class NewCatalogProductPayload(
     // leaves it false to keep its intentional find-or-create dedup
     // behavior (see urs-backend's CreateCatalogProductStrict).
     @SerialName("require_new") val requireNew: Boolean = false,
+    // Set on the barcode-scan create-new-product path — stored only on the
+    // freshly created row (see urs-backend's GetOrCreateCatalogProduct).
+    @SerialName("catalog_product_barcode") val barcode: String = "",
 )
 
 @Serializable
@@ -282,6 +287,7 @@ data class NewCatalogProductResponseDto(
     @SerialName("catalog_product_id") val id: String,
     @SerialName("catalog_product_name") val name: String,
     @SerialName("catalog_product_catalog_category_id") val catalogCategoryId: String = "",
+    @SerialName("catalog_product_barcode") val barcode: String = "",
 )
 
 // Rename/re-link a manually-created product (source='manual' only,
@@ -292,6 +298,7 @@ data class CatalogProductUpdatePayload(
     @SerialName("catalog_product_name") val name: String,
     @SerialName("catalog_product_catalog_category_id") val catalogCategoryId: String = "",
     @SerialName("catalog_product_catalog_image_id") val catalogImageId: String = "",
+    @SerialName("catalog_product_barcode") val barcode: String = "",
 )
 
 // One entry from the reusable-image picker (GET /api/v1/catalog-image) —

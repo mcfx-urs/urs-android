@@ -13,6 +13,8 @@ import ch.mcfx.urs.auth.AuthTokenStore
 import ch.mcfx.urs.auth.BiometricGate
 import ch.mcfx.urs.chores.ChoreOrderStore
 import ch.mcfx.urs.data.AssetRepository
+import ch.mcfx.urs.data.OpenFoodFactsRepository
+import ch.mcfx.urs.data.remote.OpenFoodFactsApi
 import ch.mcfx.urs.chores.ChoreOverdueWorker
 import ch.mcfx.urs.chores.ChoreReminderSettingsStore
 import ch.mcfx.urs.data.AudioNoteRepository
@@ -285,6 +287,23 @@ class AppContainer(context: Context) {
         .build()
 
     private val ursApi = retrofit.create(UrsApi::class.java)
+
+    // Open Food Facts (mcfx-urs/urs-android#91) — a direct client call, not
+    // proxied through urs-backend (see
+    // urs/BARCODE-SCAN-INVENTORY-FINDINGS.md's settled reasoning). Its own
+    // Retrofit/OkHttp client, deliberately without AuthInterceptor/
+    // AuthAuthenticator — a public, unauthenticated API with a different
+    // base URL entirely.
+    private val openFoodFactsHttpClient = baseHttpClientBuilder().build()
+
+    private val openFoodFactsRetrofit = Retrofit.Builder()
+        .baseUrl("https://world.openfoodfacts.org/")
+        .client(openFoodFactsHttpClient)
+        .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
+        .build()
+
+    private val openFoodFactsApi = openFoodFactsRetrofit.create(OpenFoodFactsApi::class.java)
+    val openFoodFactsRepository = OpenFoodFactsRepository(openFoodFactsApi)
 
     val workSettingsStore = WorkSettingsStore(context)
     val defaultVehicleStore = DefaultVehicleStore(context)

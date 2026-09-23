@@ -637,6 +637,10 @@
     <string name="inventory_products_empty">Nothing tracked in this inventory yet.</string>
     <string name="inventory_product_add">Add product</string>
     <string name="inventory_product_name">Product name</string>
+    <string name="product_scan_barcode">Scan barcode</string>
+    <string name="product_scanning">Scanning…</string>
+    <string name="product_image_suggestions_title">Suggested images</string>
+    <string name="product_image_suggestions_skip">Skip</string>
     <string name="inventory_product_not_tracked">–</string>
     <string name="inventory_product_increment">Increase quantity</string>
     <string name="inventory_product_decrement">Decrease quantity</string>

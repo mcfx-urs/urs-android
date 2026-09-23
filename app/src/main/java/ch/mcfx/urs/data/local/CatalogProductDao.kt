@@ -47,8 +47,14 @@ interface CatalogProductDao {
     // cached fields (categoryName, searchTerms, brands, popularityIndex,
     // recentNote*) survive an edit untouched, unlike upsertOne's full-row
     // replace.
-    @Query("UPDATE catalog_product SET name = :name, catalogCategoryId = :catalogCategoryId, catalogImageId = :catalogImageId WHERE id = :id")
-    suspend fun updateFields(id: String, name: String, catalogCategoryId: String?, catalogImageId: Int?)
+    @Query("UPDATE catalog_product SET name = :name, catalogCategoryId = :catalogCategoryId, catalogImageId = :catalogImageId, barcode = :barcode WHERE id = :id")
+    suspend fun updateFields(id: String, name: String, catalogCategoryId: String?, catalogImageId: Int?, barcode: String?)
+
+    // Barcode-scan lookup fallback (mcfx-urs/urs-android#91): the local
+    // cache may already have a synced row for a barcode scanned before, even
+    // without a fresh backend round-trip.
+    @Query("SELECT * FROM catalog_product WHERE barcode = :barcode LIMIT 1")
+    suspend fun getByBarcode(barcode: String): CatalogProductEntity?
 
     @Query("DELETE FROM catalog_product WHERE id = :id")
     suspend fun deleteById(id: String)

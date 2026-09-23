@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Home screen's "New fill-up" tile has a direct shortcut badge to the Transfer flow, same as Shopping List/Inventory/Kanban's favorite-item badges (#87)
 - The Transfer flow shows the picked container's current computed stock (liters and average price per liter) once a source is selected (#87)
 - New Assets feature (#89): track personal possessions by acquisition value for insurance/overview purposes — a list screen with category/status filters and a running grand total, and an add/edit form with an editable component list (each with its own manufacturer/price/purchase date) and comment list. Creating an asset accepts its first component inline in the same form.
+- Scan a barcode when adding a product in Inventory or Shopping List: a local/backend catalog match adds it directly, otherwise the name is looked up via Open Food Facts and prefilled for quick-create, offering a suggested existing product image to reuse before creating the new product (#91)
 
 ### Changed
 

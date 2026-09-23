@@ -36,4 +36,7 @@ data class CatalogProductEntity(
     val recentNote2: String? = null,
     val recentNote3: String? = null,
     val source: String = "",
+    // Scanned barcode (mcfx-urs/urs-android#91/mcfx-urs/urs-backend#12) —
+    // null until scanned/attached, unique server-side.
+    val barcode: String? = null,
 )

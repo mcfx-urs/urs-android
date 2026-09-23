@@ -1,6 +1,10 @@
 package ch.mcfx.urs.inventory
 
 import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
+import ch.mcfx.urs.settings.PortraitCaptureActivity
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -51,14 +55,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
 import ch.mcfx.urs.data.local.CatalogProductEntity
 import ch.mcfx.urs.data.local.SyncStatus
+import ch.mcfx.urs.ui.components.CatalogImagePicker
 import ch.mcfx.urs.ui.components.UrsBottomSheet
 import ch.mcfx.urs.ui.components.UrsButton
-import ch.mcfx.urs.ui.components.UrsOutlinedButton
 import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsCheckbox
 import ch.mcfx.urs.ui.components.UrsFab
 import ch.mcfx.urs.ui.components.UrsIcon
 import ch.mcfx.urs.ui.components.UrsIconButton
+import ch.mcfx.urs.ui.components.UrsOutlinedButton
 import ch.mcfx.urs.ui.components.UrsPill
 import ch.mcfx.urs.ui.components.UrsProgressIndicator
 import ch.mcfx.urs.ui.components.UrsText
@@ -102,6 +107,8 @@ fun ProductListScreen(
     val showForm by viewModel.showForm.collectAsStateWithLifecycle()
     val settingsForm by viewModel.settingsForm.collectAsStateWithLifecycle()
     val showSettings by viewModel.showSettings.collectAsStateWithLifecycle()
+    val imageSuggestionsOpen by viewModel.imageSuggestionsOpen.collectAsStateWithLifecycle()
+    val suggestionImages by viewModel.images.collectAsStateWithLifecycle()
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
@@ -145,6 +152,26 @@ fun ProductListScreen(
     if (showSettings) {
         UrsBottomSheet(onDismissRequest = viewModel::closeSettings) {
             ProductSettingsForm(form = settingsForm, viewModel = viewModel)
+        }
+    }
+
+    if (imageSuggestionsOpen) {
+        UrsBottomSheet(onDismissRequest = viewModel::cancelImageSuggestions) {
+            UrsText(
+                text = stringResource(R.string.product_image_suggestions_title),
+                style = UrsTheme.typography.cardTitle,
+                modifier = Modifier.padding(horizontal = Spacing.l, vertical = Spacing.m),
+            )
+            CatalogImagePicker(
+                images = suggestionImages,
+                initialQuery = query,
+                onSelect = viewModel::confirmCreateAndTrackWithImage,
+            )
+            UrsOutlinedButton(
+                text = stringResource(R.string.product_image_suggestions_skip),
+                onClick = { viewModel.confirmCreateAndTrackWithImage(null) },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.l, vertical = Spacing.m),
+            )
         }
     }
 }
@@ -340,6 +367,24 @@ private fun AddInventoryProductForm(
             onValueChange = viewModel::setQuery,
             label = stringResource(R.string.inventory_product_name),
             singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        val scanLauncher = rememberLauncherForActivityResult(ScanContract()) { result ->
+            result.contents?.let { viewModel.onBarcodeScanned(it) }
+        }
+        UrsOutlinedButton(
+            text = stringResource(if (form.scanning) R.string.product_scanning else R.string.product_scan_barcode),
+            enabled = !form.scanning,
+            onClick = {
+                scanLauncher.launch(
+                    ScanOptions()
+                        .setDesiredBarcodeFormats(ScanOptions.PRODUCT_CODE_TYPES)
+                        .setBeepEnabled(false)
+                        .setOrientationLocked(true)
+                        .setCaptureActivity(PortraitCaptureActivity::class.java),
+                )
+            },
             modifier = Modifier.fillMaxWidth(),
         )
 

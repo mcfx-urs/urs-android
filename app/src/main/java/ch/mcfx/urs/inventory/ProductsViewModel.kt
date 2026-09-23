@@ -9,9 +9,11 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.data.CatalogRepository
 import ch.mcfx.urs.data.InventoryRepository
+import ch.mcfx.urs.data.OpenFoodFactsRepository
 import ch.mcfx.urs.data.alphabeticSortKey
 import ch.mcfx.urs.data.local.CatalogProductEntity
 import ch.mcfx.urs.data.local.InventoryProductEntity
+import ch.mcfx.urs.data.remote.CatalogImageDto
 import ch.mcfx.urs.notifications.NotificationChannels
 import ch.mcfx.urs.notifications.ReminderScheduler
 import kotlinx.coroutines.CancellationException
@@ -38,6 +40,11 @@ sealed interface ProductsUiState {
 data class AddProductFormState(
     val submitting: Boolean = false,
     val submitFailed: Boolean = false,
+    // Set once a barcode scan resolved (locally, via Open Food Facts, or
+    // neither) — stored on the product created from this form either way
+    // (mcfx-urs/urs-android#91). Null = this form wasn't opened via a scan.
+    val scannedBarcode: String? = null,
+    val scanning: Boolean = false,
 )
 
 // Long-press popup state: quantity + the two warning-color thresholds +
@@ -58,6 +65,7 @@ data class ProductSettingsFormState(
 class ProductsViewModel(
     private val inventoryRepository: InventoryRepository,
     private val catalogRepository: CatalogRepository,
+    private val openFoodFactsRepository: OpenFoodFactsRepository,
     private val inventoryId: String,
     private val inventoryName: String,
     private val reminderScheduler: ReminderScheduler,
@@ -88,6 +96,19 @@ class ProductsViewModel(
 
     private val _showSettings = MutableStateFlow(false)
     val showSettings: StateFlow<Boolean> = _showSettings.asStateFlow()
+
+    // Image-suggestion step (mcfx-urs/urs-android#91 point 4) — same shape
+    // as AddProductViewModel's own: only entered from createAndTrackProduct()
+    // when the product came from a barcode scan (formState.scannedBarcode
+    // != null); a plain manual quick-create skips straight to
+    // performCreateAndTrack as before.
+    private val _imageSuggestionsOpen = MutableStateFlow(false)
+    val imageSuggestionsOpen: StateFlow<Boolean> = _imageSuggestionsOpen.asStateFlow()
+
+    private val _images = MutableStateFlow<List<CatalogImageDto>>(emptyList())
+    val images: StateFlow<List<CatalogImageDto>> = _images.asStateFlow()
+
+    private var pendingCreateName: String? = null
 
     init {
         viewModelScope.launch {
@@ -124,6 +145,8 @@ class ProductsViewModel(
         _formState.value = AddProductFormState()
         _query.value = ""
         _results.value = emptyList()
+        _imageSuggestionsOpen.value = false
+        pendingCreateName = null
         _showForm.value = true
     }
 
@@ -147,17 +170,56 @@ class ProductsViewModel(
      * "Type a new product name" path — creates a genuinely new shared
      * catalog product first (direct, synchronous REST call, see
      * [CatalogRepository.createProduct]'s doc comment), then tracks it in
-     * this inventory.
+     * this inventory. Attaches [AddProductFormState.scannedBarcode] when the
+     * form was opened via a barcode scan (mcfx-urs/urs-android#91). A
+     * scanned barcode with no catalog match routes through the
+     * image-suggestion step first (point 4 of that same issue) instead of
+     * creating right away.
      */
     fun createAndTrackProduct() {
         val form = _formState.value
         val name = _query.value.trim()
         if (name.isBlank() || form.submitting) return
 
+        if (form.scannedBarcode != null) {
+            pendingCreateName = name
+            viewModelScope.launch {
+                _images.value = try {
+                    catalogRepository.getImages()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    emptyList()
+                }
+                _imageSuggestionsOpen.value = true
+            }
+            return
+        }
+        performCreateAndTrack(name, barcode = null, imageId = null)
+    }
+
+    /** Image-suggestion sheet's outcome — `imageId` null on "Skip", the picked [CatalogImageDto.id] otherwise. */
+    fun confirmCreateAndTrackWithImage(imageId: String?) {
+        val name = pendingCreateName ?: return
+        _imageSuggestionsOpen.value = false
+        pendingCreateName = null
+        performCreateAndTrack(name, barcode = _formState.value.scannedBarcode, imageId = imageId)
+    }
+
+    /** Closes the image-suggestion sheet without creating anything — e.g. a back-press/scrim dismiss. */
+    fun cancelImageSuggestions() {
+        _imageSuggestionsOpen.value = false
+        pendingCreateName = null
+    }
+
+    private fun performCreateAndTrack(name: String, barcode: String?, imageId: String?) {
         viewModelScope.launch {
             _formState.update { it.copy(submitting = true, submitFailed = false) }
             try {
-                val catalogProduct = catalogRepository.createProduct(name = name, catalogCategoryId = null)
+                val catalogProduct = catalogRepository.createProduct(name = name, catalogCategoryId = null, barcode = barcode)
+                if (imageId != null) {
+                    catalogRepository.updateProduct(catalogProduct.id, catalogProduct.name, catalogProduct.catalogCategoryId, imageId, barcode)
+                }
                 inventoryRepository.createProduct(inventoryId = inventoryId, catalogProductId = catalogProduct.id, quantity = 0)
                 _showForm.value = false
             } catch (e: CancellationException) {
@@ -165,6 +227,36 @@ class ProductsViewModel(
             } catch (_: Exception) {
                 _formState.update { it.copy(submitting = false, submitFailed = true) }
             }
+        }
+    }
+
+    /**
+     * Barcode scan result (mcfx-urs/urs-android#91): a local/backend catalog
+     * match tracks immediately, same outcome as picking a text-search
+     * result. No match queries Open Food Facts to prefill the "type a new
+     * name" query field; no match there either just leaves the form open
+     * for fully-manual entry — [AddProductFormState.scannedBarcode] is set
+     * regardless, so the eventual new product still gets the barcode
+     * attached.
+     */
+    fun onBarcodeScanned(barcode: String) {
+        _formState.update { it.copy(scanning = true) }
+        viewModelScope.launch {
+            val existing = try {
+                catalogRepository.lookupByBarcode(barcode)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                null
+            }
+            if (existing != null) {
+                _formState.update { it.copy(scanning = false) }
+                trackExistingProduct(existing)
+                return@launch
+            }
+            val offResult = openFoodFactsRepository.lookup(barcode)
+            _query.value = offResult?.name.orEmpty()
+            _formState.update { it.copy(scanning = false, scannedBarcode = barcode) }
         }
     }
 
@@ -368,6 +460,7 @@ class ProductsViewModel(
                 ProductsViewModel(
                     app.container.inventoryRepository,
                     app.container.catalogRepository,
+                    app.container.openFoodFactsRepository,
                     inventoryId,
                     inventoryName,
                     app.container.reminderScheduler,
