@@ -5,8 +5,6 @@ import ch.mcfx.urs.auth.AuthTokenStore
 import ch.mcfx.urs.beer.BeerStats
 import ch.mcfx.urs.data.local.NoteDao
 import ch.mcfx.urs.data.local.NoteEntity
-import ch.mcfx.urs.data.local.NoteTagDao
-import ch.mcfx.urs.data.local.NoteTagEntity
 import ch.mcfx.urs.data.local.NoteWithTags
 import ch.mcfx.urs.data.local.OutboxDao
 import ch.mcfx.urs.data.local.OutboxMutationEntity
@@ -15,6 +13,8 @@ import ch.mcfx.urs.data.local.OutboxNoteDeletePayload
 import ch.mcfx.urs.data.local.OutboxNoteStatusPayload
 import ch.mcfx.urs.data.local.OutboxNoteUpdatePayload
 import ch.mcfx.urs.data.local.SyncStatus
+import ch.mcfx.urs.data.local.TagDao
+import ch.mcfx.urs.data.local.TagEntity
 import ch.mcfx.urs.data.local.localIdStandIn
 import ch.mcfx.urs.data.local.localNoteId
 import ch.mcfx.urs.data.local.publicId
@@ -43,7 +43,8 @@ class NoteRepository(
     private val context: Context,
     private val api: UrsApi,
     private val noteDao: NoteDao,
-    private val noteTagDao: NoteTagDao,
+    private val tagDao: TagDao,
+    private val tagRepository: TagRepository,
     private val outboxDao: OutboxDao,
     private val syncManager: SyncManager,
     private val tokenStore: AuthTokenStore,
@@ -62,9 +63,9 @@ class NoteRepository(
     /** Resolves a note's [publicId] (a real serverId, or a not-yet-synced stand-in) back to its stable local row id — same shape as `BakingRepository.resolveLocalPlanId`. */
     suspend fun resolveLocalNoteId(noteId: String): Long? = localNoteId(noteId) ?: noteDao.findLocalIdByServerId(noteId)
 
-    suspend fun getTags(localNoteId: Long): List<NoteTagEntity> = noteTagDao.getByNoteId(localNoteId)
+    suspend fun getTags(localNoteId: Long): List<TagEntity> = tagDao.getByNoteId(localNoteId)
 
-    suspend fun suggestTags(query: String): List<String> = noteTagDao.suggestTagNames(currentUserId(), query)
+    suspend fun suggestTags(query: String): List<String> = tagRepository.suggest(query)
 
     suspend fun createNote(title: String, content: String, reminderAtMillis: Long?, tags: List<String>) {
         val payload = OutboxNoteCreatePayload(title = title, content = content, reminderAtMillis = reminderAtMillis, tags = tags)
@@ -89,7 +90,7 @@ class NoteRepository(
         // Color unknown for a brand-new local-optimistic tag until the next
         // refreshFromBackend() pull resolves it - blank falls back to UrsPill's
         // own default styling, same as any other not-yet-synced placeholder.
-        noteTagDao.insertAll(tags.map { NoteTagEntity(noteId = localId, tagName = it, color = "") })
+        tagDao.insertAll(tags.map { TagEntity(noteId = localId, tagName = it, color = "") })
         reminderAtMillis?.let {
             NoteAlarmScheduler.scheduleNoteAlarm(context, alarmIdFor(localId), it, localIdStandIn(localId), title)
         }
@@ -100,7 +101,7 @@ class NoteRepository(
         val current = noteDao.getById(localId) ?: return
         noteDao.updateFields(localId, title, content, reminderAtMillis, SyncStatus.PENDING)
         // Same local-optimistic placeholder as createNote - corrected by the next refreshFromBackend() pull.
-        noteTagDao.replaceTags(localId, tags.map { NoteTagEntity(noteId = localId, tagName = it, color = "") })
+        tagDao.replaceNoteTags(localId, tags.map { TagEntity(noteId = localId, tagName = it, color = "") })
 
         NoteAlarmScheduler.cancel(context, alarmIdFor(localId))
         if (reminderAtMillis != null && current.status == STATUS_ACTIVE) {
@@ -131,7 +132,7 @@ class NoteRepository(
     suspend fun clearReminder(localId: Long) {
         val current = noteDao.getById(localId) ?: return
         if (current.reminderAtMillis == null) return
-        val tags = noteTagDao.getByNoteId(localId).map { it.tagName }
+        val tags = tagDao.getByNoteId(localId).map { it.tagName }
         updateNote(localId, current.title, current.content, reminderAtMillis = null, tags = tags)
     }
 
@@ -173,7 +174,7 @@ class NoteRepository(
         val current = noteDao.getById(localId) ?: return
         NoteAlarmScheduler.cancel(context, alarmIdFor(localId))
         current.outboxId?.let { outboxDao.delete(it) }
-        noteTagDao.deleteByNoteId(localId)
+        tagDao.deleteByNoteId(localId)
         noteDao.delete(localId)
 
         val serverId = current.serverId ?: return
@@ -222,7 +223,7 @@ class NoteRepository(
             api.getNotes().forEach { dto ->
                 val localId = noteDao.upsertFromServer(dto.toEntity(currentUserId()))
                 if (localId >= 0) {
-                    noteTagDao.replaceTags(localId, dto.tags.map { NoteTagEntity(noteId = localId, tagName = it.name, color = it.color) })
+                    tagDao.replaceNoteTags(localId, dto.tags.map { TagEntity(noteId = localId, tagName = it.name, color = it.color) })
                 }
             }
             true

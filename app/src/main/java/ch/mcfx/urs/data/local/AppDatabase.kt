@@ -27,7 +27,7 @@ import androidx.room.TypeConverters
         BakePlanEntity::class,
         BakePlanStepEntity::class,
         NoteEntity::class,
-        NoteTagEntity::class,
+        TagEntity::class,
         TrackerTypeEntity::class,
         TrackerEventEntity::class,
         AudioNoteEntity::class,
@@ -36,7 +36,6 @@ import androidx.room.TypeConverters
         KanbanColumnEntity::class,
         KanbanCardEntity::class,
         KanbanChecklistItemEntity::class,
-        KanbanCardTagEntity::class,
         TrackerDomainEntity::class,
     ],
     // Bumped for the isFullTank column on FillEntity, the life map
@@ -117,7 +116,11 @@ import androidx.room.TypeConverters
     //      destructive-fallback handling as every bump above.
     // v36: color column added to NoteTagEntity (GitHub issue #85) — same
     //      destructive-fallback handling as every bump above.
-    version = 36,
+    // v37: NoteTagEntity/KanbanCardTagEntity merged into one TagEntity
+    //      (table "tag", nullable noteId/cardId; mcfx-urs/urs-backend#11 —
+    //      Notes and Kanban now share one tag pool/color) — same
+    //      destructive-fallback handling as every bump above.
+    version = 37,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -141,7 +144,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun bakePlanDao(): BakePlanDao
     abstract fun bakePlanStepDao(): BakePlanStepDao
     abstract fun noteDao(): NoteDao
-    abstract fun noteTagDao(): NoteTagDao
+    abstract fun tagDao(): TagDao
     abstract fun trackerTypeDao(): TrackerTypeDao
     abstract fun trackerEventDao(): TrackerEventDao
     abstract fun audioNoteDao(): AudioNoteDao
@@ -150,6 +153,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun kanbanColumnDao(): KanbanColumnDao
     abstract fun kanbanCardDao(): KanbanCardDao
     abstract fun kanbanChecklistItemDao(): KanbanChecklistItemDao
-    abstract fun kanbanCardTagDao(): KanbanCardTagDao
     abstract fun trackerDomainDao(): TrackerDomainDao
 }

@@ -5,10 +5,10 @@ import androidx.room.PrimaryKey
 
 /**
  * One checklist item on a Kanban card — its own entity with full
- * create/update/delete outbox coverage, unlike [KanbanCardTagEntity]: the
+ * create/update/delete outbox coverage, unlike [TagEntity]: the
  * backend exposes independent checklist-item CRUD endpoints
  * (`POST/PUT/DELETE /kanban/checklist-item`), so this mirrors
- * [ListItemEntity] rather than [NoteTagEntity]. [cardId] holds the parent
+ * [ListItemEntity] rather than [TagEntity]. [cardId] holds the parent
  * [KanbanCardEntity.publicId] as it stood at creation time, resolved to the
  * real backend id at replay time same as [KanbanCardEntity.columnId].
  */

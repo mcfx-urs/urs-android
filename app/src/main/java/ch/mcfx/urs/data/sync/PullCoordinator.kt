@@ -10,6 +10,7 @@ import ch.mcfx.urs.data.LocationHistoryRepository
 import ch.mcfx.urs.data.NoteRepository
 import ch.mcfx.urs.data.ServiceRepository
 import ch.mcfx.urs.data.ShoppingListRepository
+import ch.mcfx.urs.data.TagRepository
 import ch.mcfx.urs.data.VehicleRepository
 import ch.mcfx.urs.data.WorkTimeRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -60,6 +61,7 @@ class PullCoordinator(
     private val noteRepository: NoteRepository,
     private val choreRepository: ChoreRepository,
     private val kanbanRepository: KanbanRepository,
+    private val tagRepository: TagRepository,
     private val syncStatusStore: SyncStatusStore,
 ) {
     // Guards against two pullAll() calls (e.g. a connectivity event and a
@@ -103,6 +105,7 @@ class PullCoordinator(
         pull("Note") { noteRepository.refreshFromBackend() }
         pull("Chore") { choreRepository.refreshFromBackend() }
         pull("Kanban") { kanbanRepository.refreshFromBackend() }
+        pull("Tag") { tagRepository.refreshFromBackend() }
 
         syncStatusStore.recordPullFinished(hadErrors = anyFailed)
         _phase.value = if (anyFailed) SyncPhase.IDLE_ERROR else SyncPhase.IDLE_OK

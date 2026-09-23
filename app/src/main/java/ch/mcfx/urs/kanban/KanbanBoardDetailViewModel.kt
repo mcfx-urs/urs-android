@@ -14,6 +14,7 @@ import ch.mcfx.urs.data.local.KanbanCardEntity
 import ch.mcfx.urs.data.local.KanbanChecklistItemEntity
 import ch.mcfx.urs.data.local.KanbanColumnEntity
 import ch.mcfx.urs.data.local.NoteEntity
+import ch.mcfx.urs.data.local.TagEntity
 import ch.mcfx.urs.data.local.publicId
 import java.time.LocalDate
 import kotlinx.coroutines.CancellationException
@@ -59,6 +60,10 @@ data class KanbanCardFormState(
     val priority: String = KanbanCardEntity.PRIORITY_MEDIUM,
     val linkedNoteId: String? = null,
     val tags: List<String> = emptyList(),
+    // Persisted tags' own colors, keyed by name (mcfx-urs/urs-backend#11) - a
+    // tag typed in this session but not yet saved has no entry, so its pill
+    // falls back to the editor's default styling until the card is saved.
+    val tagColors: Map<String, String> = emptyMap(),
     val tagInput: String = "",
     val tagSuggestions: List<String> = emptyList(),
     val checklistInput: String = "",
@@ -208,7 +213,7 @@ class KanbanBoardDetailViewModel(
         loadAvailableNotes()
     }
 
-    fun openCardEditor(card: KanbanCardEntity, tags: List<String>) {
+    fun openCardEditor(card: KanbanCardEntity, tags: List<TagEntity>) {
         _cardEditor.value = KanbanCardFormState(
             localId = card.id,
             columnId = card.columnId,
@@ -218,7 +223,8 @@ class KanbanBoardDetailViewModel(
             dueDate = card.dueDate ?: LocalDate.now().toString(),
             priority = card.priority,
             linkedNoteId = card.linkedNoteId,
-            tags = tags,
+            tags = tags.map { it.tagName },
+            tagColors = tags.associate { it.tagName to it.color },
         )
         loadAvailableNotes()
     }

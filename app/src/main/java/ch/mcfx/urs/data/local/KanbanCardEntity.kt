@@ -14,7 +14,7 @@ import androidx.room.PrimaryKey
  * [columnId] is — a card linking to a note that hasn't synced yet simply
  * keeps showing its stand-in until the note itself syncs and the card is
  * next edited, same "no eager cross-entity correction" tradeoff already
- * accepted for [NoteTagEntity].
+ * accepted for [TagEntity].
  */
 @Entity(tableName = "kanban_card")
 data class KanbanCardEntity(

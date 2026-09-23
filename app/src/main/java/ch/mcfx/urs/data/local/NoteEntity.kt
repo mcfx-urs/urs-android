@@ -44,5 +44,5 @@ fun localNoteId(value: String): Long? = parseLocalIdStandIn(value)
 data class NoteWithTags(
     @Embedded val note: NoteEntity,
     @Relation(parentColumn = "id", entityColumn = "noteId")
-    val tags: List<NoteTagEntity>,
+    val tags: List<TagEntity>,
 )

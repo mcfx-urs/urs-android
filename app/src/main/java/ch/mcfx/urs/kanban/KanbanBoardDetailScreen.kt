@@ -50,6 +50,7 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
+import ch.mcfx.urs.chores.parseChoreColor
 import ch.mcfx.urs.data.KanbanBoardDetail
 import ch.mcfx.urs.data.KanbanCardWithDetails
 import ch.mcfx.urs.data.KanbanColumnWithCards
@@ -335,7 +336,14 @@ private fun CardTileContent(cardWithDetails: KanbanCardWithDetails) {
             }
             if (cardWithDetails.tags.isNotEmpty()) {
                 Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                    cardWithDetails.tags.forEach { UrsPill(text = it) }
+                    cardWithDetails.tags.forEach { tag ->
+                        val color = tag.color.takeIf { it.isNotBlank() }?.let(::parseChoreColor)
+                        if (color != null) {
+                            UrsPill(text = tag.tagName, containerColor = color.copy(alpha = 0.15f), contentColor = color)
+                        } else {
+                            UrsPill(text = tag.tagName)
+                        }
+                    }
                 }
             }
             if (cardWithDetails.checklist.isNotEmpty()) {
@@ -617,7 +625,12 @@ private fun CardTagsEditor(form: KanbanCardFormState, viewModel: KanbanBoardDeta
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
                 form.tags.forEach { tag ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        UrsPill(text = tag)
+                        val color = form.tagColors[tag]?.takeIf { it.isNotBlank() }?.let(::parseChoreColor)
+                        if (color != null) {
+                            UrsPill(text = tag, containerColor = color.copy(alpha = 0.15f), contentColor = color)
+                        } else {
+                            UrsPill(text = tag)
+                        }
                         UrsIconButton(
                             onClick = { viewModel.removeCardTag(tag) },
                             contentDescription = stringResource(R.string.kanban_card_remove_tag, tag),

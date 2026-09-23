@@ -5,8 +5,6 @@ import ch.mcfx.urs.data.local.KanbanBoardDao
 import ch.mcfx.urs.data.local.KanbanBoardEntity
 import ch.mcfx.urs.data.local.KanbanCardDao
 import ch.mcfx.urs.data.local.KanbanCardEntity
-import ch.mcfx.urs.data.local.KanbanCardTagDao
-import ch.mcfx.urs.data.local.KanbanCardTagEntity
 import ch.mcfx.urs.data.local.KanbanChecklistItemDao
 import ch.mcfx.urs.data.local.KanbanChecklistItemEntity
 import ch.mcfx.urs.data.local.KanbanColumnDao
@@ -28,6 +26,8 @@ import ch.mcfx.urs.data.local.OutboxKanbanColumnPayload
 import ch.mcfx.urs.data.local.OutboxKanbanColumnUpdatePayload
 import ch.mcfx.urs.data.local.OutboxMutationEntity
 import ch.mcfx.urs.data.local.SyncStatus
+import ch.mcfx.urs.data.local.TagDao
+import ch.mcfx.urs.data.local.TagEntity
 import ch.mcfx.urs.data.local.localIdStandIn
 import ch.mcfx.urs.data.local.localKanbanBoardId
 import ch.mcfx.urs.data.local.publicId
@@ -56,7 +56,7 @@ import kotlinx.serialization.json.Json
 /** One card joined with its tags/checklist — what the board detail UI actually renders. */
 data class KanbanCardWithDetails(
     val card: KanbanCardEntity,
-    val tags: List<String>,
+    val tags: List<TagEntity>,
     val checklist: List<KanbanChecklistItemEntity>,
 )
 
@@ -91,7 +91,8 @@ class KanbanRepository(
     private val columnDao: KanbanColumnDao,
     private val cardDao: KanbanCardDao,
     private val checklistDao: KanbanChecklistItemDao,
-    private val tagDao: KanbanCardTagDao,
+    private val tagDao: TagDao,
+    private val tagRepository: TagRepository,
     private val outboxDao: OutboxDao,
     private val syncManager: SyncManager,
     private val applicationScope: CoroutineScope,
@@ -117,7 +118,7 @@ class KanbanRepository(
             columnDao.observeAll(),
             cardDao.observeAll(),
             checklistDao.observeAll(),
-            tagDao.observeAll(),
+            tagDao.observeAllCardTags(),
         ) { board, allColumns, allCards, allChecklist, allTags ->
             if (board == null) return@combine null
             val columns = allColumns.filter { it.boardId == board.publicId }.sortedBy { it.position }
@@ -132,7 +133,7 @@ class KanbanRepository(
                         cards = cardsByColumn[column.publicId].orEmpty().sortedBy { it.position }.map { card ->
                             KanbanCardWithDetails(
                                 card = card,
-                                tags = tagsByCard[card.id].orEmpty().map { it.tagName }.sorted(),
+                                tags = tagsByCard[card.id].orEmpty().sortedBy { it.tagName },
                                 checklist = checklistByCard[card.publicId].orEmpty().sortedBy { it.position },
                             )
                         },
@@ -323,9 +324,9 @@ class KanbanRepository(
         tagDao.deleteByCardId(card.id)
     }
 
-    suspend fun getTags(localCardId: Long): List<String> = tagDao.getByCardId(localCardId).map { it.tagName }
+    suspend fun getTags(localCardId: Long): List<TagEntity> = tagDao.getByCardId(localCardId)
 
-    suspend fun suggestTags(query: String): List<String> = tagDao.suggestTagNames(query)
+    suspend fun suggestTags(query: String): List<String> = tagRepository.suggest(query)
 
     suspend fun createCard(
         columnId: String,
@@ -354,7 +355,10 @@ class KanbanRepository(
                 dueDate = dueDate, priority = priority, linkedNoteId = linkedNoteId, syncStatus = SyncStatus.PENDING,
             ),
         )
-        tagDao.insertAll(tags.map { KanbanCardTagEntity(cardId = localId, tagName = it) })
+        // Color unknown for a brand-new local-optimistic tag until the next
+        // refreshFromBackend() pull resolves it - blank falls back to UrsPill's
+        // own default styling, same as NoteRepository.createNote's own tags.
+        tagDao.insertAll(tags.map { TagEntity(cardId = localId, tagName = it, color = "") })
         // Never yet synced — its own publicId is always the local stand-in
         // at this point, see KanbanCardEntity.publicId.
         dueDate?.let { scheduleCardReminder(localId, localIdStandIn(localId), it, title) }
@@ -374,7 +378,8 @@ class KanbanRepository(
         val current = cardDao.getById(localId) ?: return
         cardDao.updateFields(localId, title, description, dueDate, priority, linkedNoteId, SyncStatus.PENDING)
         tagDao.deleteByCardId(localId)
-        tagDao.insertAll(tags.map { KanbanCardTagEntity(cardId = localId, tagName = it) })
+        // Same local-optimistic placeholder as createCard - corrected by the next refreshFromBackend() pull.
+        tagDao.insertAll(tags.map { TagEntity(cardId = localId, tagName = it, color = "") })
 
         KanbanCardAlarmScheduler.cancel(context, alarmIdFor(localId))
         dueDate?.let { scheduleCardReminder(localId, current.publicId, it, title) }
@@ -542,7 +547,7 @@ class KanbanRepository(
                 cards.zip(resolvedLocalCardIds).forEach { (cardDto, localCardId) ->
                     checklistDao.upsertFromServer(cardDto.id, cardDto.checklist.map { it.toEntity() })
                     tagDao.deleteByCardId(localCardId)
-                    tagDao.insertAll(cardDto.tags.map { KanbanCardTagEntity(cardId = localCardId, tagName = it) })
+                    tagDao.insertAll(cardDto.tags.map { TagEntity(cardId = localCardId, tagName = it.name, color = it.color) })
                     rescheduleReminderFromServer(localCardId, cardDto)
                 }
             }

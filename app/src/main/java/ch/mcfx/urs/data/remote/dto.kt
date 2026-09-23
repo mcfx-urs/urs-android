@@ -780,10 +780,12 @@ data class BakePlanStepPatchPayload(
 )
 
 // Server-assigned and never changes once created (GitHub issue #85 /
-// mcfx-urs/urs-backend#7) - the client only ever sends a tag's name (see
-// NoteCreatePayload below), never a color.
+// mcfx-urs/urs-backend#7, extended to Kanban card tags by mcfx-urs/urs-backend#11
+// — Notes and Kanban now share one per-user tag pool/color) - the client
+// only ever sends a tag's name (see NoteCreatePayload/KanbanCardCreatePayload
+// below), never a color.
 @Serializable
-data class NoteTagDto(
+data class TagDto(
     val name: String,
     val color: String,
 )
@@ -797,7 +799,7 @@ data class NoteDto(
     @SerialName("note_reminder_at") val reminderAt: String = "",
     @SerialName("note_status") val status: String,
     @SerialName("note_completed_at") val completedAt: String = "",
-    val tags: List<NoteTagDto> = emptyList(),
+    val tags: List<TagDto> = emptyList(),
 )
 
 // Shared by POST /api/v1/note (create) and PUT /api/v1/note/{id} (update) —
@@ -933,7 +935,7 @@ data class KanbanCardDto(
     @SerialName("kanban_card_due_date") val dueDate: String = "",
     @SerialName("kanban_card_priority") val priority: String = "medium",
     @SerialName("kanban_card_index") val index: Int = 0,
-    val tags: List<String> = emptyList(),
+    val tags: List<TagDto> = emptyList(),
     val checklist: List<KanbanChecklistItemDto> = emptyList(),
     @SerialName("created_at") val createdAt: String = "",
     @SerialName("updated_at") val updatedAt: String = "",

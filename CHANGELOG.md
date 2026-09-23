@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- Notes and Kanban now share one tag pool and color per name (#90), matching the backend merge; tag-autocomplete in both features now comes from the new `GET /api/v1/tags` endpoint instead of only tags on already-loaded notes/cards. Kanban card tags now render in their assigned color, matching Notes.
+
 ### Fixed
 
 - Life Map: the capture drift reading no longer reports an interval mode switch as scheduling drift (#88)

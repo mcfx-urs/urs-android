@@ -427,6 +427,12 @@ interface UrsApi {
     @PUT("api/v1/kanban/checklist-item/{id}")
     suspend fun updateKanbanChecklistItem(@Path("id") id: String, @Body payload: KanbanChecklistItemUpdatePayload)
 
+    // Shared Notes/Kanban tag pool (mcfx-urs/urs-backend#11) — the user's
+    // full tag catalog, for autocomplete that isn't limited to tags already
+    // attached to already-fetched notes/cards.
+    @GET("api/v1/tags")
+    suspend fun getTags(): List<TagDto>
+
     @DELETE("api/v1/kanban/checklist-item/{id}")
     suspend fun deleteKanbanChecklistItem(@Path("id") id: String)
 

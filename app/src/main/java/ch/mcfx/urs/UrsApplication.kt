@@ -28,6 +28,7 @@ import ch.mcfx.urs.data.LocationHistoryRepository
 import ch.mcfx.urs.data.NoteRepository
 import ch.mcfx.urs.data.ServiceRepository
 import ch.mcfx.urs.data.ShoppingListRepository
+import ch.mcfx.urs.data.TagRepository
 import ch.mcfx.urs.data.VehicleRepository
 import ch.mcfx.urs.data.UserRepository
 import ch.mcfx.urs.data.WorkSettingsStore
@@ -425,11 +426,14 @@ class AppContainer(context: Context) {
         applicationScope = applicationScope,
         json = json,
     )
+    // Shared Notes/Kanban tag pool (mcfx-urs/urs-backend#11).
+    val tagRepository = TagRepository(api = ursApi)
     val noteRepository = NoteRepository(
         context = appContext,
         api = ursApi,
         noteDao = database.noteDao(),
-        noteTagDao = database.noteTagDao(),
+        tagDao = database.tagDao(),
+        tagRepository = tagRepository,
         outboxDao = database.outboxDao(),
         syncManager = syncManager,
         tokenStore = authTokenStore,
@@ -457,7 +461,8 @@ class AppContainer(context: Context) {
         columnDao = database.kanbanColumnDao(),
         cardDao = database.kanbanCardDao(),
         checklistDao = database.kanbanChecklistItemDao(),
-        tagDao = database.kanbanCardTagDao(),
+        tagDao = database.tagDao(),
+        tagRepository = tagRepository,
         outboxDao = database.outboxDao(),
         syncManager = syncManager,
         applicationScope = applicationScope,
@@ -480,6 +485,7 @@ class AppContainer(context: Context) {
         noteRepository = noteRepository,
         choreRepository = choreRepository,
         kanbanRepository = kanbanRepository,
+        tagRepository = tagRepository,
         syncStatusStore = syncStatusStore,
     )
 
