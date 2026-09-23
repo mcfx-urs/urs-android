@@ -23,6 +23,10 @@ data class FillEntity(
     // the backend's assigned filling_station_id once this fill syncs.
     val stationId: String? = null,
     val vehicleId: String,
+    // Set only on a container-to-vehicle transfer fill — the container
+    // vehicle this fill's fuel/price came from (see
+    // mcfx-urs/urs-android#87). Null for every ordinary fill.
+    val sourceVehicleId: String? = null,
     val fuelId: String,
     val date: String,
     val pricePerLiter: String,

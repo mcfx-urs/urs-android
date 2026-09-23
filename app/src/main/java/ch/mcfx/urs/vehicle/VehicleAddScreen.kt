@@ -28,6 +28,7 @@ import ch.mcfx.urs.R
 import ch.mcfx.urs.data.VehicleType
 import ch.mcfx.urs.data.remote.FuelDto
 import ch.mcfx.urs.ui.components.UrsButton
+import ch.mcfx.urs.ui.components.UrsCheckbox
 import ch.mcfx.urs.ui.components.UrsDateField
 import ch.mcfx.urs.ui.components.UrsDropdownField
 import ch.mcfx.urs.ui.components.UrsProgressIndicator
@@ -140,6 +141,17 @@ private fun VehicleForm(form: VehicleFormState, fuelTypes: List<FuelDto>, viewMo
             onSelect = viewModel::setVehicleType,
             modifier = Modifier.fillMaxWidth(),
         )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            UrsText(stringResource(R.string.vehicle_is_container), style = UrsTheme.typography.body)
+            UrsCheckbox(
+                checked = form.isContainer,
+                onCheckedChange = viewModel::setIsContainer,
+            )
+        }
         UrsTextField(
             value = form.engineCode,
             onValueChange = viewModel::setEngineCode,

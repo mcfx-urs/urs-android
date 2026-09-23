@@ -72,7 +72,12 @@ class FuelStatsViewModel(
                 // Start scoped to the default vehicle rather than "All
                 // vehicles"; the user can still widen it via the dropdown.
                 runCatching { userRepository.refreshDefaultVehicleId() }
-                val defaultVehicleId = resolveDefaultVehicleId(userRepository.defaultVehicleId.value, vehicles.map { it.id })
+                // A container is never a plausible fallback default — it has
+                // no odometer/consumption meaning (mcfx-urs/urs-android#87).
+                val defaultVehicleId = resolveDefaultVehicleId(
+                    userRepository.defaultVehicleId.value,
+                    vehicles.filterNot { it.isContainer == "1" }.map { it.id },
+                )
                 _uiState.update { it.copy(vehicles = vehicles, selectedVehicleId = defaultVehicleId) }
                 recompute()
             } catch (e: CancellationException) {

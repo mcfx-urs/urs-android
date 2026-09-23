@@ -38,7 +38,9 @@ class FuelHubViewModel(
         val ordered = vehicles.sortedBy { it.id.toIntOrNull() ?: Int.MAX_VALUE }
         FuelHubUiState(
             vehicles = ordered,
-            defaultVehicleId = resolveDefaultVehicleId(preferredId, ordered.map { it.id }),
+            // A container is never a plausible fallback default — it has no
+            // odometer/consumption meaning (mcfx-urs/urs-android#87).
+            defaultVehicleId = resolveDefaultVehicleId(preferredId, ordered.filterNot { it.isContainer }.map { it.id }),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FuelHubUiState())
 

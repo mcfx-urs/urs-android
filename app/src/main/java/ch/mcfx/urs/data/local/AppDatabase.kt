@@ -120,7 +120,11 @@ import androidx.room.TypeConverters
     //      (table "tag", nullable noteId/cardId; mcfx-urs/urs-backend#11 —
     //      Notes and Kanban now share one tag pool/color) — same
     //      destructive-fallback handling as every bump above.
-    version = 37,
+    // v38: isContainer column added to VehicleEntity; sourceVehicleId column
+    //      added to FillEntity (mcfx-urs/urs-android#87, fuel container
+    //      tracking) — same destructive-fallback handling as every bump
+    //      above.
+    version = 38,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)

@@ -85,4 +85,5 @@ fun VehicleDto.toEntity() = VehicleEntity(
     weightKg = weightKg.ifBlank { null },
     firstRegistrationDate = firstRegistrationDate.ifBlank { null },
     lastMfkDate = lastMfkDate.ifBlank { null },
+    isContainer = isContainer == "1",
 )

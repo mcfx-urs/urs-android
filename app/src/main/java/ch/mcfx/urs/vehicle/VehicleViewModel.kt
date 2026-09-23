@@ -54,6 +54,9 @@ data class VehicleFormState(
     val weightKg: String = "",
     val firstRegistrationDate: String = "",
     val lastMfkDate: String = "",
+    // A container has no odometer/consumption meaning — see
+    // mcfx-urs/urs-android#87.
+    val isContainer: Boolean = false,
     val submitting: Boolean = false,
     val submitFailure: VehicleFailure = VehicleFailure.NONE,
 ) {
@@ -141,6 +144,7 @@ class VehicleViewModel(
                 weightKg = vehicle.weightKg.orEmpty(),
                 firstRegistrationDate = vehicle.firstRegistrationDate.orEmpty(),
                 lastMfkDate = vehicle.lastMfkDate.orEmpty(),
+                isContainer = vehicle.isContainer,
             )
             _showForm.value = true
         }
@@ -203,6 +207,7 @@ class VehicleViewModel(
     fun setWeightKg(value: String) = _formState.update { it.copy(weightKg = value) }
     fun setFirstRegistrationDate(value: String) = _formState.update { it.copy(firstRegistrationDate = value) }
     fun setLastMfkDate(value: String) = _formState.update { it.copy(lastMfkDate = value) }
+    fun setIsContainer(value: Boolean) = _formState.update { it.copy(isContainer = value) }
 
     fun submit() {
         val form = _formState.value
@@ -225,6 +230,7 @@ class VehicleViewModel(
             weightKg = form.weightKg,
             firstRegistrationDate = form.firstRegistrationDate,
             lastMfkDate = form.lastMfkDate,
+            isContainer = if (form.isContainer) "1" else "0",
         )
 
         viewModelScope.launch {

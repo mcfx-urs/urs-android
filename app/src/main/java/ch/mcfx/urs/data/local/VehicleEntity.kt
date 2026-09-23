@@ -31,4 +31,8 @@ data class VehicleEntity(
     val weightKg: String? = null,
     val firstRegistrationDate: String? = null,
     val lastMfkDate: String? = null,
+    // A pseudo-vehicle representing a portable fuel container (e.g. a
+    // jerry can) — no odometer/consumption meaning, can be named as a
+    // transfer fill's sourceVehicleId (see mcfx-urs/urs-android#87).
+    val isContainer: Boolean = false,
 )

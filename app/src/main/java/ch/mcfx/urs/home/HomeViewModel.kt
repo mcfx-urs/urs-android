@@ -170,7 +170,9 @@ class HomeViewModel(
             // blended figure across the whole fleet — meaningless when the
             // vehicles run on different fuels.
             runCatching { userRepository.refreshDefaultVehicleId() }
-            val vehicleIds = runCatching { vehicleRepository.observeVehicles().first().map { it.id } }
+            // A container is never a plausible fallback default — it has no
+            // odometer/consumption meaning (mcfx-urs/urs-android#87).
+            val vehicleIds = runCatching { vehicleRepository.observeVehicles().first().filterNot { it.isContainer }.map { it.id } }
                 .getOrDefault(emptyList())
             val defaultVehicleId = resolveDefaultVehicleId(userRepository.defaultVehicleId.value, vehicleIds)
             _uiState.value = HomeUiState(

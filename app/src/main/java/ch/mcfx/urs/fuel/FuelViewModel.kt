@@ -57,6 +57,12 @@ data class FillFormState(
     // branch (see FuelRepository.updateFill).
     val editingIsSynced: Boolean = false,
     val vehicle: VehicleEntity? = null,
+    // Set only when this fill is (or was originally created as) a
+    // container-to-vehicle transfer — see mcfx-urs/urs-android#87. Not
+    // settable from this generic form (only TransferAddScreen creates one);
+    // carried through unchanged so re-saving an existing transfer via this
+    // edit form doesn't need a station.
+    val sourceVehicleId: String? = null,
     val station: FillingStationEntity? = null,
     // Mutually exclusive with `station`: either a known station is picked,
     // or GPS coordinates are captured for an ad-hoc stop — never both.
@@ -91,7 +97,7 @@ data class FillFormState(
 
     val isValid: Boolean
         get() = vehicle != null &&
-            (station != null || (gpsLatitude != null && gpsLongitude != null)) &&
+            (station != null || (gpsLatitude != null && gpsLongitude != null) || sourceVehicleId != null) &&
             odometer.toFloatOrNull() != null &&
             pricePerLiter.toFloatOrNull() != null &&
             liters.toFloatOrNull() != null
@@ -150,7 +156,10 @@ class FuelViewModel(
         viewModelScope.launch {
             runCatching { userRepository.refreshDefaultVehicleId() }
             val vehicles = repository.observeVehicles().first()
-            val defaultVehicleId = resolveDefaultVehicleId(userRepository.defaultVehicleId.value, vehicles.map { it.id })
+            // A container is never a plausible fallback default — it has no
+            // odometer/consumption meaning (mcfx-urs/urs-android#87).
+            val defaultVehicleId =
+                resolveDefaultVehicleId(userRepository.defaultVehicleId.value, vehicles.filterNot { it.isContainer }.map { it.id })
             val vehicle = vehicles.firstOrNull { it.id == defaultVehicleId } ?: return@launch
             if (_showForm.value && _formState.value.editingFillId == null && _formState.value.vehicle == null) {
                 selectVehicle(vehicle)
@@ -174,6 +183,7 @@ class FuelViewModel(
                 editingFillId = data.fill.id,
                 editingIsSynced = data.fill.serverId != null,
                 vehicle = data.vehicle,
+                sourceVehicleId = data.fill.sourceVehicleId,
                 station = data.station,
                 odometer = data.fill.odometer,
                 pricePerLiter = data.fill.pricePerLiter,
@@ -219,6 +229,14 @@ class FuelViewModel(
     }
 
     fun selectVehicle(vehicle: VehicleEntity) {
+        // A container has no odometer/consumption meaning — its own
+        // fill-up form hides the field entirely (see FuelAddScreen), so
+        // default it to a valid value here rather than leaving it blank
+        // (the backend's fill_odometer column is still NOT NULL).
+        if (vehicle.isContainer) {
+            _formState.update { it.copy(vehicle = vehicle, odometer = "0", lastOdometer = null) }
+            return
+        }
         _formState.update { it.copy(vehicle = vehicle, lastOdometer = null) }
         viewModelScope.launch {
             val last = try {
@@ -297,6 +315,7 @@ class FuelViewModel(
                         gpsLatitude = form.gpsLatitude,
                         gpsLongitude = form.gpsLongitude,
                         isFullTank = form.isFullTank,
+                        sourceVehicleId = form.sourceVehicleId,
                     )
                 } else {
                     repository.createFill(

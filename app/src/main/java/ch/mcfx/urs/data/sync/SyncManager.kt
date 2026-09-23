@@ -343,6 +343,7 @@ class SyncManager(
                 date = payload.date,
                 vehicleId = payload.vehicleId,
                 stationId = payload.stationId,
+                sourceVehicleId = payload.sourceVehicleId,
                 fuelId = payload.fuelId,
                 pricePerLiter = payload.pricePerLiter,
                 liters = payload.liters,
@@ -358,7 +359,12 @@ class SyncManager(
 
         fillDao.markSynced(localFill.id, response.id.toLongOrNull() ?: 0L, response.stationId)
 
-        if (payload.stationId == null) {
+        if (payload.sourceVehicleId != null) {
+            // Transfer fill: no station at all, known or ad-hoc — nothing to
+            // cache. Skip the ad-hoc/known-station bookkeeping below entirely
+            // rather than upserting a bogus station keyed by the backend's
+            // empty response.stationId.
+        } else if (payload.stationId == null) {
             // Ad-hoc station: it now exists server-side under
             // response.stationId — cache it locally (the backend itself
             // never surfaces gps_auto stations back through the picker
@@ -402,6 +408,7 @@ class SyncManager(
                 date = payload.date,
                 vehicleId = payload.vehicleId,
                 stationId = payload.stationId,
+                sourceVehicleId = payload.sourceVehicleId,
                 fuelId = payload.fuelId,
                 pricePerLiter = payload.pricePerLiter,
                 liters = payload.liters,

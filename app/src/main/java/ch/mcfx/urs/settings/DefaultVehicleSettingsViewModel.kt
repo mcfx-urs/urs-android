@@ -34,7 +34,11 @@ class DefaultVehicleSettingsViewModel(
         userRepository.defaultVehicleId,
     ) { vehicles, preferredId ->
         val ordered = vehicles.sortedBy { it.id.toIntOrNull() ?: Int.MAX_VALUE }
-        UiState(ordered, resolveDefaultVehicleId(preferredId, ordered.map { it.id }))
+        // A container is never a plausible fallback default — it has no
+        // odometer/consumption meaning (mcfx-urs/urs-android#87). The
+        // picker list itself (`ordered`) still shows every vehicle, so the
+        // owner can still explicitly pick one if they ever want to.
+        UiState(ordered, resolveDefaultVehicleId(preferredId, ordered.filterNot { it.isContainer }.map { it.id }))
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), UiState())
 
     init {

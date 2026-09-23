@@ -17,6 +17,10 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class OutboxFillPayload(
     val vehicleId: String,
+    // Set only on a container-to-vehicle transfer fill — when non-null,
+    // replay sends neither a known station nor GPS coordinates (see
+    // mcfx-urs/urs-android#87/mcfx-urs/urs-backend#9).
+    val sourceVehicleId: String? = null,
     val fuelId: String,
     val date: String,
     val odometer: String,
@@ -44,6 +48,7 @@ data class OutboxFillPayload(
 data class OutboxFillUpdatePayload(
     val serverId: String,
     val vehicleId: String,
+    val sourceVehicleId: String? = null,
     val fuelId: String,
     val date: String,
     val stationId: String,

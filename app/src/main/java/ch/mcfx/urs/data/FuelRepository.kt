@@ -152,6 +152,9 @@ class FuelRepository(
         gpsLatitude: String?,
         gpsLongitude: String?,
         isFullTank: Boolean,
+        // Set only on a container-to-vehicle transfer fill — see
+        // mcfx-urs/urs-android#87.
+        sourceVehicleId: String? = null,
     ) {
         val driven = lastOdometer
             ?.let { formatKm((odometer.toFloatOrNull() ?: 0f) - (it.toFloatOrNull() ?: 0f)) }
@@ -160,6 +163,7 @@ class FuelRepository(
 
         val payload = OutboxFillPayload(
             vehicleId = vehicle.id,
+            sourceVehicleId = sourceVehicleId,
             fuelId = vehicle.fuelId,
             date = fullDate,
             odometer = odometer,
@@ -186,6 +190,7 @@ class FuelRepository(
                 outboxId = outboxId,
                 stationId = station?.id,
                 vehicleId = vehicle.id,
+                sourceVehicleId = sourceVehicleId,
                 fuelId = vehicle.fuelId,
                 date = fullDate,
                 pricePerLiter = pricePerLiter,
@@ -239,6 +244,11 @@ class FuelRepository(
         gpsLatitude: String?,
         gpsLongitude: String?,
         isFullTank: Boolean,
+        // Set only on a container-to-vehicle transfer fill — see
+        // mcfx-urs/urs-android#87. A transfer fill needs no station, unlike
+        // the [station] requirement below the already-synced branch enforces
+        // for an ordinary fill.
+        sourceVehicleId: String? = null,
     ) {
         val current = fillDao.getById(localId) ?: return
         val fullDate = "$date 00:00:00"
@@ -246,6 +256,7 @@ class FuelRepository(
         val outboxId = if (current.serverId == null) {
             val payload = OutboxFillPayload(
                 vehicleId = vehicle.id,
+                sourceVehicleId = sourceVehicleId,
                 fuelId = vehicle.fuelId,
                 date = fullDate,
                 odometer = odometer,
@@ -261,11 +272,12 @@ class FuelRepository(
             current.outboxId?.let { outboxDao.updatePayload(it, json.encodeToString(payload)) }
             current.outboxId
         } else {
-            val stationId = station?.id ?: return
+            val stationId = station?.id ?: (if (sourceVehicleId != null) "" else return)
             current.outboxId?.let { outboxDao.delete(it) }
             val payload = OutboxFillUpdatePayload(
                 serverId = current.serverId.toString(),
                 vehicleId = vehicle.id,
+                sourceVehicleId = sourceVehicleId,
                 fuelId = vehicle.fuelId,
                 date = fullDate,
                 stationId = stationId,
@@ -285,7 +297,7 @@ class FuelRepository(
         }
 
         fillDao.updateFields(
-            localId, station?.id, fullDate, pricePerLiter, liters, odometer, isFullTank, currencyCode,
+            localId, station?.id, sourceVehicleId, fullDate, pricePerLiter, liters, odometer, isFullTank, currencyCode,
             SyncStatus.PENDING, outboxId,
         )
         applicationScope.launch { syncManager.syncNow() }
@@ -369,8 +381,9 @@ private fun FillingStationDto.toEntity() = FillingStationEntity(
 private fun FillDto.toEntity() = FillEntity(
     serverId = id.toLongOrNull(),
     outboxId = null,
-    stationId = stationId,
+    stationId = stationId.ifBlank { null },
     vehicleId = vehicleId,
+    sourceVehicleId = sourceVehicleId.ifBlank { null },
     fuelId = fuelId,
     date = date,
     pricePerLiter = pricePerLiter,

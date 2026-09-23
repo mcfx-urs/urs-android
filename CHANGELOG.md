@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Mark a vehicle as a fuel container (e.g. a jerry can) and pour fuel from it into a real vehicle's tank via a new "Transfer from Container" flow, with the cost computed automatically as a weighted-average price per liter from the container's own purchase/withdrawal history (#87)
+- Home screen's "New fill-up" tile has a direct shortcut badge to the Transfer flow, same as Shopping List/Inventory/Kanban's favorite-item badges (#87)
+- The Transfer flow shows the picked container's current computed stock (liters and average price per liter) once a source is selected (#87)
+
 ### Changed
 
 - Notes and Kanban now share one tag pool and color per name (#90), matching the backend merge; tag-autocomplete in both features now comes from the new `GET /api/v1/tags` endpoint instead of only tags on already-loaded notes/cards. Kanban card tags now render in their assigned color, matching Notes.

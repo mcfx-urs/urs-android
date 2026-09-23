@@ -243,16 +243,21 @@ private fun FillForm(
             }
         }
 
-        UrsTextField(
-            value = form.odometer,
-            onValueChange = viewModel::setOdometer,
-            label = stringResource(R.string.fill_odometer),
-            supportingText = form.lastOdometer?.let { stringResource(R.string.fill_last_odometer, it) },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-            keyboardActions = nextFieldAction,
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        // A container has no odometer/consumption meaning — its own
+        // "fill-up" is a container purchase, not a drivable-vehicle refuel
+        // (see mcfx-urs/urs-android#87).
+        if (form.vehicle?.isContainer != true) {
+            UrsTextField(
+                value = form.odometer,
+                onValueChange = viewModel::setOdometer,
+                label = stringResource(R.string.fill_odometer),
+                supportingText = form.lastOdometer?.let { stringResource(R.string.fill_last_odometer, it) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                keyboardActions = nextFieldAction,
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
 
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.m)) {
             UrsTextField(
@@ -275,16 +280,18 @@ private fun FillForm(
             )
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            UrsText(stringResource(R.string.fill_is_full_tank), style = UrsTheme.typography.body)
-            UrsCheckbox(
-                checked = form.isFullTank,
-                onCheckedChange = viewModel::setIsFullTank,
-            )
+        if (form.vehicle?.isContainer != true) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                UrsText(stringResource(R.string.fill_is_full_tank), style = UrsTheme.typography.body)
+                UrsCheckbox(
+                    checked = form.isFullTank,
+                    onCheckedChange = viewModel::setIsFullTank,
+                )
+            }
         }
 
         UrsDropdownField(

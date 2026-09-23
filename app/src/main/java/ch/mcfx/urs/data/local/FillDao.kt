@@ -52,13 +52,14 @@ interface FillDao {
     suspend fun markFailed(id: Long)
 
     @Query(
-        "UPDATE fill SET stationId = :stationId, date = :date, pricePerLiter = :pricePerLiter, " +
-            "liters = :liters, odometer = :odometer, isFullTank = :isFullTank, currencyCode = :currencyCode, " +
-            "syncStatus = :syncStatus, outboxId = :outboxId WHERE id = :id",
+        "UPDATE fill SET stationId = :stationId, sourceVehicleId = :sourceVehicleId, date = :date, " +
+            "pricePerLiter = :pricePerLiter, liters = :liters, odometer = :odometer, isFullTank = :isFullTank, " +
+            "currencyCode = :currencyCode, syncStatus = :syncStatus, outboxId = :outboxId WHERE id = :id",
     )
     suspend fun updateFields(
         id: Long,
         stationId: String?,
+        sourceVehicleId: String?,
         date: String,
         pricePerLiter: String,
         liters: String,

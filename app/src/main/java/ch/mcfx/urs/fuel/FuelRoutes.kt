@@ -14,6 +14,7 @@ object FuelRoutes {
     const val STATIONS_MAP = "fuel/stations/map"
     const val STATS = "fuel/stats"
     const val PRICE = "fuel/price"
+    const val TRANSFER = "fuel/transfer"
 
     fun edit(fillId: Long): String = "fuel/edit/$fillId"
 }

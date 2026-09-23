@@ -949,6 +949,10 @@ private fun HomeTileBody(
                 Destination.KANBAN.name -> favoriteBoards.map {
                     FavoriteBadgeItem(firstGlyph(it.name), IconCatalog.drawableFor(it.iconId), KanbanRoutes.boardDetail(it.publicId))
                 }
+                // A single static shortcut, not derived from favorited data
+                // like the three cases above — same badge mechanism, just
+                // one fixed target (mcfx-urs/urs-android#87).
+                NEW_FUEL_FILL_TILE_ID -> listOf(FavoriteBadgeItem("🛢️", null, FuelRoutes.TRANSFER))
                 else -> emptyList()
             }
             if (favorites.isNotEmpty()) {

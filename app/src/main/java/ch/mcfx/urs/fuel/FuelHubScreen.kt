@@ -48,6 +48,7 @@ private enum class FuelTile(val route: String, val labelRes: Int, val emoji: Str
     STATIONS(FuelRoutes.STATIONS, R.string.fuel_tile_stations, "⛽"),
     STATS(FuelRoutes.STATS, R.string.fuel_tile_stats, "📊"),
     PRICE(FuelRoutes.PRICE, R.string.fuel_tile_price, "💰"),
+    TRANSFER(FuelRoutes.TRANSFER, R.string.fuel_tile_transfer, "🛢️"),
 }
 
 @Composable

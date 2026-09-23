@@ -63,6 +63,7 @@ import ch.mcfx.urs.fuel.FuelStationMapScreen
 import ch.mcfx.urs.fuel.FuelStationsScreen
 import ch.mcfx.urs.fuel.FuelStatsScreen
 import ch.mcfx.urs.fuel.StationsViewModel
+import ch.mcfx.urs.fuel.TransferAddScreen
 import ch.mcfx.urs.home.HomeScreen
 import ch.mcfx.urs.data.local.publicId
 import kotlinx.coroutines.launch
@@ -342,6 +343,9 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                     composable(FuelRoutes.PRICE) {
                         FuelPriceAddScreen(onDone = { navController.popBackStack() })
                     }
+                    composable(FuelRoutes.TRANSFER) {
+                        TransferAddScreen(onDone = { navController.popBackStack() })
+                    }
                     composable(
                         route = Destination.INVENTORY.route,
                         // First deep-link target in the app (Issue #1) — a
@@ -575,6 +579,7 @@ private val FUEL_ROUTE_LABELS = mapOf(
     FuelRoutes.STATIONS_MAP to R.string.station_map_title,
     FuelRoutes.STATS to R.string.fuel_tile_stats,
     FuelRoutes.PRICE to R.string.fuel_tile_price,
+    FuelRoutes.TRANSFER to R.string.fuel_tile_transfer,
 )
 
 private val SETTINGS_ROUTE_LABELS = mapOf(

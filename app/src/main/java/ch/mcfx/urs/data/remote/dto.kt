@@ -26,6 +26,10 @@ data class VehicleDto(
     @SerialName("vehicle_weight_kg") val weightKg: String = "",
     @SerialName("vehicle_first_registration_date") val firstRegistrationDate: String = "",
     @SerialName("vehicle_last_mfk_date") val lastMfkDate: String = "",
+    // "1"/"0", same string-typed-boolean convention as fill_is_full_tank —
+    // a container (e.g. a jerry can) has no odometer/consumption meaning;
+    // see mcfx-urs/urs-backend#9.
+    @SerialName("is_container") val isContainer: String = "0",
 )
 
 // Used for both create (POST) and update (PUT) — the backend's Vehicle
@@ -49,6 +53,7 @@ data class VehiclePayload(
     @SerialName("vehicle_weight_kg") val weightKg: String = "",
     @SerialName("vehicle_first_registration_date") val firstRegistrationDate: String = "",
     @SerialName("vehicle_last_mfk_date") val lastMfkDate: String = "",
+    @SerialName("is_container") val isContainer: String = "0",
 )
 
 @Serializable
@@ -67,6 +72,9 @@ data class FillDto(
     @SerialName("fill_date") val date: String,
     @SerialName("fill_vehicle_id") val vehicleId: String,
     @SerialName("fill_station_id") val stationId: String,
+    // Non-empty only on a container-to-vehicle transfer fill — see
+    // mcfx-urs/urs-backend#9/mcfx-urs/urs-android#87.
+    @SerialName("fill_source_vehicle_id") val sourceVehicleId: String = "",
     @SerialName("fill_fuel_id") val fuelId: String,
     @SerialName("fill_price") val pricePerLiter: String,
     @SerialName("fill_amount") val liters: String,
@@ -111,8 +119,13 @@ data class FillPayload(
     @SerialName("fill_vehicle_id") val vehicleId: String,
     // Null/empty signals "create an ad-hoc station instead" — matches the
     // backend's own `FillStationID == ""` check — in which case
-    // [stationLatitude]/[stationLongitude] are required.
+    // [stationLatitude]/[stationLongitude] are required, unless
+    // [sourceVehicleId] is set (a transfer needs neither).
     @SerialName("fill_station_id") val stationId: String? = null,
+    // Set only on a container-to-vehicle transfer fill — the backend then
+    // skips the station/GPS requirement and never auto-records a fuel
+    // price from it (mcfx-urs/urs-backend#9).
+    @SerialName("fill_source_vehicle_id") val sourceVehicleId: String? = null,
     @SerialName("fill_fuel_id") val fuelId: String,
     @SerialName("fill_price") val pricePerLiter: String,
     @SerialName("fill_amount") val liters: String,
@@ -145,6 +158,7 @@ data class FillUpdatePayload(
     @SerialName("fill_date") val date: String,
     @SerialName("fill_vehicle_id") val vehicleId: String,
     @SerialName("fill_station_id") val stationId: String,
+    @SerialName("fill_source_vehicle_id") val sourceVehicleId: String? = null,
     @SerialName("fill_fuel_id") val fuelId: String,
     @SerialName("fill_price") val pricePerLiter: String,
     @SerialName("fill_amount") val liters: String,
@@ -157,6 +171,10 @@ data class FillUpdatePayload(
 data class FuelDto(
     @SerialName("fuel_id") val id: String,
     @SerialName("fuel_name") val name: String,
+    // "" = not set — converts a container transfer's weighed amount
+    // (before/after) into liters; see mcfx-urs/urs-backend#9. Read-only
+    // client-side today, no edit path in this app.
+    @SerialName("density_kg_per_liter") val densityKgPerLiter: String = "",
 )
 
 // Records a price observed at a known station, independent of a fill-up

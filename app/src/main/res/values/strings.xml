@@ -444,6 +444,7 @@
     <string name="vehicle_type_car">Car</string>
     <string name="vehicle_type_motorbike">Motorbike</string>
     <string name="vehicle_type_ebike">E-Bike</string>
+    <string name="vehicle_is_container">This is a fuel container (e.g. a jerry can)</string>
     <string name="vehicle_registration_document_section">Registration document</string>
     <string name="vehicle_engine_code">Engine code</string>
     <string name="vehicle_color">Color</string>
@@ -525,7 +526,16 @@
     <string name="fuel_tile_sync_now">Sync now</string>
     <string name="fuel_tile_syncing">Syncing…</string>
     <string name="fuel_tile_price">Record Fuel Price</string>
+    <string name="fuel_tile_transfer">Transfer from Container</string>
     <string name="fuel_default_vehicle_label">Default vehicle</string>
+    <string name="transfer_source">Container</string>
+    <string name="transfer_current_stock">Current stock: ≈ %1$s L (avg %2$s/L)</string>
+    <string name="transfer_destination">Into vehicle</string>
+    <string name="transfer_weight_before_kg">Weight before (kg)</string>
+    <string name="transfer_weight_after_kg">Weight after (kg)</string>
+    <string name="transfer_liters">≈ %1$s L</string>
+    <string name="transfer_no_containers">No container vehicles yet — add one first and mark it as a container.</string>
+    <string name="transfer_density_missing">This fuel type has no density set yet — liters can\'t be computed.</string>
     <string name="fill_add">New fill-up</string>
     <string name="fill_vehicle">Vehicle</string>
     <string name="fill_station">Filling station</string>
