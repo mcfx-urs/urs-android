@@ -876,6 +876,7 @@
     <string name="kanban_checklist_item_add">Add item</string>
     <string name="kanban_checklist_item_delete">Delete item</string>
     <string name="kanban_card_delete">Delete card</string>
+    <string name="kanban_card_mark_done">Done</string>
     <string name="kanban_card_alarm_body">Due today</string>
 
     <string name="assets_add_title">Add Asset</string>

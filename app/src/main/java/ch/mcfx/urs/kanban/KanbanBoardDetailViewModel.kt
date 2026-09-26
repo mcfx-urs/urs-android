@@ -313,6 +313,22 @@ class KanbanBoardDetailViewModel(
         }
     }
 
+    fun markCurrentCardDone() {
+        val localId = _cardEditor.value?.localId ?: return
+        val boardId = (uiState.value as? KanbanBoardDetailUiState.Data)?.detail?.board?.publicId ?: return
+        viewModelScope.launch {
+            _cardEditor.update { it?.copy(submitting = true, submitFailed = false) }
+            try {
+                repository.markCardDone(localId, boardId)
+                _cardEditor.value = null
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                _cardEditor.update { it?.copy(submitting = false, submitFailed = true) }
+            }
+        }
+    }
+
     fun deleteCurrentCard() {
         val localId = _cardEditor.value?.localId ?: return
         _cardEditor.value = null

@@ -443,6 +443,7 @@ private fun KanbanBoardDetailOverlays(
                 richTextState = richTextState,
                 viewModel = viewModel,
                 onRequestDelete = viewModel::deleteCurrentCard,
+                onRequestMarkDone = viewModel::markCurrentCardDone,
             )
         }
     }
@@ -517,6 +518,7 @@ private fun CardEditorSheet(
     richTextState: RichTextFieldState,
     viewModel: KanbanBoardDetailViewModel,
     onRequestDelete: () -> Unit,
+    onRequestMarkDone: () -> Unit,
 ) {
     val formScrollState = rememberScrollState()
     Column(
@@ -599,6 +601,12 @@ private fun CardEditorSheet(
         )
 
         if (form.isEditing) {
+            UrsOutlinedButton(
+                text = stringResource(R.string.kanban_card_mark_done),
+                onClick = onRequestMarkDone,
+                enabled = !form.submitting,
+                modifier = Modifier.fillMaxWidth(),
+            )
             UrsOutlinedButton(
                 text = stringResource(R.string.kanban_card_delete),
                 onClick = onRequestDelete,

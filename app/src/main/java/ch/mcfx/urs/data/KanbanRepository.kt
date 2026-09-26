@@ -438,6 +438,24 @@ class KanbanRepository(
         applicationScope.launch { syncManager.syncNow() }
     }
 
+    /**
+     * Online-only atomic action (mcfx-urs/urs-backend#14) — unlike every
+     * other Kanban write here, this isn't queued through the outbox: the
+     * server resolves/creates the "done" tag and the board's "Done" column
+     * itself, which can't be replayed meaningfully offline. Requires the
+     * card to already be synced; throws (caught by the caller, same as
+     * [updateCard]/[createCard]) if it isn't, or on any network failure.
+     * Refreshes the whole board from the response's board afterward rather
+     * than patching the affected card/tags/column locally by hand, since the
+     * "Done" column may not exist locally yet if the server just created it.
+     */
+    suspend fun markCardDone(localId: Long, boardId: String) {
+        val current = cardDao.getById(localId) ?: return
+        val serverId = current.serverId ?: error("card not yet synced")
+        api.markKanbanCardDone(serverId)
+        refreshBoard(boardId)
+    }
+
     /** Offline-first delete — same shape as [ShoppingListRepository.deleteItem], cascaded to checklist/tags/alarm first. */
     suspend fun deleteCard(localId: Long) {
         val current = cardDao.getById(localId) ?: return

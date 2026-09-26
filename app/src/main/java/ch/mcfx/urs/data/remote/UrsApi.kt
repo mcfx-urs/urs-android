@@ -428,6 +428,9 @@ interface UrsApi {
     @DELETE("api/v1/kanban/card/{id}")
     suspend fun deleteKanbanCard(@Path("id") id: String)
 
+    @POST("api/v1/kanban/card/{id}/mark-done")
+    suspend fun markKanbanCardDone(@Path("id") id: String): KanbanCardDto
+
     @POST("api/v1/kanban/checklist-item")
     suspend fun createKanbanChecklistItem(@Body payload: KanbanChecklistItemCreatePayload): KanbanChecklistItemDto
 
