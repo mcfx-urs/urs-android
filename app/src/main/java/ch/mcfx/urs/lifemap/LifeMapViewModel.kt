@@ -27,7 +27,7 @@ import kotlinx.coroutines.launch
  * enough for a browsing filter, and avoids picking a timezone/day-of-month
  * convention nothing else here needs to care about.
  */
-enum class TimeRange(private val days: Long?) {
+enum class TimeRange(val days: Long?) {
     LAST_DAY(1),
     LAST_WEEK(7),
     LAST_MONTH(30),
@@ -54,6 +54,18 @@ sealed interface LifeMapRange {
 }
 
 /**
+ * Duration in days, or `null` for an unbounded range ([TimeRange.ALL]) —
+ * used to compare the currently selected range against the segment-chunking
+ * cutoff setting (GitHub issue #93): a [Custom] pick has no matching
+ * [TimeRange] of its own, so this derives its duration directly from its
+ * two millis bounds instead.
+ */
+fun LifeMapRange.durationDays(): Long? = when (this) {
+    is LifeMapRange.Preset -> range.days
+    is LifeMapRange.Custom -> (toMillis - fromMillis) / (24 * 60 * 60 * 1000L)
+}
+
+/**
  * [points] bundled together with the exact [range] they were queried for —
  * never exposed as two independently-updating StateFlows. [selectedRange]
  * (below) updates the instant the user picks a new range, so the dropdown
@@ -75,8 +87,20 @@ sealed interface LifeMapRange {
  */
 data class LifeMapPointsState(val range: LifeMapRange, val points: List<LocationHistoryEntity>)
 
-/** Track rendering options, read from [LocationHistorySettingsStore] when the screen opens. */
-data class TrackStyle(val gradientStops: List<Int>, val haloEnabled: Boolean)
+/**
+ * Track rendering options, read from [LocationHistorySettingsStore] when the
+ * screen opens. [segmentChunkingCutoffDays]/[maxGradientChunksPerSegment]/
+ * [minGradientChunkMeters] configure the gradient sub-chunking (GitHub issue
+ * #93) — `null` cutoff days means [TimeRange.ALL], which never disables
+ * sub-chunking regardless of the selected range.
+ */
+data class TrackStyle(
+    val gradientStops: List<Int>,
+    val haloEnabled: Boolean,
+    val segmentChunkingCutoffDays: Long?,
+    val maxGradientChunksPerSegment: Int,
+    val minGradientChunkMeters: Double,
+)
 
 /** Oldest-point brightness as a fraction of the base colour's own value — never fully black unless the base colour itself is. */
 private const val INTENSITY_MIN_VALUE_FRACTION = 0.25f
@@ -120,6 +144,9 @@ class LifeMapViewModel(
             GradientMode.INTENSITY -> intensityGradientStops(settingsStore.trackColors().last())
         },
         haloEnabled = settingsStore.isTrackHaloEnabled(),
+        segmentChunkingCutoffDays = settingsStore.segmentChunkingCutoff().days,
+        maxGradientChunksPerSegment = settingsStore.maxGradientChunksPerSegment(),
+        minGradientChunkMeters = settingsStore.minGradientChunkMeters().toDouble(),
     )
 
     private val _mutedMap = MutableStateFlow(settingsStore.isMutedMap())

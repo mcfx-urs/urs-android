@@ -16,6 +16,7 @@ import ch.mcfx.urs.location.LocationCaptureScheduler
 import ch.mcfx.urs.location.LocationGeofenceManager
 import ch.mcfx.urs.location.LocationHistorySettingsStore
 import ch.mcfx.urs.location.hasActivityRecognitionPermission
+import ch.mcfx.urs.lifemap.TimeRange
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -49,6 +50,15 @@ class LocationHistorySettingsViewModel(
 
     private val _trackHaloEnabled = MutableStateFlow(settingsStore.isTrackHaloEnabled())
     val trackHaloEnabled: StateFlow<Boolean> = _trackHaloEnabled.asStateFlow()
+
+    private val _segmentChunkingCutoff = MutableStateFlow(settingsStore.segmentChunkingCutoff())
+    val segmentChunkingCutoff: StateFlow<TimeRange> = _segmentChunkingCutoff.asStateFlow()
+
+    private val _maxGradientChunksPerSegment = MutableStateFlow(settingsStore.maxGradientChunksPerSegment())
+    val maxGradientChunksPerSegment: StateFlow<Int> = _maxGradientChunksPerSegment.asStateFlow()
+
+    private val _minGradientChunkMeters = MutableStateFlow(settingsStore.minGradientChunkMeters())
+    val minGradientChunkMeters: StateFlow<Long> = _minGradientChunkMeters.asStateFlow()
 
     private val _geofenceAdaptiveEnabled = MutableStateFlow(settingsStore.isGeofenceAdaptiveEnabled())
     val geofenceAdaptiveEnabled: StateFlow<Boolean> = _geofenceAdaptiveEnabled.asStateFlow()
@@ -200,6 +210,21 @@ class LocationHistorySettingsViewModel(
     fun setTrackHaloEnabled(enabled: Boolean) {
         settingsStore.setTrackHaloEnabled(enabled)
         _trackHaloEnabled.value = enabled
+    }
+
+    fun setSegmentChunkingCutoff(range: TimeRange) {
+        settingsStore.setSegmentChunkingCutoff(range)
+        _segmentChunkingCutoff.value = range
+    }
+
+    fun setMaxGradientChunksPerSegment(count: Int) {
+        settingsStore.setMaxGradientChunksPerSegment(count)
+        _maxGradientChunksPerSegment.value = count
+    }
+
+    fun setMinGradientChunkMeters(meters: Long) {
+        settingsStore.setMinGradientChunkMeters(meters)
+        _minGradientChunkMeters.value = meters
     }
 
     /**

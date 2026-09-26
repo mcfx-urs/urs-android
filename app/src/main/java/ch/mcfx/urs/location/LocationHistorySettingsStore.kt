@@ -1,6 +1,7 @@
 package ch.mcfx.urs.location
 
 import android.content.Context
+import ch.mcfx.urs.lifemap.TimeRange
 
 private const val PREFS_NAME = "location_history_prefs"
 private const val KEY_ENABLED = "enabled"
@@ -65,6 +66,15 @@ private const val KEY_TRACK_COLOR_NEW = "track_color_new"
 private const val KEY_TRACK_HALO_ENABLED = "track_halo_enabled"
 private const val KEY_MUTED_MAP = "muted_map"
 private const val KEY_GRADIENT_MODE = "gradient_mode"
+
+// Segment gradient sub-chunking (GitHub issue #93) — see LifeMapScreen.kt's
+// render loop for how these three combine.
+private const val KEY_SEGMENT_CHUNKING_CUTOFF = "segment_chunking_cutoff"
+private val DEFAULT_SEGMENT_CHUNKING_CUTOFF = TimeRange.LAST_WEEK
+private const val KEY_MAX_GRADIENT_CHUNKS_PER_SEGMENT = "max_gradient_chunks_per_segment"
+private const val DEFAULT_MAX_GRADIENT_CHUNKS_PER_SEGMENT = 30
+private const val KEY_MIN_GRADIENT_CHUNK_METERS = "min_gradient_chunk_meters"
+private const val DEFAULT_MIN_GRADIENT_CHUNK_METERS = 50L
 
 // Default life-map track gradient, oldest -> newest: cyan -> blue -> magenta.
 // Deliberately a hue family that OSM Carto's own road/label/landuse colours
@@ -157,6 +167,29 @@ class LocationHistorySettingsStore(context: Context) {
 
     fun setMutedMap(muted: Boolean) {
         prefs.edit().putBoolean(KEY_MUTED_MAP, muted).apply()
+    }
+
+    /** Gradient sub-chunking only applies while the selected Life Map range's duration is at or below this cutoff. */
+    fun segmentChunkingCutoff(): TimeRange =
+        prefs.getString(KEY_SEGMENT_CHUNKING_CUTOFF, null)?.let { name -> TimeRange.entries.find { it.name == name } }
+            ?: DEFAULT_SEGMENT_CHUNKING_CUTOFF
+
+    fun setSegmentChunkingCutoff(range: TimeRange) {
+        prefs.edit().putString(KEY_SEGMENT_CHUNKING_CUTOFF, range.name).apply()
+    }
+
+    /** Upper bound on how many pieces one real point-to-point segment can be split into. */
+    fun maxGradientChunksPerSegment(): Int = prefs.getInt(KEY_MAX_GRADIENT_CHUNKS_PER_SEGMENT, DEFAULT_MAX_GRADIENT_CHUNKS_PER_SEGMENT)
+
+    fun setMaxGradientChunksPerSegment(count: Int) {
+        prefs.edit().putInt(KEY_MAX_GRADIENT_CHUNKS_PER_SEGMENT, count).apply()
+    }
+
+    /** Below this length, a segment isn't split further. */
+    fun minGradientChunkMeters(): Long = prefs.getLong(KEY_MIN_GRADIENT_CHUNK_METERS, DEFAULT_MIN_GRADIENT_CHUNK_METERS)
+
+    fun setMinGradientChunkMeters(meters: Long) {
+        prefs.edit().putLong(KEY_MIN_GRADIENT_CHUNK_METERS, meters).apply()
     }
 
     // --- adaptive interval (GitHub issue #60) ---------------------------

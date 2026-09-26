@@ -47,6 +47,7 @@ import ch.mcfx.urs.R
 import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsCheckbox
 import ch.mcfx.urs.location.GradientMode
+import ch.mcfx.urs.lifemap.TimeRange
 import ch.mcfx.urs.ui.components.UrsColorWheelDialog
 import ch.mcfx.urs.ui.components.UrsDropdownField
 import ch.mcfx.urs.ui.components.UrsFilterChip
@@ -76,6 +77,8 @@ private val INTERVAL_OPTIONS_MINUTES = listOf(1L, 2L, 5L, 10L, 15L, 30L, 60L, 12
 private val STATIONARY_THRESHOLD_OPTIONS_METERS = listOf(0L, 10L, 25L, 50L, 100L, 250L)
 private val GEOFENCE_RADIUS_OPTIONS_METERS = listOf(50L, 100L, 150L, 200L, 300L, 500L)
 private val STILL_FALLBACK_OPTIONS_MINUTES = listOf(0L, 5L, 10L, 15L, 30L, 60L)
+private val MAX_GRADIENT_CHUNKS_OPTIONS = listOf(10, 15, 20, 30, 50, 75, 100)
+private val MIN_GRADIENT_CHUNK_METERS_OPTIONS = listOf(10L, 25L, 50L, 100L, 200L)
 
 @Composable
 fun LocationHistorySettingsScreen(
@@ -88,6 +91,9 @@ fun LocationHistorySettingsScreen(
     val trackColors by viewModel.trackColors.collectAsStateWithLifecycle()
     val gradientMode by viewModel.gradientMode.collectAsStateWithLifecycle()
     val trackHaloEnabled by viewModel.trackHaloEnabled.collectAsStateWithLifecycle()
+    val segmentChunkingCutoff by viewModel.segmentChunkingCutoff.collectAsStateWithLifecycle()
+    val maxGradientChunksPerSegment by viewModel.maxGradientChunksPerSegment.collectAsStateWithLifecycle()
+    val minGradientChunkMeters by viewModel.minGradientChunkMeters.collectAsStateWithLifecycle()
     var editingTrackStop by remember { mutableStateOf<Int?>(null) }
 
     val geofenceAdaptiveEnabled by viewModel.geofenceAdaptiveEnabled.collectAsStateWithLifecycle()
@@ -168,6 +174,35 @@ fun LocationHistorySettingsScreen(
     // 0 = pause; the rest reuse the same "every N min" phrasing as the
     // capture-interval dropdown above.
     val stillFallbackLabels = mapOf(0L to stringResource(R.string.location_history_still_fallback_pause)) + intervalLabels
+
+    // Same TimeRange labels the Life Map screen's own range dropdown uses
+    // (GitHub issue #93) — this is the same underlying concept, not a
+    // separately-worded duplicate.
+    val chunkingCutoffLabels = mapOf(
+        TimeRange.LAST_DAY to stringResource(R.string.life_map_range_last_day),
+        TimeRange.LAST_WEEK to stringResource(R.string.life_map_range_last_week),
+        TimeRange.LAST_MONTH to stringResource(R.string.life_map_range_last_month),
+        TimeRange.LAST_3_MONTHS to stringResource(R.string.life_map_range_last_3_months),
+        TimeRange.LAST_6_MONTHS to stringResource(R.string.life_map_range_last_6_months),
+        TimeRange.LAST_YEAR to stringResource(R.string.life_map_range_last_year),
+        TimeRange.ALL to stringResource(R.string.life_map_range_all),
+    )
+    val maxGradientChunksLabels = mapOf(
+        10 to stringResource(R.string.location_history_chunking_max_chunks_10),
+        15 to stringResource(R.string.location_history_chunking_max_chunks_15),
+        20 to stringResource(R.string.location_history_chunking_max_chunks_20),
+        30 to stringResource(R.string.location_history_chunking_max_chunks_30),
+        50 to stringResource(R.string.location_history_chunking_max_chunks_50),
+        75 to stringResource(R.string.location_history_chunking_max_chunks_75),
+        100 to stringResource(R.string.location_history_chunking_max_chunks_100),
+    )
+    val minGradientChunkMetersLabels = mapOf(
+        10L to stringResource(R.string.location_history_chunking_min_meters_10),
+        25L to stringResource(R.string.location_history_chunking_min_meters_25),
+        50L to stringResource(R.string.location_history_chunking_min_meters_50),
+        100L to stringResource(R.string.location_history_chunking_min_meters_100),
+        200L to stringResource(R.string.location_history_chunking_min_meters_200),
+    )
 
     val colors = UrsTheme.colors
 
@@ -450,6 +485,49 @@ fun LocationHistorySettingsScreen(
                     UrsText(stringResource(R.string.location_history_track_halo), style = UrsTheme.typography.body)
                     UrsCheckbox(checked = trackHaloEnabled, onCheckedChange = viewModel::setTrackHaloEnabled)
                 }
+            }
+        }
+
+        UrsText(
+            stringResource(R.string.location_history_chunking_section_title),
+            style = UrsTheme.typography.cardTitle,
+            modifier = Modifier.padding(top = Spacing.m),
+        )
+        UrsCard(
+            radius = Radius.row,
+            contentPadding = PaddingValues(horizontal = Spacing.l, vertical = 14.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
+                UrsText(
+                    stringResource(R.string.location_history_chunking_description),
+                    style = UrsTheme.typography.caption,
+                    color = colors.onSurfaceMuted,
+                )
+                UrsDropdownField(
+                    label = stringResource(R.string.location_history_chunking_cutoff_label),
+                    options = TimeRange.entries,
+                    selectedLabel = chunkingCutoffLabels[segmentChunkingCutoff],
+                    optionLabel = { chunkingCutoffLabels[it] ?: it.name },
+                    onSelect = viewModel::setSegmentChunkingCutoff,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                UrsDropdownField(
+                    label = stringResource(R.string.location_history_chunking_max_chunks_label),
+                    options = MAX_GRADIENT_CHUNKS_OPTIONS,
+                    selectedLabel = maxGradientChunksLabels[maxGradientChunksPerSegment],
+                    optionLabel = { maxGradientChunksLabels[it] ?: it.toString() },
+                    onSelect = viewModel::setMaxGradientChunksPerSegment,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                UrsDropdownField(
+                    label = stringResource(R.string.location_history_chunking_min_meters_label),
+                    options = MIN_GRADIENT_CHUNK_METERS_OPTIONS,
+                    selectedLabel = minGradientChunkMetersLabels[minGradientChunkMeters],
+                    optionLabel = { minGradientChunkMetersLabels[it] ?: it.toString() },
+                    onSelect = viewModel::setMinGradientChunkMeters,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
     }

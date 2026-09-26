@@ -71,23 +71,6 @@ private const val DEFAULT_ZOOM = 12.0
 /** Extra margin around the fitted points' bounding box so the outermost points don't sit flush against the screen edge. */
 private const val BOUNDING_BOX_PADDING_SCALE = 1.25f
 
-/**
- * Below this length, a segment isn't split further — no point paying for
- * sub-polylines the eye can't tell apart. Bounds how far the gradient
- * subdivision (below) can drive total overlay count up for closely-spaced
- * points, which already need no help (see the comment above the render loop).
- */
-private const val MIN_GRADIENT_CHUNK_METERS = 50.0
-
-/**
- * Upper bound on how many pieces one real (point-to-point) segment can be
- * split into, regardless of its length. Without this, a single very long
- * gap (long capture interval, or a stationary pause) could alone balloon the
- * overlay count into the thousands for no real gain — that stretch has no
- * actual GPS samples in it either way, just a straight-line interpolation.
- */
-private const val MAX_GRADIENT_CHUNKS_PER_SEGMENT = 30
-
 // "Muted" base-map filter: drop most of the tile colour and lift it toward
 // white, so a bright track sits clearly on top. Applied to osmdroid's tiles
 // overlay, no alternative tile provider needed.
@@ -201,6 +184,9 @@ fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewM
             haloEnabled = trackStyle.haloEnabled,
             haloColorArgb = haloColorArgb,
             muted = mutedMap,
+            segmentChunkingCutoffDays = trackStyle.segmentChunkingCutoffDays,
+            maxGradientChunksPerSegment = trackStyle.maxGradientChunksPerSegment,
+            minGradientChunkMeters = trackStyle.minGradientChunkMeters,
             modifier = Modifier.fillMaxSize(),
         )
 
@@ -421,6 +407,9 @@ private fun LifeMapView(
     haloEnabled: Boolean,
     haloColorArgb: Int,
     muted: Boolean,
+    segmentChunkingCutoffDays: Long?,
+    maxGradientChunksPerSegment: Int,
+    minGradientChunkMeters: Double,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -548,8 +537,8 @@ private fun LifeMapView(
             //
             // Each real (point-to-point) segment — points is already
             // ascending, per LocationHistoryDao.observeSince's ORDER BY
-            // capturedAt — is further split into MIN_GRADIENT_CHUNK_METERS-
-            // sized pieces (capped at MAX_GRADIENT_CHUNKS_PER_SEGMENT) so a
+            // capturedAt — is further split into minGradientChunkMeters-
+            // sized pieces (capped at maxGradientChunksPerSegment) so a
             // single long segment (sparse fixes, a big capture interval, a
             // stationary-pause gap) still shows a smooth ramp across its own
             // length instead of one flat block — that stretch has no real
@@ -557,6 +546,21 @@ private fun LifeMapView(
             // interpolation between the two real endpoints, not new data.
             // Falls back to point-count if every point sits at the same spot
             // (zero total distance) so the fraction never divides by zero.
+            //
+            // Sub-chunking only applies up to segmentChunkingCutoffDays
+            // (GitHub issue #93) — beyond it, one polyline per real segment
+            // is drawn instead, since the fine-grained smoothing is barely
+            // visible at the zoom level a long time range is typically
+            // viewed at, while the overlay count keeps growing with it.
+            // `null` cutoff days means TimeRange.ALL, which never disables
+            // sub-chunking; `null` current-range days (the range itself is
+            // ALL/unbounded) is always treated as beyond any finite cutoff.
+            val currentRangeDurationDays = selectedRange.durationDays()
+            val subChunkingEnabled = when {
+                segmentChunkingCutoffDays == null -> true
+                currentRangeDurationDays == null -> false
+                else -> currentRangeDurationDays <= segmentChunkingCutoffDays
+            }
             if (points.size >= 2) {
                 val lastIndex = points.size - 1
                 val segmentDistancesKm = (1 until points.size).map { i ->
@@ -572,11 +576,11 @@ private fun LifeMapView(
                     val segmentStartKm = cumulativeDistanceKm
                     cumulativeDistanceKm += segmentKm
 
-                    val chunkCount = if (totalDistanceKm <= 0.0) {
+                    val chunkCount = if (!subChunkingEnabled || totalDistanceKm <= 0.0) {
                         1
                     } else {
-                        ceil((segmentKm * 1000.0) / MIN_GRADIENT_CHUNK_METERS).toInt()
-                            .coerceIn(1, MAX_GRADIENT_CHUNKS_PER_SEGMENT)
+                        ceil((segmentKm * 1000.0) / minGradientChunkMeters).toInt()
+                            .coerceIn(1, maxGradientChunksPerSegment)
                     }
                     for (chunk in 1..chunkCount) {
                         val tStart = (chunk - 1).toDouble() / chunkCount
