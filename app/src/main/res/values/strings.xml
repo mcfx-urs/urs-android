@@ -657,6 +657,7 @@
     <string name="inventory_product_name">Product name</string>
     <string name="product_scan_barcode">Scan barcode</string>
     <string name="product_scanning">Scanning…</string>
+    <string name="product_barcode_not_found">Barcode not recognized — enter a product name to add it manually.</string>
     <string name="product_image_suggestions_title">Suggested images</string>
     <string name="product_image_suggestions_skip">Skip</string>
     <string name="inventory_product_not_tracked">–</string>

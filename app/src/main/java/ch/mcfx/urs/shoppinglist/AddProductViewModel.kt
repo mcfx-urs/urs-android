@@ -102,6 +102,14 @@ class AddProductViewModel(
     private val _scanning = MutableStateFlow(false)
     val scanning: StateFlow<Boolean> = _scanning.asStateFlow()
 
+    // Set when a scan resolves to neither a local/backend catalog match nor
+    // an Open Food Facts result — otherwise the screen silently falls back to
+    // whatever browse tab was showing before the scan, with no indication a
+    // scan happened at all (mcfx-urs/urs-android#101). Cleared as soon as the
+    // user acts on it (typing, adding, cancelling).
+    private val _barcodeNotFound = MutableStateFlow(false)
+    val barcodeNotFound: StateFlow<Boolean> = _barcodeNotFound.asStateFlow()
+
     // Image-suggestion step (mcfx-urs/urs-android#91 point 4) — only entered
     // from quickCreate() when the product being created came from a barcode
     // scan (_scannedBarcode != null); a plain manual quick-create (typed
@@ -153,6 +161,7 @@ class AddProductViewModel(
 
     fun setQuery(value: String) {
         _query.value = value
+        _barcodeNotFound.value = false
     }
 
     fun selectTab(tab: AddProductTab) {
@@ -183,6 +192,7 @@ class AddProductViewModel(
     fun selectResult(product: CatalogProductEntity) {
         _query.value = ""
         _scannedBarcode.value = null
+        _barcodeNotFound.value = false
         viewModelScope.launch {
             val localId = shoppingListRepository.addCatalogProduct(listId, product, note = null, quantity = null, onSale = false)
             _lastAdded.value = AddedFeedback(product.name, localId)
@@ -257,6 +267,7 @@ class AddProductViewModel(
                 }
                 _query.value = ""
                 _scannedBarcode.value = null
+                _barcodeNotFound.value = false
                 val localId = shoppingListRepository.addCatalogProduct(listId, product, note = null, quantity = null, onSale = false)
                 _lastAdded.value = AddedFeedback(product.name, localId)
             } catch (e: CancellationException) {
@@ -279,6 +290,7 @@ class AddProductViewModel(
      */
     fun onBarcodeScanned(barcode: String) {
         _scanning.value = true
+        _barcodeNotFound.value = false
         viewModelScope.launch {
             val existing = try {
                 catalogRepository.lookupByBarcode(barcode)
@@ -293,9 +305,16 @@ class AddProductViewModel(
                 return@launch
             }
             val offResult = openFoodFactsRepository.lookup(barcode)
-            _query.value = offResult?.name.orEmpty()
             _scannedBarcode.value = barcode
             _scanning.value = false
+            if (offResult != null) {
+                _query.value = offResult.name
+            } else {
+                // No local/backend match and no Open Food Facts match either —
+                // surface that explicitly instead of silently reverting to
+                // whatever browse tab was showing (mcfx-urs/urs-android#101).
+                _barcodeNotFound.value = true
+            }
         }
     }
 

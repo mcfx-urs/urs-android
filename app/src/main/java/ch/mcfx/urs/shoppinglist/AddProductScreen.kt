@@ -170,13 +170,19 @@ private fun BrowseMode(viewModel: AddProductViewModel, modifier: Modifier = Modi
     val quantityOnHand by viewModel.quantityOnHand.collectAsStateWithLifecycle()
     val quickCreating by viewModel.quickCreating.collectAsStateWithLifecycle()
     val scanning by viewModel.scanning.collectAsStateWithLifecycle()
+    val barcodeNotFound by viewModel.barcodeNotFound.collectAsStateWithLifecycle()
 
     val searchFocusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
     // Tapping "+" to open this picker should land the user straight in the
     // search field with the keyboard already up — one less tap before
     // typing, since searching is the single most common thing done here.
-    LaunchedEffect(Unit) {
+    // Re-requested whenever a scan finishes too (not just on first entry) —
+    // the scanner activity takes focus/keyboard away, and a scan that comes
+    // back with nothing to prefill needs the user typing right away, not
+    // landing on an unfocused, seemingly unchanged screen (mcfx-urs/urs-android#101).
+    LaunchedEffect(scanning) {
+        if (scanning) return@LaunchedEffect
         searchFocusRequester.requestFocus()
         keyboardController?.show()
     }
@@ -211,6 +217,14 @@ private fun BrowseMode(viewModel: AddProductViewModel, modifier: Modifier = Modi
             },
             modifier = Modifier.fillMaxWidth(),
         )
+
+        if (barcodeNotFound) {
+            UrsText(
+                stringResource(R.string.product_barcode_not_found),
+                style = UrsTheme.typography.body,
+                color = UrsTheme.colors.onSurfaceMuted,
+            )
+        }
 
         if (query.isBlank()) {
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
