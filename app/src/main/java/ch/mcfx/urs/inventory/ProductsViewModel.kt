@@ -29,12 +29,16 @@ import kotlinx.coroutines.launch
 data class InventoryProductTile(
     val product: InventoryProductEntity,
     val name: String,
+    val categoryName: String,
     val catalogImageId: Int?,
 )
 
+/** One category's tracked products, already sorted — same shape as Shopping List's `ShoppingListCategoryGroup`. */
+data class InventoryCategoryGroup(val categoryName: String, val products: List<InventoryProductTile>)
+
 sealed interface ProductsUiState {
     data object Loading : ProductsUiState
-    data class Data(val products: List<InventoryProductTile>) : ProductsUiState
+    data class Data(val groups: List<InventoryCategoryGroup>) : ProductsUiState
 }
 
 data class AddProductFormState(
@@ -45,6 +49,11 @@ data class AddProductFormState(
     // (mcfx-urs/urs-android#91). Null = this form wasn't opened via a scan.
     val scannedBarcode: String? = null,
     val scanning: Boolean = false,
+    // Set when a scan resolves to neither a local/backend catalog match nor
+    // an Open Food Facts result — otherwise the form gives no indication a
+    // scan happened at all (mcfx-urs/urs-android#101, same bug as Shopping
+    // List's own quick-create form).
+    val barcodeNotFound: Boolean = false,
 )
 
 // Long-press popup state: quantity + the two warning-color thresholds +
@@ -69,6 +78,7 @@ class ProductsViewModel(
     private val inventoryId: String,
     private val inventoryName: String,
     private val reminderScheduler: ReminderScheduler,
+    private val uncategorizedLabel: String,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ProductsUiState>(ProductsUiState.Loading)
@@ -114,12 +124,25 @@ class ProductsViewModel(
         viewModelScope.launch {
             combine(inventoryRepository.observeProducts(inventoryId), catalogRepository.observeAll()) { products, catalogProducts ->
                 val catalogById = catalogProducts.associateBy { it.id }
-                products
-                    .mapNotNull { product ->
-                        val catalog = catalogById[product.catalogProductId] ?: return@mapNotNull null
-                        InventoryProductTile(product = product, name = catalog.name, catalogImageId = catalog.catalogImageId)
+                val tiles = products.mapNotNull { product ->
+                    val catalog = catalogById[product.catalogProductId] ?: return@mapNotNull null
+                    InventoryProductTile(
+                        product = product,
+                        name = catalog.name,
+                        categoryName = catalog.categoryName,
+                        catalogImageId = catalog.catalogImageId,
+                    )
+                }
+                tiles
+                    .groupBy { it.categoryName.ifBlank { uncategorizedLabel } }
+                    .entries
+                    .sortedBy { it.key.alphabeticSortKey() }
+                    .map { (categoryName, groupTiles) ->
+                        InventoryCategoryGroup(
+                            categoryName = categoryName,
+                            products = groupTiles.sortedBy { it.name.alphabeticSortKey() },
+                        )
                     }
-                    .sortedBy { it.name.alphabeticSortKey() }
             }.collect { _uiState.value = ProductsUiState.Data(it) }
         }
         // collectLatest (not flatMapLatest) — same reasoning as
@@ -156,6 +179,7 @@ class ProductsViewModel(
 
     fun setQuery(value: String) {
         _query.value = value
+        _formState.update { it.copy(barcodeNotFound = false) }
     }
 
     /** Track an existing catalog product in this inventory — see [InventoryRepository.createProduct]'s dedup doc comment. */
@@ -240,7 +264,7 @@ class ProductsViewModel(
      * attached.
      */
     fun onBarcodeScanned(barcode: String) {
-        _formState.update { it.copy(scanning = true) }
+        _formState.update { it.copy(scanning = true, barcodeNotFound = false) }
         viewModelScope.launch {
             val existing = try {
                 catalogRepository.lookupByBarcode(barcode)
@@ -255,32 +279,13 @@ class ProductsViewModel(
                 return@launch
             }
             val offResult = openFoodFactsRepository.lookup(barcode)
-            _query.value = offResult?.name.orEmpty()
-            _formState.update { it.copy(scanning = false, scannedBarcode = barcode) }
+            if (offResult != null) {
+                _query.value = offResult.name
+            }
+            _formState.update {
+                it.copy(scanning = false, scannedBarcode = barcode, barcodeNotFound = offResult == null)
+            }
         }
-    }
-
-    fun increment(tile: InventoryProductTile) = adjustQuantity(tile, +1)
-
-    fun decrement(tile: InventoryProductTile) = adjustQuantity(tile, -1)
-
-    // null quantity means "not currently tracked" (paused) — a state below
-    // 0, not the same as it. Decrementing past 0 lands there; incrementing
-    // from there lands back on 0, not 1, so the stepper always moves by
-    // exactly one step in either direction (jumping straight to a specific
-    // number is what the long-press settings popup is for).
-    private fun adjustQuantity(tile: InventoryProductTile, delta: Int) {
-        val serverId = tile.product.serverId ?: return
-        val currentQuantity = tile.product.quantity
-        val newQuantity = when {
-            delta > 0 && currentQuantity == null -> 0
-            delta < 0 && currentQuantity == null -> return
-            delta < 0 && currentQuantity == 0 -> null
-            else -> (currentQuantity!! + delta).coerceAtLeast(0)
-        }
-        if (newQuantity == currentQuantity) return
-
-        persistQuantity(serverId, newQuantity)
     }
 
     private fun persistQuantity(serverId: String, newQuantity: Int?) {
@@ -295,14 +300,14 @@ class ProductsViewModel(
         }
     }
 
-    // +7/-7 quick-adjust in the settings sheet (weekly-batch products, e.g.
-    // medication prepared once a week) — independent of, and in addition to,
-    // the row's own −/+1 buttons above. Fixed step of 7 for every product,
-    // not configurable. Acts on (and updates) the sheet's own quantity
-    // field rather than the tile's live value, so it composes with a
-    // not-yet-submitted manual edit to that same field instead of
-    // discarding it.
-    fun adjustSettingsQuantityBySeven(delta: Int) {
+    // Quick-adjust buttons in the settings sheet (±1 for a single unit, ±7
+    // for weekly-batch products, e.g. medication prepared once a week) — the
+    // tile grid has no inline stepper of its own any more, this is the only
+    // way to adjust quantity by a fixed step. Acts on (and updates) the
+    // sheet's own quantity field rather than the tile's live value, so it
+    // composes with a not-yet-submitted manual edit to that same field
+    // instead of discarding it.
+    fun adjustSettingsQuantity(delta: Int) {
         val form = _settingsForm.value
         val serverId = form.product?.product?.serverId ?: return
         val newQuantity = ((form.quantity.toIntOrNull() ?: 0) + delta).coerceAtLeast(0)
@@ -322,6 +327,13 @@ class ProductsViewModel(
                 // Best-effort: the tile grid simply keeps showing the product if the delete failed server-side.
             }
         }
+    }
+
+    /** Delete action inside the settings sheet — the tile grid has no inline delete button any more. */
+    fun deleteSettingsProduct() {
+        val tile = _settingsForm.value.product ?: return
+        deleteProduct(tile)
+        _showSettings.value = false
     }
 
     // Long-press popup: quantity + thresholds + reminder, all for one
@@ -454,6 +466,7 @@ class ProductsViewModel(
         fun factory(
             inventoryId: String,
             inventoryName: String,
+            uncategorizedLabel: String,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as UrsApplication
@@ -464,6 +477,7 @@ class ProductsViewModel(
                     inventoryId,
                     inventoryName,
                     app.container.reminderScheduler,
+                    uncategorizedLabel,
                 )
             }
         }

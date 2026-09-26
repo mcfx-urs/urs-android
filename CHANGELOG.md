@@ -5,9 +5,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Inventory items are now grouped by category and shown as an image tile grid, matching Shopping List (#100)
+
 ### Fixed
 
 - Shopping List: scanning a barcode with no Open Food Facts match now clearly prompts for a manual product name instead of silently reverting to the browse tabs (#101)
+- Inventory: the same barcode-scan silent-failure fix, applied to its own add-product form (#101)
 
 ## [1.5.0] - 2026-09-26
 
