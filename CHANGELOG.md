@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-09-26
+
 ### Added
 
 - Life Map: the gradient segment-chunking cutoff, max pieces per segment, and minimum piece length are now configurable in Location History settings, and sub-chunking no longer applies once the selected time range exceeds the cutoff (#93)

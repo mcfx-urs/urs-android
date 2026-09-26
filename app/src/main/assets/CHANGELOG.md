@@ -5,6 +5,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-09-26
+
+### Added
+
+- Life Map: the gradient segment-chunking cutoff, max pieces per segment, and minimum piece length are now configurable in Location History settings, and sub-chunking no longer applies once the selected time range exceeds the cutoff (#93)
+- Life Map: new "Today" time range preset (midnight to now, local time), now the default when Life Map opens (#92)
+- Kanban: an optional default tag per column, applied automatically to a card created in it (#94)
+- Kanban: a "Done" button in the card detail sheet tags the card "done" and moves it into a "Done" column, creating it if needed (#95)
+
+### Fixed
+
+- Date picker now always starts the week on the device's actual region setting instead of always Sunday when App Language is set to English (#98)
+
 ## [1.4.0] - 2026-09-23
 
 ### Added
