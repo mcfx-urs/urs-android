@@ -13,6 +13,8 @@ import ch.mcfx.urs.data.local.LocationHistoryEntity
 import ch.mcfx.urs.location.GradientMode
 import ch.mcfx.urs.location.LocationHistorySettingsStore
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,9 +27,15 @@ import kotlinx.coroutines.launch
 /**
  * Approximate day-based windows rather than calendar-month arithmetic — good
  * enough for a browsing filter, and avoids picking a timezone/day-of-month
- * convention nothing else here needs to care about.
+ * convention nothing else here needs to care about. [TODAY] is the one
+ * exception (GitHub issue #92): a real calendar-day boundary (local midnight
+ * through now), not a rolling window — that's the whole point of the
+ * preset. [days] still holds 1 for it, the same upper bound as [LAST_DAY],
+ * so duration comparisons elsewhere (e.g. the segment-chunking cutoff,
+ * GitHub issue #93) stay meaningful.
  */
 enum class TimeRange(val days: Long?) {
+    TODAY(1),
     LAST_DAY(1),
     LAST_WEEK(7),
     LAST_MONTH(30),
@@ -37,7 +45,10 @@ enum class TimeRange(val days: Long?) {
     ALL(null),
     ;
 
-    fun toSinceMillis(): Long = days?.let { Instant.now().minus(it, ChronoUnit.DAYS).toEpochMilli() } ?: 0L
+    fun toSinceMillis(): Long = when (this) {
+        TODAY -> LocalDate.now(ZoneId.systemDefault()).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        else -> days?.let { Instant.now().minus(it, ChronoUnit.DAYS).toEpochMilli() } ?: 0L
+    }
 }
 
 /**
@@ -127,10 +138,10 @@ class LifeMapViewModel(
     private val settingsStore: LocationHistorySettingsStore,
 ) : ViewModel() {
 
-    private val _selectedRange = MutableStateFlow<LifeMapRange>(LifeMapRange.Preset(TimeRange.LAST_DAY))
+    private val _selectedRange = MutableStateFlow<LifeMapRange>(LifeMapRange.Preset(TimeRange.TODAY))
     val selectedRange: StateFlow<LifeMapRange> = _selectedRange.asStateFlow()
 
-    private val _pointsState = MutableStateFlow(LifeMapPointsState(LifeMapRange.Preset(TimeRange.LAST_DAY), emptyList()))
+    private val _pointsState = MutableStateFlow(LifeMapPointsState(LifeMapRange.Preset(TimeRange.TODAY), emptyList()))
     val pointsState: StateFlow<LifeMapPointsState> = _pointsState.asStateFlow()
 
     // Read once at construction — changing these lives in Location History

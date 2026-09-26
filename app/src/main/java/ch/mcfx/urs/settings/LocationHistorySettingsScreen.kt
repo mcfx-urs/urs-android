@@ -179,6 +179,7 @@ fun LocationHistorySettingsScreen(
     // (GitHub issue #93) — this is the same underlying concept, not a
     // separately-worded duplicate.
     val chunkingCutoffLabels = mapOf(
+        TimeRange.TODAY to stringResource(R.string.life_map_range_today),
         TimeRange.LAST_DAY to stringResource(R.string.life_map_range_last_day),
         TimeRange.LAST_WEEK to stringResource(R.string.life_map_range_last_week),
         TimeRange.LAST_MONTH to stringResource(R.string.life_map_range_last_month),

@@ -156,6 +156,7 @@ fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewM
     var toTimeOpenSignal by remember { mutableIntStateOf(0) }
 
     val rangeLabels = mapOf(
+        TimeRange.TODAY to stringResource(R.string.life_map_range_today),
         TimeRange.LAST_DAY to stringResource(R.string.life_map_range_last_day),
         TimeRange.LAST_WEEK to stringResource(R.string.life_map_range_last_week),
         TimeRange.LAST_MONTH to stringResource(R.string.life_map_range_last_month),
