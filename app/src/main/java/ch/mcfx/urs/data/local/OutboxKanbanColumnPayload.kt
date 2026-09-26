@@ -9,11 +9,11 @@ import kotlinx.serialization.Serializable
  * to the real id at replay time, same as [OutboxListItemPayload.listId].
  */
 @Serializable
-data class OutboxKanbanColumnPayload(val boardId: String, val name: String)
+data class OutboxKanbanColumnPayload(val boardId: String, val name: String, val defaultTagName: String? = null)
 
 /** Same shape as [OutboxKanbanBoardUpdatePayload]. */
 @Serializable
-data class OutboxKanbanColumnUpdatePayload(val serverId: String, val name: String)
+data class OutboxKanbanColumnUpdatePayload(val serverId: String, val name: String, val defaultTagName: String? = null)
 
 /**
  * Identifies its target by the column's stable local row id, not its

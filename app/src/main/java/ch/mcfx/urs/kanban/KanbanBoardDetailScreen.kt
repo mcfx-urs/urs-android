@@ -465,6 +465,13 @@ private fun ColumnForm(form: KanbanColumnFormState, viewModel: KanbanBoardDetail
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
+        UrsTextField(
+            value = form.defaultTagName,
+            onValueChange = viewModel::setColumnDefaultTagName,
+            label = stringResource(R.string.kanban_column_default_tag),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
         UrsButton(
             text = stringResource(if (form.submitting) R.string.saving else R.string.save),
             onClick = viewModel::submitColumnForm,

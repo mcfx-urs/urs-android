@@ -1213,7 +1213,9 @@ class SyncManager(
             outboxDao.markFailed(mutation.id, "parent board not yet synced")
             return false
         }
-        val response = api.createKanbanColumn(KanbanColumnCreatePayload(boardId = resolvedBoardId, name = payload.name))
+        val response = api.createKanbanColumn(
+            KanbanColumnCreatePayload(boardId = resolvedBoardId, name = payload.name, defaultTag = payload.defaultTagName ?: ""),
+        )
         kanbanColumnDao.markSynced(localColumn.id, response.id, resolvedBoardId)
         outboxDao.delete(mutation.id)
         return true
@@ -1224,7 +1226,9 @@ class SyncManager(
         try {
             api.renameKanbanColumn(
                 payload.serverId,
-                KanbanColumnRenamePayload(name = payload.name, updatedAt = mutation.createdAt.toUpdatedAtBasis()),
+                KanbanColumnRenamePayload(
+                    name = payload.name, defaultTag = payload.defaultTagName ?: "", updatedAt = mutation.createdAt.toUpdatedAtBasis(),
+                ),
             )
         } catch (e: HttpException) {
             if (e.code() != 409 && e.code() != 404) throw e

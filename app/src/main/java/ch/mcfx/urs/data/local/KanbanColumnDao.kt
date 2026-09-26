@@ -52,9 +52,9 @@ interface KanbanColumnDao {
     suspend fun deleteSyncedAbsentFromServer(boardId: String, serverIds: List<String>)
 
     @Query(
-        "UPDATE kanban_column SET name = :name, syncStatus = :syncStatus, outboxId = :outboxId WHERE id = :id",
+        "UPDATE kanban_column SET name = :name, defaultTagName = :defaultTagName, syncStatus = :syncStatus, outboxId = :outboxId WHERE id = :id",
     )
-    suspend fun updateFields(id: Long, name: String, syncStatus: SyncStatus, outboxId: Long?)
+    suspend fun updateFields(id: Long, name: String, defaultTagName: String?, syncStatus: SyncStatus, outboxId: Long?)
 
     @Query("UPDATE kanban_column SET position = :position WHERE id = :id")
     suspend fun updatePosition(id: Long, position: Int)

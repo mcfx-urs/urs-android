@@ -944,6 +944,7 @@ data class KanbanColumnDto(
     @SerialName("kanban_column_id") val id: String,
     @SerialName("kanban_column_board_id") val boardId: String,
     @SerialName("kanban_column_name") val name: String,
+    @SerialName("kanban_column_default_tag_name") val defaultTagName: String = "",
     @SerialName("kanban_column_index") val index: Int = 0,
     val cards: List<KanbanCardDto> = emptyList(),
     @SerialName("created_at") val createdAt: String = "",
@@ -983,10 +984,18 @@ data class KanbanBoardCreatePayload(val name: String)
 data class KanbanBoardRenamePayload(val name: String, @SerialName("updated_at") val updatedAt: String)
 
 @Serializable
-data class KanbanColumnCreatePayload(@SerialName("board_id") val boardId: String, val name: String)
+data class KanbanColumnCreatePayload(
+    @SerialName("board_id") val boardId: String,
+    val name: String,
+    @SerialName("default_tag") val defaultTag: String = "",
+)
 
 @Serializable
-data class KanbanColumnRenamePayload(val name: String, @SerialName("updated_at") val updatedAt: String)
+data class KanbanColumnRenamePayload(
+    val name: String,
+    @SerialName("default_tag") val defaultTag: String = "",
+    @SerialName("updated_at") val updatedAt: String,
+)
 
 @Serializable
 data class KanbanColumnMovePayload(val index: Int)

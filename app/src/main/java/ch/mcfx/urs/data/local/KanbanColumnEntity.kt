@@ -23,6 +23,9 @@ data class KanbanColumnEntity(
     val outboxId: Long? = null,
     val boardId: String,
     val name: String,
+    // Applied server-side to a new card created in this column
+    // (mcfx-urs/urs-backend#13) — null when unset.
+    val defaultTagName: String? = null,
     val position: Int,
     val syncStatus: SyncStatus,
 )

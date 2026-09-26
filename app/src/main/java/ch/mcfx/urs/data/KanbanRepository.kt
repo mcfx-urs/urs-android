@@ -212,9 +212,9 @@ class KanbanRepository(
         applicationScope.launch { syncManager.syncNow() }
     }
 
-    suspend fun createColumn(boardId: String, name: String) {
+    suspend fun createColumn(boardId: String, name: String, defaultTagName: String? = null) {
         val position = (columnDao.getByBoardId(boardId).maxOfOrNull { it.position } ?: -1) + 1
-        val payload = OutboxKanbanColumnPayload(boardId = boardId, name = name)
+        val payload = OutboxKanbanColumnPayload(boardId = boardId, name = name, defaultTagName = defaultTagName)
         val outboxId = outboxDao.insert(
             OutboxMutationEntity(
                 type = OutboxMutationEntity.TYPE_CREATE_KANBAN_COLUMN,
@@ -223,22 +223,25 @@ class KanbanRepository(
             ),
         )
         columnDao.upsert(
-            KanbanColumnEntity(outboxId = outboxId, boardId = boardId, name = name, position = position, syncStatus = SyncStatus.PENDING),
+            KanbanColumnEntity(
+                outboxId = outboxId, boardId = boardId, name = name, defaultTagName = defaultTagName,
+                position = position, syncStatus = SyncStatus.PENDING,
+            ),
         )
         applicationScope.launch { syncManager.syncNow() }
     }
 
     /** Offline-first rename — same shape as [renameBoard]. */
-    suspend fun renameColumn(localId: Long, name: String) {
+    suspend fun renameColumn(localId: Long, name: String, defaultTagName: String? = null) {
         val current = columnDao.getById(localId) ?: return
 
         val outboxId = if (current.serverId == null) {
-            val payload = OutboxKanbanColumnPayload(boardId = current.boardId, name = name)
+            val payload = OutboxKanbanColumnPayload(boardId = current.boardId, name = name, defaultTagName = defaultTagName)
             current.outboxId?.let { outboxDao.updatePayload(it, json.encodeToString(payload)) }
             current.outboxId
         } else {
             current.outboxId?.let { outboxDao.delete(it) }
-            val payload = OutboxKanbanColumnUpdatePayload(serverId = current.serverId, name = name)
+            val payload = OutboxKanbanColumnUpdatePayload(serverId = current.serverId, name = name, defaultTagName = defaultTagName)
             outboxDao.insert(
                 OutboxMutationEntity(
                     type = OutboxMutationEntity.TYPE_UPDATE_KANBAN_COLUMN,
@@ -248,7 +251,7 @@ class KanbanRepository(
             )
         }
 
-        columnDao.updateFields(localId, name, SyncStatus.PENDING, outboxId)
+        columnDao.updateFields(localId, name, defaultTagName, SyncStatus.PENDING, outboxId)
         applicationScope.launch { syncManager.syncNow() }
     }
 
@@ -622,7 +625,8 @@ private fun KanbanBoardDto.toEntity() = KanbanBoardEntity(serverId = id, outboxI
 private fun KanbanBoardDetailDto.toEntity() = KanbanBoardEntity(serverId = id, outboxId = null, name = name, syncStatus = SyncStatus.SYNCED)
 
 private fun KanbanColumnDto.toEntity() = KanbanColumnEntity(
-    serverId = id, outboxId = null, boardId = boardId, name = name, position = index, syncStatus = SyncStatus.SYNCED,
+    serverId = id, outboxId = null, boardId = boardId, name = name, defaultTagName = defaultTagName.ifBlank { null },
+    position = index, syncStatus = SyncStatus.SYNCED,
 )
 
 private fun KanbanCardDto.toEntity() = KanbanCardEntity(

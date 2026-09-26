@@ -853,6 +853,7 @@
     <string name="kanban_column_add">Add column</string>
     <string name="kanban_column_rename">Rename column</string>
     <string name="kanban_column_name">Column name</string>
+    <string name="kanban_column_default_tag">Default tag</string>
     <string name="kanban_column_delete">Delete column</string>
     <string name="kanban_column_not_empty">Move or delete this column\'s cards first.</string>
     <string name="kanban_card_add">Add card</string>

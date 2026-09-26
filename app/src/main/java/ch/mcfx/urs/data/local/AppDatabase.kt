@@ -130,7 +130,10 @@ import androidx.room.TypeConverters
     // v39: new AssetEntity/AssetComponentEntity/AssetCommentEntity tables
     //      (mcfx-urs/urs-android#89, personal-possession value tracking) —
     //      same destructive-fallback handling as every bump above.
-    version = 39,
+    // v40: defaultTagName column added to KanbanColumnEntity
+    //      (mcfx-urs/urs-android#94) — same destructive-fallback handling as
+    //      every bump above.
+    version = 40,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)

@@ -43,6 +43,9 @@ data class KanbanColumnFormState(
     // null = creating a new column; set = renaming this local row.
     val editingColumnId: Long? = null,
     val name: String = "",
+    // Applied server-side to a new card created in this column
+    // (mcfx-urs/urs-backend#13) — blank clears it.
+    val defaultTagName: String = "",
     val submitting: Boolean = false,
 ) {
     val isValid: Boolean get() = name.isNotBlank()
@@ -148,7 +151,9 @@ class KanbanBoardDetailViewModel(
     }
 
     fun openRenameColumnForm(column: KanbanColumnEntity) {
-        _columnFormState.value = KanbanColumnFormState(editingColumnId = column.id, name = column.name)
+        _columnFormState.value = KanbanColumnFormState(
+            editingColumnId = column.id, name = column.name, defaultTagName = column.defaultTagName ?: "",
+        )
         _actionSheetColumn.value = null
         _showColumnForm.value = true
     }
@@ -159,6 +164,8 @@ class KanbanBoardDetailViewModel(
 
     fun setColumnName(value: String) = _columnFormState.update { it.copy(name = value) }
 
+    fun setColumnDefaultTagName(value: String) = _columnFormState.update { it.copy(defaultTagName = value) }
+
     fun submitColumnForm() {
         val form = _columnFormState.value
         val boardId = (uiState.value as? KanbanBoardDetailUiState.Data)?.detail?.board?.publicId
@@ -168,10 +175,11 @@ class KanbanBoardDetailViewModel(
             _columnFormState.update { it.copy(submitting = true) }
             try {
                 val editingId = form.editingColumnId
+                val defaultTagName = form.defaultTagName.trim().ifBlank { null }
                 if (editingId != null) {
-                    repository.renameColumn(editingId, form.name.trim())
+                    repository.renameColumn(editingId, form.name.trim(), defaultTagName)
                 } else if (boardId != null) {
-                    repository.createColumn(boardId, form.name.trim())
+                    repository.createColumn(boardId, form.name.trim(), defaultTagName)
                 }
                 _showColumnForm.value = false
             } catch (e: CancellationException) {
