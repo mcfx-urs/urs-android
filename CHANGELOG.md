@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Date picker's week-start-day fix from v1.5.0 didn't actually take effect; now built via `DatePickerState`'s explicit-locale factory instead of patching Compose's ambient configuration (#98)
+
 ## [1.6.0] - 2026-09-27
 
 ### Added
