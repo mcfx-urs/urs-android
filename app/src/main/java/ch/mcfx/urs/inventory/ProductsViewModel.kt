@@ -11,6 +11,7 @@ import ch.mcfx.urs.data.CatalogRepository
 import ch.mcfx.urs.data.InventoryRepository
 import ch.mcfx.urs.data.OpenFoodFactsRepository
 import ch.mcfx.urs.data.alphabeticSortKey
+import ch.mcfx.urs.data.local.CatalogCategoryEntity
 import ch.mcfx.urs.data.local.CatalogProductEntity
 import ch.mcfx.urs.data.local.InventoryProductEntity
 import ch.mcfx.urs.data.remote.CatalogImageDto
@@ -18,10 +19,12 @@ import ch.mcfx.urs.notifications.NotificationChannels
 import ch.mcfx.urs.notifications.ReminderScheduler
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -54,6 +57,10 @@ data class AddProductFormState(
     // scan happened at all (mcfx-urs/urs-android#101, same bug as Shopping
     // List's own quick-create form).
     val barcodeNotFound: Boolean = false,
+    // Explicit category pick for the product about to be created
+    // (mcfx-urs/urs-android#115) — null creates it uncategorized, same as
+    // before this field existed.
+    val categoryId: String? = null,
 )
 
 // Long-press popup state: quantity + the two warning-color thresholds +
@@ -118,7 +125,14 @@ class ProductsViewModel(
     private val _images = MutableStateFlow<List<CatalogImageDto>>(emptyList())
     val images: StateFlow<List<CatalogImageDto>> = _images.asStateFlow()
 
+    // Category picker offered alongside the "type/scan a new product" form
+    // (mcfx-urs/urs-android#115) — same catalog-wide list Product
+    // Management's own picker uses.
+    val categories: StateFlow<List<CatalogCategoryEntity>> = catalogRepository.observeCategories()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     private var pendingCreateName: String? = null
+    private var pendingCreateCategoryId: String? = null
 
     init {
         viewModelScope.launch {
@@ -170,6 +184,7 @@ class ProductsViewModel(
         _results.value = emptyList()
         _imageSuggestionsOpen.value = false
         pendingCreateName = null
+        pendingCreateCategoryId = null
         _showForm.value = true
     }
 
@@ -180,6 +195,10 @@ class ProductsViewModel(
     fun setQuery(value: String) {
         _query.value = value
         _formState.update { it.copy(barcodeNotFound = false) }
+    }
+
+    fun setCategory(categoryId: String?) {
+        _formState.update { it.copy(categoryId = categoryId) }
     }
 
     /** Track an existing catalog product in this inventory — see [InventoryRepository.createProduct]'s dedup doc comment. */
@@ -207,6 +226,7 @@ class ProductsViewModel(
 
         if (form.scannedBarcode != null) {
             pendingCreateName = name
+            pendingCreateCategoryId = form.categoryId
             viewModelScope.launch {
                 _images.value = try {
                     catalogRepository.getImages()
@@ -219,28 +239,31 @@ class ProductsViewModel(
             }
             return
         }
-        performCreateAndTrack(name, barcode = null, imageId = null)
+        performCreateAndTrack(name, categoryId = form.categoryId, barcode = null, imageId = null)
     }
 
     /** Image-suggestion sheet's outcome — `imageId` null on "Skip", the picked [CatalogImageDto.id] otherwise. */
     fun confirmCreateAndTrackWithImage(imageId: String?) {
         val name = pendingCreateName ?: return
+        val categoryId = pendingCreateCategoryId
         _imageSuggestionsOpen.value = false
         pendingCreateName = null
-        performCreateAndTrack(name, barcode = _formState.value.scannedBarcode, imageId = imageId)
+        pendingCreateCategoryId = null
+        performCreateAndTrack(name, categoryId = categoryId, barcode = _formState.value.scannedBarcode, imageId = imageId)
     }
 
     /** Closes the image-suggestion sheet without creating anything — e.g. a back-press/scrim dismiss. */
     fun cancelImageSuggestions() {
         _imageSuggestionsOpen.value = false
         pendingCreateName = null
+        pendingCreateCategoryId = null
     }
 
-    private fun performCreateAndTrack(name: String, barcode: String?, imageId: String?) {
+    private fun performCreateAndTrack(name: String, categoryId: String?, barcode: String?, imageId: String?) {
         viewModelScope.launch {
             _formState.update { it.copy(submitting = true, submitFailed = false) }
             try {
-                val catalogProduct = catalogRepository.createProduct(name = name, catalogCategoryId = null, barcode = barcode)
+                val catalogProduct = catalogRepository.createProduct(name = name, catalogCategoryId = categoryId, barcode = barcode)
                 if (imageId != null) {
                     catalogRepository.updateProduct(catalogProduct.id, catalogProduct.name, catalogProduct.catalogCategoryId, imageId, barcode)
                 }

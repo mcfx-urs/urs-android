@@ -42,6 +42,7 @@ import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsCheckbox
 import ch.mcfx.urs.ui.components.UrsConfirmBar
+import ch.mcfx.urs.ui.components.UrsDropdownField
 import ch.mcfx.urs.ui.components.UrsFilterChip
 import ch.mcfx.urs.ui.components.UrsIconButton
 import ch.mcfx.urs.ui.components.UrsOutlinedButton
@@ -171,6 +172,7 @@ private fun BrowseMode(viewModel: AddProductViewModel, modifier: Modifier = Modi
     val quickCreating by viewModel.quickCreating.collectAsStateWithLifecycle()
     val scanning by viewModel.scanning.collectAsStateWithLifecycle()
     val barcodeNotFound by viewModel.barcodeNotFound.collectAsStateWithLifecycle()
+    val quickCreateCategoryId by viewModel.quickCreateCategoryId.collectAsStateWithLifecycle()
 
     val searchFocusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -268,6 +270,16 @@ private fun BrowseMode(viewModel: AddProductViewModel, modifier: Modifier = Modi
                         stringResource(R.string.shoppinglist_add_product_no_results),
                         color = UrsTheme.colors.onSurfaceMuted,
                         style = UrsTheme.typography.body,
+                    )
+                    val quickCreateCategory = categories.find { it.id == quickCreateCategoryId }
+                    val noCategoryLabel = stringResource(R.string.product_management_no_category)
+                    UrsDropdownField(
+                        label = stringResource(R.string.product_management_category_label),
+                        options = listOf(null) + categories,
+                        selectedLabel = quickCreateCategory?.name ?: noCategoryLabel,
+                        optionLabel = { it?.name ?: noCategoryLabel },
+                        onSelect = { viewModel.setQuickCreateCategory(it?.id) },
+                        modifier = Modifier.fillMaxWidth(),
                     )
                     UrsButton(
                         text = stringResource(if (quickCreating) R.string.saving else R.string.shoppinglist_add_custom_product),

@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
+import ch.mcfx.urs.data.local.CatalogCategoryEntity
 import ch.mcfx.urs.data.local.CatalogProductEntity
 import ch.mcfx.urs.data.local.SyncStatus
 import ch.mcfx.urs.ui.components.CatalogImagePicker
@@ -41,6 +42,7 @@ import ch.mcfx.urs.ui.components.UrsBottomSheet
 import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsCheckbox
+import ch.mcfx.urs.ui.components.UrsDropdownField
 import ch.mcfx.urs.ui.components.UrsFab
 import ch.mcfx.urs.ui.components.UrsIcon
 import ch.mcfx.urs.ui.components.UrsOutlinedButton
@@ -103,9 +105,11 @@ fun ProductListScreen(
         }
     }
 
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
+
     if (showForm) {
         UrsBottomSheet(onDismissRequest = viewModel::closeForm) {
-            AddInventoryProductForm(form = formState, query = query, results = results, viewModel = viewModel)
+            AddInventoryProductForm(form = formState, query = query, results = results, categories = categories, viewModel = viewModel)
         }
     }
 
@@ -207,6 +211,7 @@ private fun AddInventoryProductForm(
     form: AddProductFormState,
     query: String,
     results: List<CatalogProductEntity>,
+    categories: List<CatalogCategoryEntity>,
     viewModel: ProductsViewModel,
 ) {
     Column(
@@ -220,6 +225,22 @@ private fun AddInventoryProductForm(
             onValueChange = viewModel::setQuery,
             label = stringResource(R.string.inventory_product_name),
             singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        // Category for the product about to be created (mcfx-urs/urs-android#115) —
+        // only meaningful once the "create custom product" button below is
+        // actually reachable (no search results yet), but shown alongside the
+        // name field so it's set before either the scan or the create button
+        // is used, not as an afterthought.
+        val selectedCategory = categories.find { it.id == form.categoryId }
+        val noCategoryLabel = stringResource(R.string.product_management_no_category)
+        UrsDropdownField(
+            label = stringResource(R.string.product_management_category_label),
+            options = listOf(null) + categories,
+            selectedLabel = selectedCategory?.name ?: noCategoryLabel,
+            optionLabel = { it?.name ?: noCategoryLabel },
+            onSelect = { viewModel.setCategory(it?.id) },
             modifier = Modifier.fillMaxWidth(),
         )
 

@@ -68,6 +68,15 @@ class AddProductViewModel(
     private val _selectedCategory = MutableStateFlow<CatalogCategoryEntity?>(null)
     val selectedCategory: StateFlow<CatalogCategoryEntity?> = _selectedCategory.asStateFlow()
 
+    // Category to assign to a product created via quickCreate()
+    // (mcfx-urs/urs-android#115) — distinct from _selectedCategory (which
+    // filters the CATEGORIES tab's browse results): defaults to whatever
+    // category is currently browsed, same as before this field existed, but
+    // stays independently settable via the quick-create form's own picker so
+    // it's reachable from the POPULAR/RECENT tabs and a plain search too.
+    private val _quickCreateCategoryId = MutableStateFlow<String?>(null)
+    val quickCreateCategoryId: StateFlow<String?> = _quickCreateCategoryId.asStateFlow()
+
     private val _categories = MutableStateFlow<List<CatalogCategoryEntity>>(emptyList())
     val categories: StateFlow<List<CatalogCategoryEntity>> = _categories.asStateFlow()
 
@@ -167,14 +176,21 @@ class AddProductViewModel(
     fun selectTab(tab: AddProductTab) {
         _selectedTab.value = tab
         _selectedCategory.value = null
+        _quickCreateCategoryId.value = null
     }
 
     fun selectCategory(category: CatalogCategoryEntity) {
         _selectedCategory.value = category
+        _quickCreateCategoryId.value = category.id
     }
 
     fun clearSelectedCategory() {
         _selectedCategory.value = null
+        _quickCreateCategoryId.value = null
+    }
+
+    fun setQuickCreateCategory(categoryId: String?) {
+        _quickCreateCategoryId.value = categoryId
     }
 
     /** Best-effort, cached once resolved — see this field's own doc comment. */
@@ -212,11 +228,13 @@ class AddProductViewModel(
 
     /**
      * "Search found nothing" quick-create path — a direct, synchronous REST
-     * call (see [CatalogRepository.createProduct]'s doc comment), tied to
-     * whichever category was being browsed when this fires (if any) — then
-     * added to the list immediately, same as [selectResult]. A scanned
-     * barcode with no catalog match routes through the image-suggestion step
-     * first (mcfx-urs/urs-android#91 point 4) instead of creating right away.
+     * call (see [CatalogRepository.createProduct]'s doc comment), tagged with
+     * [quickCreateCategoryId] (mcfx-urs/urs-android#115 — defaults to
+     * whichever category is being browsed, if any, but independently
+     * settable) — then added to the list immediately, same as [selectResult].
+     * A scanned barcode with no catalog match routes through the
+     * image-suggestion step first (mcfx-urs/urs-android#91 point 4) instead
+     * of creating right away.
      */
     fun quickCreate() {
         val name = _query.value.trim()
@@ -224,7 +242,7 @@ class AddProductViewModel(
         val barcode = _scannedBarcode.value
         if (barcode != null) {
             pendingCreateName = name
-            pendingCreateCategoryId = _selectedCategory.value?.id
+            pendingCreateCategoryId = _quickCreateCategoryId.value
             viewModelScope.launch {
                 _images.value = try {
                     catalogRepository.getImages()
@@ -237,7 +255,7 @@ class AddProductViewModel(
             }
             return
         }
-        performQuickCreate(name, _selectedCategory.value?.id, barcode = null, imageId = null)
+        performQuickCreate(name, _quickCreateCategoryId.value, barcode = null, imageId = null)
     }
 
     /** Image-suggestion sheet's outcome — `imageId` null on "Skip", the picked [CatalogImageDto.id] otherwise. */
@@ -268,6 +286,7 @@ class AddProductViewModel(
                 _query.value = ""
                 _scannedBarcode.value = null
                 _barcodeNotFound.value = false
+                _quickCreateCategoryId.value = _selectedCategory.value?.id
                 val localId = shoppingListRepository.addCatalogProduct(listId, product, note = null, quantity = null, onSale = false)
                 _lastAdded.value = AddedFeedback(product.name, localId)
             } catch (e: CancellationException) {
