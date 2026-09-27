@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-09-27
+
+### Fixed
+
+- Date picker's week-start-day fix from v1.5.0 didn't actually take effect; now resolves the device's real locale via `LocaleManager.getSystemLocales()` instead (#98)
+
 ## [1.6.0] - 2026-09-27
 
 ### Added
