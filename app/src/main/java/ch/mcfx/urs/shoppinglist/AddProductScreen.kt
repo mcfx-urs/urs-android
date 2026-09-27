@@ -37,6 +37,7 @@ import ch.mcfx.urs.data.local.CatalogCategoryEntity
 import ch.mcfx.urs.data.local.CatalogProductEntity
 import ch.mcfx.urs.settings.PortraitCaptureActivity
 import ch.mcfx.urs.ui.components.CatalogImagePicker
+import ch.mcfx.urs.ui.components.CatalogProductPicker
 import ch.mcfx.urs.ui.components.UrsBottomSheet
 import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsCard
@@ -80,6 +81,8 @@ fun AddProductScreen(
     val imageSuggestionsOpen by viewModel.imageSuggestionsOpen.collectAsStateWithLifecycle()
     val suggestionImages by viewModel.images.collectAsStateWithLifecycle()
     val suggestionQuery by viewModel.query.collectAsStateWithLifecycle()
+    val existingProductQuery by viewModel.existingProductQuery.collectAsStateWithLifecycle()
+    val existingProductResults by viewModel.existingProductResults.collectAsStateWithLifecycle()
 
     // A custom bar rather than a material3 Snackbar: it needs two actions
     // (Undo + Edit), and Snackbar carries only one. Dismisses itself after a
@@ -119,6 +122,18 @@ fun AddProductScreen(
 
     if (imageSuggestionsOpen) {
         UrsBottomSheet(onDismissRequest = viewModel::cancelImageSuggestions) {
+            UrsText(
+                text = stringResource(R.string.product_existing_picker_title),
+                style = UrsTheme.typography.cardTitle,
+                modifier = Modifier.padding(horizontal = Spacing.l, vertical = Spacing.m),
+            )
+            CatalogProductPicker(
+                query = existingProductQuery,
+                onQueryChange = viewModel::setExistingProductQuery,
+                results = existingProductResults,
+                onSelect = viewModel::confirmQuickCreateWithExistingProduct,
+            )
+
             UrsText(
                 text = stringResource(R.string.product_image_suggestions_title),
                 style = UrsTheme.typography.cardTitle,

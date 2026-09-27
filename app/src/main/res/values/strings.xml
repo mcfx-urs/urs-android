@@ -660,6 +660,8 @@
     <string name="product_barcode_not_found">Barcode not recognized — enter a product name to add it manually.</string>
     <string name="product_image_suggestions_title">Suggested images</string>
     <string name="product_image_suggestions_skip">Skip</string>
+    <string name="product_existing_picker_title">Or pick an existing product</string>
+    <string name="product_existing_picker_no_matches">No products match your search.</string>
     <string name="inventory_product_not_tracked">–</string>
     <string name="inventory_product_increment">Increase quantity</string>
     <string name="inventory_product_decrement">Decrease quantity</string>

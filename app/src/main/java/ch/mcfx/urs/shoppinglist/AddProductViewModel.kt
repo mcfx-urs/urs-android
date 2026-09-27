@@ -129,6 +129,16 @@ class AddProductViewModel(
     private val _images = MutableStateFlow<List<CatalogImageDto>>(emptyList())
     val images: StateFlow<List<CatalogImageDto>> = _images.asStateFlow()
 
+    // Existing-product search within the image-suggestion sheet
+    // (mcfx-urs/urs-android#113) — picking one inherits both its category
+    // and image together. Separate from the main _query/_results pair (that
+    // one already holds the "no results" search that triggered this sheet).
+    private val _existingProductQuery = MutableStateFlow("")
+    val existingProductQuery: StateFlow<String> = _existingProductQuery.asStateFlow()
+
+    private val _existingProductResults = MutableStateFlow<List<CatalogProductEntity>>(emptyList())
+    val existingProductResults: StateFlow<List<CatalogProductEntity>> = _existingProductResults.asStateFlow()
+
     private var pendingCreateName: String? = null
     private var pendingCreateCategoryId: String? = null
 
@@ -150,6 +160,15 @@ class AddProductViewModel(
         viewModelScope.launch {
             combine(_query, _selectedTab, _selectedCategory) { q, tab, category -> Triple(q, tab, category) }
                 .collectLatest { (q, tab, category) -> sourceFor(q, tab, category).collect { _results.value = it } }
+        }
+        viewModelScope.launch {
+            _existingProductQuery.collectLatest { q ->
+                if (q.isBlank()) {
+                    _existingProductResults.value = emptyList()
+                    return@collectLatest
+                }
+                catalogRepository.search(q).collect { _existingProductResults.value = it }
+            }
         }
         load()
     }
@@ -191,6 +210,10 @@ class AddProductViewModel(
 
     fun setQuickCreateCategory(categoryId: String?) {
         _quickCreateCategoryId.value = categoryId
+    }
+
+    fun setExistingProductQuery(value: String) {
+        _existingProductQuery.value = value
     }
 
     /** Best-effort, cached once resolved — see this field's own doc comment. */
@@ -243,6 +266,7 @@ class AddProductViewModel(
         if (barcode != null) {
             pendingCreateName = name
             pendingCreateCategoryId = _quickCreateCategoryId.value
+            _existingProductQuery.value = name
             viewModelScope.launch {
                 _images.value = try {
                     catalogRepository.getImages()
@@ -265,7 +289,22 @@ class AddProductViewModel(
         _imageSuggestionsOpen.value = false
         pendingCreateName = null
         pendingCreateCategoryId = null
+        _existingProductQuery.value = ""
         performQuickCreate(name, categoryId, barcode = _scannedBarcode.value, imageId = imageId)
+    }
+
+    /**
+     * Existing-product pick from the same sheet (mcfx-urs/urs-android#113) —
+     * inherits both category and image from [product] instead of only an
+     * image via [confirmQuickCreateWithImage].
+     */
+    fun confirmQuickCreateWithExistingProduct(product: CatalogProductEntity) {
+        val name = pendingCreateName ?: return
+        _imageSuggestionsOpen.value = false
+        pendingCreateName = null
+        pendingCreateCategoryId = null
+        _existingProductQuery.value = ""
+        performQuickCreate(name, product.catalogCategoryId, barcode = _scannedBarcode.value, imageId = product.catalogImageId?.toString())
     }
 
     /** Closes the image-suggestion sheet without creating anything — e.g. a back-press/scrim dismiss. */
@@ -273,6 +312,7 @@ class AddProductViewModel(
         _imageSuggestionsOpen.value = false
         pendingCreateName = null
         pendingCreateCategoryId = null
+        _existingProductQuery.value = ""
     }
 
     private fun performQuickCreate(name: String, categoryId: String?, barcode: String?, imageId: String?) {
