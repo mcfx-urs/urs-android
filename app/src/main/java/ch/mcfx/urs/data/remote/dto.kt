@@ -815,6 +815,12 @@ data class TagDto(
     val color: String,
 )
 
+// mcfx-urs/urs-backend#15 — request body for PUT /api/v1/tags/{name}.
+@Serializable
+data class TagColorUpdatePayload(
+    val color: String,
+)
+
 @Serializable
 data class NoteDto(
     @SerialName("note_id") val id: String,

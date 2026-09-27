@@ -20,6 +20,7 @@ object SettingsRoutes {
     const val THEME = "settings/theme"
     const val LANGUAGE = "settings/language"
     const val PRODUCT_MANAGEMENT = "settings/product-management"
+    const val TAGS = "settings/tags"
     const val ADMIN = "settings/admin"
     const val IMAGE_REVIEW = "settings/image-review"
     const val IMAGE_GENERATOR = "settings/image-generator"

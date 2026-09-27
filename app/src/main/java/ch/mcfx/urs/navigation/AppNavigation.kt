@@ -95,6 +95,7 @@ import ch.mcfx.urs.settings.NotificationSettingsScreen
 import ch.mcfx.urs.settings.ProductManagementScreen
 import ch.mcfx.urs.settings.SettingsRoutes
 import ch.mcfx.urs.settings.SettingsScreen
+import ch.mcfx.urs.settings.TagsSettingsScreen
 import ch.mcfx.urs.settings.ThemeSettingsScreen
 import ch.mcfx.urs.settings.VpnSettingsScreen
 import ch.mcfx.urs.settings.WageRulesSettingsScreen
@@ -548,6 +549,7 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                             onNavigateToImageReview = { navController.navigate(SettingsRoutes.IMAGE_REVIEW) },
                         )
                     }
+                    composable(SettingsRoutes.TAGS) { TagsSettingsScreen() }
                     composable(SettingsRoutes.ADMIN) { AdminScreen() }
                     composable(SettingsRoutes.IMAGE_REVIEW) { ImageReviewScreen() }
                     composable(SettingsRoutes.IMAGE_GENERATOR) { ImageGeneratorScreen() }
@@ -616,6 +618,7 @@ private val SETTINGS_ROUTE_LABELS = mapOf(
     SettingsRoutes.THEME to R.string.settings_tile_theme,
     SettingsRoutes.LANGUAGE to R.string.settings_tile_language,
     SettingsRoutes.PRODUCT_MANAGEMENT to R.string.settings_tile_product_management,
+    SettingsRoutes.TAGS to R.string.settings_tile_tags,
     SettingsRoutes.ADMIN to R.string.settings_tile_admin,
     SettingsRoutes.IMAGE_REVIEW to R.string.settings_tile_image_review,
     SettingsRoutes.IMAGE_GENERATOR to R.string.settings_tile_image_generator,

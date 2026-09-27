@@ -121,3 +121,14 @@ fun parseChoreColor(hex: String): Color =
 
 val defaultChoreColor: String = choreColorPalette.first()
 val defaultChoreIcon: String = trackerIconToken(choreMaterialIcons.keys.first())
+
+/**
+ * Perceptual-luminance-based black/white text pick for an arbitrary
+ * background color — port of `urs-web`'s `readableTextColor()`
+ * (`src/lib/color.ts`), kept in sync with the same formula/threshold so a
+ * tag reads the same way on both clients (mcfx-urs/urs-android#103).
+ */
+fun readableTextColor(background: Color): Color {
+    val luminance = 0.299f * background.red + 0.587f * background.green + 0.114f * background.blue
+    return if (luminance > 0.6f) Color.Black else Color.White
+}

@@ -712,6 +712,8 @@
     <string name="shoppinglist_tab_categories">CATEGORIES</string>
 
     <string name="settings_tile_product_management">Product Management</string>
+    <string name="settings_tile_tags">Tags</string>
+    <string name="tags_settings_empty">No tags yet — tags you add to notes or Kanban cards will show up here.</string>
     <string name="product_management_tab_products">PRODUCTS</string>
     <string name="product_management_tab_categories">CATEGORIES</string>
     <string name="product_management_tab_catalog_search">CATALOG</string>

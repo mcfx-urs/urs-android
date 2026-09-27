@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Sell
 import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material.icons.filled.Watch
 import androidx.compose.runtime.Composable
@@ -22,6 +23,7 @@ private val GENERAL_TILES = listOf(
     SettingsTile(SettingsRoutes.NOTIFICATIONS, R.string.settings_tile_notifications, Icons.Filled.Notifications),
     SettingsTile(SettingsRoutes.LOCATION_HISTORY, R.string.settings_tile_location_history, Icons.Filled.LocationOn),
     SettingsTile(SettingsRoutes.PRODUCT_MANAGEMENT, R.string.settings_tile_product_management, Icons.Filled.Inventory),
+    SettingsTile(SettingsRoutes.TAGS, R.string.settings_tile_tags, Icons.Filled.Sell),
     SettingsTile(SettingsRoutes.WATCH_RELAY, R.string.settings_tile_watch_relay, Icons.Filled.Watch),
     SettingsTile(SettingsRoutes.THEME, R.string.settings_tile_theme, Icons.Filled.Palette),
     SettingsTile(SettingsRoutes.LANGUAGE, R.string.settings_tile_language, Icons.Filled.Language),

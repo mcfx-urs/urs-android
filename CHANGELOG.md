@@ -9,10 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Category picker in the create-new-product flow for Inventory and Shopping List, covering both the barcode-scan and manual-entry paths (#115)
 - Barcode quick-create in Shopping List can now pick an existing product to inherit its category and image together (#113)
+- Settings → Tags screen listing every tag with its current color, tap to reassign it (#103)
 
 ### Changed
 
 - Renamed "Life Map" to "Breadcrumbs" — display label, route, and internal code identifiers all updated; an existing custom Home layout keeps its tile via a one-time migration (#99)
+- Note tag chips now show a solid background with auto-contrast (black/white) text instead of a same-hue-tinted background and text (#103)
 
 ### Fixed
 

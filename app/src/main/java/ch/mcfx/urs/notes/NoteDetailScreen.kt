@@ -65,6 +65,7 @@ import ch.mcfx.urs.ui.components.UrsTextField
 import ch.mcfx.urs.ui.components.UrsTimeField
 import ch.mcfx.urs.ui.components.ursFormScrollPadding
 import ch.mcfx.urs.chores.parseChoreColor
+import ch.mcfx.urs.chores.readableTextColor
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Radius
 import ch.mcfx.urs.ui.tokens.Spacing
@@ -265,7 +266,7 @@ private fun TagsEditor(form: NoteDetailFormState, viewModel: NoteDetailViewModel
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         val color = form.tagColors[tag]?.takeIf { it.isNotBlank() }?.let(::parseChoreColor)
                         if (color != null) {
-                            UrsPill(text = tag, containerColor = color.copy(alpha = 0.15f), contentColor = color)
+                            UrsPill(text = tag, containerColor = color, contentColor = readableTextColor(color))
                         } else {
                             UrsPill(text = tag)
                         }

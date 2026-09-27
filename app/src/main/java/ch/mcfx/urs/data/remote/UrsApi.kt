@@ -443,6 +443,10 @@ interface UrsApi {
     @GET("api/v1/tags")
     suspend fun getTags(): List<TagDto>
 
+    // mcfx-urs/urs-backend#15 — recolor the caller's own existing tag (Settings → Tags).
+    @PUT("api/v1/tags/{name}")
+    suspend fun updateTagColor(@Path("name") name: String, @Body payload: TagColorUpdatePayload)
+
     @DELETE("api/v1/kanban/checklist-item/{id}")
     suspend fun deleteKanbanChecklistItem(@Path("id") id: String)
 
