@@ -14,7 +14,7 @@
          was granted). -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <!-- Life map's periodic background capture (Settings → Location
+    <!-- Breadcrumbs' periodic background capture (Settings → Location
          History): a distinct runtime permission from API 29 on, only
          requestable after foreground location is already granted, and only
          via a deep link to the app's own system Settings page (not a normal
@@ -124,7 +124,7 @@
             android:name=".notifications.ReminderAlarmReceiver"
             android:exported="false" />
 
-        <!-- Life Map's "Precision mode" (Settings → Location
+        <!-- Breadcrumbs' "Precision mode" (Settings → Location
              history) — fired by AlarmManager.setExactAndAllowWhileIdle(),
              see LocationCaptureScheduler. -->
         <receiver

@@ -56,14 +56,14 @@ const val NEW_FUEL_FILL_TILE_ID = "NEW_FUEL_FILL"
 object HomeLayoutEngine {
 
     // Mirrors today's hardcoded FEATURE_TILES order and the current
-    // full-width treatment of Work Time / New Fuel Fill / Life Map / Gokart.
-    // Life Map gets height 2 by default (unlike every other seed tile) — its
+    // full-width treatment of Work Time / New Fuel Fill / Breadcrumbs / Gokart.
+    // Breadcrumbs gets height 2 by default (unlike every other seed tile) — its
     // live map preview reads as too cramped at a single 112dp row, closer to
     // its previous bespoke 190dp card height at two stacked rows.
     private val DEFAULT_ORDER: List<HomeTileSpec> = listOf(
         HomeTileSpec(Destination.WORK_TIME.name, 2, 1),
         HomeTileSpec(NEW_FUEL_FILL_TILE_ID, 2, 1),
-        HomeTileSpec(Destination.LIFE_MAP.name, 2, 2),
+        HomeTileSpec(Destination.BREADCRUMBS.name, 2, 2),
         HomeTileSpec(Destination.SHOPPING_LIST.name, 1, 1),
         HomeTileSpec(Destination.VEHICLE.name, 1, 1),
         HomeTileSpec(Destination.INVENTORY.name, 1, 1),
@@ -184,5 +184,10 @@ class HomeLayoutStore(context: Context, private val json: Json) {
     private fun readPersisted(): List<HomeTileSpec>? =
         prefs.getString(KEY_LAYOUT, null)?.let { stored ->
             runCatching { json.decodeFromString(serializer, stored) }.getOrNull()
+        }?.map { spec ->
+            // One-time migration: Destination.LIFE_MAP was renamed to
+            // BREADCRUMBS — remap an already-persisted layout's tile id so
+            // existing users don't silently lose the tile.
+            if (spec.destinationId == "LIFE_MAP") spec.copy(destinationId = "BREADCRUMBS") else spec
         }
 }

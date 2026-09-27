@@ -14,7 +14,7 @@ private const val KEY_HAS_PROMPTED = "has_prompted_permission"
  * on app foreground (see [ch.mcfx.urs.UrsApplication]'s `ProcessLifecycleOwner`
  * observer) so any screen that opens already has a location to work with
  * without waiting on its own fetch. Distinct from [LocationCapture]'s direct
- * one-shot calls, which the ad-hoc fuel-stop flow and the life-map capture
+ * one-shot calls, which the ad-hoc fuel-stop flow and the breadcrumbs capture
  * worker keep using unchanged — a fresh fetch at the moment of capture
  * matters more than latency for those two.
  */

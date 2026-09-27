@@ -116,7 +116,7 @@ class UrsApplication : Application() {
         // Twice-a-day overdue-chore check; the worker itself no-ops unless
         // the Settings toggle is on (GitHub issue #29).
         ChoreOverdueWorker.enqueuePeriodic(this)
-        // Re-arms the life map's periodic capture across process restarts —
+        // Re-arms Breadcrumbs' periodic capture across process restarts —
         // WorkManager itself persists periodic work across reboot, but this
         // covers the case where it was never enqueued in this process at
         // all (e.g. right after an app update).

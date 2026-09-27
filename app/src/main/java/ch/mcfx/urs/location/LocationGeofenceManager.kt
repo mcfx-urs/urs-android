@@ -10,7 +10,7 @@ import com.google.android.gms.location.GeofencingClient
 import com.google.android.gms.location.GeofencingRequest
 import com.google.android.gms.location.LocationServices
 
-private const val GEOFENCE_ID = "life-map-geofence"
+private const val GEOFENCE_ID = "breadcrumbs-geofence"
 private const val GEOFENCE_REQUEST_CODE = 9020
 
 /**

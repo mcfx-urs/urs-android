@@ -46,7 +46,7 @@ import java.util.concurrent.TimeUnit
  * something to decide here.
  */
 object LocationCaptureScheduler {
-    const val WORK_NAME = "life-map-capture"
+    const val WORK_NAME = "breadcrumbs-capture"
     const val PERIODIC_FLOOR_MINUTES = 15L
     private const val ALARM_REQUEST_CODE = 9010
 

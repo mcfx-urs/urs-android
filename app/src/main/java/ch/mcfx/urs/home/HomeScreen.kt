@@ -116,7 +116,7 @@ import org.osmdroid.views.overlay.Marker
 
 /**
  * Launcher-style Home grid (GitHub issue #12) — every tile (including what
- * used to be the bespoke Work Time / New Fuel Fill / Life Map rows) is now
+ * used to be the bespoke Work Time / New Fuel Fill / Breadcrumbs rows) is now
  * one generic [HomeTileBody] placed by [HomeTileGrid] according to
  * [HomeViewModel.layout]. Long-press any tile to enter edit mode and select
  * it in the same gesture; while in edit mode, tap a different tile to
@@ -154,7 +154,7 @@ private val TILE_IMAGE: Map<String, Int> = mapOf(
     Destination.PRICE_MONITOR.name to R.drawable.tile_price_monitor,
     Destination.K.name to R.drawable.tile_k,
     Destination.GOKART.name to R.drawable.tile_gokart,
-    Destination.LIFE_MAP.name to R.drawable.tile_life_map,
+    Destination.BREADCRUMBS.name to R.drawable.tile_breadcrumbs,
     // Interim: reuses the K tile art until Kanban gets its own commissioned
     // piece, same as Chores above.
     Destination.KANBAN.name to R.drawable.tile_k,
@@ -856,11 +856,11 @@ private fun EditModeExtraRow(icon: ImageVector, label: String, onClick: () -> Un
 
 /**
  * The one generic tile body every destination (plus the New-Fuel-Fill
- * shortcut and Life Map) now renders through. 1-tall keeps the previous
+ * shortcut and Breadcrumbs) now renders through. 1-tall keeps the previous
  * `CornerBleedTile` look; height 2 scales the bleed image up and makes room
  * for a second stat line (issue #12's own open question — the cheapest
  * treatment that still reads as "bigger", matching the recommendation
- * already on file in NIGHTRUN-REPORT.md). Life Map keeps its live map
+ * already on file in NIGHTRUN-REPORT.md). Breadcrumbs keeps its live map
  * preview regardless of shape, sized to whatever placement it currently has.
  */
 @Composable
@@ -877,8 +877,8 @@ private fun HomeTileBody(
     onClick: () -> Unit,
     onOpenFavoriteRoute: (String) -> Unit,
 ) {
-    if (id == Destination.LIFE_MAP.name) {
-        LifeMapTileBody(location = location, editMode = editMode, onClick = onClick)
+    if (id == Destination.BREADCRUMBS.name) {
+        BreadcrumbsTileBody(location = location, editMode = editMode, onClick = onClick)
         return
     }
 
@@ -1019,21 +1019,21 @@ private fun FavoriteBadges(items: List<FavoriteBadgeItem>, wide: Boolean, onOpen
 }
 
 /**
- * Life Map's tile: a real, non-interactive preview of the last known
- * location (osmdroid — the same library `LifeMapScreen` already uses).
+ * Breadcrumbs' tile: a real, non-interactive preview of the last known
+ * location (osmdroid — the same library `BreadcrumbsScreen` already uses).
  * Falls back to a plain illustration only until a location is available
  * (no permission yet, or the very first app launch before a fix has
  * landed) — never a fake/placeholder coordinate.
  */
 @Composable
-private fun LifeMapTileBody(location: Location?, editMode: Boolean, onClick: () -> Unit) {
+private fun BreadcrumbsTileBody(location: Location?, editMode: Boolean, onClick: () -> Unit) {
     val colors = UrsTheme.colors
 
     UrsGlassCard(contentPadding = PaddingValues(0.dp), modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize()) {
                 UrsText(
-                    text = stringResource(Destination.LIFE_MAP.labelRes),
+                    text = stringResource(Destination.BREADCRUMBS.labelRes),
                     style = UrsTheme.typography.cardTitle,
                     color = colors.accent,
                     modifier = Modifier.padding(Spacing.m),
@@ -1043,7 +1043,7 @@ private fun LifeMapTileBody(location: Location?, editMode: Boolean, onClick: () 
                         MiniMapView(location = location, modifier = Modifier.fillMaxSize())
                     } else {
                         Image(
-                            painter = painterResource(R.drawable.tile_life_map),
+                            painter = painterResource(R.drawable.tile_breadcrumbs),
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize(),
@@ -1056,7 +1056,7 @@ private fun LifeMapTileBody(location: Location?, editMode: Boolean, onClick: () 
             // over the map area before HomeTileItem's outer tap detector can
             // register a completed tap, so without this only the title text
             // was tap-navigable. A transparent catcher over the whole tile
-            // forwards a plain tap to the same open-Life-Map action. Omitted
+            // forwards a plain tap to the same open-Breadcrumbs action. Omitted
             // in edit mode so the tile's long-press move/resize gestures
             // aren't intercepted.
             if (!editMode) {
@@ -1105,7 +1105,7 @@ private fun MiniMapView(location: Location, modifier: Modifier = Modifier) {
             // Deferred via view.post() — centering before the view has a
             // valid (non-zero) layout size computes the geo-to-screen
             // projection against a zero-size rect and silently lands on the
-            // wrong spot (same root cause LifeMapScreen already works around).
+            // wrong spot (same root cause BreadcrumbsScreen already works around).
             view.post {
                 view.controller.setZoom(MiniMapZoom)
                 view.controller.setCenter(point)

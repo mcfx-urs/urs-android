@@ -16,7 +16,7 @@ import kotlinx.serialization.encodeToString
 private const val MAX_ACCURACY_METERS = 100f
 
 /**
- * Periodic background GPS fix for the life map feature — deliberately
+ * Periodic background GPS fix for the Breadcrumbs feature — deliberately
  * carries no [androidx.work.Constraints], unlike
  * [ch.mcfx.urs.data.sync.SyncWorker], since capture must keep working
  * offline. Reuses the existing single-shot [LocationCapture] helper for the
@@ -109,7 +109,7 @@ class LocationCaptureWorker(context: Context, params: WorkerParameters) : Corout
         // capture. Only compares against the single last stored point, not
         // a longer history, so movement below the threshold sustained
         // across many consecutive captures would never register — an
-        // accepted trade-off for this coarse life-map use case, not a
+        // accepted trade-off for this coarse breadcrumbs use case, not a
         // precise-tracking one.
         val stationaryThresholdMeters = store.stationaryThresholdMeters()
         if (stationaryThresholdMeters > 0) {

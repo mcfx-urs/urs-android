@@ -1,4 +1,4 @@
-package ch.mcfx.urs.lifemap
+package ch.mcfx.urs.breadcrumbs
 
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
@@ -122,10 +122,10 @@ private fun dateAndTimeToMillis(date: String, time: String): Long? {
 }
 
 @Composable
-fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewModel.Factory)) {
+fun BreadcrumbsScreen(viewModel: BreadcrumbsViewModel = viewModel(factory = BreadcrumbsViewModel.Factory)) {
     // selectedRange drives only the dropdown label — it updates the instant
     // the user taps an option, for immediate UI feedback. The map below
-    // must never read it directly: see LifeMapPointsState's doc comment for
+    // must never read it directly: see BreadcrumbsPointsState's doc comment for
     // why the map needs range and points bundled from the same emission.
     val selectedRange by viewModel.selectedRange.collectAsStateWithLifecycle()
     val pointsState by viewModel.pointsState.collectAsStateWithLifecycle()
@@ -156,14 +156,14 @@ fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewM
     var toTimeOpenSignal by remember { mutableIntStateOf(0) }
 
     val rangeLabels = mapOf(
-        TimeRange.TODAY to stringResource(R.string.life_map_range_today),
-        TimeRange.LAST_DAY to stringResource(R.string.life_map_range_last_day),
-        TimeRange.LAST_WEEK to stringResource(R.string.life_map_range_last_week),
-        TimeRange.LAST_MONTH to stringResource(R.string.life_map_range_last_month),
-        TimeRange.LAST_3_MONTHS to stringResource(R.string.life_map_range_last_3_months),
-        TimeRange.LAST_6_MONTHS to stringResource(R.string.life_map_range_last_6_months),
-        TimeRange.LAST_YEAR to stringResource(R.string.life_map_range_last_year),
-        TimeRange.ALL to stringResource(R.string.life_map_range_all),
+        TimeRange.TODAY to stringResource(R.string.breadcrumbs_range_today),
+        TimeRange.LAST_DAY to stringResource(R.string.breadcrumbs_range_last_day),
+        TimeRange.LAST_WEEK to stringResource(R.string.breadcrumbs_range_last_week),
+        TimeRange.LAST_MONTH to stringResource(R.string.breadcrumbs_range_last_month),
+        TimeRange.LAST_3_MONTHS to stringResource(R.string.breadcrumbs_range_last_3_months),
+        TimeRange.LAST_6_MONTHS to stringResource(R.string.breadcrumbs_range_last_6_months),
+        TimeRange.LAST_YEAR to stringResource(R.string.breadcrumbs_range_last_year),
+        TimeRange.ALL to stringResource(R.string.breadcrumbs_range_all),
     )
 
     // Full-bleed map with a single compact controls toggle floating on top,
@@ -175,11 +175,11 @@ fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewM
     // and the controls are composed after it in the same Box so they always
     // paint on top.
     Box(modifier = Modifier.fillMaxSize()) {
-        LifeMapView(
+        BreadcrumbsView(
             points = pointsState.points,
             // pointsState.range, not selectedRange — must always be the
             // range these exact points were queried for, never the (possibly
-            // ahead-of-itself) dropdown selection. See LifeMapPointsState.
+            // ahead-of-itself) dropdown selection. See BreadcrumbsPointsState.
             selectedRange = pointsState.range,
             gradientStopsArgb = trackStyle.gradientStops,
             haloEnabled = trackStyle.haloEnabled,
@@ -193,7 +193,7 @@ fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewM
 
         if (points.isEmpty()) {
             UrsText(
-                stringResource(R.string.life_map_empty),
+                stringResource(R.string.breadcrumbs_empty),
                 style = UrsTheme.typography.body,
                 color = UrsTheme.colors.onSurfaceMuted,
                 modifier = Modifier.align(Alignment.Center),
@@ -220,7 +220,7 @@ fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewM
         ) {
             UrsIconButton(
                 onClick = { controlsSheetOpen = true },
-                contentDescription = stringResource(R.string.life_map_controls_label),
+                contentDescription = stringResource(R.string.breadcrumbs_controls_label),
                 imageVector = Icons.Filled.Tune,
             )
         }
@@ -232,7 +232,7 @@ fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewM
                     verticalArrangement = Arrangement.spacedBy(Spacing.m),
                 ) {
                     UrsText(
-                        text = stringResource(R.string.life_map_controls_label),
+                        text = stringResource(R.string.breadcrumbs_controls_label),
                         style = UrsTheme.typography.cardTitle,
                     )
                     Row(
@@ -240,7 +240,7 @@ fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewM
                         horizontalArrangement = Arrangement.spacedBy(Spacing.s),
                     ) {
                         UrsDropdownField(
-                            label = stringResource(R.string.life_map_range_label),
+                            label = stringResource(R.string.breadcrumbs_range_label),
                             options = TimeRange.entries,
                             // Only a Preset selection maps onto one of the 7
                             // dropdown options — an active Custom pick (GitHub
@@ -248,8 +248,8 @@ fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewM
                             // back to a dedicated "Custom range" label instead
                             // of leaving the field blank.
                             selectedLabel = when (val range = selectedRange) {
-                                is LifeMapRange.Preset -> rangeLabels[range.range]
-                                is LifeMapRange.Custom -> stringResource(R.string.life_map_range_custom)
+                                is BreadcrumbsRange.Preset -> rangeLabels[range.range]
+                                is BreadcrumbsRange.Custom -> stringResource(R.string.breadcrumbs_range_custom)
                             },
                             optionLabel = { rangeLabels[it] ?: it.name },
                             onSelect = viewModel::selectRange,
@@ -261,8 +261,8 @@ fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewM
                         UrsIconButton(
                             onClick = {
                                 val (fromMillis, toMillis) = when (val range = selectedRange) {
-                                    is LifeMapRange.Custom -> range.fromMillis to range.toMillis
-                                    is LifeMapRange.Preset -> TimeRange.LAST_DAY.toSinceMillis() to System.currentTimeMillis()
+                                    is BreadcrumbsRange.Custom -> range.fromMillis to range.toMillis
+                                    is BreadcrumbsRange.Preset -> TimeRange.LAST_DAY.toSinceMillis() to System.currentTimeMillis()
                                 }
                                 val (fromDate, fromTime) = millisToDateAndTime(fromMillis)
                                 val (toDate, toTime) = millisToDateAndTime(toMillis)
@@ -288,7 +288,7 @@ fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewM
                                 controlsSheetOpen = false
                                 customRangeSheetOpen = true
                             },
-                            contentDescription = stringResource(R.string.life_map_range_custom_button),
+                            contentDescription = stringResource(R.string.breadcrumbs_range_custom_button),
                             imageVector = Icons.Filled.DateRange,
                         )
                     }
@@ -311,7 +311,7 @@ fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewM
                         )
                         UrsText(
                             text = stringResource(
-                                if (mutedMap) R.string.life_map_map_style_muted else R.string.life_map_map_style_standard,
+                                if (mutedMap) R.string.breadcrumbs_map_style_muted else R.string.breadcrumbs_map_style_standard,
                             ),
                             style = UrsTheme.typography.body,
                         )
@@ -327,7 +327,7 @@ fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewM
                     verticalArrangement = Arrangement.spacedBy(Spacing.m),
                 ) {
                     UrsText(
-                        text = stringResource(R.string.life_map_range_custom),
+                        text = stringResource(R.string.breadcrumbs_range_custom),
                         style = UrsTheme.typography.cardTitle,
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(Spacing.m)) {
@@ -337,7 +337,7 @@ fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewM
                                 customFromDate = it
                                 toDateOpenSignal++
                             },
-                            label = stringResource(R.string.life_map_range_custom_from_date),
+                            label = stringResource(R.string.breadcrumbs_range_custom_from_date),
                             modifier = Modifier.weight(1f),
                         )
                         UrsTimeField(
@@ -346,7 +346,7 @@ fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewM
                                 customFromTime = it
                                 toTimeOpenSignal++
                             },
-                            label = stringResource(R.string.life_map_range_custom_from_time),
+                            label = stringResource(R.string.breadcrumbs_range_custom_from_time),
                             modifier = Modifier.weight(1f),
                         )
                     }
@@ -354,27 +354,27 @@ fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewM
                         UrsDateField(
                             value = customToDate,
                             onValueChange = { customToDate = it },
-                            label = stringResource(R.string.life_map_range_custom_to_date),
+                            label = stringResource(R.string.breadcrumbs_range_custom_to_date),
                             modifier = Modifier.weight(1f),
                             openSignal = toDateOpenSignal,
                         )
                         UrsTimeField(
                             value = customToTime,
                             onValueChange = { customToTime = it },
-                            label = stringResource(R.string.life_map_range_custom_to_time),
+                            label = stringResource(R.string.breadcrumbs_range_custom_to_time),
                             modifier = Modifier.weight(1f),
                             openSignal = toTimeOpenSignal,
                         )
                     }
                     if (customRangeError) {
                         UrsText(
-                            text = stringResource(R.string.life_map_range_custom_error),
+                            text = stringResource(R.string.breadcrumbs_range_custom_error),
                             style = UrsTheme.typography.body,
                             color = FormErrorColor,
                         )
                     }
                     UrsButton(
-                        text = stringResource(R.string.life_map_range_custom_apply),
+                        text = stringResource(R.string.breadcrumbs_range_custom_apply),
                         onClick = {
                             val fromMillis = dateAndTimeToMillis(customFromDate, customFromTime)
                             val toMillis = dateAndTimeToMillis(customToDate, customToTime)
@@ -401,9 +401,9 @@ fun LifeMapScreen(viewModel: LifeMapViewModel = viewModel(factory = LifeMapViewM
  * recomposition.
  */
 @Composable
-private fun LifeMapView(
+private fun BreadcrumbsView(
     points: List<LocationHistoryEntity>,
-    selectedRange: LifeMapRange,
+    selectedRange: BreadcrumbsRange,
     gradientStopsArgb: List<Int>,
     haloEnabled: Boolean,
     haloColorArgb: Int,
@@ -467,10 +467,10 @@ private fun LifeMapView(
     // on the wrong spot — the same root cause fixed for
     // FuelStationMapScreen's map-confirm step, confirmed on-device there to
     // be off by a lot, not just a few pixels.
-    // selectedRange and points here are LifeMapScreen's pointsState.range/
-    // .points — always from the same LifeMapPointsState emission (see that
+    // selectedRange and points here are BreadcrumbsScreen's pointsState.range/
+    // .points — always from the same BreadcrumbsPointsState emission (see that
     // class's doc comment). Never wire this composable's selectedRange
-    // param back to LifeMapViewModel.selectedRange directly: an earlier
+    // param back to BreadcrumbsViewModel.selectedRange directly: an earlier
     // version did, and the instant-updating dropdown-label StateFlow
     // reaching this effect one recomposition ahead of the matching points
     // (labelled range vs. still-old points) raced mapView.post() against
@@ -480,7 +480,7 @@ private fun LifeMapView(
     // snapshot happened to run last, correct or stale depending on timing.
     // With range and points now always paired, this effect only ever sees
     // valid combinations, so a plain "already fit this range" guard is safe.
-    var lastFitRange by remember { mutableStateOf<LifeMapRange?>(null) }
+    var lastFitRange by remember { mutableStateOf<BreadcrumbsRange?>(null) }
     LaunchedEffect(selectedRange, points) {
         if (points.isNotEmpty() && selectedRange != lastFitRange) {
             mapView.post {

@@ -25,7 +25,7 @@ private const val TIMEOUT_MILLIS = 10_000L
  * recognition for Location History's adaptive interval, GitHub issue #60).
  *
  * This is the app's single funnel for an explicit GPS read — every call site
- * (life-map periodic capture, geofence re-centering, ad-hoc fuel-stop
+ * (breadcrumbs periodic capture, geofence re-centering, ad-hoc fuel-stop
  * capture, the app-wide ambient location refresh) passes its own [captureLocation]
  * `source` tag, and every outcome is logged to [LocationCaptureDebugLog] so
  * "when did urs actually touch GPS" is answerable from the app's own log

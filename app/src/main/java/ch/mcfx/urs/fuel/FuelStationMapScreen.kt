@@ -35,7 +35,7 @@ import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.MapEventsOverlay
 
-// Closer than LifeMapScreen's DEFAULT_ZOOM (12.0, a route-overview level) —
+// Closer than BreadcrumbsScreen's DEFAULT_ZOOM (12.0, a route-overview level) —
 // this screen is about confirming one specific street-level position.
 private const val DEFAULT_ZOOM = 17.0
 
@@ -142,7 +142,7 @@ private fun StationMapView(
     }
 
     // Center once — the geocoded pin if there is one, else the ambient
-    // device location, else a hardcoded fallback. Unlike LifeMapScreen this
+    // device location, else a hardcoded fallback. Unlike BreadcrumbsScreen this
     // never re-centers afterward; the user is expected to pan/zoom freely
     // while placing the pin.
     //
@@ -162,7 +162,7 @@ private fun StationMapView(
 
     AndroidView(
         factory = { mapView },
-        // Same reasoning as LifeMapScreen: osmdroid's own requestLayout()
+        // Same reasoning as BreadcrumbsScreen: osmdroid's own requestLayout()
         // calls can otherwise paint outside its Compose-assigned bounds.
         modifier = modifier.clipToBounds(),
         update = { view ->

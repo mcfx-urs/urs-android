@@ -47,7 +47,7 @@ import ch.mcfx.urs.R
 import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsCheckbox
 import ch.mcfx.urs.location.GradientMode
-import ch.mcfx.urs.lifemap.TimeRange
+import ch.mcfx.urs.breadcrumbs.TimeRange
 import ch.mcfx.urs.ui.components.UrsColorWheelDialog
 import ch.mcfx.urs.ui.components.UrsDropdownField
 import ch.mcfx.urs.ui.components.UrsFilterChip
@@ -175,18 +175,18 @@ fun LocationHistorySettingsScreen(
     // capture-interval dropdown above.
     val stillFallbackLabels = mapOf(0L to stringResource(R.string.location_history_still_fallback_pause)) + intervalLabels
 
-    // Same TimeRange labels the Life Map screen's own range dropdown uses
+    // Same TimeRange labels the Breadcrumbs screen's own range dropdown uses
     // (GitHub issue #93) — this is the same underlying concept, not a
     // separately-worded duplicate.
     val chunkingCutoffLabels = mapOf(
-        TimeRange.TODAY to stringResource(R.string.life_map_range_today),
-        TimeRange.LAST_DAY to stringResource(R.string.life_map_range_last_day),
-        TimeRange.LAST_WEEK to stringResource(R.string.life_map_range_last_week),
-        TimeRange.LAST_MONTH to stringResource(R.string.life_map_range_last_month),
-        TimeRange.LAST_3_MONTHS to stringResource(R.string.life_map_range_last_3_months),
-        TimeRange.LAST_6_MONTHS to stringResource(R.string.life_map_range_last_6_months),
-        TimeRange.LAST_YEAR to stringResource(R.string.life_map_range_last_year),
-        TimeRange.ALL to stringResource(R.string.life_map_range_all),
+        TimeRange.TODAY to stringResource(R.string.breadcrumbs_range_today),
+        TimeRange.LAST_DAY to stringResource(R.string.breadcrumbs_range_last_day),
+        TimeRange.LAST_WEEK to stringResource(R.string.breadcrumbs_range_last_week),
+        TimeRange.LAST_MONTH to stringResource(R.string.breadcrumbs_range_last_month),
+        TimeRange.LAST_3_MONTHS to stringResource(R.string.breadcrumbs_range_last_3_months),
+        TimeRange.LAST_6_MONTHS to stringResource(R.string.breadcrumbs_range_last_6_months),
+        TimeRange.LAST_YEAR to stringResource(R.string.breadcrumbs_range_last_year),
+        TimeRange.ALL to stringResource(R.string.breadcrumbs_range_all),
     )
     val maxGradientChunksLabels = mapOf(
         10 to stringResource(R.string.location_history_chunking_max_chunks_10),
@@ -460,7 +460,7 @@ fun LocationHistorySettingsScreen(
                     }
                 } else {
                     // Reuses the "newest" hue-mode stop (index 2) as the
-                    // intensity base colour — see LifeMapViewModel — so this
+                    // intensity base colour — see BreadcrumbsViewModel — so this
                     // mode needs no separate stored colour of its own.
                     UrsText(stringResource(R.string.location_history_track_base_color), style = UrsTheme.typography.body)
                     UrsText(

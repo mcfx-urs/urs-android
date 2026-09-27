@@ -6,7 +6,7 @@ import androidx.room.PrimaryKey
 
 /**
  * A single periodic GPS fix captured by
- * [ch.mcfx.urs.location.LocationCaptureWorker] for the life map feature.
+ * [ch.mcfx.urs.location.LocationCaptureWorker] for the Breadcrumbs feature.
  * Phase 1 was local-only, browsable in-app; this now carries the same
  * `serverId`/`outboxId`/`syncStatus` sync fields as [FillEntity], added in
  * Phase 3 once the outbox sync engine was wired up to actually replay

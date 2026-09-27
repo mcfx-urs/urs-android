@@ -41,7 +41,7 @@ import androidx.room.TypeConverters
         AssetComponentEntity::class,
         AssetCommentEntity::class,
     ],
-    // Bumped for the isFullTank column on FillEntity, the life map
+    // Bumped for the isFullTank column on FillEntity, the Breadcrumbs
     // feature's LocationHistoryEntity (local capture + sync fields), and
     // the quantity/onSale columns on ListItemEntity — still no Migration
     // objects needed at this pre-release stage, see

@@ -1,4 +1,4 @@
-package ch.mcfx.urs.lifemap
+package ch.mcfx.urs.breadcrumbs
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -54,14 +54,14 @@ enum class TimeRange(val days: Long?) {
 /**
  * Either one of the fixed [TimeRange] presets, or an explicit [Custom]
  * from/to instant pair picked via the custom-range sheet (GitHub issue #76)
- * — [LifeMapPointsState.range] and [LifeMapViewModel.selectedRange] use this
+ * — [BreadcrumbsPointsState.range] and [BreadcrumbsViewModel.selectedRange] use this
  * instead of a bare [TimeRange] so a custom pick and the preset dropdown can
  * share the same "what's currently active" slot. Picking a preset always
  * replaces an active custom pick and vice versa — there's no "both" state.
  */
-sealed interface LifeMapRange {
-    data class Preset(val range: TimeRange) : LifeMapRange
-    data class Custom(val fromMillis: Long, val toMillis: Long) : LifeMapRange
+sealed interface BreadcrumbsRange {
+    data class Preset(val range: TimeRange) : BreadcrumbsRange
+    data class Custom(val fromMillis: Long, val toMillis: Long) : BreadcrumbsRange
 }
 
 /**
@@ -71,9 +71,9 @@ sealed interface LifeMapRange {
  * [TimeRange] of its own, so this derives its duration directly from its
  * two millis bounds instead.
  */
-fun LifeMapRange.durationDays(): Long? = when (this) {
-    is LifeMapRange.Preset -> range.days
-    is LifeMapRange.Custom -> (toMillis - fromMillis) / (24 * 60 * 60 * 1000L)
+fun BreadcrumbsRange.durationDays(): Long? = when (this) {
+    is BreadcrumbsRange.Preset -> range.days
+    is BreadcrumbsRange.Custom -> (toMillis - fromMillis) / (24 * 60 * 60 * 1000L)
 }
 
 /**
@@ -96,7 +96,7 @@ fun LifeMapRange.durationDays(): Long? = when (this) {
  * ever observes a (range, points) pair that was already consistent at
  * emission time — there is no intermediate mismatched state to race against.
  */
-data class LifeMapPointsState(val range: LifeMapRange, val points: List<LocationHistoryEntity>)
+data class BreadcrumbsPointsState(val range: BreadcrumbsRange, val points: List<LocationHistoryEntity>)
 
 /**
  * Track rendering options, read from [LocationHistorySettingsStore] when the
@@ -120,7 +120,7 @@ private const val INTENSITY_MIN_VALUE_FRACTION = 0.25f
  * Two stops sharing [baseArgb]'s hue/saturation, varying only value (GitHub
  * issue #66) — dim for the oldest point, the base colour's own brightness for
  * the newest. Two stops are enough for a smooth ramp here (unlike the HUE
- * mode's three fixed hues): [LifeMapScreen]'s blendGradientStops already
+ * mode's three fixed hues): [BreadcrumbsScreen]'s blendGradientStops already
  * linearly interpolates between them per segment.
  */
 private fun intensityGradientStops(baseArgb: Int): List<Int> {
@@ -132,17 +132,17 @@ private fun intensityGradientStops(baseArgb: Int): List<Int> {
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class LifeMapViewModel(
+class BreadcrumbsViewModel(
     private val locationHistoryDao: LocationHistoryDao,
     private val locationHistoryRepository: LocationHistoryRepository,
     private val settingsStore: LocationHistorySettingsStore,
 ) : ViewModel() {
 
-    private val _selectedRange = MutableStateFlow<LifeMapRange>(LifeMapRange.Preset(TimeRange.TODAY))
-    val selectedRange: StateFlow<LifeMapRange> = _selectedRange.asStateFlow()
+    private val _selectedRange = MutableStateFlow<BreadcrumbsRange>(BreadcrumbsRange.Preset(TimeRange.TODAY))
+    val selectedRange: StateFlow<BreadcrumbsRange> = _selectedRange.asStateFlow()
 
-    private val _pointsState = MutableStateFlow(LifeMapPointsState(LifeMapRange.Preset(TimeRange.TODAY), emptyList()))
-    val pointsState: StateFlow<LifeMapPointsState> = _pointsState.asStateFlow()
+    private val _pointsState = MutableStateFlow(BreadcrumbsPointsState(BreadcrumbsRange.Preset(TimeRange.TODAY), emptyList()))
+    val pointsState: StateFlow<BreadcrumbsPointsState> = _pointsState.asStateFlow()
 
     // Read once at construction — changing these lives in Location History
     // settings, which recreates this ViewModel on the way back here.
@@ -172,21 +172,21 @@ class LifeMapViewModel(
             _selectedRange
                 .flatMapLatest { range ->
                     val points = when (range) {
-                        is LifeMapRange.Preset -> locationHistoryDao.observeSince(range.range.toSinceMillis())
-                        is LifeMapRange.Custom -> locationHistoryDao.observeBetween(range.fromMillis, range.toMillis)
+                        is BreadcrumbsRange.Preset -> locationHistoryDao.observeSince(range.range.toSinceMillis())
+                        is BreadcrumbsRange.Custom -> locationHistoryDao.observeBetween(range.fromMillis, range.toMillis)
                     }
-                    points.map { LifeMapPointsState(range, it) }
+                    points.map { BreadcrumbsPointsState(range, it) }
                 }
                 .collect { _pointsState.value = it }
         }
     }
 
     fun selectRange(range: TimeRange) {
-        _selectedRange.value = LifeMapRange.Preset(range)
+        _selectedRange.value = BreadcrumbsRange.Preset(range)
     }
 
     fun selectCustomRange(fromMillis: Long, toMillis: Long) {
-        _selectedRange.value = LifeMapRange.Custom(fromMillis, toMillis)
+        _selectedRange.value = BreadcrumbsRange.Custom(fromMillis, toMillis)
     }
 
     fun setMutedMap(muted: Boolean) {
@@ -198,7 +198,7 @@ class LifeMapViewModel(
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as UrsApplication
-                LifeMapViewModel(
+                BreadcrumbsViewModel(
                     app.container.database.locationHistoryDao(),
                     app.container.locationHistoryRepository,
                     app.container.locationHistorySettingsStore,

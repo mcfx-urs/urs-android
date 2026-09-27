@@ -13,7 +13,7 @@ import kotlinx.serialization.SerializationException
 
 /**
  * Pulls the authenticated user's full server-side location history down
- * into Room so the life map shows every point regardless of which
+ * into Room so Breadcrumbs shows every point regardless of which
  * device/install originally captured it — the upload-only outbox sync
  * ([ch.mcfx.urs.data.sync.SyncManager.replayCreateLocationHistory]) never
  * had a pull path back down.
@@ -22,7 +22,7 @@ import kotlinx.serialization.SerializationException
  * `urs-backend`) rather than trusting a single call: an always-on periodic
  * capture (as low as 1 minute between fixes) blows past 10000 rows within
  * ~7 weeks, let alone a year, so a single page is nowhere near "the whole
- * history" once a life map has been running for a while. Fetching a single
+ * history" once Breadcrumbs has been running for a while. Fetching a single
  * short page (the endpoint's own default is only 50) or a single capped one
  * would both silently truncate the result and make
  * [LocationHistoryDao.reconcileFromServer] delete every local point past

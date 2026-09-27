@@ -30,7 +30,7 @@
     <string name="nav_price_monitor">Price Monitor</string>
     <string name="nav_k">K</string>
     <string name="nav_work_time">Work Time</string>
-    <string name="nav_life_map">Life Map</string>
+    <string name="nav_breadcrumbs">Breadcrumbs</string>
     <string name="nav_baking">Baking</string>
     <string name="nav_notes">Notes</string>
     <string name="nav_chores">Chores and Stuff</string>
@@ -318,7 +318,7 @@
     <string name="notifications_chore_overdue_label">Chore overdue reminders</string>
 
     <string name="location_history_title">Location History</string>
-    <string name="location_history_description">Periodically records your location in the background so it can later be browsed as a life map. Off by default — background location access is only requested once you turn this on. Doze mode and aggressive battery managers on some phones can delay captures.</string>
+    <string name="location_history_description">Periodically records your location in the background so it can later be viewed in Breadcrumbs. Off by default — background location access is only requested once you turn this on. Doze mode and aggressive battery managers on some phones can delay captures.</string>
     <string name="location_history_enable">Track my location</string>
     <string name="location_history_foreground_permission_label">Location access</string>
     <string name="location_history_background_permission_label">Background location access</string>
@@ -393,27 +393,27 @@
     <string name="watch_relay_notification_title">Watch relay active</string>
     <string name="watch_relay_notification_body">Listening for quick actions from your watch</string>
 
-    <string name="life_map_controls_label">Map controls</string>
-    <string name="life_map_range_label">Time range</string>
-    <string name="life_map_range_today">Today</string>
-    <string name="life_map_range_last_day">Last day</string>
-    <string name="life_map_range_last_week">Last week</string>
-    <string name="life_map_range_last_month">Last month</string>
-    <string name="life_map_range_last_3_months">Last 3 months</string>
-    <string name="life_map_range_last_6_months">Last 6 months</string>
-    <string name="life_map_range_last_year">Last year</string>
-    <string name="life_map_range_all">All time</string>
-    <string name="life_map_empty">No location history yet.</string>
-    <string name="life_map_map_style_standard">Standard</string>
-    <string name="life_map_map_style_muted">Muted</string>
-    <string name="life_map_range_custom">Custom range</string>
-    <string name="life_map_range_custom_button">Pick a custom range</string>
-    <string name="life_map_range_custom_from_date">From date</string>
-    <string name="life_map_range_custom_from_time">From time</string>
-    <string name="life_map_range_custom_to_date">To date</string>
-    <string name="life_map_range_custom_to_time">To time</string>
-    <string name="life_map_range_custom_error">The start must be before the end.</string>
-    <string name="life_map_range_custom_apply">Apply</string>
+    <string name="breadcrumbs_controls_label">Map controls</string>
+    <string name="breadcrumbs_range_label">Time range</string>
+    <string name="breadcrumbs_range_today">Today</string>
+    <string name="breadcrumbs_range_last_day">Last day</string>
+    <string name="breadcrumbs_range_last_week">Last week</string>
+    <string name="breadcrumbs_range_last_month">Last month</string>
+    <string name="breadcrumbs_range_last_3_months">Last 3 months</string>
+    <string name="breadcrumbs_range_last_6_months">Last 6 months</string>
+    <string name="breadcrumbs_range_last_year">Last year</string>
+    <string name="breadcrumbs_range_all">All time</string>
+    <string name="breadcrumbs_empty">No location history yet.</string>
+    <string name="breadcrumbs_map_style_standard">Standard</string>
+    <string name="breadcrumbs_map_style_muted">Muted</string>
+    <string name="breadcrumbs_range_custom">Custom range</string>
+    <string name="breadcrumbs_range_custom_button">Pick a custom range</string>
+    <string name="breadcrumbs_range_custom_from_date">From date</string>
+    <string name="breadcrumbs_range_custom_from_time">From time</string>
+    <string name="breadcrumbs_range_custom_to_date">To date</string>
+    <string name="breadcrumbs_range_custom_to_time">To time</string>
+    <string name="breadcrumbs_range_custom_error">The start must be before the end.</string>
+    <string name="breadcrumbs_range_custom_apply">Apply</string>
 
     <string name="vpn_title">VPN</string>
     <string name="vpn_description">The backend is only reachable over WireGuard — paste your client config below (or scan its QR code) once. On a saved home Wi-Fi network, the app skips VPN entirely; anywhere else it brings the tunnel up automatically before reaching the backend.</string>

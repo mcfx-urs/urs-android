@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
 // way ReminderAlarmReceiver does. Also restarts the watch relay foreground
 // service if it was left enabled — a foreground service does not survive a
 // reboot on its own, unlike WorkManager's periodic work. Same reasoning
-// covers Life Map's Precision mode: its exact alarm needs
+// covers Breadcrumbs' Precision mode: its exact alarm needs
 // re-arming here too, since WorkManager-based capture (the non-precision
 // path) already survives reboot on its own and needs no help.
 class BootCompletedReceiver : BroadcastReceiver() {

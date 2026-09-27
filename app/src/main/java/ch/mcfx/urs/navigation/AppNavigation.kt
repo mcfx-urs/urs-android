@@ -76,7 +76,7 @@ import ch.mcfx.urs.inventory.ProductListScreen
 import ch.mcfx.urs.kanban.KanbanBoardDetailScreen
 import ch.mcfx.urs.kanban.KanbanBoardsScreen
 import ch.mcfx.urs.kanban.KanbanRoutes
-import ch.mcfx.urs.lifemap.LifeMapScreen
+import ch.mcfx.urs.breadcrumbs.BreadcrumbsScreen
 import ch.mcfx.urs.obd.ObdLiveScreen
 import ch.mcfx.urs.obd.ObdRoutes
 import ch.mcfx.urs.obd.ObdSetupScreen
@@ -505,7 +505,7 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                         val entryId = backStackEntry.arguments?.getLong("entryId") ?: return@composable
                         WorkTimeAddScreen(entryId = entryId, onDone = { navController.popBackStack() })
                     }
-                    composable(Destination.LIFE_MAP.route) { LifeMapScreen() }
+                    composable(Destination.BREADCRUMBS.route) { BreadcrumbsScreen() }
                     composable(ObdRoutes.LIVE) {
                         ObdLiveScreen(onOpenSetup = { navController.navigate(ObdRoutes.SETUP) })
                     }

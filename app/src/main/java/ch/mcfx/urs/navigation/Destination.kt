@@ -32,7 +32,7 @@ enum class Destination(
     SHOPPING_LIST(ShoppingListRoutes.LISTS, R.string.nav_shopping_list, isAvailable = true),
     INVENTORY(InventoryRoutes.INVENTORIES, R.string.nav_inventory, isAvailable = true),
     WORK_TIME(WorkTimeRoutes.HISTORY, R.string.nav_work_time, isAvailable = true),
-    LIFE_MAP("life-map", R.string.nav_life_map, isAvailable = true),
+    BREADCRUMBS("breadcrumbs", R.string.nav_breadcrumbs, isAvailable = true),
     BEER("beer", R.string.nav_beer, isAvailable = true),
     BAKING(BakingRoutes.PLANS, R.string.nav_baking, isAvailable = true),
     NOTES(NotesRoutes.LIST, R.string.nav_notes, isAvailable = true),

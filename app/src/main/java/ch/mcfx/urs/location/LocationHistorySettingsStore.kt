@@ -1,7 +1,7 @@
 package ch.mcfx.urs.location
 
 import android.content.Context
-import ch.mcfx.urs.lifemap.TimeRange
+import ch.mcfx.urs.breadcrumbs.TimeRange
 
 private const val PREFS_NAME = "location_history_prefs"
 private const val KEY_ENABLED = "enabled"
@@ -67,7 +67,7 @@ private const val KEY_TRACK_HALO_ENABLED = "track_halo_enabled"
 private const val KEY_MUTED_MAP = "muted_map"
 private const val KEY_GRADIENT_MODE = "gradient_mode"
 
-// Segment gradient sub-chunking (GitHub issue #93) — see LifeMapScreen.kt's
+// Segment gradient sub-chunking (GitHub issue #93) — see BreadcrumbsScreen.kt's
 // render loop for how these three combine.
 private const val KEY_SEGMENT_CHUNKING_CUTOFF = "segment_chunking_cutoff"
 private val DEFAULT_SEGMENT_CHUNKING_CUTOFF = TimeRange.LAST_WEEK
@@ -76,7 +76,7 @@ private const val DEFAULT_MAX_GRADIENT_CHUNKS_PER_SEGMENT = 30
 private const val KEY_MIN_GRADIENT_CHUNK_METERS = "min_gradient_chunk_meters"
 private const val DEFAULT_MIN_GRADIENT_CHUNK_METERS = 50L
 
-// Default life-map track gradient, oldest -> newest: cyan -> blue -> magenta.
+// Default breadcrumbs track gradient, oldest -> newest: cyan -> blue -> magenta.
 // Deliberately a hue family that OSM Carto's own road/label/landuse colours
 // barely use, so the track stays readable where it runs along a coloured road.
 const val DEFAULT_TRACK_COLOR_OLD = 0xFF00E5FF.toInt()
@@ -87,7 +87,7 @@ const val DEFAULT_TRACK_COLOR_NEW = 0xFFD500F9.toInt()
 enum class GradientMode { HUE, INTENSITY }
 
 /**
- * Two-scalar settings store for the life map's periodic capture (enabled +
+ * Two-scalar settings store for Breadcrumbs' periodic capture (enabled +
  * interval) — same plain-SharedPreferences approach as
  * [ch.mcfx.urs.notifications.ReminderStore], minus that store's JSON/
  * kotlinx-serialization machinery, since there's nothing structured to
@@ -130,7 +130,7 @@ class LocationHistorySettingsStore(context: Context) {
         prefs.edit().putBoolean(KEY_PRECISION_MODE_ENABLED, enabled).apply()
     }
 
-    /** The three life-map track gradient stops (ARGB ints), oldest to newest. */
+    /** The three breadcrumbs track gradient stops (ARGB ints), oldest to newest. */
     fun trackColors(): List<Int> = listOf(
         prefs.getInt(KEY_TRACK_COLOR_OLD, DEFAULT_TRACK_COLOR_OLD),
         prefs.getInt(KEY_TRACK_COLOR_MID, DEFAULT_TRACK_COLOR_MID),
@@ -162,14 +162,14 @@ class LocationHistorySettingsStore(context: Context) {
         prefs.edit().putString(KEY_GRADIENT_MODE, mode.name).apply()
     }
 
-    /** Desaturate the base map tiles so any track colour stands out — toggled on the Life Map screen itself. */
+    /** Desaturate the base map tiles so any track colour stands out — toggled on the Breadcrumbs screen itself. */
     fun isMutedMap(): Boolean = prefs.getBoolean(KEY_MUTED_MAP, false)
 
     fun setMutedMap(muted: Boolean) {
         prefs.edit().putBoolean(KEY_MUTED_MAP, muted).apply()
     }
 
-    /** Gradient sub-chunking only applies while the selected Life Map range's duration is at or below this cutoff. */
+    /** Gradient sub-chunking only applies while the selected Breadcrumbs range's duration is at or below this cutoff. */
     fun segmentChunkingCutoff(): TimeRange =
         prefs.getString(KEY_SEGMENT_CHUNKING_CUTOFF, null)?.let { name -> TimeRange.entries.find { it.name == name } }
             ?: DEFAULT_SEGMENT_CHUNKING_CUTOFF

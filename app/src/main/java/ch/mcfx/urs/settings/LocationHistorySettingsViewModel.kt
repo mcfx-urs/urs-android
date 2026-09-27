@@ -16,7 +16,7 @@ import ch.mcfx.urs.location.LocationCaptureScheduler
 import ch.mcfx.urs.location.LocationGeofenceManager
 import ch.mcfx.urs.location.LocationHistorySettingsStore
 import ch.mcfx.urs.location.hasActivityRecognitionPermission
-import ch.mcfx.urs.lifemap.TimeRange
+import ch.mcfx.urs.breadcrumbs.TimeRange
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
