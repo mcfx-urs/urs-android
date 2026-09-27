@@ -47,6 +47,10 @@ data class ProductFormState(
     val description: String = "",
     val categoryId: String? = null,
     val imageId: String? = null,
+    // Carried through unedited from the product being edited (no barcode
+    // field in this form's UI) so submitProductForm() doesn't wipe it —
+    // null for a new product.
+    val barcode: String? = null,
     val submitting: Boolean = false,
     val submitFailed: Boolean = false,
     // Distinct from submitFailed: a 409 from createProduct's
@@ -137,6 +141,7 @@ class ProductManagementViewModel(private val repository: CatalogRepository) : Vi
             name = product.name,
             categoryId = product.catalogCategoryId,
             imageId = product.catalogImageId?.toString(),
+            barcode = product.barcode,
         )
     }
 
@@ -203,6 +208,7 @@ class ProductManagementViewModel(private val repository: CatalogRepository) : Vi
             name = product.name,
             categoryId = product.catalogCategoryId,
             imageId = product.catalogImageId?.toString(),
+            barcode = product.barcode,
         )
     }
 
@@ -337,7 +343,7 @@ class ProductManagementViewModel(private val repository: CatalogRepository) : Vi
             try {
                 val name = form.name.trim()
                 if (form.editingId != null) {
-                    repository.updateProduct(form.editingId, name, form.categoryId, form.imageId)
+                    repository.updateProduct(form.editingId, name, form.categoryId, form.imageId, form.barcode)
                 } else {
                     // requireNew = true: reject a name collision with an
                     // existing row (e.g. an external-catalog import) outright instead of

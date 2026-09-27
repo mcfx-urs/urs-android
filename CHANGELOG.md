@@ -9,6 +9,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Renamed "Life Map" to "Breadcrumbs" — display label, route, and internal code identifiers all updated; an existing custom Home layout keeps its tile via a one-time migration (#99)
 
+### Fixed
+
+- Editing a product's name, category, or image in Product Management no longer clears its barcode (#114)
+
 ## [1.7.0] - 2026-09-27
 
 ### Fixed
