@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Notes tag filter now supports selecting multiple tags; a note must have all selected tags
 - Tag suggestions now tolerate typos and different word order (#109)
 - Beer daily and monthly charts now plot liters instead of entry count (#105)
 - Journal, Assets, Kanban, and Voice Notes now have dedicated Home tile images instead of sharing a placeholder; refreshed the Notes and Breadcrumbs tile artwork (#96)

@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -61,7 +59,7 @@ import ch.mcfx.urs.data.local.KanbanCardEntity
 import ch.mcfx.urs.data.local.KanbanChecklistItemEntity
 import ch.mcfx.urs.data.local.NoteEntity
 import ch.mcfx.urs.data.local.publicId
-import ch.mcfx.urs.notes.FilterChip
+import ch.mcfx.urs.notes.TagFilterRow
 import ch.mcfx.urs.notes.richtext.RichTextField
 import ch.mcfx.urs.notes.richtext.RichTextFieldState
 import ch.mcfx.urs.notes.richtext.RichTextLinkSheetHost
@@ -154,7 +152,7 @@ private fun BoardDetailContent(detail: KanbanBoardDetail, viewModel: KanbanBoard
             )
         }
         if (allTags.isNotEmpty()) {
-            KanbanTagFilterRow(
+            TagFilterRow(
                 tags = allTags,
                 tagColors = tagColors,
                 selected = tagFilter,
@@ -167,24 +165,6 @@ private fun BoardDetailContent(detail: KanbanBoardDetail, viewModel: KanbanBoard
             KanbanViewMode.List -> BoardListView(detail = detail, tagFilter = tagFilter, viewModel = viewModel, modifier = Modifier.weight(1f))
         }
     }
-}
-
-@Composable
-private fun KanbanTagFilterRow(
-    tags: List<String>,
-    tagColors: Map<String, String>,
-    selected: Set<String>,
-    onToggle: (String) -> Unit,
-    onClear: () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = Spacing.l),
-        horizontalArrangement = Arrangement.spacedBy(Spacing.s),
-    ) {
-        FilterChip(stringResource(R.string.notes_filter_all_tags), selected.isEmpty(), tagColor = null, onClick = onClear)
-        tags.forEach { tag -> FilterChip(tag, tag in selected, tagColor = tagColors[tag]) { onToggle(tag) } }
-    }
-    Spacer(Modifier.height(Spacing.s))
 }
 
 /** With a non-empty [tagFilter], only cards carrying every one of its tags. */

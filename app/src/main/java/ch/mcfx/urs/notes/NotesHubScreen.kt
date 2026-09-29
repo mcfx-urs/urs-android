@@ -56,7 +56,7 @@ fun NotesHubScreen(
     viewModel: NotesViewModel = viewModel(factory = NotesViewModel.Factory),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val tagFilter by viewModel.tagFilter.collectAsStateWithLifecycle()
+    val selectedTags by viewModel.tagFilter.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) { viewModel.refresh() }
 
@@ -78,11 +78,23 @@ fun NotesHubScreen(
 
                 val tagColorsByName = remember(state.notes) { state.notes.flatMap { it.tags }.associate { it.tagName to it.color } }
                 val allTags = remember(tagColorsByName) { tagColorsByName.keys.sorted() }
+                // Selected tags that no longer sit on any note are ignored.
+                val tagFilter = selectedTags.filterTo(mutableSetOf()) { it in tagColorsByName }
                 if (allTags.isNotEmpty()) {
-                    TagFilterRow(tags = allTags, tagColors = tagColorsByName, selected = tagFilter, onSelect = viewModel::setTagFilter)
+                    TagFilterRow(
+                        tags = allTags,
+                        tagColors = tagColorsByName,
+                        selected = tagFilter,
+                        onToggle = viewModel::toggleTagFilter,
+                        onClear = viewModel::clearTagFilter,
+                    )
                 }
 
-                val visible = if (tagFilter == null) state.notes else state.notes.filter { note -> note.tags.any { it.tagName == tagFilter } }
+                val visible = if (tagFilter.isEmpty()) {
+                    state.notes
+                } else {
+                    state.notes.filter { note -> tagFilter.all { selected -> note.tags.any { it.tagName == selected } } }
+                }
                 NoteList(visible, onOpenNote)
             }
         }
@@ -97,19 +109,25 @@ fun NotesHubScreen(
 }
 
 @Composable
-private fun TagFilterRow(tags: List<String>, tagColors: Map<String, String>, selected: String?, onSelect: (String?) -> Unit) {
+internal fun TagFilterRow(
+    tags: List<String>,
+    tagColors: Map<String, String>,
+    selected: Set<String>,
+    onToggle: (String) -> Unit,
+    onClear: () -> Unit,
+) {
     Row(
         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = Spacing.l),
         horizontalArrangement = Arrangement.spacedBy(Spacing.s),
     ) {
-        FilterChip(stringResource(R.string.notes_filter_all_tags), selected == null, tagColor = null) { onSelect(null) }
-        tags.forEach { tag -> FilterChip(tag, selected == tag, tagColor = tagColors[tag]) { onSelect(tag) } }
+        FilterChip(stringResource(R.string.notes_filter_all_tags), selected.isEmpty(), tagColor = null, onClick = onClear)
+        tags.forEach { tag -> FilterChip(tag, tag in selected, tagColor = tagColors[tag]) { onToggle(tag) } }
     }
     Spacer(Modifier.height(Spacing.s))
 }
 
 @Composable
-internal fun FilterChip(label: String, selected: Boolean, tagColor: String?, onClick: () -> Unit) {
+private fun FilterChip(label: String, selected: Boolean, tagColor: String?, onClick: () -> Unit) {
     val baseColor = tagColor?.takeIf { it.isNotBlank() }?.let(::parseChoreColor) ?: UrsTheme.colors.accent
     UrsPill(
         text = label,

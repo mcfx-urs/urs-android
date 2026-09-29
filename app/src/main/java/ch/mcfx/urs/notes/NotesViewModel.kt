@@ -21,7 +21,7 @@ sealed interface NotesUiState {
     data class Data(val notes: List<NoteWithTags>) : NotesUiState
 }
 
-private const val TAG_FILTER_KEY = "tagFilter"
+private const val TAG_FILTER_KEY = "tagFilters"
 
 /** Active-notes hub, with an in-memory tag filter — small local lists, no need to push filtering into the DB query. */
 class NotesViewModel(private val repository: NoteRepository, private val savedStateHandle: SavedStateHandle) : ViewModel() {
@@ -33,7 +33,8 @@ class NotesViewModel(private val repository: NoteRepository, private val savedSt
     // MutableStateFlow - survives even if the NavBackStackEntry-scoped
     // NotesViewModel instance itself gets recreated across a back-stack pop
     // (opening a note, then pressing back), plus process death/recreation.
-    val tagFilter: StateFlow<String?> = savedStateHandle.getStateFlow(TAG_FILTER_KEY, null)
+    // Multi-select: a note shows only if it has every selected tag; empty = no filter.
+    val tagFilter: StateFlow<List<String>> = savedStateHandle.getStateFlow(TAG_FILTER_KEY, emptyList())
 
     init {
         viewModelScope.launch {
@@ -52,8 +53,13 @@ class NotesViewModel(private val repository: NoteRepository, private val savedSt
         viewModelScope.launch { repository.refreshFromBackend() }
     }
 
-    fun setTagFilter(tag: String?) {
-        savedStateHandle[TAG_FILTER_KEY] = tag
+    fun toggleTagFilter(tag: String) {
+        val current = tagFilter.value
+        savedStateHandle[TAG_FILTER_KEY] = ArrayList(if (tag in current) current - tag else current + tag)
+    }
+
+    fun clearTagFilter() {
+        savedStateHandle[TAG_FILTER_KEY] = ArrayList<String>()
     }
 
     companion object {
