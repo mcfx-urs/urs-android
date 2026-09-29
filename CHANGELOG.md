@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-09-29
+
 ### Added
 
 - Kanban boards can be filtered by one or more tags (#110)
