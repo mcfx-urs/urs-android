@@ -99,8 +99,8 @@ fun BeerScreen(viewModel: BeerViewModel = viewModel(factory = BeerViewModel.Fact
 
 @Composable
 private fun BeerContent(entries: List<BeerLogDto>, viewModel: BeerViewModel) {
-    val daily = remember(entries) { BeerStats.dailyCounts(entries) }
-    val monthly = remember(entries) { BeerStats.monthlyCounts(entries) }
+    val daily = remember(entries) { BeerStats.dailyLiters(entries) }
+    val monthly = remember(entries) { BeerStats.monthlyLiters(entries) }
     val litersThisYear = remember(entries) { BeerStats.totalLitersThisYear(entries) }
     val bathtubs = remember(litersThisYear) { BeerStats.bathtubs(litersThisYear) }
 
@@ -166,12 +166,14 @@ private fun FunFactCard(litersThisYear: Double, bathtubs: Double) {
     }
 }
 
+private fun formatAxisLiters(liters: Double): String = String.format(Locale.US, "%.1f", liters)
+
 private val CHART_BAR_MAX_HEIGHT = 80.dp
 private val CHART_AXIS_WIDTH = 28.dp
 
 @Composable
 private fun BarChart(buckets: List<BeerStats.Bucket>) {
-    val maxCount = (buckets.maxOfOrNull { it.count } ?: 0).coerceAtLeast(1)
+    val maxLiters = (buckets.maxOfOrNull { it.liters } ?: 0.0).coerceAtLeast(1.0)
 
     Row(modifier = Modifier.fillMaxWidth()) {
         // Auto-scaling axis (0 / half / max) instead of a number on every
@@ -182,9 +184,9 @@ private fun BarChart(buckets: List<BeerStats.Bucket>) {
             modifier = Modifier.height(CHART_BAR_MAX_HEIGHT).width(CHART_AXIS_WIDTH),
             horizontalAlignment = Alignment.End,
         ) {
-            UrsText(maxCount.toString(), style = UrsTheme.typography.caption)
+            UrsText(formatAxisLiters(maxLiters), style = UrsTheme.typography.caption)
             Spacer(Modifier.weight(1f))
-            UrsText((maxCount / 2).toString(), style = UrsTheme.typography.caption)
+            UrsText(formatAxisLiters(maxLiters / 2), style = UrsTheme.typography.caption)
             Spacer(Modifier.weight(1f))
             UrsText("0", style = UrsTheme.typography.caption)
         }
@@ -213,7 +215,7 @@ private fun BarChart(buckets: List<BeerStats.Bucket>) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(CHART_BAR_MAX_HEIGHT * (bucket.count.toFloat() / maxCount))
+                                    .height(CHART_BAR_MAX_HEIGHT * (bucket.liters / maxLiters).toFloat())
                                     .background(UrsTheme.colors.accent, RoundedCornerShape(2.dp)),
                             )
                         }

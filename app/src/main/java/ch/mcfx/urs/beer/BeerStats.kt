@@ -18,7 +18,7 @@ object BeerStats {
 
     val DATE_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
-    data class Bucket(val label: String, val count: Int)
+    data class Bucket(val label: String, val liters: Double)
 
     sealed class SinceLast {
         data object JustNow : SinceLast()
@@ -29,21 +29,27 @@ object BeerStats {
 
     fun parseDateTime(raw: String): LocalDateTime? = runCatching { LocalDateTime.parse(raw, DATE_FORMAT) }.getOrNull()
 
-    fun dailyCounts(entries: List<BeerLogDto>, today: LocalDate = LocalDate.now(), days: Int = 30): List<Bucket> {
-        val countsByDay = entries.groupingBy { parseDateTime(it.date)?.toLocalDate() }.eachCount()
+    private fun litersByKey(entries: List<BeerLogDto>, key: (LocalDateTime) -> Any): Map<Any, Double> =
+        entries
+            .mapNotNull { e -> parseDateTime(e.date)?.let { key(it) to (e.amountMl.toIntOrNull() ?: 0) } }
+            .groupBy({ it.first }, { it.second })
+            .mapValues { (_, ml) -> ml.sum() / 1000.0 }
+
+    fun dailyLiters(entries: List<BeerLogDto>, today: LocalDate = LocalDate.now(), days: Int = 30): List<Bucket> {
+        val litersByDay = litersByKey(entries) { it.toLocalDate() }
         val start = today.minusDays((days - 1).toLong())
         return (0 until days).map { offset ->
             val day = start.plusDays(offset.toLong())
-            Bucket(label = day.dayOfMonth.toString(), count = countsByDay[day] ?: 0)
+            Bucket(label = day.dayOfMonth.toString(), liters = litersByDay[day] ?: 0.0)
         }
     }
 
-    fun monthlyCounts(entries: List<BeerLogDto>, today: LocalDate = LocalDate.now(), months: Int = 12): List<Bucket> {
-        val countsByMonth = entries.groupingBy { parseDateTime(it.date)?.let { d -> YearMonth.from(d) } }.eachCount()
+    fun monthlyLiters(entries: List<BeerLogDto>, today: LocalDate = LocalDate.now(), months: Int = 12): List<Bucket> {
+        val litersByMonth = litersByKey(entries) { YearMonth.from(it) }
         val start = YearMonth.from(today).minusMonths((months - 1).toLong())
         return (0 until months).map { offset ->
             val month = start.plusMonths(offset.toLong())
-            Bucket(label = month.month.name.take(3).lowercase().replaceFirstChar { it.uppercase() }, count = countsByMonth[month] ?: 0)
+            Bucket(label = month.month.name.take(3).lowercase().replaceFirstChar { it.uppercase() }, liters = litersByMonth[month] ?: 0.0)
         }
     }
 
