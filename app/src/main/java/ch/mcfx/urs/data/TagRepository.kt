@@ -28,10 +28,7 @@ class TagRepository(private val api: UrsApi) {
     val tags: StateFlow<List<TagDto>> = _tags.asStateFlow()
 
     fun suggest(query: String): List<String> =
-        _tags.value.map { it.name }
-            .filter { it.contains(query, ignoreCase = true) }
-            .sorted()
-            .take(10)
+        FuzzyMatch.rank(_tags.value.map { it.name }, query, limit = 10)
 
     suspend fun refreshFromBackend(): Boolean = try {
         _tags.value = api.getTags()
