@@ -12,6 +12,7 @@ import ch.mcfx.urs.auth.AuthRepository
 import ch.mcfx.urs.auth.AuthTokenStore
 import ch.mcfx.urs.auth.BiometricGate
 import ch.mcfx.urs.chores.ChoreOrderStore
+import ch.mcfx.urs.kanban.KanbanViewModeStore
 import ch.mcfx.urs.data.AssetRepository
 import ch.mcfx.urs.data.OpenFoodFactsRepository
 import ch.mcfx.urs.data.remote.OpenFoodFactsApi
@@ -308,9 +309,11 @@ class AppContainer(context: Context) {
     val workSettingsStore = WorkSettingsStore(context)
     val defaultVehicleStore = DefaultVehicleStore(context)
     val choreOrderStore = ChoreOrderStore(context)
+    val kanbanViewModeStore = KanbanViewModeStore(context)
 
     val authRepository = AuthRepository(
         ursApi, authTokenStore, database, wireGuardManager, workSettingsStore, defaultVehicleStore, choreOrderStore,
+        kanbanViewModeStore,
     )
 
     val reachabilityChecker = ReachabilityChecker()

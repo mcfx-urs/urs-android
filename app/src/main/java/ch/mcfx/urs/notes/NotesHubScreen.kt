@@ -109,7 +109,7 @@ private fun TagFilterRow(tags: List<String>, tagColors: Map<String, String>, sel
 }
 
 @Composable
-private fun FilterChip(label: String, selected: Boolean, tagColor: String?, onClick: () -> Unit) {
+internal fun FilterChip(label: String, selected: Boolean, tagColor: String?, onClick: () -> Unit) {
     val baseColor = tagColor?.takeIf { it.isNotBlank() }?.let(::parseChoreColor) ?: UrsTheme.colors.accent
     UrsPill(
         text = label,

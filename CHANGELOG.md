@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Kanban boards can be filtered by one or more tags (#110)
+- Kanban boards offer an alternative vertical list layout, remembered per board (#111)
+
 ### Changed
 
 - Tag suggestions now tolerate typos and different word order (#109)

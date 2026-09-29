@@ -1,6 +1,7 @@
 package ch.mcfx.urs.auth
 
 import ch.mcfx.urs.chores.ChoreOrderStore
+import ch.mcfx.urs.kanban.KanbanViewModeStore
 import ch.mcfx.urs.data.DefaultVehicleStore
 import ch.mcfx.urs.data.WorkSettingsStore
 import ch.mcfx.urs.data.local.AppDatabase
@@ -25,6 +26,7 @@ class AuthRepository(
     private val workSettingsStore: WorkSettingsStore,
     private val defaultVehicleStore: DefaultVehicleStore,
     private val choreOrderStore: ChoreOrderStore,
+    private val kanbanViewModeStore: KanbanViewModeStore,
 ) {
     suspend fun login(userName: String, password: String) {
         val tokens = api.login(LoginPayload(userName = userName, password = password))
@@ -38,7 +40,8 @@ class AuthRepository(
      * still-running tunnel, or their synced rows (lists, inventories, ...),
      * simply stay in place and, since neither carried a user identity
      * before, would keep being used/shown verbatim by whoever logs in next
-     * on this device. Same for [ChoreOrderStore]'s manual chores sort order.
+     * on this device. Same for [ChoreOrderStore]'s manual chores sort order and
+     * [KanbanViewModeStore]'s per-board layout choice.
      * Deliberately calls [WireGuardManager.disconnect]
      * directly rather than [ch.mcfx.urs.vpn.NetworkGate.userDisconnect] —
      * the latter also flips a "user disabled" flag that would incorrectly
@@ -50,6 +53,7 @@ class AuthRepository(
         workSettingsStore.clear()
         defaultVehicleStore.clear()
         choreOrderStore.clear()
+        kanbanViewModeStore.clear()
         tokenStore.clear()
     }
 

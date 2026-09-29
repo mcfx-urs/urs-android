@@ -857,6 +857,8 @@
     <string name="kanban_board_delete_confirm_body">This can\'t be undone.</string>
     <string name="kanban_board_not_found">Board not found</string>
     <string name="kanban_board_detail_title">Kanban Board</string>
+    <string name="kanban_view_list">List view</string>
+    <string name="kanban_view_board">Board view</string>
     <string name="kanban_column_add">Add column</string>
     <string name="kanban_column_rename">Rename column</string>
     <string name="kanban_column_name">Column name</string>

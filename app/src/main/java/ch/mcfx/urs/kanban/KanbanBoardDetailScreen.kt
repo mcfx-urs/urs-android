@@ -7,7 +7,10 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -58,6 +61,7 @@ import ch.mcfx.urs.data.local.KanbanCardEntity
 import ch.mcfx.urs.data.local.KanbanChecklistItemEntity
 import ch.mcfx.urs.data.local.NoteEntity
 import ch.mcfx.urs.data.local.publicId
+import ch.mcfx.urs.notes.FilterChip
 import ch.mcfx.urs.notes.richtext.RichTextField
 import ch.mcfx.urs.notes.richtext.RichTextFieldState
 import ch.mcfx.urs.notes.richtext.RichTextLinkSheetHost
@@ -130,13 +134,122 @@ fun KanbanBoardDetailScreen(
 
 @Composable
 private fun BoardDetailContent(detail: KanbanBoardDetail, viewModel: KanbanBoardDetailViewModel) {
-    Column(modifier = Modifier.fillMaxSize().padding(top = Spacing.l)) {
-        UrsText(
-            detail.board.name,
-            style = UrsTheme.typography.screenTitle,
-            modifier = Modifier.padding(horizontal = Spacing.l, vertical = Spacing.m),
-        )
-        BoardColumnsRow(detail = detail, viewModel = viewModel, modifier = Modifier.weight(1f))
+    val selectedTags by viewModel.tagFilter.collectAsStateWithLifecycle()
+    val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
+    val tagColors = remember(detail) { detail.columns.flatMap { it.cards }.flatMap { it.tags }.associate { it.tagName to it.color } }
+    val allTags = remember(tagColors) { tagColors.keys.sorted() }
+    // A filter whose tag no longer sits on any card (retagged/deleted since it was picked) is ignored.
+    val tagFilter = selectedTags.filterTo(mutableSetOf()) { it in tagColors }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.l, vertical = Spacing.xs),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.m),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            UrsText(detail.board.name, style = UrsTheme.typography.screenTitle, modifier = Modifier.weight(1f))
+            UrsOutlinedButton(
+                text = stringResource(if (viewMode == KanbanViewMode.Board) R.string.kanban_view_list else R.string.kanban_view_board),
+                onClick = viewModel::toggleViewMode,
+            )
+        }
+        if (allTags.isNotEmpty()) {
+            KanbanTagFilterRow(
+                tags = allTags,
+                tagColors = tagColors,
+                selected = tagFilter,
+                onToggle = viewModel::toggleTagFilter,
+                onClear = viewModel::clearTagFilter,
+            )
+        }
+        when (viewMode) {
+            KanbanViewMode.Board -> BoardColumnsRow(detail = detail, tagFilter = tagFilter, viewModel = viewModel, modifier = Modifier.weight(1f))
+            KanbanViewMode.List -> BoardListView(detail = detail, tagFilter = tagFilter, viewModel = viewModel, modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun KanbanTagFilterRow(
+    tags: List<String>,
+    tagColors: Map<String, String>,
+    selected: Set<String>,
+    onToggle: (String) -> Unit,
+    onClear: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = Spacing.l),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+    ) {
+        FilterChip(stringResource(R.string.notes_filter_all_tags), selected.isEmpty(), tagColor = null, onClick = onClear)
+        tags.forEach { tag -> FilterChip(tag, tag in selected, tagColor = tagColors[tag]) { onToggle(tag) } }
+    }
+    Spacer(Modifier.height(Spacing.s))
+}
+
+/** With a non-empty [tagFilter], only cards carrying every one of its tags. */
+private fun KanbanColumnWithCards.visibleCards(tagFilter: Set<String>): List<KanbanCardWithDetails> =
+    if (tagFilter.isEmpty()) cards else cards.filter { card -> tagFilter.all { selected -> card.tags.any { it.tagName == selected } } }
+
+/**
+ * Translates an insert position among a column's *visible* (tag-filtered)
+ * siblings into the matching position among all its siblings, so a drop
+ * onto a filtered column lands next to the cards actually on screen instead
+ * of at the wrong offset among the hidden ones.
+ */
+private fun fullInsertIndex(fullSiblings: List<Long>, visibleSiblings: List<Long>, visibleIndex: Int): Int = when {
+    visibleIndex < visibleSiblings.size -> fullSiblings.indexOf(visibleSiblings[visibleIndex])
+    visibleSiblings.isEmpty() -> fullSiblings.size
+    else -> fullSiblings.indexOf(visibleSiblings.last()) + 1
+}
+
+/** The list layout: each column a labeled section with its cards underneath, one vertical scroll. */
+@Composable
+private fun BoardListView(detail: KanbanBoardDetail, tagFilter: Set<String>, viewModel: KanbanBoardDetailViewModel, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = Spacing.l, vertical = Spacing.s),
+        verticalArrangement = Arrangement.spacedBy(Spacing.m),
+    ) {
+        detail.columns.forEach { columnWithCards ->
+            val cards = columnWithCards.visibleCards(tagFilter)
+            key(columnWithCards.column.id) {
+                UrsGlassCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(horizontal = Spacing.s, vertical = Spacing.xs),
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.s)) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { viewModel.openColumnActionSheet(columnWithCards.column) }
+                                .padding(vertical = Spacing.s),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            UrsText(columnWithCards.column.name, style = UrsTheme.typography.cardTitle, modifier = Modifier.weight(1f))
+                            UrsText(cards.size.toString(), style = UrsTheme.typography.caption, color = UrsTheme.colors.onSurfaceMuted)
+                        }
+                        cards.forEach { cardWithDetails ->
+                            key(cardWithDetails.card.id) {
+                                UrsCard(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { viewModel.openCardEditor(cardWithDetails.card, cardWithDetails.tags) },
+                                    contentPadding = PaddingValues(Spacing.m),
+                                ) {
+                                    CardTileContent(cardWithDetails)
+                                }
+                            }
+                        }
+                        AddCardRow(onClick = { viewModel.openCreateCardEditor(columnWithCards.column.publicId) })
+                    }
+                }
+            }
+        }
+        AddColumnTile(onClick = viewModel::openCreateColumnForm)
     }
 }
 
@@ -157,7 +270,7 @@ private fun BoardDetailContent(detail: KanbanBoardDetail, viewModel: KanbanBoard
  * callbacks down through parameters.
  */
 @Composable
-private fun BoardColumnsRow(detail: KanbanBoardDetail, viewModel: KanbanBoardDetailViewModel, modifier: Modifier = Modifier) {
+private fun BoardColumnsRow(detail: KanbanBoardDetail, tagFilter: Set<String>, viewModel: KanbanBoardDetailViewModel, modifier: Modifier = Modifier) {
     val density = LocalDensity.current
     val columnSpacingPx = with(density) { Spacing.m.toPx() }
     val columnStepPx = with(density) { KanbanColumnWidth.toPx() } + columnSpacingPx
@@ -177,6 +290,10 @@ private fun BoardColumnsRow(detail: KanbanBoardDetail, viewModel: KanbanBoardDet
     val cardIdShape = detail.columns.map { it.column.id to it.cards.map { c -> c.card.id } }
     val orderedColumnIds = columnIdShape
     val cardIdsByColumn = cardIdShape.toMap()
+    // Cards actually on screen under the current tag filter — equal to
+    // cardIdsByColumn when no filter is active. Drag targets are computed
+    // against this, then mapped back onto the full list (fullInsertIndex).
+    val visibleCardIdsByColumn = detail.columns.associate { it.column.id to it.visibleCards(tagFilter).map { c -> c.card.id } }
     // Pure display/lookup maps, deliberately not gated on the narrow id
     // shape above — these must always reflect the latest field values (a
     // card's title/tags/etc.) even while some other card is mid-drag.
@@ -203,7 +320,7 @@ private fun BoardColumnsRow(detail: KanbanBoardDetail, viewModel: KanbanBoardDet
                     translationY = if (isDragging) cardDragOffset.y else 0f
                 }
                 .zIndex(if (isDragging) 1f else 0f)
-                .pointerInput(cardId) {
+                .pointerInput(cardId, tagFilter) {
                     detectDragGesturesAfterLongPress(
                         onDragStart = { draggingCardId = cardId; cardDragOffset = Offset.Zero },
                         // The only place a move is actually decided/saved — see the
@@ -214,7 +331,7 @@ private fun BoardColumnsRow(detail: KanbanBoardDetail, viewModel: KanbanBoardDet
                             cardDragOffset = Offset.Zero
                             val sourceColumnId = cardIdsByColumn.entries.firstOrNull { cardId in it.value }?.key
                                 ?: return@detectDragGesturesAfterLongPress
-                            val sourceIndex = cardIdsByColumn.getValue(sourceColumnId).indexOf(cardId)
+                            val sourceIndex = visibleCardIdsByColumn.getValue(sourceColumnId).indexOf(cardId)
                             val sourceColumnIndex = orderedColumnIds.indexOf(sourceColumnId)
                             val columnShift = if (columnStepPx > 0f) (offset.x / columnStepPx).roundToInt() else 0
                             val targetColumnIndex = (sourceColumnIndex + columnShift).coerceIn(0, orderedColumnIds.lastIndex)
@@ -222,8 +339,13 @@ private fun BoardColumnsRow(detail: KanbanBoardDetail, viewModel: KanbanBoardDet
                             val targetColumnPublicId = columnById[targetColumnId]?.column?.publicId ?: return@detectDragGesturesAfterLongPress
                             val stepY = (cardHeightsPx[cardId] ?: 0) + cardSpacingPx
                             val indexShift = if (stepY > 0f) (offset.y / stepY).roundToInt() else 0
-                            val targetSiblingCount = cardIdsByColumn[targetColumnId].orEmpty().count { it != cardId }
-                            val targetIndex = (sourceIndex + indexShift).coerceIn(0, targetSiblingCount)
+                            val visibleSiblings = visibleCardIdsByColumn[targetColumnId].orEmpty().filter { it != cardId }
+                            val visibleIndex = (sourceIndex + indexShift).coerceIn(0, visibleSiblings.size)
+                            val targetIndex = fullInsertIndex(
+                                fullSiblings = cardIdsByColumn[targetColumnId].orEmpty().filter { it != cardId },
+                                visibleSiblings = visibleSiblings,
+                                visibleIndex = visibleIndex,
+                            )
                             viewModel.moveCard(cardId, targetColumnPublicId, targetIndex)
                         },
                         onDragCancel = { draggingCardId = null; cardDragOffset = Offset.Zero },
@@ -238,7 +360,7 @@ private fun BoardColumnsRow(detail: KanbanBoardDetail, viewModel: KanbanBoardDet
     }
 
     @Composable
-    fun ColumnHeader(columnWithCards: KanbanColumnWithCards) {
+    fun ColumnHeader(columnWithCards: KanbanColumnWithCards, visibleCount: Int) {
         val columnId = columnWithCards.column.id
         val isDragging = columnId == draggingColumnId
         Row(
@@ -271,7 +393,7 @@ private fun BoardColumnsRow(detail: KanbanBoardDetail, viewModel: KanbanBoardDet
         ) {
             UrsText(columnWithCards.column.name, style = UrsTheme.typography.cardTitle, modifier = Modifier.weight(1f))
             UrsText(
-                columnWithCards.cards.size.toString(),
+                visibleCount.toString(),
                 style = UrsTheme.typography.caption,
                 color = UrsTheme.colors.onSurfaceMuted,
             )
@@ -298,12 +420,12 @@ private fun BoardColumnsRow(detail: KanbanBoardDetail, viewModel: KanbanBoardDet
                     contentPadding = PaddingValues(horizontal = Spacing.s, vertical = Spacing.xs),
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(Spacing.s)) {
-                        ColumnHeader(columnWithCards)
+                        ColumnHeader(columnWithCards, visibleCardIdsByColumn[columnId].orEmpty().size)
                         Column(
                             modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
                             verticalArrangement = Arrangement.spacedBy(Spacing.s),
                         ) {
-                            cardIdsByColumn[columnId].orEmpty().forEach { cardId ->
+                            visibleCardIdsByColumn[columnId].orEmpty().forEach { cardId ->
                                 val cardWithDetails = cardById[cardId] ?: return@forEach
                                 // Same reasoning as the columnId key above — a card that
                                 // crosses into a different column's list must keep its own
@@ -335,7 +457,10 @@ private fun CardTileContent(cardWithDetails: KanbanCardWithDetails) {
                 UrsText(it, style = UrsTheme.typography.caption, color = UrsTheme.colors.onSurfaceMuted)
             }
             if (cardWithDetails.tags.isNotEmpty()) {
-                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+                ) {
                     cardWithDetails.tags.forEach { tag ->
                         val color = tag.color.takeIf { it.isNotBlank() }?.let(::parseChoreColor)
                         if (color != null) {

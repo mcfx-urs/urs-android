@@ -80,10 +80,22 @@ data class KanbanCardFormState(
 class KanbanBoardDetailViewModel(
     private val repository: KanbanRepository,
     private val noteRepository: NoteRepository,
+    private val viewModeStore: KanbanViewModeStore,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<KanbanBoardDetailUiState>(KanbanBoardDetailUiState.Loading)
     val uiState: StateFlow<KanbanBoardDetailUiState> = _uiState.asStateFlow()
+
+    // Multi-select tag filter over the board's cards (a card shows only if it
+    // has every selected tag; empty = no filter); not persisted, resets when the
+    // board is reopened.
+    private val _tagFilter = MutableStateFlow<Set<String>>(emptySet())
+    val tagFilter: StateFlow<Set<String>> = _tagFilter.asStateFlow()
+
+    private val _viewMode = MutableStateFlow(KanbanViewMode.Board)
+    val viewMode: StateFlow<KanbanViewMode> = _viewMode.asStateFlow()
+
+    private var currentBoardId: String? = null
 
     private val _showColumnForm = MutableStateFlow(false)
     val showColumnForm: StateFlow<Boolean> = _showColumnForm.asStateFlow()
@@ -129,7 +141,24 @@ class KanbanBoardDetailViewModel(
             detail.columns.flatMap { it.cards }.firstOrNull { it.card.id == localId }?.checklist.orEmpty()
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    fun toggleTagFilter(tag: String) {
+        _tagFilter.update { if (tag in it) it - tag else it + tag }
+    }
+
+    fun clearTagFilter() {
+        _tagFilter.value = emptySet()
+    }
+
+    fun toggleViewMode() {
+        val boardId = currentBoardId ?: return
+        val next = if (_viewMode.value == KanbanViewMode.Board) KanbanViewMode.List else KanbanViewMode.Board
+        viewModeStore.set(boardId, next)
+        _viewMode.value = next
+    }
+
     fun loadBoard(boardId: String) {
+        currentBoardId = boardId
+        _viewMode.value = viewModeStore.get(boardId)
         viewModelScope.launch {
             val localId = repository.resolveLocalBoardId(boardId)
             if (localId == null) {
@@ -368,7 +397,11 @@ class KanbanBoardDetailViewModel(
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as UrsApplication
-                KanbanBoardDetailViewModel(app.container.kanbanRepository, app.container.noteRepository)
+                KanbanBoardDetailViewModel(
+                    app.container.kanbanRepository,
+                    app.container.noteRepository,
+                    app.container.kanbanViewModeStore,
+                )
             }
         }
     }
