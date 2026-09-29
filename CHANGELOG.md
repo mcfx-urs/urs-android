@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- Journal, Assets, Kanban, and Voice Notes now have dedicated Home tile images instead of sharing a placeholder; refreshed the Notes and Breadcrumbs tile artwork (#96)
+
 ## [1.8.0] - 2026-09-27
 
 ### Added

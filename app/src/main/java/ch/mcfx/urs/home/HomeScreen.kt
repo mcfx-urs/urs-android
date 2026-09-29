@@ -140,24 +140,17 @@ private val TILE_IMAGE: Map<String, Int> = mapOf(
     Destination.BEER.name to R.drawable.tile_beer,
     Destination.BAKING.name to R.drawable.tile_baking,
     Destination.NOTES.name to R.drawable.tile_notes,
-    // Interim: reuses the Notes tile art until Voice Notes gets its own.
-    Destination.VOICE_NOTES.name to R.drawable.tile_notes,
-    // Interim: reuses the K tile art until Chores gets its own commissioned
-    // piece (GitHub issue #27, part B).
-    Destination.CHORES.name to R.drawable.tile_k,
-    // Interim: reuses the K tile art too, same as Chores/Kanban above
-    // (GitHub issue #83, Journal).
-    Destination.JOURNAL.name to R.drawable.tile_k,
-    // Interim: reuses the K tile art until Assets gets its own commissioned
-    // piece (mcfx-urs/urs-android#89).
-    Destination.ASSETS.name to R.drawable.tile_k,
+    Destination.VOICE_NOTES.name to R.drawable.tile_voice_notes,
+    // Interim: reuses the generic placeholder tile until Chores gets its own
+    // commissioned piece (GitHub issue #27, part B).
+    Destination.CHORES.name to R.drawable.tile_placeholder,
+    Destination.JOURNAL.name to R.drawable.tile_journal,
+    Destination.ASSETS.name to R.drawable.tile_assets,
     Destination.PRICE_MONITOR.name to R.drawable.tile_price_monitor,
-    Destination.K.name to R.drawable.tile_k,
+    Destination.K.name to R.drawable.tile_placeholder,
     Destination.GOKART.name to R.drawable.tile_gokart,
     Destination.BREADCRUMBS.name to R.drawable.tile_breadcrumbs,
-    // Interim: reuses the K tile art until Kanban gets its own commissioned
-    // piece, same as Chores above.
-    Destination.KANBAN.name to R.drawable.tile_k,
+    Destination.KANBAN.name to R.drawable.tile_kanban,
 )
 
 private val TileHeight = 112.dp
@@ -891,7 +884,7 @@ private fun HomeTileBody(
     }
     val subtitle = quickStat(id, uiState)
     val available = destination?.isAvailable ?: true
-    val image = TILE_IMAGE[id] ?: R.drawable.tile_k
+    val image = TILE_IMAGE[id] ?: R.drawable.tile_placeholder
     val imageSize = if (height >= 2) TileBleedImageSizeTall else TileBleedImageSize
 
     UrsGlassCard(
