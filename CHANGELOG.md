@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Image generator prompt field supports multiple lines and long texts
+
 ### Changed
 
 - Image generator offers quality levels xhigh and max, shows an estimated price per quality level and the cost of each generated image

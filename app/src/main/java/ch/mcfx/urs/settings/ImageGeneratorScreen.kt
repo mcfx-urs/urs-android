@@ -71,6 +71,8 @@ fun ImageGeneratorScreen(
             value = form.prompt,
             onValueChange = viewModel::setPrompt,
             label = stringResource(R.string.image_generator_prompt_label),
+            singleLine = false,
+            minLines = 5,
             modifier = Modifier.fillMaxWidth(),
         )
 
