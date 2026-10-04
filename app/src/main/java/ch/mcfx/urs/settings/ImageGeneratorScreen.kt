@@ -36,6 +36,7 @@ import ch.mcfx.urs.ui.components.ursFormScrollPadding
 import ch.mcfx.urs.ui.theme.UrsTheme
 import ch.mcfx.urs.ui.tokens.Radius
 import ch.mcfx.urs.ui.tokens.Spacing
+import java.util.Locale
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 
@@ -53,6 +54,7 @@ fun ImageGeneratorScreen(
     val generateFailed by viewModel.generateFailed.collectAsStateWithLifecycle()
     val resultPng by viewModel.resultPng.collectAsStateWithLifecycle()
     val savedUri by viewModel.savedUri.collectAsStateWithLifecycle()
+    val resultCostUsd by viewModel.resultCostUsd.collectAsStateWithLifecycle()
 
     Column(
         modifier = Modifier.fillMaxSize().ursFormScrollPadding(),
@@ -83,8 +85,8 @@ fun ImageGeneratorScreen(
         UrsDropdownField(
             label = stringResource(R.string.image_generator_quality_label),
             options = IMAGE_QUALITY_OPTIONS,
-            selectedLabel = form.quality,
-            optionLabel = { it },
+            selectedLabel = qualityLabel(form.quality),
+            optionLabel = ::qualityLabel,
             onSelect = viewModel::setQuality,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -125,6 +127,14 @@ fun ImageGeneratorScreen(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Radius.row)),
             )
 
+            resultCostUsd?.let { cost ->
+                UrsText(
+                    stringResource(R.string.image_generator_cost, formatUsd(cost)),
+                    style = UrsTheme.typography.body,
+                    color = colors.onSurfaceMuted,
+                )
+            }
+
             val currentSavedUri = savedUri
             if (currentSavedUri == null) {
                 UrsButton(
@@ -164,6 +174,12 @@ fun ImageGeneratorScreen(
         }
     }
 }
+
+private fun formatUsd(value: Double): String = String.format(Locale.US, "%.3f", value)
+
+/** Quality level with its approximate per-image price, e.g. "max (~$0.210)". */
+private fun qualityLabel(quality: String): String =
+    IMAGE_QUALITY_ESTIMATED_USD[quality]?.let { "$quality (~$${formatUsd(it)})" } ?: quality
 
 /** Writes [png] into the shared gallery under Pictures/URS. Returns its MediaStore URI, or null on failure. */
 private fun saveGeneratedImage(context: Context, png: ByteArray): Uri? = runCatching {

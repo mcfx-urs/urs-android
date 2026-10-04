@@ -2,6 +2,10 @@ package ch.mcfx.urs.data
 
 import ch.mcfx.urs.data.remote.GenerateImagePayload
 import ch.mcfx.urs.data.remote.UrsApi
+import retrofit2.HttpException
+
+/** A generated PNG plus the cost the backend reported for it, if any. */
+class GeneratedImage(val png: ByteArray, val costUsd: Double?)
 
 /**
  * Thin wrapper around the super-user-only generic image generator endpoint.
@@ -13,8 +17,13 @@ import ch.mcfx.urs.data.remote.UrsApi
  */
 class ImageGenRepository(private val api: UrsApi) {
 
-    suspend fun generate(prompt: String, size: String, quality: String, background: String): ByteArray =
-        api.generateImage(
+    suspend fun generate(prompt: String, size: String, quality: String, background: String): GeneratedImage {
+        val response = api.generateImage(
             GenerateImagePayload(prompt = prompt, size = size, quality = quality, background = background),
-        ).use { it.bytes() }
+        )
+        val body = response.body()
+        if (!response.isSuccessful || body == null) throw HttpException(response)
+        val png = body.use { it.bytes() }
+        return GeneratedImage(png, response.headers()["X-Image-Cost-USD"]?.toDoubleOrNull())
+    }
 }

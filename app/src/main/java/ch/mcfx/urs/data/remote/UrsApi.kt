@@ -179,7 +179,7 @@ interface UrsApi {
     // Super-user-gated server-side. Returns the raw PNG bytes — nothing is
     // persisted on the server, no catalog-image row is created.
     @POST("api/v1/admin/image/generate")
-    suspend fun generateImage(@Body payload: GenerateImagePayload): ResponseBody
+    suspend fun generateImage(@Body payload: GenerateImagePayload): Response<ResponseBody>
 
     // Super-user-gated server-side — same shape as
     // updateFillingStation/restartServer, the backend returns 403 for

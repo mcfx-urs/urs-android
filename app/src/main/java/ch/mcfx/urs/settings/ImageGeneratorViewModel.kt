@@ -15,10 +15,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-// Every value gpt-image-1's API accepts (per OpenAI's docs at implementation
+// Every value the gpt-image API accepts (per OpenAI's docs at implementation
 // time); kept in sync with the backend's validation sets in web/imagegen.go.
 val IMAGE_SIZE_OPTIONS = listOf("1024x1024", "1024x1536", "1536x1024", "auto")
-val IMAGE_QUALITY_OPTIONS = listOf("low", "medium", "high", "auto")
+val IMAGE_QUALITY_OPTIONS = listOf("low", "medium", "high", "xhigh", "max", "auto")
 val IMAGE_BACKGROUND_OPTIONS = listOf("transparent", "opaque", "auto")
 
 // The same defaults the catalog product-image flow already uses, so the
@@ -26,6 +26,17 @@ val IMAGE_BACKGROUND_OPTIONS = listOf("transparent", "opaque", "auto")
 const val DEFAULT_IMAGE_SIZE = "1024x1024"
 const val DEFAULT_IMAGE_QUALITY = "medium"
 const val DEFAULT_IMAGE_BACKGROUND = "transparent"
+
+// Approximate cost in US dollars of one 1024x1024 image per quality level,
+// shown next to the dropdown entries as a hint. The exact cost of a finished
+// image comes from the backend. "auto" has no fixed price.
+val IMAGE_QUALITY_ESTIMATED_USD = mapOf(
+    "low" to 0.007,
+    "medium" to 0.014,
+    "high" to 0.054,
+    "xhigh" to 0.095,
+    "max" to 0.21,
+)
 
 data class ImageGeneratorFormState(
     val prompt: String = "",
@@ -36,7 +47,7 @@ data class ImageGeneratorFormState(
 
 /**
  * Settings → Image generator — a super-user-gated tool that runs a free-text
- * prompt through `gpt-image-1` and hands back the raw PNG. Nothing is stored
+ * prompt through `gpt-image` and hands back the raw PNG. Nothing is stored
  * server-side; the catalog product-image flow is untouched. Same
  * `AuthTokenStore.isSuperUser` gate as the Image Review screen (the backend
  * endpoint also 403s for anyone else).
@@ -59,6 +70,10 @@ class ImageGeneratorViewModel(private val repository: ImageGenRepository) : View
 
     // The MediaStore URI (as a string) once the current result has been
     // saved to the device gallery.
+    // Cost in US dollars the backend reported for the current result, if any.
+    private val _resultCostUsd = MutableStateFlow<Double?>(null)
+    val resultCostUsd: StateFlow<Double?> = _resultCostUsd.asStateFlow()
+
     private val _savedUri = MutableStateFlow<String?>(null)
     val savedUri: StateFlow<String?> = _savedUri.asStateFlow()
 
@@ -78,9 +93,12 @@ class ImageGeneratorViewModel(private val repository: ImageGenRepository) : View
             _generating.value = true
             _generateFailed.value = false
             _resultPng.value = null
+            _resultCostUsd.value = null
             _savedUri.value = null
             try {
-                _resultPng.value = repository.generate(form.prompt.trim(), form.size, form.quality, form.background)
+                val image = repository.generate(form.prompt.trim(), form.size, form.quality, form.background)
+                _resultPng.value = image.png
+                _resultCostUsd.value = image.costUsd
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
@@ -98,6 +116,7 @@ class ImageGeneratorViewModel(private val repository: ImageGenRepository) : View
     fun onImageDeleted() {
         _savedUri.value = null
         _resultPng.value = null
+        _resultCostUsd.value = null
     }
 
     companion object {

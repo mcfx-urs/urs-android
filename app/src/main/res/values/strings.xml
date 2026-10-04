@@ -834,13 +834,14 @@
     <string name="admin_log_level_failed">Could not change the log level. Please try again.</string>
     <string name="settings_tile_image_generator">Image Generator</string>
     <string name="image_generator_title">Image Generator</string>
-    <string name="image_generator_description">Generates an image from a free-text prompt via gpt-image-1. Nothing is stored on the server; save a result to your gallery to keep it.</string>
+    <string name="image_generator_description">Generates an image from a free-text prompt via gpt-image. Nothing is stored on the server; save a result to your gallery to keep it.</string>
     <string name="image_generator_prompt_label">Prompt</string>
     <string name="image_generator_size_label">Size</string>
     <string name="image_generator_quality_label">Quality</string>
     <string name="image_generator_background_label">Background</string>
     <string name="image_generator_generate">Generate</string>
     <string name="image_generator_generating">Generating…</string>
+    <string name="image_generator_cost">Cost: $%1$s</string>
     <string name="image_generator_failed">Generation failed. Please try again.</string>
     <string name="image_generator_save">Save to gallery</string>
     <string name="image_generator_saved">Saved to gallery.</string>
