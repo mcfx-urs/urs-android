@@ -79,7 +79,6 @@ fun AddProductScreen(
     val lastAdded by viewModel.lastAdded.collectAsStateWithLifecycle()
     val addedMessageFormat = stringResource(R.string.shoppinglist_add_product_added)
     val imageSuggestionsOpen by viewModel.imageSuggestionsOpen.collectAsStateWithLifecycle()
-    val suggestionImages by viewModel.images.collectAsStateWithLifecycle()
     val suggestionQuery by viewModel.query.collectAsStateWithLifecycle()
     val existingProductQuery by viewModel.existingProductQuery.collectAsStateWithLifecycle()
     val existingProductResults by viewModel.existingProductResults.collectAsStateWithLifecycle()
@@ -140,7 +139,7 @@ fun AddProductScreen(
                 modifier = Modifier.padding(horizontal = Spacing.l, vertical = Spacing.m),
             )
             CatalogImagePicker(
-                images = suggestionImages,
+                loadPage = viewModel::searchImages,
                 initialQuery = suggestionQuery,
                 onSelect = viewModel::confirmQuickCreateWithImage,
             )

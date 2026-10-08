@@ -11,7 +11,6 @@ import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.data.CatalogRepository
 import ch.mcfx.urs.data.local.CatalogCategoryEntity
 import ch.mcfx.urs.data.local.CatalogProductEntity
-import ch.mcfx.urs.data.remote.CatalogImageDto
 import java.io.IOException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -145,9 +144,6 @@ class ProductManagementViewModel(private val repository: CatalogRepository) : Vi
         )
     }
 
-    private val _images = MutableStateFlow<List<CatalogImageDto>>(emptyList())
-    val images: StateFlow<List<CatalogImageDto>> = _images.asStateFlow()
-
     private val _actionSheetProduct = MutableStateFlow<CatalogProductEntity?>(null)
     val actionSheetProduct: StateFlow<CatalogProductEntity?> = _actionSheetProduct.asStateFlow()
 
@@ -170,17 +166,7 @@ class ProductManagementViewModel(private val repository: CatalogRepository) : Vi
         _tab.value = tab
     }
 
-    fun loadImages() {
-        viewModelScope.launch {
-            try {
-                _images.value = repository.getImages()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                // Best-effort only — image picker just stays empty if this fetch failed.
-            }
-        }
-    }
+    suspend fun searchImages(query: String, offset: Int) = repository.searchImages(query, offset)
 
     fun openCreateForm() {
         when (_tab.value) {

@@ -126,8 +126,7 @@ class AddProductViewModel(
     private val _imageSuggestionsOpen = MutableStateFlow(false)
     val imageSuggestionsOpen: StateFlow<Boolean> = _imageSuggestionsOpen.asStateFlow()
 
-    private val _images = MutableStateFlow<List<CatalogImageDto>>(emptyList())
-    val images: StateFlow<List<CatalogImageDto>> = _images.asStateFlow()
+    suspend fun searchImages(query: String, offset: Int) = catalogRepository.searchImages(query, offset)
 
     // Existing-product search within the image-suggestion sheet
     // (mcfx-urs/urs-android#113) — picking one inherits both its category
@@ -267,16 +266,7 @@ class AddProductViewModel(
             pendingCreateName = name
             pendingCreateCategoryId = _quickCreateCategoryId.value
             _existingProductQuery.value = name
-            viewModelScope.launch {
-                _images.value = try {
-                    catalogRepository.getImages()
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (_: Exception) {
-                    emptyList()
-                }
-                _imageSuggestionsOpen.value = true
-            }
+            _imageSuggestionsOpen.value = true
             return
         }
         performQuickCreate(name, _quickCreateCategoryId.value, barcode = null, imageId = null)

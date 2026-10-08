@@ -177,12 +177,26 @@ class CatalogRepository(
     }
 
     /**
-     * Every catalog image available for reuse — no local cache (a
-     * fresh network read every time the picker opens), same reasoning as
-     * [quantityOnHand]: this list only matters while the picker is open, not
-     * worth an offline-first shape.
+     * One page of the catalog images available for reuse, filtered
+     * server-side by [query] (blank = all). No local cache (a fresh network
+     * read per page), same reasoning as [quantityOnHand]: this list only
+     * matters while the picker is open, not worth an offline-first shape.
+     * Returns null when the request failed.
      */
-    suspend fun getImages(): List<CatalogImageDto> = emptyAsNull { api.getCatalogImages() }
+    suspend fun searchImages(query: String, offset: Int, limit: Int = IMAGE_PAGE_SIZE): CatalogImagePage? =
+        try {
+            val response = api.searchCatalogImages(query.trim(), limit, offset)
+            val items = response.body()
+            if (!response.isSuccessful || items == null) {
+                null
+            } else {
+                CatalogImagePage(items, response.headers()["X-Total-Count"]?.toIntOrNull() ?: (offset + items.size))
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
 
     /**
      * Generate a new product image via OpenAI — a direct,
@@ -277,3 +291,8 @@ private fun CatalogCategoryDto.toEntity() = CatalogCategoryEntity(
     source = source,
     catalogImageId = catalogImageId.toIntOrNull(),
 )
+
+const val IMAGE_PAGE_SIZE = 30
+
+/** One page of catalog images plus the total number of matches on the server. */
+data class CatalogImagePage(val items: List<CatalogImageDto>, val total: Int)

@@ -122,8 +122,7 @@ class ProductsViewModel(
     private val _imageSuggestionsOpen = MutableStateFlow(false)
     val imageSuggestionsOpen: StateFlow<Boolean> = _imageSuggestionsOpen.asStateFlow()
 
-    private val _images = MutableStateFlow<List<CatalogImageDto>>(emptyList())
-    val images: StateFlow<List<CatalogImageDto>> = _images.asStateFlow()
+    suspend fun searchImages(query: String, offset: Int) = catalogRepository.searchImages(query, offset)
 
     // Category picker offered alongside the "type/scan a new product" form
     // (mcfx-urs/urs-android#115) — same catalog-wide list Product
@@ -227,16 +226,7 @@ class ProductsViewModel(
         if (form.scannedBarcode != null) {
             pendingCreateName = name
             pendingCreateCategoryId = form.categoryId
-            viewModelScope.launch {
-                _images.value = try {
-                    catalogRepository.getImages()
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (_: Exception) {
-                    emptyList()
-                }
-                _imageSuggestionsOpen.value = true
-            }
+            _imageSuggestionsOpen.value = true
             return
         }
         performCreateAndTrack(name, categoryId = form.categoryId, barcode = null, imageId = null)

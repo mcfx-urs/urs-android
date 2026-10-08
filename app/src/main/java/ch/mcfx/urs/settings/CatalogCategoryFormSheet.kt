@@ -39,10 +39,7 @@ private val FormErrorColor = Color(0xFFD64545)
 @Composable
 fun CatalogCategoryFormSheet(viewModel: ProductManagementViewModel, onDismissRequest: () -> Unit) {
     val form by viewModel.categoryForm.collectAsStateWithLifecycle()
-    val images by viewModel.images.collectAsStateWithLifecycle()
     var imagePickerOpen by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) { viewModel.loadImages() }
 
     val currentForm = form ?: return
     UrsBottomSheet(onDismissRequest = onDismissRequest) {
@@ -96,7 +93,7 @@ fun CatalogCategoryFormSheet(viewModel: ProductManagementViewModel, onDismissReq
                 modifier = Modifier.padding(horizontal = Spacing.l, vertical = Spacing.m),
             )
             CatalogImagePicker(
-                images = images,
+                loadPage = viewModel::searchImages,
                 onSelect = {
                     viewModel.setCategoryImage(it)
                     imagePickerOpen = false

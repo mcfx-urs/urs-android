@@ -171,7 +171,11 @@ interface UrsApi {
     suspend fun deleteCatalogCategory(@Path("id") id: String)
 
     @GET("api/v1/catalog-image")
-    suspend fun getCatalogImages(): List<CatalogImageDto>
+    suspend fun searchCatalogImages(
+        @Query("search") search: String,
+        @Query("limit") limit: Int,
+        @Query("offset") offset: Int,
+    ): Response<List<CatalogImageDto>>
 
     @POST("api/v1/catalog-image/generate")
     suspend fun generateCatalogImage(@Body payload: GenerateCatalogImagePayload): CatalogImageDto

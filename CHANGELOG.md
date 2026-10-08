@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - Image generator offers quality levels xhigh and max, shows an estimated price per quality level and the cost of each generated image
+- Image picker searches on the server with a debounced search field and loads further images while scrolling (#117)
 
 ## [1.9.0] - 2026-09-29
 

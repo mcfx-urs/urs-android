@@ -73,7 +73,6 @@ fun ProductListScreen(
     val settingsForm by viewModel.settingsForm.collectAsStateWithLifecycle()
     val showSettings by viewModel.showSettings.collectAsStateWithLifecycle()
     val imageSuggestionsOpen by viewModel.imageSuggestionsOpen.collectAsStateWithLifecycle()
-    val suggestionImages by viewModel.images.collectAsStateWithLifecycle()
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
@@ -127,7 +126,7 @@ fun ProductListScreen(
                 modifier = Modifier.padding(horizontal = Spacing.l, vertical = Spacing.m),
             )
             CatalogImagePicker(
-                images = suggestionImages,
+                loadPage = viewModel::searchImages,
                 initialQuery = query,
                 onSelect = viewModel::confirmCreateAndTrackWithImage,
             )
