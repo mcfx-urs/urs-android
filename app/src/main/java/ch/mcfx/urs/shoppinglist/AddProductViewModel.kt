@@ -7,8 +7,10 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import ch.mcfx.urs.UrsApplication
+import ch.mcfx.urs.data.BarcodeLookup
 import ch.mcfx.urs.data.CatalogRepository
-import ch.mcfx.urs.data.OpenFoodFactsRepository
+import ch.mcfx.urs.data.remote.BarcodeSuggestionDto
+import ch.mcfx.urs.ui.components.CloneDraftController
 import ch.mcfx.urs.data.ShoppingListRepository
 import ch.mcfx.urs.data.alphabeticSortKey
 import ch.mcfx.urs.data.local.CatalogCategoryEntity
@@ -55,7 +57,6 @@ data class AddedFeedback(val productName: String, val addedItemLocalId: Long)
 class AddProductViewModel(
     private val shoppingListRepository: ShoppingListRepository,
     private val catalogRepository: CatalogRepository,
-    private val openFoodFactsRepository: OpenFoodFactsRepository,
     private val listId: String,
 ) : ViewModel() {
 
@@ -119,6 +120,10 @@ class AddProductViewModel(
     private val _barcodeNotFound = MutableStateFlow(false)
     val barcodeNotFound: StateFlow<Boolean> = _barcodeNotFound.asStateFlow()
 
+    // Open Food Facts hint (via the backend) for the scanned barcode, if any.
+    private val _barcodeSuggestion = MutableStateFlow<BarcodeSuggestionDto?>(null)
+    val barcodeSuggestion: StateFlow<BarcodeSuggestionDto?> = _barcodeSuggestion.asStateFlow()
+
     // Image-suggestion step (mcfx-urs/urs-android#91 point 4) — only entered
     // from quickCreate() when the product being created came from a barcode
     // scan (_scannedBarcode != null); a plain manual quick-create (typed
@@ -127,6 +132,25 @@ class AddProductViewModel(
     val imageSuggestionsOpen: StateFlow<Boolean> = _imageSuggestionsOpen.asStateFlow()
 
     suspend fun searchImages(query: String, offset: Int) = catalogRepository.searchImages(query, offset)
+
+    // Turns a scanned, unknown barcode into a clone of an existing product.
+    val cloneDraft = CloneDraftController(viewModelScope, catalogRepository)
+
+    fun openCloneSheet() {
+        val barcode = _scannedBarcode.value ?: return
+        cloneDraft.open(barcode, _barcodeSuggestion.value)
+    }
+
+    fun submitClone() {
+        cloneDraft.submit { clone ->
+            _query.value = ""
+            _scannedBarcode.value = null
+            _barcodeSuggestion.value = null
+            _barcodeNotFound.value = false
+            val localId = shoppingListRepository.addCatalogProduct(listId, clone, note = null, quantity = null, onSale = false)
+            _lastAdded.value = AddedFeedback(clone.name, localId)
+        }
+    }
 
     // Existing-product search within the image-suggestion sheet
     // (mcfx-urs/urs-android#113) — picking one inherits both its category
@@ -230,6 +254,7 @@ class AddProductViewModel(
     fun selectResult(product: CatalogProductEntity) {
         _query.value = ""
         _scannedBarcode.value = null
+        _barcodeSuggestion.value = null
         _barcodeNotFound.value = false
         viewModelScope.launch {
             val localId = shoppingListRepository.addCatalogProduct(listId, product, note = null, quantity = null, onSale = false)
@@ -311,7 +336,7 @@ class AddProductViewModel(
             try {
                 val product = catalogRepository.createProduct(name = name, catalogCategoryId = categoryId, barcode = barcode)
                 if (imageId != null) {
-                    catalogRepository.updateProduct(product.id, product.name, product.catalogCategoryId, imageId, barcode)
+                    catalogRepository.updateProduct(product.id, product.name, product.catalogCategoryId, imageId)
                 }
                 _query.value = ""
                 _scannedBarcode.value = null
@@ -341,23 +366,24 @@ class AddProductViewModel(
         _scanning.value = true
         _barcodeNotFound.value = false
         viewModelScope.launch {
-            val existing = try {
+            val result = try {
                 catalogRepository.lookupByBarcode(barcode)
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
-                null
+                BarcodeLookup.Failed
             }
-            if (existing != null) {
+            if (result is BarcodeLookup.Found) {
                 _scanning.value = false
-                selectResult(existing)
+                selectResult(result.product)
                 return@launch
             }
-            val offResult = openFoodFactsRepository.lookup(barcode)
+            val suggestion = (result as? BarcodeLookup.Unknown)?.suggestion
             _scannedBarcode.value = barcode
+            _barcodeSuggestion.value = suggestion
             _scanning.value = false
-            if (offResult != null) {
-                _query.value = offResult.name
+            if (suggestion != null) {
+                _query.value = suggestion.name
             } else {
                 // No local/backend match and no Open Food Facts match either —
                 // surface that explicitly instead of silently reverting to
@@ -374,7 +400,6 @@ class AddProductViewModel(
                 AddProductViewModel(
                     app.container.shoppingListRepository,
                     app.container.catalogRepository,
-                    app.container.openFoodFactsRepository,
                     listId,
                 )
             }

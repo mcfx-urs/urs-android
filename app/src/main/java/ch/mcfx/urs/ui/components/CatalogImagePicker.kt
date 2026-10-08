@@ -6,8 +6,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -137,6 +140,7 @@ fun CatalogImagePicker(
     }
 }
 
+private val ResultsMaxHeight = 320.dp
 private const val SEARCH_DEBOUNCE_MS = 300L
 private const val LOAD_MORE_THRESHOLD = 6
 
@@ -178,8 +182,14 @@ fun CatalogProductPicker(
             return@Column
         }
 
+        // Scrollable within a bounded height — a plain, unbounded column here would
+        // leave a touch drag on the results to the surrounding bottom sheet, moving
+        // the sheet instead of the list.
         Column(
-            modifier = Modifier.padding(horizontal = Spacing.l),
+            modifier = Modifier
+                .heightIn(max = ResultsMaxHeight)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = Spacing.l),
             verticalArrangement = Arrangement.spacedBy(Spacing.s),
         ) {
             results.forEach { product ->
@@ -188,12 +198,7 @@ fun CatalogProductPicker(
                     modifier = Modifier.fillMaxWidth().clickable(onClick = { onSelect(product) }),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.m)) {
-                        UrsSquareTile(
-                            title = "",
-                            catalogImageId = product.catalogImageId,
-                            onClick = { onSelect(product) },
-                            modifier = Modifier.size(40.dp),
-                        )
+                        CatalogImageThumb(catalogImageId = product.catalogImageId, modifier = Modifier.size(48.dp))
                         UrsText(product.name, style = UrsTheme.typography.body)
                     }
                 }

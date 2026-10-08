@@ -13,6 +13,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Image generator offers quality levels xhigh and max, shows an estimated price per quality level and the cost of each generated image
 - Image picker searches on the server with a debounced search field and loads further images while scrolling (#117)
+- Product form offers a template, brand, size (amount and unit) and several barcodes per product; a product with a template shows the name, category and image resolved by the backend (#116)
+- Scanning an unknown barcode takes the Open Food Facts suggestion from the backend and can create a variant of an existing product with the barcode attached, in Inventory and Shopping List (#116)
+- Scanning a barcode in the product form fills the empty name, brand and size from the Open Food Facts suggestion and reports the product a known barcode already belongs to (#116)
+- Failed saves and deletes show the backend message, including the list of variants that block deleting a template (#116)
+- Local database is reset on first start of this version; sync before updating (#116)
 
 ## [1.9.0] - 2026-09-29
 

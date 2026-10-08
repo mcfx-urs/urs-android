@@ -38,6 +38,7 @@ import ch.mcfx.urs.data.local.CatalogCategoryEntity
 import ch.mcfx.urs.data.local.CatalogProductEntity
 import ch.mcfx.urs.data.local.SyncStatus
 import ch.mcfx.urs.ui.components.CatalogImagePicker
+import ch.mcfx.urs.ui.components.CloneFromScanSheet
 import ch.mcfx.urs.ui.components.UrsBottomSheet
 import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsCard
@@ -117,6 +118,8 @@ fun ProductListScreen(
             ProductSettingsForm(form = settingsForm, viewModel = viewModel)
         }
     }
+
+    CloneFromScanSheet(controller = viewModel.cloneDraft, onSubmit = viewModel::submitClone)
 
     if (imageSuggestionsOpen) {
         UrsBottomSheet(onDismissRequest = viewModel::cancelImageSuggestions) {
@@ -266,6 +269,13 @@ private fun AddInventoryProductForm(
                 stringResource(R.string.product_barcode_not_found),
                 style = UrsTheme.typography.body,
                 color = UrsTheme.colors.onSurfaceMuted,
+            )
+        }
+        if (form.scannedBarcode != null) {
+            UrsOutlinedButton(
+                text = stringResource(R.string.product_scan_variant_open),
+                onClick = viewModel::openCloneSheet,
+                modifier = Modifier.fillMaxWidth(),
             )
         }
 

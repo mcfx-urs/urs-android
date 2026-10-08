@@ -36,7 +36,19 @@ data class CatalogProductEntity(
     val recentNote2: String? = null,
     val recentNote3: String? = null,
     val source: String = "",
-    // Scanned barcode (mcfx-urs/urs-android#91/mcfx-urs/urs-backend#12) —
-    // null until scanned/attached, unique server-side.
-    val barcode: String? = null,
-)
+    // Every barcode mapped to the product, comma-joined (null = none). A
+    // barcode belongs to exactly one product server-side.
+    val barcodes: String? = null,
+    // Set on a clone only: the template it inherits from. [name],
+    // [catalogCategoryId], [searchTerms] and [catalogImageId] are always the
+    // backend's resolved values; [brands] and the size are the clone's own.
+    val templateId: String? = null,
+    val sizeAmount: String? = null,
+    val sizeUnit: String? = null,
+) {
+    val barcodeList: List<String>
+        get() = barcodes?.split(',')?.filter { it.isNotEmpty() }.orEmpty()
+
+    val isClone: Boolean
+        get() = templateId != null
+}

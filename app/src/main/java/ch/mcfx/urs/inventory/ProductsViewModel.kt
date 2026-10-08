@@ -7,9 +7,11 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import ch.mcfx.urs.UrsApplication
+import ch.mcfx.urs.data.BarcodeLookup
 import ch.mcfx.urs.data.CatalogRepository
+import ch.mcfx.urs.data.remote.BarcodeSuggestionDto
+import ch.mcfx.urs.ui.components.CloneDraftController
 import ch.mcfx.urs.data.InventoryRepository
-import ch.mcfx.urs.data.OpenFoodFactsRepository
 import ch.mcfx.urs.data.alphabeticSortKey
 import ch.mcfx.urs.data.local.CatalogCategoryEntity
 import ch.mcfx.urs.data.local.CatalogProductEntity
@@ -57,6 +59,8 @@ data class AddProductFormState(
     // scan happened at all (mcfx-urs/urs-android#101, same bug as Shopping
     // List's own quick-create form).
     val barcodeNotFound: Boolean = false,
+    // Open Food Facts hint (via the backend) for the scanned barcode, if any.
+    val barcodeSuggestion: BarcodeSuggestionDto? = null,
     // Explicit category pick for the product about to be created
     // (mcfx-urs/urs-android#115) — null creates it uncategorized, same as
     // before this field existed.
@@ -81,7 +85,6 @@ data class ProductSettingsFormState(
 class ProductsViewModel(
     private val inventoryRepository: InventoryRepository,
     private val catalogRepository: CatalogRepository,
-    private val openFoodFactsRepository: OpenFoodFactsRepository,
     private val inventoryId: String,
     private val inventoryName: String,
     private val reminderScheduler: ReminderScheduler,
@@ -123,6 +126,22 @@ class ProductsViewModel(
     val imageSuggestionsOpen: StateFlow<Boolean> = _imageSuggestionsOpen.asStateFlow()
 
     suspend fun searchImages(query: String, offset: Int) = catalogRepository.searchImages(query, offset)
+
+    // Turns a scanned, unknown barcode into a clone of an existing product.
+    val cloneDraft = CloneDraftController(viewModelScope, catalogRepository)
+
+    fun openCloneSheet() {
+        val form = _formState.value
+        val barcode = form.scannedBarcode ?: return
+        cloneDraft.open(barcode, form.barcodeSuggestion)
+    }
+
+    fun submitClone() {
+        cloneDraft.submit { clone ->
+            inventoryRepository.createProduct(inventoryId = inventoryId, catalogProductId = clone.id, quantity = 0)
+            _showForm.value = false
+        }
+    }
 
     // Category picker offered alongside the "type/scan a new product" form
     // (mcfx-urs/urs-android#115) — same catalog-wide list Product
@@ -255,7 +274,7 @@ class ProductsViewModel(
             try {
                 val catalogProduct = catalogRepository.createProduct(name = name, catalogCategoryId = categoryId, barcode = barcode)
                 if (imageId != null) {
-                    catalogRepository.updateProduct(catalogProduct.id, catalogProduct.name, catalogProduct.catalogCategoryId, imageId, barcode)
+                    catalogRepository.updateProduct(catalogProduct.id, catalogProduct.name, catalogProduct.catalogCategoryId, imageId)
                 }
                 inventoryRepository.createProduct(inventoryId = inventoryId, catalogProductId = catalogProduct.id, quantity = 0)
                 _showForm.value = false
@@ -279,24 +298,29 @@ class ProductsViewModel(
     fun onBarcodeScanned(barcode: String) {
         _formState.update { it.copy(scanning = true, barcodeNotFound = false) }
         viewModelScope.launch {
-            val existing = try {
+            val result = try {
                 catalogRepository.lookupByBarcode(barcode)
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
-                null
+                BarcodeLookup.Failed
             }
-            if (existing != null) {
+            if (result is BarcodeLookup.Found) {
                 _formState.update { it.copy(scanning = false) }
-                trackExistingProduct(existing)
+                trackExistingProduct(result.product)
                 return@launch
             }
-            val offResult = openFoodFactsRepository.lookup(barcode)
-            if (offResult != null) {
-                _query.value = offResult.name
+            val suggestion = (result as? BarcodeLookup.Unknown)?.suggestion
+            if (suggestion != null) {
+                _query.value = suggestion.name
             }
             _formState.update {
-                it.copy(scanning = false, scannedBarcode = barcode, barcodeNotFound = offResult == null)
+                it.copy(
+                    scanning = false,
+                    scannedBarcode = barcode,
+                    barcodeNotFound = suggestion == null,
+                    barcodeSuggestion = suggestion,
+                )
             }
         }
     }
@@ -486,7 +510,6 @@ class ProductsViewModel(
                 ProductsViewModel(
                     app.container.inventoryRepository,
                     app.container.catalogRepository,
-                    app.container.openFoodFactsRepository,
                     inventoryId,
                     inventoryName,
                     app.container.reminderScheduler,

@@ -6,6 +6,9 @@ import ch.mcfx.urs.data.local.CatalogProductDao
 import ch.mcfx.urs.data.local.CatalogProductEntity
 import ch.mcfx.urs.data.remote.CatalogCategoryDto
 import ch.mcfx.urs.data.remote.CatalogCategoryUpdatePayload
+import ch.mcfx.urs.data.remote.BarcodeLookupMissDto
+import ch.mcfx.urs.data.remote.BarcodeRequestPayload
+import ch.mcfx.urs.data.remote.BarcodeSuggestionDto
 import ch.mcfx.urs.data.remote.CatalogImageDto
 import ch.mcfx.urs.data.remote.CatalogProductDto
 import ch.mcfx.urs.data.remote.CatalogProductUpdatePayload
@@ -16,6 +19,7 @@ import ch.mcfx.urs.data.remote.UrsApi
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
 import retrofit2.HttpException
 
 /**
@@ -103,14 +107,39 @@ class CatalogRepository(
         val response = api.createCatalogProduct(
             NewCatalogProductPayload(name = name, catalogCategoryId = catalogCategoryId.orEmpty(), requireNew = requireNew, barcode = barcode.orEmpty()),
         )
-        val entity = CatalogProductEntity(
-            id = response.id,
-            categoryName = "",
-            catalogCategoryId = response.catalogCategoryId.ifEmpty { null },
-            name = response.name,
-            source = "manual",
-            barcode = response.barcode.ifEmpty { null },
+        val entity = response.toEntity()
+        catalogProductDao.upsertOne(entity)
+        return entity
+    }
+
+    /**
+     * Create (or, without [requireNew], find) a clone of [templateId] with the
+     * given brand and size. The backend answers with the stored product, whose
+     * name, category, search terms and image are already resolved through the
+     * template — the client does no inheritance of its own.
+     */
+    suspend fun createClone(
+        templateId: String,
+        brand: String,
+        sizeAmount: String,
+        sizeUnit: String,
+        catalogImageId: String? = null,
+        barcode: String? = null,
+        requireNew: Boolean = false,
+    ): CatalogProductEntity {
+        val response = api.createCatalogProduct(
+            NewCatalogProductPayload(
+                name = "",
+                requireNew = requireNew,
+                barcode = barcode.orEmpty(),
+                templateId = templateId,
+                brands = brand,
+                sizeAmount = sizeAmount,
+                sizeUnit = sizeUnit,
+                catalogImageId = catalogImageId.orEmpty(),
+            ),
         )
+        val entity = response.toEntity()
         catalogProductDao.upsertOne(entity)
         return entity
     }
@@ -121,18 +150,65 @@ class CatalogRepository(
      * [createProduct]; the local cache is updated from the request's own
      * inputs rather than re-fetching, mirroring how create already works.
      */
-    suspend fun updateProduct(id: String, name: String, catalogCategoryId: String?, catalogImageId: String?, barcode: String? = null) {
+    suspend fun updateProduct(id: String, name: String, catalogCategoryId: String?, catalogImageId: String?) {
         api.updateCatalogProduct(
             id,
             CatalogProductUpdatePayload(
                 name = name,
                 catalogCategoryId = catalogCategoryId.orEmpty(),
                 catalogImageId = catalogImageId.orEmpty(),
-                barcode = barcode.orEmpty(),
             ),
         )
-        catalogProductDao.updateFields(id, name, catalogCategoryId, catalogImageId?.toIntOrNull(), barcode)
+        catalogProductDao.updateFields(id, name, catalogCategoryId, catalogImageId?.toIntOrNull())
+        // A renamed or re-categorized template changes what its clones resolve to.
+        if (catalogProductDao.countClones(id) > 0) refreshFromBackend()
     }
+
+    /**
+     * Make [id] a clone of [templateId] (or update the clone it already is).
+     * The resolved name only exists server-side, so the cache is refreshed
+     * from the backend afterwards.
+     */
+    suspend fun updateClone(
+        id: String,
+        templateId: String,
+        brand: String,
+        sizeAmount: String,
+        sizeUnit: String,
+        catalogImageId: String?,
+    ) {
+        api.updateCatalogProduct(
+            id,
+            CatalogProductUpdatePayload(
+                name = "",
+                catalogImageId = catalogImageId.orEmpty(),
+                templateId = templateId,
+                brands = brand,
+                sizeAmount = sizeAmount,
+                sizeUnit = sizeUnit,
+            ),
+        )
+        refreshFromBackend()
+    }
+
+    /** Map [barcode] to the product; the backend rejects one that belongs to another product with 409. */
+    suspend fun addBarcode(id: String, barcode: String) {
+        api.addCatalogProductBarcode(id, BarcodeRequestPayload(barcode))
+        val current = catalogProductDao.getById(id)?.barcodeList.orEmpty()
+        if (barcode !in current) catalogProductDao.updateBarcodes(id, (current + barcode).joinToString(","))
+    }
+
+    suspend fun removeBarcode(id: String, barcode: String) {
+        api.removeCatalogProductBarcode(id, barcode)
+        val remaining = catalogProductDao.getById(id)?.barcodeList.orEmpty() - barcode
+        catalogProductDao.updateBarcodes(id, remaining.joinToString(",").ifEmpty { null })
+    }
+
+    /** Standalone products matching [query], the candidates for a clone's template. */
+    suspend fun searchTemplates(query: String, limit: Int = 30): List<CatalogProductEntity> =
+        catalogProductDao.searchTemplates(query.trim(), limit)
+
+    suspend fun getProduct(id: String): CatalogProductEntity? = catalogProductDao.getById(id)
 
     /**
      * Barcode-scan lookup (mcfx-urs/urs-android#91) — checks the local cache
@@ -143,19 +219,27 @@ class CatalogRepository(
      * apart today, which is fine: either way it falls through to the Open
      * Food Facts / manual-entry path.
      */
-    suspend fun lookupByBarcode(barcode: String): CatalogProductEntity? {
-        catalogProductDao.getByBarcode(barcode)?.let { return it }
+    suspend fun lookupByBarcode(barcode: String): BarcodeLookup {
+        catalogProductDao.getByBarcode(barcode)?.let { return BarcodeLookup.Found(it) }
         val response = try {
             api.getCatalogProductByBarcode(barcode)
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
-            return null
+            return BarcodeLookup.Failed
         }
-        if (!response.isSuccessful) return null
-        val entity = response.body()?.toEntity() ?: return null
-        catalogProductDao.upsertOne(entity)
-        return entity
+        if (response.isSuccessful) {
+            val entity = response.body()?.toEntity() ?: return BarcodeLookup.Failed
+            catalogProductDao.upsertOne(entity)
+            return BarcodeLookup.Found(entity)
+        }
+        if (response.code() != 404) return BarcodeLookup.Failed
+        val suggestion = try {
+            response.errorBody()?.string()?.let { missJson.decodeFromString<BarcodeLookupMissDto>(it) }?.suggestion
+        } catch (_: Exception) {
+            null
+        }
+        return BarcodeLookup.Unknown(suggestion?.takeIf { it.name.isNotBlank() })
     }
 
     /** Delete a manually-created product — Product Management's delete action. */
@@ -282,7 +366,10 @@ private fun CatalogProductDto.toEntity() = CatalogProductEntity(
     recentNote2 = recentNote2.ifEmpty { null },
     recentNote3 = recentNote3.ifEmpty { null },
     source = source,
-    barcode = barcode.ifEmpty { null },
+    barcodes = barcodes.joinToString(",").ifEmpty { null },
+    templateId = templateId.ifEmpty { null },
+    sizeAmount = sizeAmount.ifEmpty { null },
+    sizeUnit = sizeUnit.ifEmpty { null },
 )
 
 private fun CatalogCategoryDto.toEntity() = CatalogCategoryEntity(
@@ -296,3 +383,16 @@ const val IMAGE_PAGE_SIZE = 30
 
 /** One page of catalog images plus the total number of matches on the server. */
 data class CatalogImagePage(val items: List<CatalogImageDto>, val total: Int)
+
+private val missJson = Json { ignoreUnknownKeys = true; coerceInputValues = true }
+
+/** Outcome of a barcode lookup. */
+sealed interface BarcodeLookup {
+    data class Found(val product: CatalogProductEntity) : BarcodeLookup
+
+    /** No catalog product has this barcode; [suggestion] is the Open Food Facts hint from the backend, if any. */
+    data class Unknown(val suggestion: BarcodeSuggestionDto?) : BarcodeLookup
+
+    /** The lookup itself failed (offline, server error). */
+    data object Failed : BarcodeLookup
+}

@@ -40,6 +40,14 @@ private val HazardStripeBlack = Color(0xFF1A1A1A)
 /** `${BuildConfig.BASE_URL}api/v1/catalog-image/{catalogImageId}` — the one place this URL shape is built. */
 fun catalogImageUrl(catalogImageId: Int?): String? = catalogImageId?.let { "${BuildConfig.BASE_URL}api/v1/catalog-image/$it" }
 
+/** Small square catalog image without title or card chrome, for list rows. */
+@Composable
+fun CatalogImageThumb(catalogImageId: Int?, modifier: Modifier = Modifier) {
+    Box(modifier = modifier.aspectRatio(1f)) {
+        TileImage(catalogImageId = catalogImageId, contentDescription = null, alpha = 1f, padding = 2.dp)
+    }
+}
+
 /**
  * `LazyVerticalGrid(GridCells.Fixed(3))`-friendly product tile, replacing
  * the row-based product/list-item layout across Inventory and Shopping List
@@ -162,10 +170,10 @@ private fun hazardStripeBrush(): Brush {
 // bit further via the padding below so it sits clearly inside the tile
 // rather than touching its edges.
 @Composable
-private fun TileImage(catalogImageId: Int?, contentDescription: String?, alpha: Float) {
+private fun TileImage(catalogImageId: Int?, contentDescription: String?, alpha: Float, padding: androidx.compose.ui.unit.Dp = Spacing.m) {
     val imageUrl = catalogImageUrl(catalogImageId)
     Box(
-        modifier = Modifier.fillMaxSize().padding(Spacing.m),
+        modifier = Modifier.fillMaxSize().padding(padding),
         contentAlignment = Alignment.Center,
     ) {
         if (imageUrl == null) {

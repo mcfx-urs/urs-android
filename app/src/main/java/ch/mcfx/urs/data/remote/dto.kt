@@ -262,8 +262,12 @@ data class CatalogProductDto(
     @SerialName("catalog_product_recent_note_1") val recentNote1: String = "",
     @SerialName("catalog_product_recent_note_2") val recentNote2: String = "",
     @SerialName("catalog_product_recent_note_3") val recentNote3: String = "",
-    // "" = not scanned/attached yet (mcfx-urs/urs-backend#12).
-    @SerialName("catalog_product_barcode") val barcode: String = "",
+    @SerialName("catalog_product_barcodes") val barcodes: List<String> = emptyList(),
+    // Clone fields: "" = a standalone product. Name, category, search terms
+    // and image above are already resolved through the template.
+    @SerialName("catalog_product_template_id") val templateId: String = "",
+    @SerialName("catalog_product_size_amount") val sizeAmount: String = "",
+    @SerialName("catalog_product_size_unit") val sizeUnit: String = "",
 )
 
 @Serializable
@@ -280,14 +284,33 @@ data class NewCatalogProductPayload(
     // Set on the barcode-scan create-new-product path — stored only on the
     // freshly created row (see urs-backend's GetOrCreateCatalogProduct).
     @SerialName("catalog_product_barcode") val barcode: String = "",
+    // Set to create (or find) a clone of that template with this brand and
+    // size; name and category are then ignored by the backend.
+    @SerialName("catalog_product_template_id") val templateId: String = "",
+    @SerialName("catalog_product_brands") val brands: String = "",
+    @SerialName("catalog_product_size_amount") val sizeAmount: String = "",
+    @SerialName("catalog_product_size_unit") val sizeUnit: String = "",
+    @SerialName("catalog_product_catalog_image_id") val catalogImageId: String = "",
 )
 
 @Serializable
-data class NewCatalogProductResponseDto(
-    @SerialName("catalog_product_id") val id: String,
-    @SerialName("catalog_product_name") val name: String,
-    @SerialName("catalog_product_catalog_category_id") val catalogCategoryId: String = "",
-    @SerialName("catalog_product_barcode") val barcode: String = "",
+data class BarcodeRequestPayload(
+    @SerialName("catalog_product_barcode") val barcode: String,
+)
+
+// 404 body of the barcode lookup: the suggestion comes from Open Food Facts
+// via the backend, null when there is none.
+@Serializable
+data class BarcodeLookupMissDto(
+    val suggestion: BarcodeSuggestionDto? = null,
+)
+
+@Serializable
+data class BarcodeSuggestionDto(
+    val name: String = "",
+    val brand: String = "",
+    // As received from Open Food Facts, e.g. "1 l" or "250 g".
+    val quantity: String = "",
 )
 
 // Rename/re-link a manually-created product (source='manual' only,
@@ -299,6 +322,13 @@ data class CatalogProductUpdatePayload(
     @SerialName("catalog_product_catalog_category_id") val catalogCategoryId: String = "",
     @SerialName("catalog_product_catalog_image_id") val catalogImageId: String = "",
     @SerialName("catalog_product_barcode") val barcode: String = "",
+    // Non-empty: the row becomes (or stays) a clone of this template with the
+    // brand and size below; name and category are then ignored. Empty: a
+    // standalone product, brand and size must be empty.
+    @SerialName("catalog_product_template_id") val templateId: String = "",
+    @SerialName("catalog_product_brands") val brands: String = "",
+    @SerialName("catalog_product_size_amount") val sizeAmount: String = "",
+    @SerialName("catalog_product_size_unit") val sizeUnit: String = "",
 )
 
 // One entry from the reusable-image picker (GET /api/v1/catalog-image) —

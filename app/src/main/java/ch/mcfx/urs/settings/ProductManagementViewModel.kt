@@ -8,9 +8,13 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import ch.mcfx.urs.UrsApplication
+import ch.mcfx.urs.data.BarcodeLookup
 import ch.mcfx.urs.data.CatalogRepository
+import ch.mcfx.urs.data.DEFAULT_SIZE_UNIT
+import ch.mcfx.urs.data.parseQuantity
 import ch.mcfx.urs.data.local.CatalogCategoryEntity
 import ch.mcfx.urs.data.local.CatalogProductEntity
+import ch.mcfx.urs.data.remote.apiError
 import java.io.IOException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -46,10 +50,23 @@ data class ProductFormState(
     val description: String = "",
     val categoryId: String? = null,
     val imageId: String? = null,
-    // Carried through unedited from the product being edited (no barcode
-    // field in this form's UI) so submitProductForm() doesn't wipe it —
-    // null for a new product.
-    val barcode: String? = null,
+    // Set = this product is a clone of that template: name and category are
+    // then inherited (hidden in the form) and only brand, size and an
+    // optional own image are the clone's own.
+    val templateId: String? = null,
+    val templateName: String? = null,
+    // Image the clone inherits when it has none of its own.
+    val templateImageId: Int? = null,
+    val brand: String = "",
+    val sizeAmount: String = "",
+    val sizeUnit: String = DEFAULT_SIZE_UNIT,
+    val barcodes: List<String> = emptyList(),
+    val barcodeInput: String = "",
+    val barcodeLookupRunning: Boolean = false,
+    // Name of the existing product a scanned barcode already belongs to.
+    val barcodeTakenBy: String? = null,
+    // Backend message of the last failed save or barcode change, shown as received.
+    val errorMessage: String? = null,
     val submitting: Boolean = false,
     val submitFailed: Boolean = false,
     // Distinct from submitFailed: a 409 from createProduct's
@@ -60,8 +77,25 @@ data class ProductFormState(
     val generatingImage: Boolean = false,
     val generateImageError: ImageGenerationErrorKind? = null,
 ) {
-    val isValid: Boolean get() = name.isNotBlank()
+    val isClone: Boolean get() = templateId != null
+
+    // Name of the image prompt: a clone has no name of its own to describe.
+    val imagePromptName: String get() = if (isClone) "${templateName.orEmpty()} $brand".trim() else name.trim()
+
+    val isValid: Boolean
+        get() = if (isClone) {
+            (brand.isNotBlank() || sizeAmount.isNotBlank()) && (sizeAmount.isBlank() || sizeAmountValue != null)
+        } else {
+            name.isNotBlank()
+        }
+
+    // Positive decimal amount ("," accepted), null if blank or not a valid amount.
+    val sizeAmountValue: Double?
+        get() = sizeAmount.trim().replace(',', '.').toDoubleOrNull()?.takeIf { it > 0 }
 }
+
+/** A refused delete: the backend message plus, for a template, the names of all clones. */
+data class DeleteBlocked(val message: String, val clones: List<String> = emptyList())
 
 data class CategoryFormState(
     val editingId: String? = null,
@@ -135,13 +169,30 @@ class ProductManagementViewModel(private val repository: CatalogRepository) : Vi
     // UI itself only offering this tab to a super user in the first place;
     // the backend is the actual enforcement point.
     fun editCatalogSearchResult(product: CatalogProductEntity) {
+        openEditForm(product)
+    }
+
+    private fun openEditForm(product: CatalogProductEntity) {
         _productForm.value = ProductFormState(
             editingId = product.id,
             name = product.name,
             categoryId = product.catalogCategoryId,
             imageId = product.catalogImageId?.toString(),
-            barcode = product.barcode,
+            templateId = product.templateId,
+            brand = product.brands.orEmpty(),
+            sizeAmount = product.sizeAmount.orEmpty(),
+            sizeUnit = product.sizeUnit ?: DEFAULT_SIZE_UNIT,
+            barcodes = product.barcodeList,
         )
+        product.templateId?.let { templateId ->
+            viewModelScope.launch {
+                val template = repository.getProduct(templateId)
+                _productForm.update { form ->
+                    form?.takeIf { it.editingId == product.id }
+                        ?.copy(templateName = template?.name, templateImageId = template?.catalogImageId) ?: form
+                }
+            }
+        }
     }
 
     private val _actionSheetProduct = MutableStateFlow<CatalogProductEntity?>(null)
@@ -155,6 +206,15 @@ class ProductManagementViewModel(private val repository: CatalogRepository) : Vi
 
     private val _pendingDeleteCategory = MutableStateFlow<CatalogCategoryEntity?>(null)
     val pendingDeleteCategory: StateFlow<CatalogCategoryEntity?> = _pendingDeleteCategory.asStateFlow()
+
+    private val _deleteBlocked = MutableStateFlow<DeleteBlocked?>(null)
+    val deleteBlocked: StateFlow<DeleteBlocked?> = _deleteBlocked.asStateFlow()
+
+    private val _templateQuery = MutableStateFlow("")
+    val templateQuery: StateFlow<String> = _templateQuery.asStateFlow()
+
+    private val _templateResults = MutableStateFlow<List<CatalogProductEntity>>(emptyList())
+    val templateResults: StateFlow<List<CatalogProductEntity>> = _templateResults.asStateFlow()
 
     private val _productForm = MutableStateFlow<ProductFormState?>(null)
     val productForm: StateFlow<ProductFormState?> = _productForm.asStateFlow()
@@ -189,13 +249,7 @@ class ProductManagementViewModel(private val repository: CatalogRepository) : Vi
     fun editProductFromActionSheet() {
         val product = _actionSheetProduct.value ?: return
         _actionSheetProduct.value = null
-        _productForm.value = ProductFormState(
-            editingId = product.id,
-            name = product.name,
-            categoryId = product.catalogCategoryId,
-            imageId = product.catalogImageId?.toString(),
-            barcode = product.barcode,
-        )
+        openEditForm(product)
     }
 
     fun requestDeleteProduct() {
@@ -216,12 +270,22 @@ class ProductManagementViewModel(private val repository: CatalogRepository) : Vi
                 repository.deleteProduct(product.id)
             } catch (e: CancellationException) {
                 throw e
+            } catch (e: HttpException) {
+                val error = e.apiError()
+                _deleteBlocked.value = DeleteBlocked(
+                    message = error?.error?.takeIf { it.isNotBlank() } ?: "",
+                    clones = error?.clones?.map { it.name }.orEmpty(),
+                )
             } catch (_: Exception) {
                 // Best-effort, same as the rest of this repository's direct-REST
                 // calls — the row simply stays visible if the delete failed, and
                 // the user can retry the long-press.
             }
         }
+    }
+
+    fun dismissDeleteBlocked() {
+        _deleteBlocked.value = null
     }
 
     fun openCategoryActionSheet(category: CatalogCategoryEntity) {
@@ -282,6 +346,138 @@ class ProductManagementViewModel(private val repository: CatalogRepository) : Vi
         _productForm.update { it?.copy(description = description) }
     }
 
+    fun setTemplateQuery(query: String) {
+        _templateQuery.value = query
+        viewModelScope.launch {
+            _templateResults.value = if (query.isBlank()) emptyList() else repository.searchTemplates(query)
+        }
+    }
+
+    /** Make the form a clone of [template], or a standalone product again with null. */
+    fun setTemplate(template: CatalogProductEntity?) {
+        _templateQuery.value = ""
+        _templateResults.value = emptyList()
+        _productForm.update {
+            it?.copy(
+                templateId = template?.id,
+                templateName = template?.name,
+                templateImageId = template?.catalogImageId,
+                brand = if (template == null) "" else it.brand,
+                sizeAmount = if (template == null) "" else it.sizeAmount,
+                errorMessage = null,
+                nameConflict = false,
+            )
+        }
+    }
+
+    fun setBrand(brand: String) {
+        _productForm.update { it?.copy(brand = brand) }
+    }
+
+    fun setSizeAmount(amount: String) {
+        _productForm.update { it?.copy(sizeAmount = amount) }
+    }
+
+    fun setSizeUnit(unit: String) {
+        _productForm.update { it?.copy(sizeUnit = unit) }
+    }
+
+    fun setBarcodeInput(input: String) {
+        _productForm.update { it?.copy(barcodeInput = input) }
+    }
+
+    /** A barcode read by the camera is added like a typed one. */
+    fun addScannedBarcode(barcode: String) {
+        setBarcodeInput(barcode)
+        addBarcode()
+    }
+
+    /**
+     * Adds the typed barcode. On an existing product it is mapped on the
+     * backend right away (which rejects one owned by another product with a
+     * message naming it); on a new product it is kept in the form and sent
+     * with the save.
+     */
+    fun addBarcode() {
+        val form = _productForm.value ?: return
+        val barcode = form.barcodeInput.trim()
+        if (barcode.isEmpty() || barcode in form.barcodes) return
+        val editingId = form.editingId
+        if (editingId == null) {
+            _productForm.update { it?.copy(barcodes = it.barcodes + barcode, barcodeInput = "", errorMessage = null, barcodeTakenBy = null) }
+            prefillFromBarcode(barcode)
+            return
+        }
+        viewModelScope.launch {
+            try {
+                repository.addBarcode(editingId, barcode)
+                _productForm.update { it?.copy(barcodes = it.barcodes + barcode, barcodeInput = "", errorMessage = null) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _productForm.update { it?.copy(errorMessage = errorMessageOf(e)) }
+            }
+        }
+    }
+
+    /**
+     * Looks the barcode of a new product up: fills the still empty name, brand
+     * and size from the Open Food Facts suggestion, or reports the product the
+     * barcode already belongs to. A failed or empty lookup changes nothing.
+     */
+    private fun prefillFromBarcode(barcode: String) {
+        _productForm.update { it?.copy(barcodeLookupRunning = true) }
+        viewModelScope.launch {
+            val result = try {
+                repository.lookupByBarcode(barcode)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                BarcodeLookup.Failed
+            }
+            _productForm.update { form ->
+                if (form == null || barcode !in form.barcodes) return@update form?.copy(barcodeLookupRunning = false)
+                when (result) {
+                    is BarcodeLookup.Found -> form.copy(barcodeLookupRunning = false, barcodeTakenBy = result.product.name)
+                    is BarcodeLookup.Unknown -> {
+                        val suggestion = result.suggestion
+                        val size = suggestion?.quantity?.let(::parseQuantity)
+                        form.copy(
+                            barcodeLookupRunning = false,
+                            name = if (!form.isClone && form.name.isBlank()) suggestion?.name.orEmpty() else form.name,
+                            brand = if (form.brand.isBlank()) suggestion?.brand.orEmpty() else form.brand,
+                            sizeAmount = if (form.sizeAmount.isBlank() && size != null) size.first else form.sizeAmount,
+                            sizeUnit = if (form.sizeAmount.isBlank() && size != null) size.second else form.sizeUnit,
+                        )
+                    }
+                    BarcodeLookup.Failed -> form.copy(barcodeLookupRunning = false)
+                }
+            }
+        }
+    }
+
+    fun removeBarcode(barcode: String) {
+        val editingId = _productForm.value?.editingId
+        if (editingId == null) {
+            _productForm.update { it?.copy(barcodes = it.barcodes - barcode) }
+            return
+        }
+        viewModelScope.launch {
+            try {
+                repository.removeBarcode(editingId, barcode)
+                _productForm.update { it?.copy(barcodes = it.barcodes - barcode, errorMessage = null) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _productForm.update { it?.copy(errorMessage = errorMessageOf(e)) }
+            }
+        }
+    }
+
+    // The backend's own message for an HTTP error, else null (shown generically).
+    private fun errorMessageOf(e: Exception): String? =
+        (e as? HttpException)?.apiError()?.error?.takeIf { it.isNotBlank() }
+
     /**
  * Generate a new product image from the form's current
      * name/description and assign it — same [setProductImage] target the
@@ -292,7 +488,7 @@ class ProductManagementViewModel(private val repository: CatalogRepository) : Vi
      */
     fun generateProductImage() {
         val form = _productForm.value ?: return
-        val name = form.name.trim()
+        val name = form.imagePromptName
         if (name.isBlank() || form.generatingImage) return
         viewModelScope.launch {
             _productForm.update { it?.copy(generatingImage = true, generateImageError = null) }
@@ -325,17 +521,35 @@ class ProductManagementViewModel(private val repository: CatalogRepository) : Vi
         val form = _productForm.value ?: return
         if (!form.isValid || form.submitting) return
         viewModelScope.launch {
-            _productForm.update { it?.copy(submitting = true, submitFailed = false, nameConflict = false) }
+            _productForm.update { it?.copy(submitting = true, submitFailed = false, nameConflict = false, errorMessage = null) }
             try {
                 val name = form.name.trim()
-                if (form.editingId != null) {
-                    repository.updateProduct(form.editingId, name, form.categoryId, form.imageId, form.barcode)
+                val amount = form.sizeAmountValue?.let { java.math.BigDecimal(it.toString()).stripTrailingZeros().toPlainString() }.orEmpty()
+                val unit = if (amount.isEmpty()) "" else form.sizeUnit
+                if (form.templateId != null) {
+                    if (form.editingId != null) {
+                        repository.updateClone(form.editingId, form.templateId, form.brand.trim(), amount, unit, form.imageId)
+                    } else {
+                        val created = repository.createClone(
+                            templateId = form.templateId,
+                            brand = form.brand.trim(),
+                            sizeAmount = amount,
+                            sizeUnit = unit,
+                            catalogImageId = form.imageId,
+                            barcode = form.barcodes.firstOrNull(),
+                            requireNew = true,
+                        )
+                        form.barcodes.drop(1).forEach { repository.addBarcode(created.id, it) }
+                    }
+                } else if (form.editingId != null) {
+                    repository.updateProduct(form.editingId, name, form.categoryId, form.imageId)
                 } else {
                     // requireNew = true: reject a name collision with an
                     // existing row (e.g. an external-catalog import) outright instead of
                     // silently reusing it — see createProduct's own doc
                     // comment for why.
-                    val created = repository.createProduct(name, form.categoryId, requireNew = true)
+                    val created = repository.createProduct(name, form.categoryId, requireNew = true, barcode = form.barcodes.firstOrNull())
+                    form.barcodes.drop(1).forEach { repository.addBarcode(created.id, it) }
                     // postCatalogProduct doesn't accept an image, so a
                     // create-with-image needs this follow-up PUT.
                     if (form.imageId != null) {
@@ -346,10 +560,11 @@ class ProductManagementViewModel(private val repository: CatalogRepository) : Vi
             } catch (e: CancellationException) {
                 throw e
             } catch (e: HttpException) {
-                if (e.code() == 409) {
+                val message = e.apiError()?.error?.takeIf { it.isNotBlank() }
+                if (e.code() == 409 && form.templateId == null && message == null) {
                     _productForm.update { it?.copy(submitting = false, nameConflict = true) }
                 } else {
-                    _productForm.update { it?.copy(submitting = false, submitFailed = true) }
+                    _productForm.update { it?.copy(submitting = false, submitFailed = message == null, errorMessage = message) }
                 }
             } catch (_: Exception) {
                 _productForm.update { it?.copy(submitting = false, submitFailed = true) }

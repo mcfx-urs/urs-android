@@ -31,6 +31,7 @@ import ch.mcfx.urs.data.local.CatalogCategoryEntity
 import ch.mcfx.urs.data.local.CatalogProductEntity
 import ch.mcfx.urs.ui.components.UrsBottomSheet
 import ch.mcfx.urs.ui.components.UrsButton
+import ch.mcfx.urs.ui.components.UrsErrorDialog
 import ch.mcfx.urs.ui.components.UrsFab
 import ch.mcfx.urs.ui.components.UrsFilterChip
 import ch.mcfx.urs.ui.components.UrsIcon
@@ -79,6 +80,7 @@ fun ProductManagementScreen(
     val actionSheetProduct by viewModel.actionSheetProduct.collectAsStateWithLifecycle()
     val actionSheetCategory by viewModel.actionSheetCategory.collectAsStateWithLifecycle()
     val pendingDeleteProduct by viewModel.pendingDeleteProduct.collectAsStateWithLifecycle()
+    val deleteBlocked by viewModel.deleteBlocked.collectAsStateWithLifecycle()
     val pendingDeleteCategory by viewModel.pendingDeleteCategory.collectAsStateWithLifecycle()
     val productForm by viewModel.productForm.collectAsStateWithLifecycle()
     val categoryForm by viewModel.categoryForm.collectAsStateWithLifecycle()
@@ -162,6 +164,17 @@ fun ProductManagementScreen(
         UrsBottomSheet(onDismissRequest = viewModel::closeCategoryActionSheet) {
             EntityActionSheet(onEdit = viewModel::editCategoryFromActionSheet, onDelete = viewModel::requestDeleteCategory)
         }
+    }
+
+    deleteBlocked?.let { blocked ->
+        UrsErrorDialog(
+            title = stringResource(R.string.product_management_delete_blocked_title),
+            message = buildString {
+                append(blocked.message.ifBlank { stringResource(R.string.product_management_delete_blocked_generic) })
+                blocked.clones.forEach { append("\n• ").append(it) }
+            },
+            onDismiss = viewModel::dismissDeleteBlocked,
+        )
     }
 
     if (pendingDeleteProduct != null) {

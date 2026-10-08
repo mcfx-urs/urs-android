@@ -47,13 +47,29 @@ interface CatalogProductDao {
     // cached fields (categoryName, searchTerms, brands, popularityIndex,
     // recentNote*) survive an edit untouched, unlike upsertOne's full-row
     // replace.
-    @Query("UPDATE catalog_product SET name = :name, catalogCategoryId = :catalogCategoryId, catalogImageId = :catalogImageId, barcode = :barcode WHERE id = :id")
-    suspend fun updateFields(id: String, name: String, catalogCategoryId: String?, catalogImageId: Int?, barcode: String?)
+    @Query("UPDATE catalog_product SET name = :name, catalogCategoryId = :catalogCategoryId, catalogImageId = :catalogImageId WHERE id = :id")
+    suspend fun updateFields(id: String, name: String, catalogCategoryId: String?, catalogImageId: Int?)
 
-    // Barcode-scan lookup fallback (mcfx-urs/urs-android#91): the local
-    // cache may already have a synced row for a barcode scanned before, even
-    // without a fresh backend round-trip.
-    @Query("SELECT * FROM catalog_product WHERE barcode = :barcode LIMIT 1")
+    @Query("UPDATE catalog_product SET barcodes = :barcodes WHERE id = :id")
+    suspend fun updateBarcodes(id: String, barcodes: String?)
+
+    @Query("SELECT * FROM catalog_product WHERE id = :id")
+    suspend fun getById(id: String): CatalogProductEntity?
+
+    @Query("SELECT COUNT(*) FROM catalog_product WHERE templateId = :templateId")
+    suspend fun countClones(templateId: String): Int
+
+    // Template picker: standalone products only (a clone is never a template).
+    @Query(
+        "SELECT * FROM catalog_product WHERE templateId IS NULL AND " +
+            "(name LIKE '%' || :query || '%' OR searchTerms LIKE '%' || :query || '%') " +
+            "ORDER BY popularityIndex IS NULL, popularityIndex DESC, name LIMIT :limit",
+    )
+    suspend fun searchTemplates(query: String, limit: Int): List<CatalogProductEntity>
+
+    // Barcode-scan lookup fallback: the local cache may already have a synced
+    // row for a barcode scanned before, even without a fresh backend round-trip.
+    @Query("SELECT * FROM catalog_product WHERE ',' || barcodes || ',' LIKE '%,' || :barcode || ',%' LIMIT 1")
     suspend fun getByBarcode(barcode: String): CatalogProductEntity?
 
     @Query("DELETE FROM catalog_product WHERE id = :id")

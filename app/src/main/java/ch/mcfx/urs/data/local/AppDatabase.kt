@@ -133,7 +133,9 @@ import androidx.room.TypeConverters
     // v40: defaultTagName column added to KanbanColumnEntity
     //      (mcfx-urs/urs-android#94) — same destructive-fallback handling as
     //      every bump above.
-    version = 40,
+    // v41: template, size and barcode-list columns on CatalogProductEntity —
+    //      same destructive-fallback handling as every bump above.
+    version = 41,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)

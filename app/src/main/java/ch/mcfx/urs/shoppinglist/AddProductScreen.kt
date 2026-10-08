@@ -37,6 +37,7 @@ import ch.mcfx.urs.data.local.CatalogCategoryEntity
 import ch.mcfx.urs.data.local.CatalogProductEntity
 import ch.mcfx.urs.settings.PortraitCaptureActivity
 import ch.mcfx.urs.ui.components.CatalogImagePicker
+import ch.mcfx.urs.ui.components.CloneFromScanSheet
 import ch.mcfx.urs.ui.components.CatalogProductPicker
 import ch.mcfx.urs.ui.components.UrsBottomSheet
 import ch.mcfx.urs.ui.components.UrsButton
@@ -119,6 +120,8 @@ fun AddProductScreen(
         }
     }
 
+    CloneFromScanSheet(controller = viewModel.cloneDraft, onSubmit = viewModel::submitClone)
+
     if (imageSuggestionsOpen) {
         UrsBottomSheet(onDismissRequest = viewModel::cancelImageSuggestions) {
             UrsText(
@@ -186,6 +189,7 @@ private fun BrowseMode(viewModel: AddProductViewModel, modifier: Modifier = Modi
     val quickCreating by viewModel.quickCreating.collectAsStateWithLifecycle()
     val scanning by viewModel.scanning.collectAsStateWithLifecycle()
     val barcodeNotFound by viewModel.barcodeNotFound.collectAsStateWithLifecycle()
+    val scannedBarcode by viewModel.scannedBarcode.collectAsStateWithLifecycle()
     val quickCreateCategoryId by viewModel.quickCreateCategoryId.collectAsStateWithLifecycle()
 
     val searchFocusRequester = remember { FocusRequester() }
@@ -239,6 +243,13 @@ private fun BrowseMode(viewModel: AddProductViewModel, modifier: Modifier = Modi
                 stringResource(R.string.product_barcode_not_found),
                 style = UrsTheme.typography.body,
                 color = UrsTheme.colors.onSurfaceMuted,
+            )
+        }
+        if (scannedBarcode != null) {
+            UrsOutlinedButton(
+                text = stringResource(R.string.product_scan_variant_open),
+                onClick = viewModel::openCloneSheet,
+                modifier = Modifier.fillMaxWidth(),
             )
         }
 

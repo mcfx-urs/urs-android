@@ -136,7 +136,13 @@ interface UrsApi {
     suspend fun getCatalogProducts(): List<CatalogProductDto>
 
     @POST("api/v1/catalog-product")
-    suspend fun createCatalogProduct(@Body payload: NewCatalogProductPayload): NewCatalogProductResponseDto
+    suspend fun createCatalogProduct(@Body payload: NewCatalogProductPayload): CatalogProductDto
+
+    @POST("api/v1/catalog-product/{id}/barcode")
+    suspend fun addCatalogProductBarcode(@Path("id") id: String, @Body payload: BarcodeRequestPayload)
+
+    @DELETE("api/v1/catalog-product/{id}/barcode/{barcode}")
+    suspend fun removeCatalogProductBarcode(@Path("id") id: String, @Path("barcode") barcode: String)
 
     // 204 (untracked in any inventory the caller can access) vs 200 needs to
     // be told apart explicitly — wrapped in Response<...> rather than a bare
