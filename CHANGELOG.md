@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-10-09
+
 ### Fixed
 
 - Sync status no longer stays on syncing when a pull step throws; a response that cannot be parsed counts as a failed pull and leaves the local data untouched (#119)

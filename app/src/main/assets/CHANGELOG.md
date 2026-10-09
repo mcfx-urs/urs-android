@@ -5,6 +5,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-10-09
+
+### Fixed
+
+- Sync status no longer stays on syncing when a pull step throws; a response that cannot be parsed counts as a failed pull and leaves the local data untouched (#119)
+- Image generator prompt field supports multiple lines and long texts
+- Tall bottom sheets no longer flash open for a moment before sliding up
+- Image generation waits up to 230 seconds for the result, enough for quality max
+
+### Changed
+
+- About shows the last pull per domain with result, failure cause, duration and received bytes in the sync details; the pulls of the last 30 days, including trigger and network, can be exported as CSV (#118)
+- Image generator offers quality levels xhigh and max, shows an estimated price per quality level and the cost of each generated image
+- Image picker searches on the server with a debounced search field and loads further images while scrolling (#117)
+- Product form offers a template, brand, size (amount and unit) and several barcodes per product; a product with a template shows the name, category and image resolved by the backend (#116)
+- Scanning an unknown barcode takes the Open Food Facts suggestion from the backend and can create a variant of an existing product with the barcode attached, in Inventory and Shopping List (#116)
+- Scanning a barcode in the product form fills the empty name, brand and size from the Open Food Facts suggestion and reports the product a known barcode already belongs to (#116)
+- Product Management opens the edit form on a tap for products and categories; delete is a red button at the bottom of the form with a confirmation
+- Failed saves and deletes show the backend message, including the list of variants that block deleting a template (#116)
+- Local database is reset on first start of this version; sync before updating (#116)
+
 ## [1.9.0] - 2026-09-29
 
 ### Added
