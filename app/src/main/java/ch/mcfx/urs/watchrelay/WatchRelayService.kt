@@ -16,7 +16,6 @@ import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.beer.BeerStats
 import ch.mcfx.urs.notifications.NotificationChannels
 import fi.iki.elonen.NanoHTTPD
-import java.time.LocalDate
 import java.time.LocalDateTime
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
@@ -76,10 +75,11 @@ class WatchRelayService : Service() {
                 container.syncManager.syncNow()
             },
             onChoreEvent = { typeId ->
+                val now = LocalDateTime.now()
                 container.choreRepository.logEvent(
                     typeId = typeId,
-                    occurredOn = LocalDate.now().toString(),
-                    occurredAt = null,
+                    occurredOn = now.toLocalDate().toString(),
+                    occurredAt = "%02d:%02d".format(now.hour, now.minute / 15 * 15),
                     note = null,
                     source = "watch",
                 )
