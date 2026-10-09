@@ -8,7 +8,6 @@ import ch.mcfx.urs.data.remote.BeerLogDto
 import ch.mcfx.urs.data.remote.UrsApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -33,7 +32,7 @@ class BeerRepository(
         _logged.emit(Unit)
     }
 
-    suspend fun getEntries(): List<BeerLogDto> = emptyAsNull { api.getBeerLog() }
+    suspend fun getEntries(): List<BeerLogDto> = api.getBeerLog()
 
     // Offline-first: queued to the outbox and delivered by SyncManager, so a
     // beer logged from the watch relay or with no connectivity is never lost
@@ -60,12 +59,4 @@ class BeerRepository(
     suspend fun updateEntryDate(id: String, date: String) {
         api.updateBeerLog(id, BeerLogDateUpdatePayload(date))
     }
-
-    // The backend encodes empty result sets as JSON `null` instead of `[]`.
-    private suspend fun <T> emptyAsNull(call: suspend () -> List<T>): List<T> =
-        try {
-            call()
-        } catch (_: SerializationException) {
-            emptyList()
-        }
 }

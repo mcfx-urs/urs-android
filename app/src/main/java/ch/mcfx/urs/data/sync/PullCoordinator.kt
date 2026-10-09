@@ -14,6 +14,7 @@ import ch.mcfx.urs.data.ShoppingListRepository
 import ch.mcfx.urs.data.TagRepository
 import ch.mcfx.urs.data.VehicleRepository
 import ch.mcfx.urs.data.WorkTimeRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.sync.Mutex
@@ -88,30 +89,48 @@ class PullCoordinator(
     suspend fun pullAll(): Boolean = mutex.withLock {
         _phase.value = SyncPhase.SYNCING
         var anyFailed = false
+        var finished = false
 
         suspend fun pull(domain: String, block: suspend () -> Boolean) {
-            if (!block()) {
+            val ok = try {
+                block()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w("PullCoordinator", "pull threw for $domain", e)
+                false
+            }
+            if (!ok) {
                 Log.w("PullCoordinator", "pull failed for $domain")
                 anyFailed = true
             }
         }
 
-        pull("Vehicle") { vehicleRepository.refreshFromBackend() }
-        pull("Fuel") { fuelRepository.refreshFromBackend() }
-        pull("Service") { serviceRepository.refreshFromBackend() }
-        pull("Catalog") { catalogRepository.refreshFromBackend() }
-        pull("Inventory") { inventoryRepository.refreshFromBackend() }
-        pull("ShoppingList") { shoppingListRepository.refreshFromBackend() }
-        pull("WorkTime") { workTimeRepository.refreshFromBackend() }
-        pull("LocationHistory") { locationHistoryRepository.refreshFromBackend() }
-        pull("Note") { noteRepository.refreshFromBackend() }
-        pull("Chore") { choreRepository.refreshFromBackend() }
-        pull("Kanban") { kanbanRepository.refreshFromBackend() }
-        pull("Tag") { tagRepository.refreshFromBackend() }
-        pull("Asset") { assetRepository.refreshFromBackend() }
+        try {
+            pull("Vehicle") { vehicleRepository.refreshFromBackend() }
+            pull("Fuel") { fuelRepository.refreshFromBackend() }
+            pull("Service") { serviceRepository.refreshFromBackend() }
+            pull("Catalog") { catalogRepository.refreshFromBackend() }
+            pull("Inventory") { inventoryRepository.refreshFromBackend() }
+            pull("ShoppingList") { shoppingListRepository.refreshFromBackend() }
+            pull("WorkTime") { workTimeRepository.refreshFromBackend() }
+            pull("LocationHistory") { locationHistoryRepository.refreshFromBackend() }
+            pull("Note") { noteRepository.refreshFromBackend() }
+            pull("Chore") { choreRepository.refreshFromBackend() }
+            pull("Kanban") { kanbanRepository.refreshFromBackend() }
+            pull("Tag") { tagRepository.refreshFromBackend() }
+            pull("Asset") { assetRepository.refreshFromBackend() }
 
-        syncStatusStore.recordPullFinished(hadErrors = anyFailed)
-        _phase.value = if (anyFailed) SyncPhase.IDLE_ERROR else SyncPhase.IDLE_OK
+            syncStatusStore.recordPullFinished(hadErrors = anyFailed)
+            finished = true
+        } finally {
+            // A cancelled pass keeps the previous result instead of staying on SYNCING.
+            _phase.value = when {
+                finished -> if (anyFailed) SyncPhase.IDLE_ERROR else SyncPhase.IDLE_OK
+                syncStatusStore.didLastPullHaveErrors() -> SyncPhase.IDLE_ERROR
+                else -> SyncPhase.IDLE_OK
+            }
+        }
         !anyFailed
     }
 }

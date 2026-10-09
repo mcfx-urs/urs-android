@@ -35,7 +35,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -418,11 +417,11 @@ class ChoreRepository(
         syncManager.syncNow()
         val userId = currentUserId()
         try {
-            val domains = emptyAsNull { api.getTrackerDomains() }
+            val domains = api.getTrackerDomains()
             trackerDomainDao.upsertFromServer(userId, domains.map { it.toEntity(userId) })
-            val types = emptyAsNull { api.getTrackerTypes() }
+            val types = api.getTrackerTypes()
             trackerTypeDao.upsertFromServer(userId, types.map { it.toEntity(userId) })
-            val events = emptyAsNull { api.getTrackerEvents() }
+            val events = api.getTrackerEvents()
             trackerEventDao.upsertFromServer(userId, events.map { it.toEntity(userId) })
             return true
         } catch (e: CancellationException) {
@@ -451,15 +450,6 @@ class ChoreRepository(
     }
 
     private fun currentUserId(): String = tokenStore.currentUserId.orEmpty()
-
-    // The backend encodes empty result sets as JSON `null` in some cases —
-    // same guard as ShoppingListRepository.emptyAsNull.
-    private suspend fun <T> emptyAsNull(call: suspend () -> List<T>): List<T> =
-        try {
-            call()
-        } catch (_: SerializationException) {
-            emptyList()
-        }
 }
 
 // The backend serializes DATETIME columns as "yyyy-MM-dd HH:mm:ss".

@@ -9,7 +9,6 @@ import ch.mcfx.urs.data.remote.UrsApi
 import java.time.LocalDateTime
 import java.time.ZoneId
 import kotlinx.coroutines.CancellationException
-import kotlinx.serialization.SerializationException
 
 /**
  * Pulls the authenticated user's full server-side location history down
@@ -57,7 +56,7 @@ class LocationHistoryRepository(
         val allPoints = mutableListOf<LocationHistoryDto>()
         var from = EPOCH_START
         while (true) {
-            val page = emptyAsNull { api.getLocationHistory(from = from, limit = PAGE_SIZE, order = "ASC") }
+            val page = api.getLocationHistory(from = from, limit = PAGE_SIZE, order = "ASC")
             if (page.isEmpty()) break
             allPoints += page
             if (page.size < PAGE_SIZE.toInt()) break
@@ -80,14 +79,6 @@ class LocationHistoryRepository(
             return false
         }
     }
-
-    // The backend encodes empty result sets as JSON `null` instead of `[]`.
-    private suspend fun <T> emptyAsNull(call: suspend () -> List<T>): List<T> =
-        try {
-            call()
-        } catch (_: SerializationException) {
-            emptyList()
-        }
 
     companion object {
         private const val PAGE_SIZE = "10000"

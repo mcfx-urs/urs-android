@@ -49,7 +49,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -541,7 +540,7 @@ class KanbanRepository(
      * pulled separately per board, see [refreshBoard].
      */
     suspend fun refreshBoards(): Boolean = refreshQuietly {
-        val boards = emptyAsNull { api.getKanbanBoards() }
+        val boards = api.getKanbanBoards()
         boardDao.upsertFromServer(boards.map { it.toEntity() })
     }
 
@@ -620,14 +619,6 @@ class KanbanRepository(
             return false
         }
     }
-
-    // The backend encodes empty result sets as JSON `null` instead of `[]`.
-    private suspend fun <T> emptyAsNull(call: suspend () -> List<T>): List<T> =
-        try {
-            call()
-        } catch (_: SerializationException) {
-            emptyList()
-        }
 
     companion object {
         // Fixed local trigger time for every card's due-date reminder — no

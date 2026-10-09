@@ -37,6 +37,7 @@ import ch.mcfx.urs.data.WorkSettingsStore
 import ch.mcfx.urs.data.WorkTimeRepository
 import ch.mcfx.urs.data.local.AppDatabase
 import ch.mcfx.urs.home.HomeLayoutStore
+import ch.mcfx.urs.data.remote.NullAsEmptyListConverterFactory
 import ch.mcfx.urs.data.remote.UrsApi
 import ch.mcfx.urs.data.sync.PullCoordinator
 import ch.mcfx.urs.data.sync.ReachabilityChecker
@@ -282,6 +283,7 @@ class AppContainer(context: Context) {
     private val retrofit = Retrofit.Builder()
         .baseUrl(BuildConfig.BASE_URL)
         .client(httpClient)
+        .addConverterFactory(NullAsEmptyListConverterFactory(json))
         .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
         .build()
 

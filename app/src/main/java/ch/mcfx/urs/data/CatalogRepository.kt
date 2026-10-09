@@ -18,7 +18,6 @@ import ch.mcfx.urs.data.remote.NewCatalogProductPayload
 import ch.mcfx.urs.data.remote.UrsApi
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import retrofit2.HttpException
 
@@ -64,11 +63,11 @@ class CatalogRepository(
      */
     suspend fun refreshFromBackend(): Boolean {
         val productsOk = refreshQuietly {
-            val products = emptyAsNull { api.getCatalogProducts() }
+            val products = api.getCatalogProducts()
             catalogProductDao.upsertAll(products.map { it.toEntity() })
         }
         val categoriesOk = refreshQuietly {
-            val categories = emptyAsNull { api.getCatalogCategories() }
+            val categories = api.getCatalogCategories()
             catalogCategoryDao.upsertAll(categories.map { it.toEntity() })
         }
         return productsOk && categoriesOk
@@ -301,7 +300,7 @@ class CatalogRepository(
      * users; a non-super-user call surfaces as an [retrofit2.HttpException]
      * (403), left to propagate.
      */
-    suspend fun getPendingImages(): List<CatalogImageDto> = emptyAsNull { api.getPendingCatalogImages() }
+    suspend fun getPendingImages(): List<CatalogImageDto> = api.getPendingCatalogImages()
 
     /** Approve a pending-review image — Image Review screen. */
     suspend fun approveImage(id: String) = api.approveCatalogImage(id)
@@ -343,14 +342,6 @@ class CatalogRepository(
             return false
         }
     }
-
-    // The backend encodes empty result sets as JSON `null` instead of `[]`.
-    private suspend fun <T> emptyAsNull(call: suspend () -> List<T>): List<T> =
-        try {
-            call()
-        } catch (_: SerializationException) {
-            emptyList()
-        }
 }
 
 private fun CatalogProductDto.toEntity() = CatalogProductEntity(

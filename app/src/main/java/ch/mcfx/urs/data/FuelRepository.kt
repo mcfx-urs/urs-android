@@ -30,7 +30,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -73,12 +72,12 @@ class FuelRepository(
     // statistics screens, which this pass didn't move onto the offline-first
     // Room path (see FuelViewModel for the one that did); both already
     // tolerate a plain network error via their own existing UI state.
-    suspend fun getStations(): List<FillingStationDto> = emptyAsNull { api.getFillingStations() }
+    suspend fun getStations(): List<FillingStationDto> = api.getFillingStations()
 
     // Super-user-only review queue of ad-hoc (gps_auto) stations. No Room
     // caching (same as CatalogRepository's pending images) — always a fresh
     // fetch, since a stale queue would show already-completed stations.
-    suspend fun getPendingStations(): List<FillingStationDto> = emptyAsNull { api.getPendingFillingStations() }
+    suspend fun getPendingStations(): List<FillingStationDto> = api.getPendingFillingStations()
 
     suspend fun createStation(name: String, address: String = "", latitude: String? = null, longitude: String? = null) {
         api.createFillingStation(
@@ -107,14 +106,14 @@ class FuelRepository(
     // recording a standalone price observation is a rare, non-critical
     // action with no edit/delete lifecycle, so it doesn't warrant the
     // outbox/Room-entity machinery createFill uses.
-    suspend fun getFuelTypes(): List<FuelDto> = emptyAsNull { api.getFuelTypes() }
+    suspend fun getFuelTypes(): List<FuelDto> = api.getFuelTypes()
 
     suspend fun submitFuelPrice(date: String, price: String, fuelTypeId: String, stationId: String): FuelPriceDto =
         api.createFuelPrice(FuelPricePayload(date = date, price = price, fuelTypeId = fuelTypeId, stationId = stationId))
 
     // Same "direct read, no outbox" reasoning as getFuelTypes — price
     // history is a read-only feed with no offline-write concern.
-    suspend fun getFuelPrices(fuelId: String): List<FuelPriceDto> = emptyAsNull { api.getFuelPrices(fuelId) }
+    suspend fun getFuelPrices(fuelId: String): List<FuelPriceDto> = api.getFuelPrices(fuelId)
 
     // Direct, unbuffered REST call — a read-only lookup has no reason to go
     // through the outbox. Exceptions (including a 404 "no match") propagate
@@ -122,10 +121,10 @@ class FuelRepository(
     suspend fun geocode(address: String): GeocodeResultDto = api.geocode(address)
 
     suspend fun getFills(): List<FillDto> =
-        emptyAsNull { api.getFills() }.sortedByDescending { it.date }
+        api.getFills().sortedByDescending { it.date }
 
     suspend fun getLastOdometer(vehicleId: String): String? =
-        emptyAsNull { api.getOdometer(vehicleId) }
+        api.getOdometer(vehicleId)
             .maxByOrNull { it.mileage.toFloatOrNull() ?: 0f }
             ?.mileage
 
@@ -336,7 +335,7 @@ class FuelRepository(
      */
     suspend fun refreshFromBackend(): Boolean {
         var allOk = refreshQuietly { api.getFillingStations().forEach { fillingStationDao.upsert(it.toEntity()) } }
-        allOk = refreshQuietly { emptyAsNull { api.getFills() }.forEach { fillDao.upsertFromServer(it.toEntity()) } } && allOk
+        allOk = refreshQuietly { api.getFills().forEach { fillDao.upsertFromServer(it.toEntity()) } } && allOk
         allOk = refreshQuietly {
             api.getCurrencies().takeIf { it.isNotEmpty() }?.let { currencyDao.upsertAll(it.map(CurrencyDto::toEntity)) }
         } && allOk
@@ -356,14 +355,6 @@ class FuelRepository(
             return false
         }
     }
-
-    // The backend encodes empty result sets as JSON `null` instead of `[]`.
-    private suspend fun <T> emptyAsNull(call: suspend () -> List<T>): List<T> =
-        try {
-            call()
-        } catch (_: SerializationException) {
-            emptyList()
-        }
 
     private fun formatKm(value: Float): String =
         if (value % 1f == 0f) value.toInt().toString() else value.toString()

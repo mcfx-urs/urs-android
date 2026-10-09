@@ -29,7 +29,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import retrofit2.HttpException
@@ -168,7 +167,7 @@ class InventoryRepository(
     }
 
     suspend fun getInventoryShares(inventoryId: String): List<ShareEntry> =
-        emptyAsNull { api.getInventoryShares(inventoryId) }.map { ShareEntry(userId = it.userId) }
+        api.getInventoryShares(inventoryId).map { ShareEntry(userId = it.userId) }
 
     suspend fun removeInventoryShare(inventoryId: String, userId: String) {
         api.deleteInventoryShare(inventoryId, userId)
@@ -286,7 +285,7 @@ class InventoryRepository(
     // conditional reminder needs the backend's current truth, not
     // potentially-stale local data.
     suspend fun getProductQuantity(inventoryId: String, productId: String): Int? =
-        emptyAsNull { api.getInventoryProducts(inventoryId) }.find { it.id == productId }?.quantity?.toIntOrNull()
+        api.getInventoryProducts(inventoryId).find { it.id == productId }?.quantity?.toIntOrNull()
 
     /**
      * Opportunistic backend refresh for the Room-cached inventories/products —
@@ -303,12 +302,12 @@ class InventoryRepository(
      */
     suspend fun refreshFromBackend(): Boolean {
         val inventoriesOk = refreshQuietly {
-            val inventories = emptyAsNull { api.getInventories() }
+            val inventories = api.getInventories()
             inventoryDao.upsertFromServer(inventories.map { it.toEntity(currentUserId()) })
         }
         val productsOk = inventoryDao.observeAll(currentUserId()).first().mapNotNull { it.serverId }.map { inventoryId ->
             refreshQuietly {
-                val products = emptyAsNull { api.getInventoryProducts(inventoryId) }
+                val products = api.getInventoryProducts(inventoryId)
                 inventoryProductDao.upsertFromServer(products.map { it.toEntity() })
             }
         }.all { it }
@@ -327,14 +326,6 @@ class InventoryRepository(
             return false
         }
     }
-
-    // The backend encodes empty result sets as JSON `null` instead of `[]`.
-    private suspend fun <T> emptyAsNull(call: suspend () -> List<T>): List<T> =
-        try {
-            call()
-        } catch (_: SerializationException) {
-            emptyList()
-        }
 }
 
 private fun InventoryDto.toEntity(userId: String) = InventoryEntity(

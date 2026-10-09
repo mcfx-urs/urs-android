@@ -29,7 +29,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -236,7 +235,7 @@ class AssetRepository(
     suspend fun refreshFromBackend(): Boolean {
         syncManager.syncNow()
         return try {
-            val assets = emptyAsNull { api.getAssets() }
+            val assets = api.getAssets()
             assetDao.upsertFromServer(assets.map { it.toEntity() })
             assets.forEach { dto ->
                 componentDao.upsertFromServer(dto.id, dto.components.map { it.toEntity(dto.id) })
@@ -250,14 +249,6 @@ class AssetRepository(
             false
         }
     }
-
-    // The backend encodes empty result sets as JSON `null` instead of `[]`.
-    private suspend fun <T> emptyAsNull(call: suspend () -> List<T>): List<T> =
-        try {
-            call()
-        } catch (_: SerializationException) {
-            emptyList()
-        }
 }
 
 private fun AssetDto.toEntity() = AssetEntity(

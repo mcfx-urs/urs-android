@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Sync status no longer stays on syncing when a pull step throws; a response that cannot be parsed counts as a failed pull and leaves the local data untouched (#119)
 - Image generator prompt field supports multiple lines and long texts
 - Tall bottom sheets no longer flash open for a moment before sliding up
 - Image generation waits up to 230 seconds for the result, enough for quality max

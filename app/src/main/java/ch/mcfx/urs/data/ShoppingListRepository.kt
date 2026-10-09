@@ -31,7 +31,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -209,7 +208,7 @@ class ShoppingListRepository(
     }
 
     suspend fun getListShares(listId: String): List<ShareEntry> =
-        emptyAsNull { api.getListShares(listId) }.map { ShareEntry(userId = it.userId) }
+        api.getListShares(listId).map { ShareEntry(userId = it.userId) }
 
     suspend fun removeListShare(listId: String, userId: String) {
         api.deleteListShare(listId, userId)
@@ -350,12 +349,12 @@ class ShoppingListRepository(
     suspend fun refreshFromBackend(): Boolean {
         syncManager.syncNow()
         val listsOk = refreshQuietly {
-            val lists = emptyAsNull { api.getLists() }
+            val lists = api.getLists()
             listDao.upsertFromServer(lists.map { it.toEntity() })
         }
         val itemsOk = listDao.observeAll().first().mapNotNull { it.serverId }.map { listId ->
             refreshQuietly {
-                val items = emptyAsNull { api.getListItems(listId) }
+                val items = api.getListItems(listId)
                 listItemDao.upsertFromServer(listId, items.map { it.toEntity() })
             }
         }.all { it }
@@ -370,7 +369,7 @@ class ShoppingListRepository(
      */
     suspend fun refreshRecentlyUsed(listId: String) {
         refreshQuietly {
-            val products = emptyAsNull { api.getRecentlyUsedProducts(listId) }
+            val products = api.getRecentlyUsedProducts(listId)
             recentlyUsedProductDao.replaceForList(
                 listId,
                 products.mapIndexed { index, dto ->
@@ -397,14 +396,6 @@ class ShoppingListRepository(
             return false
         }
     }
-
-    // The backend encodes empty result sets as JSON `null` instead of `[]`.
-    private suspend fun <T> emptyAsNull(call: suspend () -> List<T>): List<T> =
-        try {
-            call()
-        } catch (_: SerializationException) {
-            emptyList()
-        }
 }
 
 private fun ListDto.toEntity() = ListEntity(
