@@ -61,6 +61,8 @@ private enum class UrsSheetValue { Closed, Open }
  */
 private val FallbackSheetHeight = 400.dp
 
+private const val OffscreenOffsetPx = 100_000f
+
 /**
  * Bottom sheet overlay — replacement for `material3.ModalBottomSheet`. A
  * layered-[Box]-with-scrim-and-`AnchoredDraggableState` technique, anchored
@@ -115,7 +117,8 @@ fun UrsBottomSheet(
     }
 
     val rawOffset = anchoredState.offset
-    val offsetPx = if (!rawOffset.isNaN()) rawOffset else fallbackHeightPx
+    // Until the panel is measured it stays far below the screen, so a tall sheet is never visible before its open animation.
+    val offsetPx = if (!rawOffset.isNaN()) rawOffset else OffscreenOffsetPx
     val closedOffsetPx = if (anchoredState.anchors.size > 0) {
         anchoredState.anchors.positionOf(UrsSheetValue.Closed)
     } else {
