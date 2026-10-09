@@ -476,7 +476,6 @@
     <string name="product_scan_variant_title">Neui Variante für de Barcode</string>
     <string name="product_scan_variant_create">Variante erstelle</string>
     <string name="product_management_name_conflict">A product with this name already exists</string>
-    <string name="product_management_edit">Edit</string>
     <string name="product_management_delete">Delete</string>
     <string name="product_management_delete_product_confirm_title">Delete this product?</string>
     <string name="product_management_delete_category_confirm_title">Delete this category?</string>

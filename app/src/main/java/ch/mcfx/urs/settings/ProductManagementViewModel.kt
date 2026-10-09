@@ -43,6 +43,8 @@ enum class ImageGenerationErrorKind { NETWORK, SERVER, UNKNOWN }
 
 data class ProductFormState(
     val editingId: String? = null,
+    // Only manually created products offer delete; imported rows opened from the catalog search do not.
+    val deletable: Boolean = false,
     val name: String = "",
     // Free-text prompt detail for image generation only — never
     // sent to createProduct/updateProduct, never persisted on the product
@@ -162,8 +164,8 @@ class ProductManagementViewModel(private val repository: CatalogRepository) : Vi
         _catalogSearchQuery.value = query
     }
 
-    // Opens the same edit form manualProducts' action sheet uses
-    // (editProductFromActionSheet below) — the backend now allows a super
+    // Opens the same edit form a tapped manual product tile uses
+    // (editProduct below) — the backend now allows a super
     // user to PUT a non-manual row too (putCatalogProduct), locking it
     // against the next external-catalog import. No client-side gate here beyond the
     // UI itself only offering this tab to a super user in the first place;
@@ -175,6 +177,7 @@ class ProductManagementViewModel(private val repository: CatalogRepository) : Vi
     private fun openEditForm(product: CatalogProductEntity) {
         _productForm.value = ProductFormState(
             editingId = product.id,
+            deletable = product.source == "manual",
             name = product.name,
             categoryId = product.catalogCategoryId,
             imageId = product.catalogImageId?.toString(),
@@ -194,12 +197,6 @@ class ProductManagementViewModel(private val repository: CatalogRepository) : Vi
             }
         }
     }
-
-    private val _actionSheetProduct = MutableStateFlow<CatalogProductEntity?>(null)
-    val actionSheetProduct: StateFlow<CatalogProductEntity?> = _actionSheetProduct.asStateFlow()
-
-    private val _actionSheetCategory = MutableStateFlow<CatalogCategoryEntity?>(null)
-    val actionSheetCategory: StateFlow<CatalogCategoryEntity?> = _actionSheetCategory.asStateFlow()
 
     private val _pendingDeleteProduct = MutableStateFlow<CatalogProductEntity?>(null)
     val pendingDeleteProduct: StateFlow<CatalogProductEntity?> = _pendingDeleteProduct.asStateFlow()
@@ -238,24 +235,14 @@ class ProductManagementViewModel(private val repository: CatalogRepository) : Vi
         }
     }
 
-    fun openProductActionSheet(product: CatalogProductEntity) {
-        _actionSheetProduct.value = product
-    }
-
-    fun closeProductActionSheet() {
-        _actionSheetProduct.value = null
-    }
-
-    fun editProductFromActionSheet() {
-        val product = _actionSheetProduct.value ?: return
-        _actionSheetProduct.value = null
+    fun editProduct(product: CatalogProductEntity) {
         openEditForm(product)
     }
 
+    /** Asks for confirmation to delete the product open in the edit form. */
     fun requestDeleteProduct() {
-        val product = _actionSheetProduct.value ?: return
-        _actionSheetProduct.value = null
-        _pendingDeleteProduct.value = product
+        val id = _productForm.value?.editingId ?: return
+        viewModelScope.launch { _pendingDeleteProduct.value = repository.getProduct(id) }
     }
 
     fun cancelDeleteProduct() {
@@ -265,6 +252,7 @@ class ProductManagementViewModel(private val repository: CatalogRepository) : Vi
     fun confirmDeleteProduct() {
         val product = _pendingDeleteProduct.value ?: return
         _pendingDeleteProduct.value = null
+        _productForm.value = null
         viewModelScope.launch {
             try {
                 repository.deleteProduct(product.id)
@@ -279,7 +267,7 @@ class ProductManagementViewModel(private val repository: CatalogRepository) : Vi
             } catch (_: Exception) {
                 // Best-effort, same as the rest of this repository's direct-REST
                 // calls — the row simply stays visible if the delete failed, and
-                // the user can retry the long-press.
+                // the user can reopen it and retry.
             }
         }
     }
@@ -288,17 +276,7 @@ class ProductManagementViewModel(private val repository: CatalogRepository) : Vi
         _deleteBlocked.value = null
     }
 
-    fun openCategoryActionSheet(category: CatalogCategoryEntity) {
-        _actionSheetCategory.value = category
-    }
-
-    fun closeCategoryActionSheet() {
-        _actionSheetCategory.value = null
-    }
-
-    fun editCategoryFromActionSheet() {
-        val category = _actionSheetCategory.value ?: return
-        _actionSheetCategory.value = null
+    fun editCategory(category: CatalogCategoryEntity) {
         _categoryForm.value = CategoryFormState(
             editingId = category.id,
             name = category.name,
@@ -306,10 +284,10 @@ class ProductManagementViewModel(private val repository: CatalogRepository) : Vi
         )
     }
 
+    /** Asks for confirmation to delete the category open in the edit form. */
     fun requestDeleteCategory() {
-        val category = _actionSheetCategory.value ?: return
-        _actionSheetCategory.value = null
-        _pendingDeleteCategory.value = category
+        val id = _categoryForm.value?.editingId ?: return
+        _pendingDeleteCategory.value = manualCategories.value.firstOrNull { it.id == id }
     }
 
     fun cancelDeleteCategory() {
@@ -319,6 +297,7 @@ class ProductManagementViewModel(private val repository: CatalogRepository) : Vi
     fun confirmDeleteCategory() {
         val category = _pendingDeleteCategory.value ?: return
         _pendingDeleteCategory.value = null
+        _categoryForm.value = null
         viewModelScope.launch {
             try {
                 repository.deleteCategory(category.id)

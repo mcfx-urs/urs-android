@@ -1,6 +1,5 @@
 package ch.mcfx.urs.settings
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,14 +12,10 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.sp
@@ -34,7 +29,6 @@ import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsErrorDialog
 import ch.mcfx.urs.ui.components.UrsFab
 import ch.mcfx.urs.ui.components.UrsFilterChip
-import ch.mcfx.urs.ui.components.UrsIcon
 import ch.mcfx.urs.ui.components.UrsIconButton
 import ch.mcfx.urs.ui.components.UrsOutlinedButton
 import ch.mcfx.urs.ui.components.UrsSquareTile
@@ -47,14 +41,13 @@ import ch.mcfx.urs.ui.tokens.Spacing
 // the design system's type scale doesn't have a "big FAB glyph" size and no
 // "error" role in its palette yet.
 private val FabIconStyle = TextStyle(fontSize = 28.sp)
-private val DeleteTintColor = Color(0xFFD64545)
 
 /**
  * Settings → Product Management — create/edit/delete for
  * manually-created catalog products and categories, plus reusing an
  * existing catalog image. Products/Categories toggle mirrors
- * [ch.mcfx.urs.shoppinglist.AddProductScreen]'s tab chips; long-press →
- * action sheet → edit/delete mirrors [ch.mcfx.urs.worktime.WorkTimeScreen].
+ * [ch.mcfx.urs.shoppinglist.AddProductScreen]'s tab chips; a tapped tile
+ * opens the edit form, which carries the delete button.
  * The PRODUCTS/CATEGORIES grids only ever list `source == "manual"` rows
  * (filtered in [ProductManagementViewModel]) — imported external-catalog
  * data never appears there, so there's no per-row hidden-action state to
@@ -77,8 +70,6 @@ fun ProductManagementScreen(
     val manualCategories by viewModel.manualCategories.collectAsStateWithLifecycle()
     val catalogSearchQuery by viewModel.catalogSearchQuery.collectAsStateWithLifecycle()
     val catalogSearchResults by viewModel.catalogSearchResults.collectAsStateWithLifecycle()
-    val actionSheetProduct by viewModel.actionSheetProduct.collectAsStateWithLifecycle()
-    val actionSheetCategory by viewModel.actionSheetCategory.collectAsStateWithLifecycle()
     val pendingDeleteProduct by viewModel.pendingDeleteProduct.collectAsStateWithLifecycle()
     val deleteBlocked by viewModel.deleteBlocked.collectAsStateWithLifecycle()
     val pendingDeleteCategory by viewModel.pendingDeleteCategory.collectAsStateWithLifecycle()
@@ -126,12 +117,12 @@ fun ProductManagementScreen(
             when (tab) {
                 ProductManagementTab.PRODUCTS -> ProductGrid(
                     products = manualProducts,
-                    onLongPress = viewModel::openProductActionSheet,
+                    onSelect = viewModel::editProduct,
                 )
 
                 ProductManagementTab.CATEGORIES -> CategoryGrid(
                     categories = manualCategories,
-                    onLongPress = viewModel::openCategoryActionSheet,
+                    onSelect = viewModel::editCategory,
                 )
 
                 ProductManagementTab.CATALOG_SEARCH -> CatalogSearchTab(
@@ -155,15 +146,12 @@ fun ProductManagementScreen(
         }
     }
 
-    actionSheetProduct?.let {
-        UrsBottomSheet(onDismissRequest = viewModel::closeProductActionSheet) {
-            EntityActionSheet(onEdit = viewModel::editProductFromActionSheet, onDelete = viewModel::requestDeleteProduct)
-        }
+    // Declared before the delete confirmations so those draw above the form.
+    if (productForm != null) {
+        CatalogProductFormSheet(viewModel = viewModel, onDismissRequest = viewModel::closeProductForm)
     }
-    actionSheetCategory?.let {
-        UrsBottomSheet(onDismissRequest = viewModel::closeCategoryActionSheet) {
-            EntityActionSheet(onEdit = viewModel::editCategoryFromActionSheet, onDelete = viewModel::requestDeleteCategory)
-        }
+    if (categoryForm != null) {
+        CatalogCategoryFormSheet(viewModel = viewModel, onDismissRequest = viewModel::closeCategoryForm)
     }
 
     deleteBlocked?.let { blocked ->
@@ -195,17 +183,10 @@ fun ProductManagementScreen(
             )
         }
     }
-
-    if (productForm != null) {
-        CatalogProductFormSheet(viewModel = viewModel, onDismissRequest = viewModel::closeProductForm)
-    }
-    if (categoryForm != null) {
-        CatalogCategoryFormSheet(viewModel = viewModel, onDismissRequest = viewModel::closeCategoryForm)
-    }
 }
 
 @Composable
-private fun ProductGrid(products: List<CatalogProductEntity>, onLongPress: (CatalogProductEntity) -> Unit) {
+private fun ProductGrid(products: List<CatalogProductEntity>, onSelect: (CatalogProductEntity) -> Unit) {
     if (products.isEmpty()) {
         UrsText(
             text = stringResource(R.string.product_management_empty_products),
@@ -223,15 +204,14 @@ private fun ProductGrid(products: List<CatalogProductEntity>, onLongPress: (Cata
             UrsSquareTile(
                 title = product.name,
                 catalogImageId = product.catalogImageId,
-                onClick = {},
-                onLongClick = { onLongPress(product) },
+                onClick = { onSelect(product) },
             )
         }
     }
 }
 
 @Composable
-private fun CategoryGrid(categories: List<CatalogCategoryEntity>, onLongPress: (CatalogCategoryEntity) -> Unit) {
+private fun CategoryGrid(categories: List<CatalogCategoryEntity>, onSelect: (CatalogCategoryEntity) -> Unit) {
     if (categories.isEmpty()) {
         UrsText(
             text = stringResource(R.string.product_management_empty_categories),
@@ -249,8 +229,7 @@ private fun CategoryGrid(categories: List<CatalogCategoryEntity>, onLongPress: (
             UrsSquareTile(
                 title = category.name,
                 catalogImageId = category.catalogImageId,
-                onClick = {},
-                onLongClick = { onLongPress(category) },
+                onClick = { onSelect(category) },
             )
         }
     }
@@ -258,7 +237,7 @@ private fun CategoryGrid(categories: List<CatalogCategoryEntity>, onLongPress: (
 
 /**
  * Super-user-only "Katalog" tab — searches the unfiltered catalog (manual
- * *and* external-catalog) and opens the same edit form as a long-pressed manual tile,
+ * *and* external-catalog) and opens the same edit form as a tapped manual tile,
  * for any result. The source badge on a non-manual result is the visual
  * cue that editing it will lock it against the next external-catalog import, so it's
  * worth pointing out before the user commits to that.
@@ -302,34 +281,6 @@ private fun CatalogSearchTab(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun EntityActionSheet(onEdit: () -> Unit, onDelete: () -> Unit) {
-    Column(modifier = Modifier.padding(horizontal = Spacing.l).padding(bottom = Spacing.l)) {
-        ActionSheetRow(label = stringResource(R.string.product_management_edit), icon = Icons.Filled.Edit, onClick = onEdit)
-        ActionSheetRow(
-            label = stringResource(R.string.product_management_delete),
-            icon = Icons.Filled.Delete,
-            onClick = onDelete,
-            tint = DeleteTintColor,
-        )
-    }
-}
-
-@Composable
-private fun ActionSheetRow(label: String, icon: ImageVector, onClick: () -> Unit, tint: Color = UrsTheme.colors.onSurface) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = Spacing.m),
-        horizontalArrangement = Arrangement.spacedBy(Spacing.m),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        UrsIcon(imageVector = icon, contentDescription = null, tint = tint)
-        UrsText(label, style = UrsTheme.typography.cardTitle, color = tint)
     }
 }
 

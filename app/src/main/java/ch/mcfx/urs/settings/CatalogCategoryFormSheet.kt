@@ -82,6 +82,14 @@ fun CatalogCategoryFormSheet(viewModel: ProductManagementViewModel, onDismissReq
                 enabled = currentForm.isValid && !currentForm.submitting,
                 modifier = Modifier.fillMaxWidth(),
             )
+            if (currentForm.editingId != null) {
+                UrsButton(
+                    text = stringResource(R.string.product_management_delete),
+                    onClick = viewModel::requestDeleteCategory,
+                    color = FormErrorColor,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
     }
 

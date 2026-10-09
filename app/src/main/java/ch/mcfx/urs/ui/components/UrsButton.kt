@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import ch.mcfx.urs.ui.theme.UrsTheme
@@ -21,13 +22,14 @@ fun UrsButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    color: Color? = null,
 ) {
     val colors = UrsTheme.colors
     val alpha = if (enabled) 1f else colors.disabledAlpha
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(Radius.card))
-            .background(colors.accent.copy(alpha = alpha))
+            .background((color ?: colors.accent).copy(alpha = alpha))
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 20.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.Center,

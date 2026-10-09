@@ -248,6 +248,14 @@ fun CatalogProductFormSheet(viewModel: ProductManagementViewModel, onDismissRequ
                 enabled = currentForm.isValid && !currentForm.submitting,
                 modifier = Modifier.fillMaxWidth(),
             )
+            if (currentForm.deletable) {
+                UrsButton(
+                    text = stringResource(R.string.product_management_delete),
+                    onClick = viewModel::requestDeleteProduct,
+                    color = FormErrorColor,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
     }
 
