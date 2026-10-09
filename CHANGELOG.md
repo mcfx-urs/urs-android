@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Image generator prompt field supports multiple lines and long texts
 - Tall bottom sheets no longer flash open for a moment before sliding up
+- Image generation waits up to 230 seconds for the result, enough for quality max
 
 ### Changed
 

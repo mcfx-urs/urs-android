@@ -259,15 +259,15 @@ class AppContainer(context: Context) {
     // urs-backend then sees as its request context being canceled (not a
     // clean timeout) partway through a perfectly healthy generation.
     // chain.withReadTimeout scopes the longer timeout to just this one
-    // endpoint rather than loosening it for every call. 100s sits above
-    // both the ingress's proxy-read-timeout (90s) and urs-backend's own
-    // imagegen.requestTimeout (75s, imagegen.go) — see that file's own
+    // endpoint rather than loosening it for every call. 230s sits above
+    // both the ingress's proxy-read-timeout (215s) and urs-backend's own
+    // imagegen.requestTimeout (200s, imagegen.go) — see that file's own
     // comment for why the three need this exact ordering.
     private val longRunningEndpointTimeout = Interceptor { chain ->
         val request = chain.request()
         val path = request.url.encodedPath
         if (path.endsWith("/catalog-image/generate") || path.endsWith("/image/generate")) {
-            chain.withReadTimeout(100, TimeUnit.SECONDS).proceed(request)
+            chain.withReadTimeout(230, TimeUnit.SECONDS).proceed(request)
         } else {
             chain.proceed(request)
         }
