@@ -93,6 +93,12 @@ class PullCoordinator(
      */
     /** @return `true` if every domain refreshed cleanly. */
     suspend fun pullAll(trigger: PullTrigger): Boolean = mutex.withLock {
+        // An automatic pass right after a successful one is skipped; checked inside the lock so that
+        // queued duplicates see the pass that just finished. A manual sync always runs.
+        if (trigger != PullTrigger.MANUAL) {
+            val sinceLastOk = syncStatusStore.getLastSuccessfulPullAt()?.let { System.currentTimeMillis() - it }
+            if (sinceLastOk != null && sinceLastOk in 0 until MIN_AUTO_PULL_INTERVAL_MILLIS) return@withLock true
+        }
         _phase.value = SyncPhase.SYNCING
         val network = currentNetwork()
         var anyFailed = false
@@ -129,7 +135,7 @@ class PullCoordinator(
             pull("Vehicle") { vehicleRepository.refreshFromBackend() }
             pull("Fuel") { fuelRepository.refreshFromBackend() }
             pull("Service") { serviceRepository.refreshFromBackend() }
-            pull("Catalog") { catalogRepository.refreshFromBackend() }
+            pull("Catalog") { catalogRepository.refreshFromBackend(force = trigger == PullTrigger.MANUAL) }
             pull("Inventory") { inventoryRepository.refreshFromBackend() }
             pull("ShoppingList") { shoppingListRepository.refreshFromBackend() }
             pull("WorkTime") { workTimeRepository.refreshFromBackend() }
@@ -165,5 +171,9 @@ class PullCoordinator(
         }
         val vpn = cm.allNetworks.any { cm.getNetworkCapabilities(it)?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true }
         return PullNetwork(network = network, vpn = vpn)
+    }
+
+    private companion object {
+        const val MIN_AUTO_PULL_INTERVAL_MILLIS = 2 * 60 * 1000L
     }
 }

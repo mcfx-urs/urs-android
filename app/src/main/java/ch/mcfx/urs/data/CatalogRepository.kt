@@ -1,5 +1,6 @@
 package ch.mcfx.urs.data
 
+import android.os.SystemClock
 import ch.mcfx.urs.data.local.CatalogCategoryDao
 import ch.mcfx.urs.data.local.CatalogCategoryEntity
 import ch.mcfx.urs.data.local.CatalogProductDao
@@ -19,6 +20,8 @@ import ch.mcfx.urs.data.remote.UrsApi
 import ch.mcfx.urs.data.sync.pullCatching
 import ch.mcfx.urs.data.sync.PullOutcome
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.json.Json
 import retrofit2.HttpException
@@ -41,6 +44,11 @@ class CatalogRepository(
     private val catalogCategoryDao: CatalogCategoryDao,
 ) {
 
+    private val refreshMutex = Mutex()
+
+    // SystemClock.elapsedRealtime() of the last fully successful refresh; 0 = none yet.
+    private var lastRefreshOkAt = 0L
+
     fun observeAll(): Flow<List<CatalogProductEntity>> = catalogProductDao.observeAll()
 
     fun search(query: String): Flow<List<CatalogProductEntity>> = catalogProductDao.search(query)
@@ -61,9 +69,17 @@ class CatalogRepository(
      * either screen that needs one of the two (Inventory, Shopping List)
      * ends up warming both, so neither ever waits on a second trigger.
      *
+     * Every caller goes through [refreshMutex]: concurrent calls run one after another, and a call that
+     * finds the cache refreshed less than [MIN_REFRESH_INTERVAL_MILLIS] ago returns without a request.
+     * [force] skips that check, for a manual sync or a refresh that must see a write just made.
+     *
      * @return an ok [PullOutcome] if both products and categories refreshed cleanly (see [PullCoordinator]).
      */
-    suspend fun refreshFromBackend(): PullOutcome {
+    suspend fun refreshFromBackend(force: Boolean = false): PullOutcome = refreshMutex.withLock {
+        val sinceLastOk = SystemClock.elapsedRealtime() - lastRefreshOkAt
+        if (!force && lastRefreshOkAt != 0L && sinceLastOk < MIN_REFRESH_INTERVAL_MILLIS) {
+            return@withLock PullOutcome.OK
+        }
         val productsOutcome = refreshQuietly {
             val products = api.getCatalogProducts()
             catalogProductDao.upsertAll(products.map { it.toEntity() })
@@ -72,7 +88,9 @@ class CatalogRepository(
             val categories = api.getCatalogCategories()
             catalogCategoryDao.upsertAll(categories.map { it.toEntity() })
         }
-        return productsOutcome + categoriesOutcome
+        val outcome = productsOutcome + categoriesOutcome
+        if (outcome.ok) lastRefreshOkAt = SystemClock.elapsedRealtime()
+        outcome
     }
 
     /**
@@ -162,7 +180,7 @@ class CatalogRepository(
         )
         catalogProductDao.updateFields(id, name, catalogCategoryId, catalogImageId?.toIntOrNull())
         // A renamed or re-categorized template changes what its clones resolve to.
-        if (catalogProductDao.countClones(id) > 0) refreshFromBackend()
+        if (catalogProductDao.countClones(id) > 0) refreshFromBackend(force = true)
     }
 
     /**
@@ -189,7 +207,7 @@ class CatalogRepository(
                 sizeUnit = sizeUnit,
             ),
         )
-        refreshFromBackend()
+        refreshFromBackend(force = true)
     }
 
     /** Map [barcode] to the product; the backend rejects one that belongs to another product with 409. */
@@ -333,6 +351,10 @@ class CatalogRepository(
     }
 
     private suspend fun refreshQuietly(block: suspend () -> Unit): PullOutcome = pullCatching("CatalogRepository", block)
+
+    private companion object {
+        const val MIN_REFRESH_INTERVAL_MILLIS = 60_000L
+    }
 }
 
 private fun CatalogProductDto.toEntity() = CatalogProductEntity(

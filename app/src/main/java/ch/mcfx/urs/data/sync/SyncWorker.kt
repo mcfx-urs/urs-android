@@ -32,13 +32,15 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
     override suspend fun doWork(): Result {
         val app = applicationContext as UrsApplication
         val pushOk = app.container.syncManager.syncNow()
-        val pullOk = app.container.pullCoordinator.pullAll(PullTrigger.PERIODIC)
+        val trigger = if (TAG_ONE_TIME in tags) PullTrigger.CONNECTIVITY else PullTrigger.PERIODIC
+        val pullOk = app.container.pullCoordinator.pullAll(trigger)
         return if (pushOk && pullOk) Result.success() else Result.retry()
     }
 
     companion object {
         private const val PERIODIC_WORK_NAME = "fuel-sync"
         private const val ONE_TIME_WORK_NAME = "fuel-sync-now"
+        private const val TAG_ONE_TIME = "sync-one-time"
 
         private fun constraints() = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -59,6 +61,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         fun enqueueOneTime(context: Context) {
             val request = OneTimeWorkRequestBuilder<SyncWorker>()
                 .setConstraints(constraints())
+                .addTag(TAG_ONE_TIME)
                 .build()
             WorkManager.getInstance(context)
                 .enqueueUniqueWork(ONE_TIME_WORK_NAME, ExistingWorkPolicy.KEEP, request)

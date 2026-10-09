@@ -43,7 +43,6 @@ import ch.mcfx.urs.data.sync.PullCoordinator
 import ch.mcfx.urs.data.sync.ReachabilityChecker
 import ch.mcfx.urs.data.sync.SyncManager
 import ch.mcfx.urs.data.sync.PullByteCounter
-import ch.mcfx.urs.data.sync.PullTrigger
 import ch.mcfx.urs.data.sync.SyncStatusStore
 import ch.mcfx.urs.data.sync.SyncWorker
 import ch.mcfx.urs.location.LocationActivityRecognitionManager
@@ -210,18 +209,9 @@ class AppContainer(context: Context) {
     val vpnConfigRepository = VpnConfigRepository(context, authTokenStore)
     val wireGuardManager = WireGuardManager(context, vpnConfigRepository)
 
-    // Late-bound in this class's init {} below, once pullCoordinator exists
-    // (it needs every repository, which are all constructed after
-    // networkGate) — same forward-reference shape as syncManager's
-    // onListConflictResolved further down.
-    private var onTunnelReachable: (() -> Unit)? = null
-
     val networkGate = NetworkGate(
         context, WifiSsidReader(context), vpnConfigRepository, wireGuardManager,
-        onConnectivityAvailable = {
-            SyncWorker.enqueueOneTime(appContext)
-            onTunnelReachable?.invoke()
-        },
+        onConnectivityAvailable = { SyncWorker.enqueueOneTime(appContext) },
     )
 
     val biometricGate = BiometricGate(context)
@@ -544,12 +534,5 @@ class AppContainer(context: Context) {
         syncManager.onBeerLogSynced = {
             applicationScope.launch { beerRepository.notifyLogged() }
         }
-        // See onTunnelReachable's own doc comment above for why this is
-        // late-bound instead of passed to NetworkGate directly. Runs
-        // alongside (not instead of) the SyncWorker.enqueueOneTime call in
-        // that same callback — this is the "feels instant" pull path,
-        // SyncWorker's periodic run is the 15-minute-floor backstop for
-        // whatever this one didn't manage to land.
-        onTunnelReachable = { applicationScope.launch { pullCoordinator.pullAll(PullTrigger.CONNECTIVITY) } }
     }
 }

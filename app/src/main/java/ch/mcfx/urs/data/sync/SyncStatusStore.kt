@@ -11,6 +11,7 @@ private const val PREFS_NAME = "sync_status_prefs"
 private const val KEY_LAST_SUCCESS_AT = "last_success_at"
 private const val KEY_LAST_PULL_AT = "last_pull_at"
 private const val KEY_LAST_PULL_HAD_ERRORS = "last_pull_had_errors"
+private const val KEY_LAST_PULL_SUCCESS_AT = "last_pull_success_at"
 private const val KEY_LAST_PULL_RECORD = "last_pull_record"
 private const val KEY_LEGACY_PULL_HISTORY = "pull_history"
 private const val PULL_HISTORY_FILE = "pull-history.jsonl"
@@ -70,6 +71,9 @@ class SyncStatusStore(context: Context) {
 
     fun getLastPullAt(): Long? = prefs.getLong(KEY_LAST_PULL_AT, -1L).takeIf { it >= 0 }
 
+    /** When the last pull pass without any failed domain ended; null if none has yet. */
+    fun getLastSuccessfulPullAt(): Long? = prefs.getLong(KEY_LAST_PULL_SUCCESS_AT, -1L).takeIf { it >= 0 }
+
     /** Whether at least one domain failed during the pull pass at [getLastPullAt]. */
     fun didLastPullHaveErrors(): Boolean = prefs.getBoolean(KEY_LAST_PULL_HAD_ERRORS, false)
 
@@ -94,11 +98,12 @@ class SyncStatusStore(context: Context) {
         atEpochMillis: Long = System.currentTimeMillis(),
     ) {
         val record = PullRecord(atEpochMillis, results, trigger, network)
-        prefs.edit()
+        val editor = prefs.edit()
             .putLong(KEY_LAST_PULL_AT, atEpochMillis)
             .putBoolean(KEY_LAST_PULL_HAD_ERRORS, hadErrors)
             .putString(KEY_LAST_PULL_RECORD, Json.encodeToString(record))
-            .apply()
+        if (!hadErrors) editor.putLong(KEY_LAST_PULL_SUCCESS_AT, atEpochMillis)
+        editor.apply()
         runCatching { synchronized(historyLock) { appendToHistory(record) } }
     }
 
