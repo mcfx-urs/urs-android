@@ -25,8 +25,9 @@ import ch.mcfx.urs.data.remote.FuelPriceDto
 import ch.mcfx.urs.data.remote.FuelPricePayload
 import ch.mcfx.urs.data.remote.GeocodeResultDto
 import ch.mcfx.urs.data.remote.UrsApi
+import ch.mcfx.urs.data.sync.pullCatching
+import ch.mcfx.urs.data.sync.PullOutcome
 import ch.mcfx.urs.data.sync.SyncManager
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
@@ -331,30 +332,19 @@ class FuelRepository(
      * error screen. Never touches PENDING/FAILED rows, which exist solely
      * via the outbox replay path above.
      *
-     * @return `true` if every domain below refreshed cleanly (see [PullCoordinator]).
+     * @return an ok [PullOutcome] if every domain below refreshed cleanly (see [PullCoordinator]).
      */
-    suspend fun refreshFromBackend(): Boolean {
-        var allOk = refreshQuietly { api.getFillingStations().forEach { fillingStationDao.upsert(it.toEntity()) } }
-        allOk = refreshQuietly { api.getFills().forEach { fillDao.upsertFromServer(it.toEntity()) } } && allOk
-        allOk = refreshQuietly {
+    suspend fun refreshFromBackend(): PullOutcome {
+        var outcome = refreshQuietly { api.getFillingStations().forEach { fillingStationDao.upsert(it.toEntity()) } }
+        outcome += refreshQuietly { api.getFills().forEach { fillDao.upsertFromServer(it.toEntity()) } }
+        outcome += refreshQuietly {
             api.getCurrencies().takeIf { it.isNotEmpty() }?.let { currencyDao.upsertAll(it.map(CurrencyDto::toEntity)) }
-        } && allOk
-        allOk = refreshQuietly { api.getVehicles().takeIf { it.isNotEmpty() }?.let { vehicleDao.upsertAll(it.map(VehicleDto::toEntity)) } } && allOk
-        return allOk
+        }
+        outcome += refreshQuietly { api.getVehicles().takeIf { it.isNotEmpty() }?.let { vehicleDao.upsertAll(it.map(VehicleDto::toEntity)) } }
+        return outcome
     }
 
-    private suspend fun refreshQuietly(block: suspend () -> Unit): Boolean {
-        try {
-            block()
-            return true
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            // Best-effort only — see refreshFromBackend's doc comment.
-            android.util.Log.w("FuelRepository", "refreshFromBackend failed", e)
-            return false
-        }
-    }
+    private suspend fun refreshQuietly(block: suspend () -> Unit): PullOutcome = pullCatching("FuelRepository", block)
 
     private fun formatKm(value: Float): String =
         if (value % 1f == 0f) value.toInt().toString() else value.toString()

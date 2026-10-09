@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- About shows the last pull per domain with result, failure cause, duration and received bytes in the sync details; the pulls of the last 30 days, including trigger and network, can be exported as CSV (#118)
 - Image generator offers quality levels xhigh and max, shows an estimated price per quality level and the cost of each generated image
 - Image picker searches on the server with a debounced search field and loads further images while scrolling (#117)
 - Product form offers a template, brand, size (amount and unit) and several barcodes per product; a product with a template shows the name, category and image resolved by the backend (#116)

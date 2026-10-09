@@ -26,7 +26,9 @@ import ch.mcfx.urs.data.remote.TrackerDomainPayload
 import ch.mcfx.urs.data.remote.TrackerEventDto
 import ch.mcfx.urs.data.remote.TrackerTypeDto
 import ch.mcfx.urs.data.remote.UrsApi
+import ch.mcfx.urs.data.sync.PullOutcome
 import ch.mcfx.urs.data.sync.SyncManager
+import ch.mcfx.urs.data.sync.pullCatching
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -412,24 +414,17 @@ class ChoreRepository(
      * types (which reference a domain), then events (which reference a
      * type). Best-effort — a failure leaves the cached data in place.
      */
-    /** @return `true` if the refresh completed cleanly (see [PullCoordinator]). */
-    suspend fun refreshFromBackend(): Boolean {
+    /** @return an ok [PullOutcome] if the refresh completed cleanly (see [PullCoordinator]). */
+    suspend fun refreshFromBackend(): PullOutcome {
         syncManager.syncNow()
         val userId = currentUserId()
-        try {
+        return pullCatching("ChoreRepository") {
             val domains = api.getTrackerDomains()
             trackerDomainDao.upsertFromServer(userId, domains.map { it.toEntity(userId) })
             val types = api.getTrackerTypes()
             trackerTypeDao.upsertFromServer(userId, types.map { it.toEntity(userId) })
             val events = api.getTrackerEvents()
             trackerEventDao.upsertFromServer(userId, events.map { it.toEntity(userId) })
-            return true
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            // Best-effort only — see doc comment.
-            android.util.Log.w("ChoreRepository", "refreshFromBackend failed", e)
-            return false
         }
     }
 

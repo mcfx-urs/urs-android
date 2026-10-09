@@ -32,7 +32,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
     override suspend fun doWork(): Result {
         val app = applicationContext as UrsApplication
         val pushOk = app.container.syncManager.syncNow()
-        val pullOk = app.container.pullCoordinator.pullAll()
+        val pullOk = app.container.pullCoordinator.pullAll(PullTrigger.PERIODIC)
         return if (pushOk && pullOk) Result.success() else Result.retry()
     }
 

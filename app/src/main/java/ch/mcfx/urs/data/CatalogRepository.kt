@@ -16,6 +16,8 @@ import ch.mcfx.urs.data.remote.GenerateCatalogImagePayload
 import ch.mcfx.urs.data.remote.NewCatalogCategoryPayload
 import ch.mcfx.urs.data.remote.NewCatalogProductPayload
 import ch.mcfx.urs.data.remote.UrsApi
+import ch.mcfx.urs.data.sync.pullCatching
+import ch.mcfx.urs.data.sync.PullOutcome
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.json.Json
@@ -59,18 +61,18 @@ class CatalogRepository(
      * either screen that needs one of the two (Inventory, Shopping List)
      * ends up warming both, so neither ever waits on a second trigger.
      *
-     * @return `true` if both products and categories refreshed cleanly (see [PullCoordinator]).
+     * @return an ok [PullOutcome] if both products and categories refreshed cleanly (see [PullCoordinator]).
      */
-    suspend fun refreshFromBackend(): Boolean {
-        val productsOk = refreshQuietly {
+    suspend fun refreshFromBackend(): PullOutcome {
+        val productsOutcome = refreshQuietly {
             val products = api.getCatalogProducts()
             catalogProductDao.upsertAll(products.map { it.toEntity() })
         }
-        val categoriesOk = refreshQuietly {
+        val categoriesOutcome = refreshQuietly {
             val categories = api.getCatalogCategories()
             catalogCategoryDao.upsertAll(categories.map { it.toEntity() })
         }
-        return productsOk && categoriesOk
+        return productsOutcome + categoriesOutcome
     }
 
     /**
@@ -330,18 +332,7 @@ class CatalogRepository(
         return response.body()?.quantity?.toIntOrNull()
     }
 
-    private suspend fun refreshQuietly(block: suspend () -> Unit): Boolean {
-        try {
-            block()
-            return true
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            // Best-effort only — see refreshFromBackend's doc comment.
-            android.util.Log.w("CatalogRepository", "refreshFromBackend failed", e)
-            return false
-        }
-    }
+    private suspend fun refreshQuietly(block: suspend () -> Unit): PullOutcome = pullCatching("CatalogRepository", block)
 }
 
 private fun CatalogProductDto.toEntity() = CatalogProductEntity(

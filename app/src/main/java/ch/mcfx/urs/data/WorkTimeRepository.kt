@@ -18,8 +18,9 @@ import ch.mcfx.urs.data.remote.UrsApi
 import ch.mcfx.urs.data.remote.WorkTimeBreakDto
 import ch.mcfx.urs.data.remote.WorkTimeEntryDto
 import ch.mcfx.urs.data.remote.WorkTimeMonthOverridePayload
+import ch.mcfx.urs.data.sync.PullOutcome
 import ch.mcfx.urs.data.sync.SyncManager
-import kotlinx.coroutines.CancellationException
+import ch.mcfx.urs.data.sync.pullCatching
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
@@ -205,23 +206,16 @@ class WorkTimeRepository(
      * touches PENDING/FAILED rows, which exist solely via the outbox replay
      * path above.
      */
-    /** @return `true` if both entries and month overrides refreshed cleanly (see [PullCoordinator]); also `true` if there's no logged-in user yet, since there's nothing to fail. */
-    suspend fun refreshFromBackend(): Boolean {
-        val userId = tokenStore.currentUserId ?: return true
-        var allOk = true
-        try {
+    /** @return an ok [PullOutcome] if both entries and month overrides refreshed cleanly (see [PullCoordinator]); also ok if there's no logged-in user yet, since there's nothing to fail. */
+    suspend fun refreshFromBackend(): PullOutcome {
+        val userId = tokenStore.currentUserId ?: return PullOutcome.OK
+        val entries = pullCatching("WorkTimeRepository") {
             api.getWorkTimeEntries(userId, "100", "DESC")
                 .forEach { dto ->
                     workTimeDao.upsertFromServer(dto.toEntity(), dto.breaks.map { it.toEntity() })
                 }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            // Best-effort only — see doc comment above.
-            android.util.Log.w("WorkTimeRepository", "refreshFromBackend failed", e)
-            allOk = false
         }
-        try {
+        val monthOverrides = pullCatching("WorkTimeRepository") {
             val overrides = api.getWorkTimeMonthOverrides(userId)
             workTimeMonthOverrideDao.replaceAll(
                 overrides.mapNotNull { dto ->
@@ -230,14 +224,8 @@ class WorkTimeRepository(
                     WorkTimeMonthOverrideEntity(year = year, month = month, daysWorked = dto.daysWorked, bvgAmount = dto.bvgAmount)
                 },
             )
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            // Best-effort only — see doc comment above.
-            android.util.Log.w("WorkTimeRepository", "refreshFromBackend failed", e)
-            allOk = false
         }
-        return allOk
+        return entries + monthOverrides
     }
 
     /**

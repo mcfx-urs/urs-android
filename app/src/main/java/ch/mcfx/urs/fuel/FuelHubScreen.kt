@@ -29,6 +29,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.R
 import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.data.local.VehicleEntity
+import ch.mcfx.urs.data.sync.PullTrigger
 import ch.mcfx.urs.ui.components.UrsCard
 import ch.mcfx.urs.ui.components.UrsFilterChip
 import ch.mcfx.urs.ui.components.UrsText
@@ -99,7 +100,7 @@ fun FuelHubScreen(
                         coroutineScope.launch {
                             syncing = true
                             app.container.syncManager.syncNow()
-                            app.container.pullCoordinator.pullAll()
+                            app.container.pullCoordinator.pullAll(PullTrigger.MANUAL)
                             syncing = false
                         }
                     },

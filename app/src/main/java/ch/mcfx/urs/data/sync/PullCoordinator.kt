@@ -1,5 +1,9 @@
 package ch.mcfx.urs.data.sync
 
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.os.SystemClock
 import android.util.Log
 import ch.mcfx.urs.data.AssetRepository
 import ch.mcfx.urs.data.CatalogRepository
@@ -52,6 +56,8 @@ enum class SyncPhase { IDLE_OK, SYNCING, IDLE_ERROR }
  * alongside this change.
  */
 class PullCoordinator(
+    private val context: Context,
+    private val byteCounter: PullByteCounter,
     private val fuelRepository: FuelRepository,
     private val vehicleRepository: VehicleRepository,
     private val serviceRepository: ServiceRepository,
@@ -86,22 +92,35 @@ class PullCoordinator(
      * before its own most recent local change).
      */
     /** @return `true` if every domain refreshed cleanly. */
-    suspend fun pullAll(): Boolean = mutex.withLock {
+    suspend fun pullAll(trigger: PullTrigger): Boolean = mutex.withLock {
         _phase.value = SyncPhase.SYNCING
+        val network = currentNetwork()
         var anyFailed = false
         var finished = false
+        val results = mutableListOf<PullDomainResult>()
 
-        suspend fun pull(domain: String, block: suspend () -> Boolean) {
-            val ok = try {
+        suspend fun pull(domain: String, block: suspend () -> PullOutcome) {
+            val startedAt = SystemClock.elapsedRealtime()
+            byteCounter.start()
+            val outcome = try {
                 block()
             } catch (e: CancellationException) {
+                byteCounter.stop()
                 throw e
             } catch (e: Exception) {
                 Log.w("PullCoordinator", "pull threw for $domain", e)
-                false
+                PullOutcome.failed(describePullFailure(e))
             }
-            if (!ok) {
-                Log.w("PullCoordinator", "pull failed for $domain")
+            val bytes = byteCounter.stop()
+            results += PullDomainResult(
+                domain = domain,
+                ok = outcome.ok,
+                cause = outcome.causes.joinToString(", ").ifEmpty { null },
+                durationMs = SystemClock.elapsedRealtime() - startedAt,
+                bytes = bytes,
+            )
+            if (!outcome.ok) {
+                Log.w("PullCoordinator", "pull failed for $domain: ${outcome.causes}")
                 anyFailed = true
             }
         }
@@ -121,7 +140,7 @@ class PullCoordinator(
             pull("Tag") { tagRepository.refreshFromBackend() }
             pull("Asset") { assetRepository.refreshFromBackend() }
 
-            syncStatusStore.recordPullFinished(hadErrors = anyFailed)
+            syncStatusStore.recordPullFinished(hadErrors = anyFailed, results = results, trigger = trigger, network = network)
             finished = true
         } finally {
             // A cancelled pass keeps the previous result instead of staying on SYNCING.
@@ -132,5 +151,19 @@ class PullCoordinator(
             }
         }
         !anyFailed
+    }
+
+    private fun currentNetwork(): PullNetwork {
+        val cm = context.getSystemService(ConnectivityManager::class.java) ?: return PullNetwork()
+        val active = cm.getNetworkCapabilities(cm.activeNetwork)
+        val network = when {
+            active == null -> "none"
+            active.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "wifi"
+            active.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "cellular"
+            active.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "ethernet"
+            else -> "other"
+        }
+        val vpn = cm.allNetworks.any { cm.getNetworkCapabilities(it)?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true }
+        return PullNetwork(network = network, vpn = vpn)
     }
 }

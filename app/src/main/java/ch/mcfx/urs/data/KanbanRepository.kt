@@ -37,12 +37,13 @@ import ch.mcfx.urs.data.remote.KanbanCardDto
 import ch.mcfx.urs.data.remote.KanbanChecklistItemDto
 import ch.mcfx.urs.data.remote.KanbanColumnDto
 import ch.mcfx.urs.data.remote.UrsApi
+import ch.mcfx.urs.data.sync.pullCatching
+import ch.mcfx.urs.data.sync.PullOutcome
 import ch.mcfx.urs.data.sync.SyncManager
 import ch.mcfx.urs.notifications.KanbanCardAlarmScheduler
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -539,7 +540,7 @@ class KanbanRepository(
      * .refreshFromBackend]. Board detail (columns/cards/checklist/tags) is
      * pulled separately per board, see [refreshBoard].
      */
-    suspend fun refreshBoards(): Boolean = refreshQuietly {
+    suspend fun refreshBoards(): PullOutcome = refreshQuietly {
         val boards = api.getKanbanBoards()
         boardDao.upsertFromServer(boards.map { it.toEntity() })
     }
@@ -552,10 +553,10 @@ class KanbanRepository(
      * per-list item pull. No-ops (returns `true`) for a board that hasn't
      * synced yet — there's no server id to pull with.
      */
-    suspend fun refreshBoard(boardId: String): Boolean {
+    suspend fun refreshBoard(boardId: String): PullOutcome {
         val localId = localKanbanBoardId(boardId)
         val serverId = if (localId != null) boardDao.getById(localId)?.serverId else boardId
-        if (serverId == null) return true
+        if (serverId == null) return PullOutcome.OK
 
         return refreshQuietly {
             val detail = api.getKanbanBoard(serverId)
@@ -579,13 +580,13 @@ class KanbanRepository(
      * PullCoordinator-facing entry point, same "list then per-item detail"
      * two-level shape as [ShoppingListRepository.refreshFromBackend].
      */
-    suspend fun refreshFromBackend(): Boolean {
+    suspend fun refreshFromBackend(): PullOutcome {
         syncManager.syncNow()
-        val boardsOk = refreshBoards()
-        val detailsOk = boardDao.observeAll().first().mapNotNull { it.serverId }.map { serverId ->
+        val boardsOutcome = refreshBoards()
+        val detailsOutcome = boardDao.observeAll().first().mapNotNull { it.serverId }.map { serverId ->
             refreshBoard(serverId)
-        }.all { it }
-        return boardsOk && detailsOk
+        }.fold(PullOutcome.OK) { acc, outcome -> acc + outcome }
+        return boardsOutcome + detailsOutcome
     }
 
     // Re-syncs a pulled card's alarm against the server's own due date —
@@ -607,18 +608,7 @@ class KanbanRepository(
     // doc comment for the sibling ranges this must not collide with.
     private fun alarmIdFor(localId: Long) = KANBAN_CARD_REMINDER_ID_BASE + (localId.toInt() and 0xFFFF)
 
-    private suspend fun refreshQuietly(block: suspend () -> Unit): Boolean {
-        try {
-            block()
-            return true
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            // Best-effort only — see ShoppingListRepository.refreshFromBackend's doc comment.
-            android.util.Log.w("KanbanRepository", "refresh failed", e)
-            return false
-        }
-    }
+    private suspend fun refreshQuietly(block: suspend () -> Unit): PullOutcome = pullCatching("KanbanRepository", block)
 
     companion object {
         // Fixed local trigger time for every card's due-date reminder — no

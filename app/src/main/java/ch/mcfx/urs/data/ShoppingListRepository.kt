@@ -23,8 +23,9 @@ import ch.mcfx.urs.data.remote.ListDto
 import ch.mcfx.urs.data.remote.ListItemDto
 import ch.mcfx.urs.data.remote.ListSharePayload
 import ch.mcfx.urs.data.remote.UrsApi
+import ch.mcfx.urs.data.sync.pullCatching
+import ch.mcfx.urs.data.sync.PullOutcome
 import ch.mcfx.urs.data.sync.SyncManager
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -345,20 +346,20 @@ class ShoppingListRepository(
      * letting it linger forever. PENDING/FAILED rows are never touched —
      * they exist solely via the outbox replay path above.
      */
-    /** @return `true` if the list and every list's items refreshed cleanly (see [PullCoordinator]). */
-    suspend fun refreshFromBackend(): Boolean {
+    /** @return an ok [PullOutcome] if the list and every list's items refreshed cleanly (see [PullCoordinator]). */
+    suspend fun refreshFromBackend(): PullOutcome {
         syncManager.syncNow()
-        val listsOk = refreshQuietly {
+        val listsOutcome = refreshQuietly {
             val lists = api.getLists()
             listDao.upsertFromServer(lists.map { it.toEntity() })
         }
-        val itemsOk = listDao.observeAll().first().mapNotNull { it.serverId }.map { listId ->
+        val itemsOutcome = listDao.observeAll().first().mapNotNull { it.serverId }.map { listId ->
             refreshQuietly {
                 val items = api.getListItems(listId)
                 listItemDao.upsertFromServer(listId, items.map { it.toEntity() })
             }
-        }.all { it }
-        return listsOk && itemsOk
+        }.fold(PullOutcome.OK) { acc, outcome -> acc + outcome }
+        return listsOutcome + itemsOutcome
     }
 
     /**
@@ -384,18 +385,7 @@ class ShoppingListRepository(
         }
     }
 
-    private suspend fun refreshQuietly(block: suspend () -> Unit): Boolean {
-        try {
-            block()
-            return true
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            // Best-effort only — see refreshFromBackend's doc comment.
-            android.util.Log.w("ShoppingListRepository", "refreshFromBackend failed", e)
-            return false
-        }
-    }
+    private suspend fun refreshQuietly(block: suspend () -> Unit): PullOutcome = pullCatching("ShoppingListRepository", block)
 }
 
 private fun ListDto.toEntity() = ListEntity(

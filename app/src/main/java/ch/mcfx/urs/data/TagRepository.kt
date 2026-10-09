@@ -3,7 +3,8 @@ package ch.mcfx.urs.data
 import ch.mcfx.urs.data.remote.TagColorUpdatePayload
 import ch.mcfx.urs.data.remote.TagDto
 import ch.mcfx.urs.data.remote.UrsApi
-import kotlinx.coroutines.CancellationException
+import ch.mcfx.urs.data.sync.PullOutcome
+import ch.mcfx.urs.data.sync.pullCatching
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,15 +31,8 @@ class TagRepository(private val api: UrsApi) {
     fun suggest(query: String): List<String> =
         FuzzyMatch.rank(_tags.value.map { it.name }, query, limit = 10)
 
-    suspend fun refreshFromBackend(): Boolean = try {
+    suspend fun refreshFromBackend(): PullOutcome = pullCatching("TagRepository") {
         _tags.value = api.getTags()
-        true
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Exception) {
-        // Best-effort only, same shape as every other refreshFromBackend in this app.
-        android.util.Log.w("TagRepository", "refreshFromBackend failed", e)
-        false
     }
 
     /**

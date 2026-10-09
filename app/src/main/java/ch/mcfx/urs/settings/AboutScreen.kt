@@ -1,5 +1,9 @@
 package ch.mcfx.urs.settings
 
+import android.text.format.Formatter
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -23,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -32,6 +37,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.mcfx.urs.BuildConfig
 import ch.mcfx.urs.R
 import ch.mcfx.urs.data.local.OutboxStatus
+import ch.mcfx.urs.data.sync.PullDomainResult
 import ch.mcfx.urs.ui.components.UrsBottomSheet
 import ch.mcfx.urs.ui.components.UrsButton
 import ch.mcfx.urs.ui.components.UrsCard
@@ -71,6 +77,10 @@ fun AboutScreen(
     val locationCaptureStatus by viewModel.locationCaptureStatus.collectAsStateWithLifecycle()
 
     var showSyncDetails by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val exportPullsLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
+        if (uri != null) writePullHistoryExport(context, uri, viewModel.pullHistory())
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -137,6 +147,15 @@ fun AboutScreen(
             UrsBottomSheet(onDismissRequest = { showSyncDetails = false }) {
                 SyncDetailSheet(
                     entries = outboxEntries,
+                    lastPulledAt = syncState.lastPulledAt,
+                    pullResults = syncState.lastPullResults,
+                    onExportPulls = {
+                        if (viewModel.pullHistory().isEmpty()) {
+                            Toast.makeText(context, R.string.about_pull_export_nothing, Toast.LENGTH_SHORT).show()
+                        } else {
+                            exportPullsLauncher.launch("pull-history.csv")
+                        }
+                    },
                     isSyncing = isSyncing,
                     onSyncNow = viewModel::syncNow,
                 )
@@ -177,6 +196,9 @@ private fun SyncStateRow(state: AboutSyncState, onClick: () -> Unit) {
 @Composable
 private fun SyncDetailSheet(
     entries: List<OutboxEntryUi>,
+    lastPulledAt: Long?,
+    pullResults: List<PullDomainResult>,
+    onExportPulls: () -> Unit,
     isSyncing: Boolean,
     onSyncNow: () -> Unit,
 ) {
@@ -186,12 +208,21 @@ private fun SyncDetailSheet(
     ) {
         UrsText(stringResource(R.string.about_sync_details_title), style = UrsTheme.typography.cardTitle)
 
-        UrsButton(
-            text = stringResource(if (isSyncing) R.string.about_sync_syncing else R.string.about_sync_now),
-            onClick = onSyncNow,
-            enabled = !isSyncing,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
+            UrsButton(
+                text = stringResource(if (isSyncing) R.string.about_sync_syncing else R.string.about_sync_now),
+                onClick = onSyncNow,
+                enabled = !isSyncing,
+                compact = true,
+                modifier = Modifier.weight(1f),
+            )
+            UrsButton(
+                text = stringResource(R.string.about_pull_export),
+                onClick = onExportPulls,
+                compact = true,
+                modifier = Modifier.weight(1f),
+            )
+        }
 
         if (entries.isEmpty()) {
             UrsText(
@@ -205,6 +236,59 @@ private fun SyncDetailSheet(
                 verticalArrangement = Arrangement.spacedBy(Spacing.s),
             ) {
                 entries.forEach { entry -> OutboxEntryRow(entry) }
+            }
+        }
+
+        UrsText(stringResource(R.string.about_pull_details_title), style = UrsTheme.typography.cardTitle)
+        if (lastPulledAt == null || pullResults.isEmpty()) {
+            UrsText(
+                stringResource(R.string.about_pull_never),
+                style = UrsTheme.typography.body,
+                color = UrsTheme.colors.onSurfaceMuted,
+            )
+        } else {
+            UrsText(
+                text = stringResource(R.string.about_pull_last_pulled, formatEpochMillis(lastPulledAt)),
+                style = UrsTheme.typography.caption,
+                color = UrsTheme.colors.onSurfaceMuted,
+            )
+            Column(
+                modifier = Modifier.fillMaxWidth().heightIn(max = 280.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(Spacing.s),
+            ) {
+                pullResults.forEach { result -> PullResultRow(result) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PullResultRow(result: PullDomainResult) {
+    UrsCard(modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                UrsText(text = result.domain, style = UrsTheme.typography.body)
+                if (result.ok) {
+                    UrsPill(text = stringResource(R.string.about_pull_status_ok))
+                } else {
+                    UrsPill(
+                        text = stringResource(R.string.about_pull_status_failed),
+                        containerColor = FormErrorColor.copy(alpha = 0.15f),
+                        contentColor = FormErrorColor,
+                    )
+                }
+            }
+            UrsText(
+                text = stringResource(R.string.about_pull_duration, result.durationMs, Formatter.formatShortFileSize(LocalContext.current, result.bytes)),
+                style = UrsTheme.typography.caption,
+                color = UrsTheme.colors.onSurfaceMuted,
+            )
+            result.cause?.let { cause ->
+                UrsText(text = cause, style = UrsTheme.typography.caption, color = FormErrorColor)
             }
         }
     }

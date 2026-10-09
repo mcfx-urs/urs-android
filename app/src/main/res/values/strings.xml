@@ -244,6 +244,15 @@
     <string name="about_sync_entry_label">%1$s · %2$s</string>
     <string name="about_sync_entry_queued">Queued %1$s</string>
     <string name="about_sync_entry_attempts">%1$d attempt(s)</string>
+    <string name="about_pull_details_title">Last pull</string>
+    <string name="about_pull_never">No pull recorded yet</string>
+    <string name="about_pull_last_pulled">Pulled %1$s</string>
+    <string name="about_pull_status_ok">OK</string>
+    <string name="about_pull_status_failed">Failed</string>
+    <string name="about_pull_duration">%1$d ms · %2$s</string>
+    <string name="about_pull_export">Export pulls</string>
+    <string name="about_pull_export_nothing">No pulls recorded yet.</string>
+    <string name="about_pull_export_failed">Could not save the export.</string>
     <string name="outbox_verb_create">New</string>
     <string name="outbox_verb_update">Update</string>
     <string name="outbox_verb_delete">Delete</string>

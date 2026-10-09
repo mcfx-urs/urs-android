@@ -23,6 +23,7 @@ fun UrsButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     color: Color? = null,
+    compact: Boolean = false,
 ) {
     val colors = UrsTheme.colors
     val alpha = if (enabled) 1f else colors.disabledAlpha
@@ -31,7 +32,7 @@ fun UrsButton(
             .clip(RoundedCornerShape(Radius.card))
             .background((color ?: colors.accent).copy(alpha = alpha))
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 12.dp),
+            .padding(horizontal = if (compact) 12.dp else 20.dp, vertical = if (compact) 8.dp else 12.dp),
         horizontalArrangement = Arrangement.Center,
     ) {
         UrsText(text = text, style = UrsTheme.typography.body, color = colors.onAccent)

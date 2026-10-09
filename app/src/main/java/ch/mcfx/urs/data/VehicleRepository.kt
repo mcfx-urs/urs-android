@@ -5,7 +5,8 @@ import ch.mcfx.urs.data.local.VehicleEntity
 import ch.mcfx.urs.data.remote.UrsApi
 import ch.mcfx.urs.data.remote.VehicleDto
 import ch.mcfx.urs.data.remote.VehiclePayload
-import kotlinx.coroutines.CancellationException
+import ch.mcfx.urs.data.sync.PullOutcome
+import ch.mcfx.urs.data.sync.pullCatching
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -51,18 +52,9 @@ class VehicleRepository(
         vehicleDao.deleteById(id)
     }
 
-    /** @return `true` if the refresh completed cleanly (see [PullCoordinator]). */
-    suspend fun refreshFromBackend(): Boolean {
-        try {
-            api.getVehicles().forEach { vehicleDao.upsert(it.toEntity()) }
-            return true
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            // Best-effort only — see this repository's doc comment.
-            android.util.Log.w("VehicleRepository", "refreshFromBackend failed", e)
-            return false
-        }
+    /** @return an ok [PullOutcome] if the refresh completed cleanly (see [PullCoordinator]). */
+    suspend fun refreshFromBackend(): PullOutcome = pullCatching("VehicleRepository") {
+        api.getVehicles().forEach { vehicleDao.upsert(it.toEntity()) }
     }
 }
 

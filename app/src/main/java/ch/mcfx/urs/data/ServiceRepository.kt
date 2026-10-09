@@ -14,8 +14,9 @@ import ch.mcfx.urs.data.local.VehicleServiceWithTags
 import ch.mcfx.urs.data.remote.UrsApi
 import ch.mcfx.urs.data.remote.VehicleServiceDto
 import ch.mcfx.urs.data.remote.VehicleServiceTagDto
+import ch.mcfx.urs.data.sync.PullOutcome
 import ch.mcfx.urs.data.sync.SyncManager
-import kotlinx.coroutines.CancellationException
+import ch.mcfx.urs.data.sync.pullCatching
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
@@ -198,19 +199,10 @@ class ServiceRepository(
      * Never touches PENDING/FAILED rows, which exist solely via the outbox
      * replay path above.
      */
-    /** @return `true` if the refresh completed cleanly (see [PullCoordinator]). */
-    suspend fun refreshFromBackend(): Boolean {
-        try {
-            api.getVehicleServices().forEach { dto ->
-                vehicleServiceDao.upsertFromServer(dto.toEntity(), dto.tags.map { it.toEntity() })
-            }
-            return true
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            // Best-effort only — see doc comment above.
-            android.util.Log.w("ServiceRepository", "refreshFromBackend failed", e)
-            return false
+    /** @return an ok [PullOutcome] if the refresh completed cleanly (see [PullCoordinator]). */
+    suspend fun refreshFromBackend(): PullOutcome = pullCatching("ServiceRepository") {
+        api.getVehicleServices().forEach { dto ->
+            vehicleServiceDao.upsertFromServer(dto.toEntity(), dto.tags.map { it.toEntity() })
         }
     }
 }

@@ -13,6 +13,9 @@ import ch.mcfx.urs.data.local.OutboxDao
 import ch.mcfx.urs.data.local.OutboxMutationEntity
 import ch.mcfx.urs.data.local.OutboxStatus
 import ch.mcfx.urs.data.sync.PullCoordinator
+import ch.mcfx.urs.data.sync.PullDomainResult
+import ch.mcfx.urs.data.sync.PullRecord
+import ch.mcfx.urs.data.sync.PullTrigger
 import ch.mcfx.urs.data.sync.ReachabilityChecker
 import ch.mcfx.urs.data.sync.SyncManager
 import ch.mcfx.urs.data.sync.SyncStatusStore
@@ -23,6 +26,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -33,6 +37,7 @@ data class AboutSyncState(
     val lastSyncedAt: Long?,
     val lastPulledAt: Long?,
     val lastPullHadErrors: Boolean,
+    val lastPullResults: List<PullDomainResult>,
 )
 
 /** One queued outbox mutation, resolved for display in the sync-details sheet. `verbRes`/`domainRes` are `R.string` ids. */
@@ -67,7 +72,7 @@ class AboutViewModel(
     private val pullCoordinator: PullCoordinator,
     val wireGuardManager: WireGuardManager,
     outboxDao: OutboxDao,
-    syncStatusStore: SyncStatusStore,
+    private val syncStatusStore: SyncStatusStore,
     locationCaptureLogDao: LocationCaptureLogDao,
     private val locationHistorySettingsStore: LocationHistorySettingsStore,
 ) : ViewModel() {
@@ -80,14 +85,14 @@ class AboutViewModel(
     private val _isSyncing = MutableStateFlow(false)
     val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
 
-    val syncState: StateFlow<AboutSyncState> = outboxDao.observeAll()
-        .map { mutations ->
+    val syncState: StateFlow<AboutSyncState> = combine(outboxDao.observeAll(), pullCoordinator.phase) { mutations, _ ->
             AboutSyncState(
                 pendingCount = mutations.count { it.status != OutboxStatus.FAILED },
                 failedCount = mutations.count { it.status == OutboxStatus.FAILED },
                 lastSyncedAt = syncStatusStore.getLastSuccessAt(),
                 lastPulledAt = syncStatusStore.getLastPullAt(),
                 lastPullHadErrors = syncStatusStore.didLastPullHaveErrors(),
+                lastPullResults = syncStatusStore.getLastPullResults(),
             )
         }
         .stateIn(
@@ -99,8 +104,12 @@ class AboutViewModel(
                 lastSyncedAt = syncStatusStore.getLastSuccessAt(),
                 lastPulledAt = syncStatusStore.getLastPullAt(),
                 lastPullHadErrors = syncStatusStore.didLastPullHaveErrors(),
+                lastPullResults = syncStatusStore.getLastPullResults(),
             ),
         )
+
+    /** The retained pull history, oldest first — for CSV export. */
+    fun pullHistory(): List<PullRecord> = syncStatusStore.getPullHistory()
 
     // observeAll() only ever holds not-yet-confirmed writes (a successful
     // replay deletes its row), so every entry here is genuinely pending,
@@ -155,7 +164,7 @@ class AboutViewModel(
             _isSyncing.value = true
             try {
                 syncManager.syncNow()
-                pullCoordinator.pullAll()
+                pullCoordinator.pullAll(PullTrigger.MANUAL)
             } finally {
                 _isSyncing.value = false
             }

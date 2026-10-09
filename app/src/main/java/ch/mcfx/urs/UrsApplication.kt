@@ -42,6 +42,8 @@ import ch.mcfx.urs.data.remote.UrsApi
 import ch.mcfx.urs.data.sync.PullCoordinator
 import ch.mcfx.urs.data.sync.ReachabilityChecker
 import ch.mcfx.urs.data.sync.SyncManager
+import ch.mcfx.urs.data.sync.PullByteCounter
+import ch.mcfx.urs.data.sync.PullTrigger
 import ch.mcfx.urs.data.sync.SyncStatusStore
 import ch.mcfx.urs.data.sync.SyncWorker
 import ch.mcfx.urs.location.LocationActivityRecognitionManager
@@ -274,8 +276,11 @@ class AppContainer(context: Context) {
         }
     }
 
+    val pullByteCounter = PullByteCounter()
+
     private val httpClient = baseHttpClientBuilder()
         .addInterceptor(AuthInterceptor(authTokenStore))
+        .addNetworkInterceptor(pullByteCounter.interceptor)
         .addInterceptor(longRunningEndpointTimeout)
         .authenticator(AuthAuthenticator(authTokenStore, refreshClient, BuildConfig.BASE_URL))
         .build()
@@ -493,6 +498,8 @@ class AppContainer(context: Context) {
     // PullCoordinator's own doc comment for what it does and why
     // bakingRepository, above, is deliberately not in its list).
     val pullCoordinator = PullCoordinator(
+        context = context,
+        byteCounter = pullByteCounter,
         fuelRepository = fuelRepository,
         vehicleRepository = vehicleRepository,
         serviceRepository = serviceRepository,
@@ -543,6 +550,6 @@ class AppContainer(context: Context) {
         // that same callback — this is the "feels instant" pull path,
         // SyncWorker's periodic run is the 15-minute-floor backstop for
         // whatever this one didn't manage to land.
-        onTunnelReachable = { applicationScope.launch { pullCoordinator.pullAll() } }
+        onTunnelReachable = { applicationScope.launch { pullCoordinator.pullAll(PullTrigger.CONNECTIVITY) } }
     }
 }

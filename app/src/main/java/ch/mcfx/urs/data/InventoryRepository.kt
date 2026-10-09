@@ -20,10 +20,11 @@ import ch.mcfx.urs.data.remote.InventoryProductQuantityPayload
 import ch.mcfx.urs.data.remote.InventoryProductSettingsPayload
 import ch.mcfx.urs.data.remote.InventorySharePayload
 import ch.mcfx.urs.data.remote.UrsApi
+import ch.mcfx.urs.data.sync.pullCatching
+import ch.mcfx.urs.data.sync.PullOutcome
 import ch.mcfx.urs.data.sync.SyncManager
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -298,34 +299,23 @@ class InventoryRepository(
      * Never touches PENDING/FAILED rows, which exist solely via the outbox
      * replay path above.
      *
-     * @return `true` if the inventory list and every inventory's products refreshed cleanly (see [PullCoordinator]).
+     * @return an ok [PullOutcome] if the inventory list and every inventory's products refreshed cleanly (see [PullCoordinator]).
      */
-    suspend fun refreshFromBackend(): Boolean {
-        val inventoriesOk = refreshQuietly {
+    suspend fun refreshFromBackend(): PullOutcome {
+        val inventoriesOutcome = refreshQuietly {
             val inventories = api.getInventories()
             inventoryDao.upsertFromServer(inventories.map { it.toEntity(currentUserId()) })
         }
-        val productsOk = inventoryDao.observeAll(currentUserId()).first().mapNotNull { it.serverId }.map { inventoryId ->
+        val productsOutcome = inventoryDao.observeAll(currentUserId()).first().mapNotNull { it.serverId }.map { inventoryId ->
             refreshQuietly {
                 val products = api.getInventoryProducts(inventoryId)
                 inventoryProductDao.upsertFromServer(products.map { it.toEntity() })
             }
-        }.all { it }
-        return inventoriesOk && productsOk
+        }.fold(PullOutcome.OK) { acc, outcome -> acc + outcome }
+        return inventoriesOutcome + productsOutcome
     }
 
-    private suspend fun refreshQuietly(block: suspend () -> Unit): Boolean {
-        try {
-            block()
-            return true
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            // Best-effort only — see refreshFromBackend's doc comment.
-            android.util.Log.w("InventoryRepository", "refreshFromBackend failed", e)
-            return false
-        }
-    }
+    private suspend fun refreshQuietly(block: suspend () -> Unit): PullOutcome = pullCatching("InventoryRepository", block)
 }
 
 private fun InventoryDto.toEntity(userId: String) = InventoryEntity(

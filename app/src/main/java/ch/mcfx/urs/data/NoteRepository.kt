@@ -20,10 +20,11 @@ import ch.mcfx.urs.data.local.localNoteId
 import ch.mcfx.urs.data.local.publicId
 import ch.mcfx.urs.data.remote.NoteDto
 import ch.mcfx.urs.data.remote.UrsApi
+import ch.mcfx.urs.data.sync.PullOutcome
 import ch.mcfx.urs.data.sync.SyncManager
+import ch.mcfx.urs.data.sync.pullCatching
 import ch.mcfx.urs.notifications.NoteAlarmScheduler
 import java.time.ZoneId
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
@@ -217,23 +218,15 @@ class NoteRepository(
      */
     private val refreshMutex = Mutex()
 
-    /** @return `true` if the refresh completed cleanly (see [PullCoordinator]). */
-    suspend fun refreshFromBackend(): Boolean = refreshMutex.withLock {
-        try {
+    /** @return an ok [PullOutcome] if the refresh completed cleanly (see [PullCoordinator]). */
+    suspend fun refreshFromBackend(): PullOutcome = refreshMutex.withLock {
+        pullCatching("NoteRepository") {
             api.getNotes().forEach { dto ->
                 val localId = noteDao.upsertFromServer(dto.toEntity(currentUserId()))
                 if (localId >= 0) {
                     tagDao.replaceNoteTags(localId, dto.tags.map { TagEntity(noteId = localId, tagName = it.name, color = it.color) })
                 }
             }
-            true
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            // Best-effort only, same shape as ServiceRepository.refreshFromBackend
-            // — stale cached data beats an empty or error screen.
-            android.util.Log.w("NoteRepository", "refreshFromBackend failed", e)
-            false
         }
     }
 

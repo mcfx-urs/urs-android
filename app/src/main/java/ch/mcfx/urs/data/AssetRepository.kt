@@ -24,8 +24,9 @@ import ch.mcfx.urs.data.local.publicId
 import ch.mcfx.urs.data.remote.AssetComponentDto
 import ch.mcfx.urs.data.remote.AssetDto
 import ch.mcfx.urs.data.remote.UrsApi
+import ch.mcfx.urs.data.sync.PullOutcome
 import ch.mcfx.urs.data.sync.SyncManager
-import kotlinx.coroutines.CancellationException
+import ch.mcfx.urs.data.sync.pullCatching
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
@@ -232,21 +233,15 @@ class AssetRepository(
     }
 
     /** Pulls the full asset list, including each asset's nested components/comments/tags. */
-    suspend fun refreshFromBackend(): Boolean {
+    suspend fun refreshFromBackend(): PullOutcome {
         syncManager.syncNow()
-        return try {
+        return pullCatching("AssetRepository") {
             val assets = api.getAssets()
             assetDao.upsertFromServer(assets.map { it.toEntity() })
             assets.forEach { dto ->
                 componentDao.upsertFromServer(dto.id, dto.components.map { it.toEntity(dto.id) })
                 commentDao.upsertFromServer(dto.id, dto.comments.map { AssetCommentEntity(serverId = it.id, outboxId = null, assetId = dto.id, text = it.text, date = it.date, syncStatus = SyncStatus.SYNCED) })
             }
-            true
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            android.util.Log.w("AssetRepository", "refreshFromBackend failed", e)
-            false
         }
     }
 }
