@@ -228,7 +228,7 @@ private fun CategoryGrid(categories: List<CatalogCategoryEntity>, onSelect: (Cat
         items(categories, key = { it.id }) { category ->
             UrsSquareTile(
                 title = category.name,
-                catalogImageId = category.catalogImageId,
+                catalogImageId = null,
                 onClick = { onSelect(category) },
             )
         }

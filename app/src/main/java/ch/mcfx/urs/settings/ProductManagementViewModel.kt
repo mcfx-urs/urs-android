@@ -555,10 +555,6 @@ class ProductManagementViewModel(private val repository: CatalogRepository) : Vi
         _categoryForm.update { it?.copy(name = name) }
     }
 
-    fun setCategoryImage(imageId: String?) {
-        _categoryForm.update { it?.copy(imageId = imageId) }
-    }
-
     fun closeCategoryForm() {
         _categoryForm.value = null
     }
@@ -573,12 +569,7 @@ class ProductManagementViewModel(private val repository: CatalogRepository) : Vi
                 if (form.editingId != null) {
                     repository.updateCategory(form.editingId, name, form.imageId)
                 } else {
-                    val created = repository.createCategory(name)
-                    // postCatalogCategory doesn't accept an image either — same
-                    // create-then-attach shape as submitProductForm.
-                    if (form.imageId != null) {
-                        repository.updateCategory(created.id, name, form.imageId)
-                    }
+                    repository.createCategory(name)
                 }
                 _categoryForm.value = null
             } catch (e: CancellationException) {

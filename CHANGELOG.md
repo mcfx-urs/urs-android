@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - Automatic pulls are skipped for 2 minutes after a successful pull, a connectivity event starts one pull instead of two, and catalog refreshes share one serialized request that is skipped within a minute of the last one; manual sync is not limited (#120)
+- Category management no longer offers or shows a category image; tiles show the title only (#123)
 
 ## [1.10.0] - 2026-10-09
 

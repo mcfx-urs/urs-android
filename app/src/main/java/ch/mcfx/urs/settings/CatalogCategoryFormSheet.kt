@@ -2,27 +2,18 @@ package ch.mcfx.urs.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.mcfx.urs.R
-import ch.mcfx.urs.ui.components.CatalogImagePicker
 import ch.mcfx.urs.ui.components.UrsBottomSheet
 import ch.mcfx.urs.ui.components.UrsButton
-import ch.mcfx.urs.ui.components.UrsSquareTile
 import ch.mcfx.urs.ui.components.UrsText
 import ch.mcfx.urs.ui.components.UrsTextField
 import ch.mcfx.urs.ui.theme.UrsTheme
@@ -39,7 +30,6 @@ private val FormErrorColor = Color(0xFFD64545)
 @Composable
 fun CatalogCategoryFormSheet(viewModel: ProductManagementViewModel, onDismissRequest: () -> Unit) {
     val form by viewModel.categoryForm.collectAsStateWithLifecycle()
-    var imagePickerOpen by remember { mutableStateOf(false) }
 
     val currentForm = form ?: return
     UrsBottomSheet(onDismissRequest = onDismissRequest) {
@@ -62,16 +52,6 @@ fun CatalogCategoryFormSheet(viewModel: ProductManagementViewModel, onDismissReq
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            UrsText(text = stringResource(R.string.product_management_image_label), style = UrsTheme.typography.caption)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                UrsSquareTile(
-                    title = "",
-                    catalogImageId = currentForm.imageId?.toIntOrNull(),
-                    onClick = { imagePickerOpen = true },
-                    modifier = Modifier.size(72.dp),
-                )
-            }
-
             if (currentForm.submitFailed) {
                 UrsText(text = stringResource(R.string.error_save), color = FormErrorColor)
             }
@@ -90,23 +70,6 @@ fun CatalogCategoryFormSheet(viewModel: ProductManagementViewModel, onDismissReq
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
-        }
-    }
-
-    if (imagePickerOpen) {
-        UrsBottomSheet(onDismissRequest = { imagePickerOpen = false }) {
-            UrsText(
-                text = stringResource(R.string.product_management_image_picker_title),
-                style = UrsTheme.typography.cardTitle,
-                modifier = Modifier.padding(horizontal = Spacing.l, vertical = Spacing.m),
-            )
-            CatalogImagePicker(
-                loadPage = viewModel::searchImages,
-                onSelect = {
-                    viewModel.setCategoryImage(it)
-                    imagePickerOpen = false
-                },
-            )
         }
     }
 }
