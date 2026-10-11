@@ -44,6 +44,7 @@ import ch.mcfx.urs.data.sync.ReachabilityChecker
 import ch.mcfx.urs.data.sync.SyncManager
 import ch.mcfx.urs.data.sync.PullByteCounter
 import ch.mcfx.urs.data.sync.PullCursorStore
+import ch.mcfx.urs.data.sync.PullTrigger
 import ch.mcfx.urs.data.sync.SyncStatusStore
 import ch.mcfx.urs.data.sync.SyncWorker
 import ch.mcfx.urs.location.LocationActivityRecognitionManager
@@ -168,6 +169,17 @@ class UrsApplication : Application() {
                 if (event == Lifecycle.Event.ON_START) {
                     container.biometricGate.reevaluate()
                     container.applicationScope.launch { container.locationProvider.refresh() }
+                    // Pull when the app is opened, once the backend is reachable: on the home network, with
+                    // the tunnel up, or without any VPN configured (the backend is then reached directly).
+                    container.applicationScope.launch {
+                        when (container.networkGate.ensureReachable()) {
+                            is NetworkGate.Result.OnHomeNetwork,
+                            is NetworkGate.Result.Connected,
+                            is NetworkGate.Result.NotConfigured ->
+                                container.pullCoordinator.pullAll(PullTrigger.FOREGROUND)
+                            else -> Unit
+                        }
+                    }
                 }
             },
         )

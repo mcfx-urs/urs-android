@@ -32,8 +32,9 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
     override suspend fun doWork(): Result {
         val app = applicationContext as UrsApplication
         val pushOk = app.container.syncManager.syncNow()
-        val trigger = if (TAG_ONE_TIME in tags) PullTrigger.CONNECTIVITY else PullTrigger.PERIODIC
-        val pullOk = app.container.pullCoordinator.pullAll(trigger)
+        // The connectivity run only pushes the outbox; pulls run periodically and when the app is opened.
+        if (TAG_ONE_TIME in tags) return if (pushOk) Result.success() else Result.retry()
+        val pullOk = app.container.pullCoordinator.pullAll(PullTrigger.PERIODIC)
         return if (pushOk && pullOk) Result.success() else Result.retry()
     }
 
@@ -55,9 +56,9 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
                 .enqueueUniquePeriodicWork(PERIODIC_WORK_NAME, ExistingPeriodicWorkPolicy.KEEP, request)
         }
 
-        // Faster-than-the-15-minute floor: fired opportunistically whenever
-        // NetworkGate observes connectivity return, alongside (not instead
-        // of) the periodic backstop above.
+        // Faster-than-the-15-minute floor for the outbox push: fired
+        // opportunistically whenever NetworkGate observes connectivity return,
+        // alongside (not instead of) the periodic backstop above. Does not pull.
         fun enqueueOneTime(context: Context) {
             val request = OneTimeWorkRequestBuilder<SyncWorker>()
                 .setConstraints(constraints())

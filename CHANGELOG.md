@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - All other lists (vehicles, fuel, services, inventories, shopping lists, work time, notes, chores, kanban, assets, catalog categories, tags, work time month overrides) are pulled as a delta, currencies are fetched once per login; inventory products, shopping list items and kanban boards are fetched with one request each instead of one per parent (#121)
 - Catalog products are pulled as a delta: only products changed or deleted since the last pull are fetched, a full pull happens only on first start, after a local reset or when the server rejects the stored cursor (#121)
 - Location history is pulled as a delta: only points added since the last pull are fetched, a full pull happens only on first start, after a local reset or when the server rejects the stored cursor (#121)
-- Automatic pulls are skipped for 2 minutes after a successful pull, a connectivity event starts one pull instead of two, and catalog refreshes share one serialized request that is skipped within a minute of the last one; manual sync is not limited (#120)
+- Data is pulled when the app is opened (at most every 30 seconds) and every 15 minutes; a connectivity event only sends the outbox. Periodic pulls are skipped for 2 minutes after a successful pull, and catalog refreshes share one serialized request that is skipped within a minute of the last one; manual sync is not limited (#120)
 - Category management no longer offers or shows a category image; tiles show the title only (#123)
 - Chores logged from the watch are timed events starting at the current time rounded down to 15 minutes instead of all-day events (#104)
 

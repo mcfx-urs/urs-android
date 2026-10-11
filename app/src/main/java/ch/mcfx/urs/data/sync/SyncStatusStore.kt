@@ -30,7 +30,7 @@ data class PullDomainResult(
 
 /** What started a pull pass. */
 @Serializable
-enum class PullTrigger { MANUAL, PERIODIC, CONNECTIVITY }
+enum class PullTrigger { MANUAL, PERIODIC, CONNECTIVITY, FOREGROUND }
 
 /** Network the pass started on: [network] is wifi, cellular, ethernet, other or none; [vpn] is whether a VPN was active. */
 @Serializable

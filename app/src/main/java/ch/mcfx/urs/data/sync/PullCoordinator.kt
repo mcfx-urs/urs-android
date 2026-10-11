@@ -96,8 +96,9 @@ class PullCoordinator(
         // An automatic pass right after a successful one is skipped; checked inside the lock so that
         // queued duplicates see the pass that just finished. A manual sync always runs.
         if (trigger != PullTrigger.MANUAL) {
+            val minInterval = if (trigger == PullTrigger.FOREGROUND) MIN_FOREGROUND_PULL_INTERVAL_MILLIS else MIN_AUTO_PULL_INTERVAL_MILLIS
             val sinceLastOk = syncStatusStore.getLastSuccessfulPullAt()?.let { System.currentTimeMillis() - it }
-            if (sinceLastOk != null && sinceLastOk in 0 until MIN_AUTO_PULL_INTERVAL_MILLIS) return@withLock true
+            if (sinceLastOk != null && sinceLastOk in 0 until minInterval) return@withLock true
         }
         _phase.value = SyncPhase.SYNCING
         val network = currentNetwork()
@@ -175,5 +176,6 @@ class PullCoordinator(
 
     private companion object {
         const val MIN_AUTO_PULL_INTERVAL_MILLIS = 2 * 60 * 1000L
+        const val MIN_FOREGROUND_PULL_INTERVAL_MILLIS = 30 * 1000L
     }
 }
