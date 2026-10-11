@@ -17,7 +17,9 @@ import ch.mcfx.urs.data.local.WorkTimeMonthOverrideEntity
 import ch.mcfx.urs.data.remote.UrsApi
 import ch.mcfx.urs.data.remote.WorkTimeBreakDto
 import ch.mcfx.urs.data.remote.WorkTimeEntryDto
+import ch.mcfx.urs.data.remote.WorkTimeMonthOverrideDto
 import ch.mcfx.urs.data.remote.WorkTimeMonthOverridePayload
+import ch.mcfx.urs.data.sync.INITIAL_DELTA_CURSOR
 import ch.mcfx.urs.data.sync.PullCursorStore
 import ch.mcfx.urs.data.sync.PullOutcome
 import ch.mcfx.urs.data.sync.SyncManager
@@ -226,16 +228,30 @@ class WorkTimeRepository(
             )
         }
         val monthOverrides = pullCatching("WorkTimeRepository") {
-            val overrides = api.getWorkTimeMonthOverrides(userId)
-            workTimeMonthOverrideDao.replaceAll(
-                overrides.mapNotNull { dto ->
-                    val year = dto.year.toIntOrNull() ?: return@mapNotNull null
-                    val month = dto.month.toIntOrNull() ?: return@mapNotNull null
-                    WorkTimeMonthOverrideEntity(year = year, month = month, daysWorked = dto.daysWorked, bvgAmount = dto.bvgAmount)
+            cursorStore.pullDelta(
+                domain = OVERRIDE_CURSOR_KEY,
+                hasLocalData = { workTimeMonthOverrideDao.count() > 0 },
+                // Local overrides are keyed by year and month, not by server id, so a deletion is
+                // applied by fetching the (tiny) full list again.
+                fetch = { since ->
+                    val page = api.getWorkTimeMonthOverridesDelta(userId, since)
+                    if (!page.full && page.deletedIds.isNotEmpty()) {
+                        api.getWorkTimeMonthOverridesDelta(userId, INITIAL_DELTA_CURSOR)
+                    } else {
+                        page
+                    }
                 },
+                applyFull = { overrides -> workTimeMonthOverrideDao.replaceAll(overrides.mapNotNull { it.toEntityOrNull() }) },
+                applyDelta = { overrides, _ -> overrides.mapNotNull { it.toEntityOrNull() }.forEach { workTimeMonthOverrideDao.upsert(it) } },
             )
         }
         return entries + monthOverrides
+    }
+
+    private fun WorkTimeMonthOverrideDto.toEntityOrNull(): WorkTimeMonthOverrideEntity? {
+        val year = year.toIntOrNull() ?: return null
+        val month = month.toIntOrNull() ?: return null
+        return WorkTimeMonthOverrideEntity(year = year, month = month, daysWorked = daysWorked, bvgAmount = bvgAmount)
     }
 
     private suspend fun upsertDto(dto: WorkTimeEntryDto) {
@@ -269,6 +285,7 @@ class WorkTimeRepository(
 
     private companion object {
         const val CURSOR_KEY = "WorkTimeEntry"
+        const val OVERRIDE_CURSOR_KEY = "WorkTimeMonthOverride"
     }
 }
 

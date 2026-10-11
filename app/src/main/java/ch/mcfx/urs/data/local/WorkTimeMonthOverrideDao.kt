@@ -19,6 +19,9 @@ interface WorkTimeMonthOverrideDao {
     @Query("DELETE FROM work_time_month_override WHERE year = :year AND month = :month")
     suspend fun delete(year: Int, month: Int)
 
+    @Query("SELECT COUNT(*) FROM work_time_month_override")
+    suspend fun count(): Int
+
     @Query("DELETE FROM work_time_month_override")
     suspend fun deleteAll()
 

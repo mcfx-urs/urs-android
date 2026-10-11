@@ -442,7 +442,7 @@ class AppContainer(context: Context) {
         json = json,
     )
     // Shared Notes/Kanban tag pool (mcfx-urs/urs-backend#11).
-    val tagRepository = TagRepository(api = ursApi)
+    val tagRepository = TagRepository(api = ursApi, cursorStore = pullCursorStore)
     val noteRepository = NoteRepository(
         context = appContext,
         api = ursApi,

@@ -358,8 +358,12 @@ class FuelRepository(
                 },
             )
         }
-        outcome += refreshQuietly {
-            api.getCurrencies().takeIf { it.isNotEmpty() }?.let { currencyDao.upsertAll(it.map(CurrencyDto::toEntity)) }
+        // Currencies never change on the server, so they are fetched once per login.
+        if (cursorStore.get(CURRENCY_CURSOR_KEY) == null) {
+            outcome += refreshQuietly {
+                api.getCurrencies().takeIf { it.isNotEmpty() }?.let { currencyDao.upsertAll(it.map(CurrencyDto::toEntity)) }
+                cursorStore.set(CURRENCY_CURSOR_KEY, CURRENCY_FETCHED)
+            }
         }
         return outcome
     }
@@ -372,6 +376,8 @@ class FuelRepository(
 
 private const val STATION_CURSOR_KEY = "FillingStation"
 private const val FILL_CURSOR_KEY = "Fill"
+private const val CURRENCY_CURSOR_KEY = "Currency"
+private const val CURRENCY_FETCHED = "1"
 
 private fun FillingStationDto.toEntity() = FillingStationEntity(
     id = id,

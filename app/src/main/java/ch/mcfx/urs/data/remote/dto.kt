@@ -861,6 +861,8 @@ data class BakePlanStepPatchPayload(
 data class TagDto(
     val name: String,
     val color: String,
+    // Present on delta pulls only; identifies the tag for merges.
+    @SerialName("tag_id") val tagId: String? = null,
 )
 
 // mcfx-urs/urs-backend#15 — request body for PUT /api/v1/tags/{name}.

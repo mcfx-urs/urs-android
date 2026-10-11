@@ -3,8 +3,10 @@ package ch.mcfx.urs.data
 import ch.mcfx.urs.data.remote.TagColorUpdatePayload
 import ch.mcfx.urs.data.remote.TagDto
 import ch.mcfx.urs.data.remote.UrsApi
+import ch.mcfx.urs.data.sync.PullCursorStore
 import ch.mcfx.urs.data.sync.PullOutcome
 import ch.mcfx.urs.data.sync.pullCatching
+import ch.mcfx.urs.data.sync.pullDelta
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,7 +25,7 @@ import kotlinx.coroutines.flow.update
  * this offline-first app. [tags] additionally exposes the full pool
  * reactively for the Settings → Tags screen (mcfx-urs/urs-android#103).
  */
-class TagRepository(private val api: UrsApi) {
+class TagRepository(private val api: UrsApi, private val cursorStore: PullCursorStore) {
 
     private val _tags = MutableStateFlow<List<TagDto>>(emptyList())
     val tags: StateFlow<List<TagDto>> = _tags.asStateFlow()
@@ -31,8 +33,20 @@ class TagRepository(private val api: UrsApi) {
     fun suggest(query: String): List<String> =
         FuzzyMatch.rank(_tags.value.map { it.name }, query, limit = 10)
 
+    /** The pool lives in memory only, so a cursor is trusted only while the pool is loaded. */
     suspend fun refreshFromBackend(): PullOutcome = pullCatching("TagRepository") {
-        _tags.value = api.getTags()
+        cursorStore.pullDelta(
+            domain = CURSOR_KEY,
+            hasLocalData = { _tags.value.isNotEmpty() },
+            fetch = { since -> api.getTagsDelta(since) },
+            applyFull = { items -> _tags.value = items },
+            applyDelta = { items, deletedIds ->
+                _tags.update { current ->
+                    val changedIds = items.mapNotNull { it.tagId }.toSet()
+                    current.filter { it.tagId == null || (it.tagId !in changedIds && it.tagId !in deletedIds) } + items
+                }
+            },
+        )
     }
 
     /**
@@ -46,3 +60,5 @@ class TagRepository(private val api: UrsApi) {
         _tags.update { list -> list.map { if (it.name == name) it.copy(color = color) else it } }
     }
 }
+
+private const val CURSOR_KEY = "Tag"

@@ -305,6 +305,12 @@ interface UrsApi {
     @GET("api/v1/work-time-month-override/{userId}")
     suspend fun getWorkTimeMonthOverrides(@Path("userId") userId: String): List<WorkTimeMonthOverrideDto>
 
+    @GET("api/v1/work-time-month-override/{userId}")
+    suspend fun getWorkTimeMonthOverridesDelta(
+        @Path("userId") userId: String,
+        @Query("since") since: String,
+    ): DeltaDto<WorkTimeMonthOverrideDto>
+
     @PUT("api/v1/work-time-month-override/{userId}/{year}/{month}")
     suspend fun updateWorkTimeMonthOverride(
         @Path("userId") userId: String,
@@ -520,6 +526,9 @@ interface UrsApi {
     // attached to already-fetched notes/cards.
     @GET("api/v1/tags")
     suspend fun getTags(): List<TagDto>
+
+    @GET("api/v1/tags")
+    suspend fun getTagsDelta(@Query("since") since: String): DeltaDto<TagDto>
 
     // mcfx-urs/urs-backend#15 — recolor the caller's own existing tag (Settings → Tags).
     @PUT("api/v1/tags/{name}")
