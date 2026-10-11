@@ -78,6 +78,22 @@ interface CatalogProductDao {
     @Query("DELETE FROM catalog_product")
     suspend fun deleteAll()
 
+    @Query("SELECT COUNT(*) FROM catalog_product")
+    suspend fun count(): Int
+
+    @Query("DELETE FROM catalog_product WHERE id IN (:ids)")
+    suspend fun deleteByIds(ids: List<String>)
+
+    /**
+     * Delta-pull write path: inserts or replaces the changed products by id and
+     * removes the deleted ones; every other cached row stays untouched.
+     */
+    @Transaction
+    suspend fun applyDelta(changed: List<CatalogProductEntity>, deletedIds: List<String>) {
+        insertAll(changed)
+        deletedIds.chunked(500).forEach { deleteByIds(it) }
+    }
+
     /**
      * Backend-refresh write path — full replace, not a per-row
      * reconciliation: [CatalogProductEntity.id] is already the real server

@@ -389,6 +389,7 @@ class AppContainer(context: Context) {
         api = ursApi,
         catalogProductDao = database.catalogProductDao(),
         catalogCategoryDao = database.catalogCategoryDao(),
+        cursorStore = pullCursorStore,
     )
     val shoppingListRepository = ShoppingListRepository(
         api = ursApi,

@@ -135,6 +135,10 @@ interface UrsApi {
     @GET("api/v1/catalog-product")
     suspend fun getCatalogProducts(): List<CatalogProductDto>
 
+    /** Delta form of [getCatalogProducts]: products changed or deleted after the `since` cursor (`"0"` = full catalog). */
+    @GET("api/v1/catalog-product")
+    suspend fun getCatalogProductsDelta(@Query("since") since: String): CatalogProductDeltaDto
+
     @POST("api/v1/catalog-product")
     suspend fun createCatalogProduct(@Body payload: NewCatalogProductPayload): CatalogProductDto
 

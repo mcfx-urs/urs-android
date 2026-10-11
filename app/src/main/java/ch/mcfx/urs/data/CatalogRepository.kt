@@ -17,6 +17,7 @@ import ch.mcfx.urs.data.remote.GenerateCatalogImagePayload
 import ch.mcfx.urs.data.remote.NewCatalogCategoryPayload
 import ch.mcfx.urs.data.remote.NewCatalogProductPayload
 import ch.mcfx.urs.data.remote.UrsApi
+import ch.mcfx.urs.data.sync.PullCursorStore
 import ch.mcfx.urs.data.sync.pullCatching
 import ch.mcfx.urs.data.sync.PullOutcome
 import kotlinx.coroutines.CancellationException
@@ -42,6 +43,7 @@ class CatalogRepository(
     private val api: UrsApi,
     private val catalogProductDao: CatalogProductDao,
     private val catalogCategoryDao: CatalogCategoryDao,
+    private val cursorStore: PullCursorStore,
 ) {
 
     private val refreshMutex = Mutex()
@@ -81,8 +83,15 @@ class CatalogRepository(
             return@withLock PullOutcome.OK
         }
         val productsOutcome = refreshQuietly {
-            val products = api.getCatalogProducts()
-            catalogProductDao.upsertAll(products.map { it.toEntity() })
+            val storedCursor = cursorStore.get(CURSOR_KEY)
+            val since = if (storedCursor != null && catalogProductDao.count() > 0) storedCursor else INITIAL_CURSOR
+            val page = api.getCatalogProductsDelta(since)
+            if (page.full) {
+                catalogProductDao.upsertAll(page.items.map { it.toEntity() })
+            } else {
+                catalogProductDao.applyDelta(page.items.map { it.toEntity() }, page.deletedIds)
+            }
+            cursorStore.set(CURSOR_KEY, page.cursor)
         }
         val categoriesOutcome = refreshQuietly {
             val categories = api.getCatalogCategories()
@@ -353,6 +362,8 @@ class CatalogRepository(
     private suspend fun refreshQuietly(block: suspend () -> Unit): PullOutcome = pullCatching("CatalogRepository", block)
 
     private companion object {
+        const val CURSOR_KEY = "Catalog"
+        const val INITIAL_CURSOR = "0"
         const val MIN_REFRESH_INTERVAL_MILLIS = 60_000L
     }
 }
