@@ -96,6 +96,24 @@ interface VehicleServiceDao {
     @Query("DELETE FROM vehicle_service WHERE id = :id")
     suspend fun deleteServiceRow(id: Long)
 
+    @Query("SELECT COUNT(*) FROM vehicle_service")
+    suspend fun count(): Int
+
+    @Query("SELECT id FROM vehicle_service WHERE syncStatus = 'SYNCED' AND serverId IN (:serverIds)")
+    suspend fun findSyncedLocalIdsByServerIds(serverIds: List<Long>): List<Long>
+
+    /** Delta write path: upserts the changed services and removes deleted ones (with their tags) that carry no pending local change. */
+    @Transaction
+    suspend fun applyDelta(
+        services: List<Pair<VehicleServiceEntity, List<VehicleServiceTagEntity>>>,
+        deletedServerIds: List<Long>,
+    ) {
+        services.forEach { (service, tags) -> upsertFromServer(service, tags) }
+        if (deletedServerIds.isNotEmpty()) {
+            findSyncedLocalIdsByServerIds(deletedServerIds).forEach { deleteEntry(it) }
+        }
+    }
+
     // vehicle_service_tag rows have no Room-level foreign key/cascade
     // (unlike the backend's ON DELETE CASCADE) — deleted explicitly here.
     @Transaction

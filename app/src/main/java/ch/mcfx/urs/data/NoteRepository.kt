@@ -20,9 +20,11 @@ import ch.mcfx.urs.data.local.localNoteId
 import ch.mcfx.urs.data.local.publicId
 import ch.mcfx.urs.data.remote.NoteDto
 import ch.mcfx.urs.data.remote.UrsApi
+import ch.mcfx.urs.data.sync.PullCursorStore
 import ch.mcfx.urs.data.sync.PullOutcome
 import ch.mcfx.urs.data.sync.SyncManager
 import ch.mcfx.urs.data.sync.pullCatching
+import ch.mcfx.urs.data.sync.pullDelta
 import ch.mcfx.urs.notifications.NoteAlarmScheduler
 import java.time.ZoneId
 import kotlinx.coroutines.CoroutineScope
@@ -51,6 +53,7 @@ class NoteRepository(
     private val tokenStore: AuthTokenStore,
     private val applicationScope: CoroutineScope,
     private val json: Json,
+    private val cursorStore: PullCursorStore,
 ) {
 
     fun observeActive(): Flow<List<NoteWithTags>> = noteDao.observeWithTagsByStatus(currentUserId(), STATUS_ACTIVE)
@@ -221,13 +224,32 @@ class NoteRepository(
     /** @return an ok [PullOutcome] if the refresh completed cleanly (see [PullCoordinator]). */
     suspend fun refreshFromBackend(): PullOutcome = refreshMutex.withLock {
         pullCatching("NoteRepository") {
-            api.getNotes().forEach { dto ->
-                val localId = noteDao.upsertFromServer(dto.toEntity(currentUserId()))
-                if (localId >= 0) {
-                    tagDao.replaceNoteTags(localId, dto.tags.map { TagEntity(noteId = localId, tagName = it.name, color = it.color) })
-                }
-            }
+            cursorStore.pullDelta(
+                domain = CURSOR_KEY,
+                hasLocalData = { noteDao.count() > 0 },
+                fetch = { since -> api.getNotesDelta(since) },
+                applyFull = { items -> items.forEach { upsertDto(it) } },
+                applyDelta = { items, deletedIds ->
+                    items.forEach { upsertDto(it) }
+                    deletedIds.forEach { deleteSyncedByServerId(it) }
+                },
+            )
         }
+    }
+
+    private suspend fun upsertDto(dto: NoteDto) {
+        val localId = noteDao.upsertFromServer(dto.toEntity(currentUserId()))
+        if (localId >= 0) {
+            tagDao.replaceNoteTags(localId, dto.tags.map { TagEntity(noteId = localId, tagName = it.name, color = it.color) })
+        }
+    }
+
+    /** Delta-pull delete: same cleanup as [deleteNote], minus the outbox; rows with a pending local change are kept. */
+    private suspend fun deleteSyncedByServerId(serverId: String) {
+        val note = noteDao.getSyncedByServerId(serverId) ?: return
+        NoteAlarmScheduler.cancel(context, alarmIdFor(note.id))
+        tagDao.deleteByNoteId(note.id)
+        noteDao.delete(note.id)
     }
 
     private fun currentUserId(): String = tokenStore.currentUserId.orEmpty()
@@ -240,6 +262,7 @@ class NoteRepository(
         const val STATUS_ACTIVE = "active"
         const val STATUS_COMPLETED = "completed"
         private const val NOTE_REMINDER_ID_BASE = 300_000
+        private const val CURSOR_KEY = "Note"
     }
 }
 

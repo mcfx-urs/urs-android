@@ -5,8 +5,10 @@ import ch.mcfx.urs.data.local.VehicleEntity
 import ch.mcfx.urs.data.remote.UrsApi
 import ch.mcfx.urs.data.remote.VehicleDto
 import ch.mcfx.urs.data.remote.VehiclePayload
+import ch.mcfx.urs.data.sync.PullCursorStore
 import ch.mcfx.urs.data.sync.PullOutcome
 import ch.mcfx.urs.data.sync.pullCatching
+import ch.mcfx.urs.data.sync.pullDelta
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -29,6 +31,7 @@ import kotlinx.coroutines.flow.Flow
 class VehicleRepository(
     private val api: UrsApi,
     private val vehicleDao: VehicleDao,
+    private val cursorStore: PullCursorStore,
 ) {
     fun observeVehicles(): Flow<List<VehicleEntity>> = vehicleDao.observeAll()
 
@@ -54,9 +57,17 @@ class VehicleRepository(
 
     /** @return an ok [PullOutcome] if the refresh completed cleanly (see [PullCoordinator]). */
     suspend fun refreshFromBackend(): PullOutcome = pullCatching("VehicleRepository") {
-        api.getVehicles().forEach { vehicleDao.upsert(it.toEntity()) }
+        cursorStore.pullDelta(
+            domain = CURSOR_KEY,
+            hasLocalData = { vehicleDao.count() > 0 },
+            fetch = { since -> api.getVehiclesDelta(since) },
+            applyFull = { items -> vehicleDao.upsertAll(items.map { it.toEntity() }) },
+            applyDelta = { items, deletedIds -> vehicleDao.applyDelta(items.map { it.toEntity() }, deletedIds) },
+        )
     }
 }
+
+private const val CURSOR_KEY = "Vehicle"
 
 fun VehicleDto.toEntity() = VehicleEntity(
     id = id,

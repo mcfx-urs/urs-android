@@ -18,9 +18,11 @@ import ch.mcfx.urs.data.remote.UrsApi
 import ch.mcfx.urs.data.remote.WorkTimeBreakDto
 import ch.mcfx.urs.data.remote.WorkTimeEntryDto
 import ch.mcfx.urs.data.remote.WorkTimeMonthOverridePayload
+import ch.mcfx.urs.data.sync.PullCursorStore
 import ch.mcfx.urs.data.sync.PullOutcome
 import ch.mcfx.urs.data.sync.SyncManager
 import ch.mcfx.urs.data.sync.pullCatching
+import ch.mcfx.urs.data.sync.pullDelta
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
@@ -40,6 +42,7 @@ class WorkTimeRepository(
     private val applicationScope: CoroutineScope,
     private val json: Json,
     private val tokenStore: AuthTokenStore,
+    private val cursorStore: PullCursorStore,
 ) {
 
     fun observeEntries(): Flow<List<WorkTimeEntryWithBreaks>> = workTimeDao.observeAll()
@@ -210,10 +213,17 @@ class WorkTimeRepository(
     suspend fun refreshFromBackend(): PullOutcome {
         val userId = tokenStore.currentUserId ?: return PullOutcome.OK
         val entries = pullCatching("WorkTimeRepository") {
-            api.getWorkTimeEntries(userId, "100", "DESC")
-                .forEach { dto ->
-                    workTimeDao.upsertFromServer(dto.toEntity(), dto.breaks.map { it.toEntity() })
-                }
+            cursorStore.pullDelta(
+                domain = CURSOR_KEY,
+                hasLocalData = { workTimeDao.count() > 0 },
+                // limit/order only shape the full (no-since) answer on the backend.
+                fetch = { since -> api.getWorkTimeEntriesDelta(userId, "100", "DESC", since) },
+                applyFull = { items -> items.forEach { upsertDto(it) } },
+                applyDelta = { items, deletedIds ->
+                    items.forEach { upsertDto(it) }
+                    workTimeDao.deleteSyncedByServerIds(deletedIds.mapNotNull { it.toLongOrNull() })
+                },
+            )
         }
         val monthOverrides = pullCatching("WorkTimeRepository") {
             val overrides = api.getWorkTimeMonthOverrides(userId)
@@ -226,6 +236,10 @@ class WorkTimeRepository(
             )
         }
         return entries + monthOverrides
+    }
+
+    private suspend fun upsertDto(dto: WorkTimeEntryDto) {
+        workTimeDao.upsertFromServer(dto.toEntity(), dto.breaks.map { it.toEntity() })
     }
 
     /**
@@ -251,6 +265,10 @@ class WorkTimeRepository(
         val userId = tokenStore.currentUserId ?: return
         api.deleteWorkTimeMonthOverride(userId, year.toString(), month.toString())
         workTimeMonthOverrideDao.delete(year, month)
+    }
+
+    private companion object {
+        const val CURSOR_KEY = "WorkTimeEntry"
     }
 }
 

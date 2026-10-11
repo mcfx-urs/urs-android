@@ -40,6 +40,16 @@ interface TrackerEventDao {
         deleteSyncedAbsentFromServer(userId, events.mapNotNull { it.serverId })
     }
 
+    /** Delta-pull write path: upserts only the changed rows, no reconciliation by absence. */
+    @Transaction
+    suspend fun upsertChangedFromServer(events: List<TrackerEventEntity>) {
+        events.forEach { item ->
+            val serverId = item.serverId ?: return@forEach
+            val existingLocalId = findLocalIdByServerId(serverId)
+            replace(item.copy(id = existingLocalId ?: 0))
+        }
+    }
+
     // Reconciliation half of [upsertFromServer] — same rationale as
     // [ListItemDao.deleteSyncedAbsentFromServer]. Scoped by user (events are
     // pulled for the whole user, not per type), so a full refresh is the
@@ -82,4 +92,15 @@ interface TrackerEventDao {
     // path) — mirrors ListItemDao.deleteByListId.
     @Query("DELETE FROM tracker_event WHERE trackerTypeId = :trackerTypeId")
     suspend fun deleteByTypeId(trackerTypeId: String)
+
+    @Query("SELECT COUNT(*) FROM tracker_event")
+    suspend fun count(): Int
+
+    /** Delta-pull delete: only SYNCED rows. */
+    @Query("DELETE FROM tracker_event WHERE syncStatus = 'SYNCED' AND serverId IN (:serverIds)")
+    suspend fun deleteSyncedByServerIds(serverIds: List<String>)
+
+    /** Events of a type deleted server-side; pending events are left alone. */
+    @Query("DELETE FROM tracker_event WHERE syncStatus = 'SYNCED' AND trackerTypeId IN (:trackerTypeIds)")
+    suspend fun deleteSyncedByTrackerTypeIds(trackerTypeIds: List<String>)
 }

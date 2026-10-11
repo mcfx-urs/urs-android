@@ -72,4 +72,17 @@ interface FillDao {
 
     @Query("DELETE FROM fill WHERE id = :id")
     suspend fun deleteEntry(id: Long)
+
+    @Query("SELECT COUNT(*) FROM fill")
+    suspend fun count(): Int
+
+    @Query("DELETE FROM fill WHERE syncStatus = 'SYNCED' AND serverId IN (:serverIds)")
+    suspend fun deleteSyncedByServerIds(serverIds: List<Long>)
+
+    /** Delta write path: upserts the changed fills and removes deleted ones that carry no pending local change. */
+    @Transaction
+    suspend fun applyDelta(fills: List<FillEntity>, deletedServerIds: List<Long>) {
+        fills.forEach { upsertFromServer(it) }
+        if (deletedServerIds.isNotEmpty()) deleteSyncedByServerIds(deletedServerIds)
+    }
 }

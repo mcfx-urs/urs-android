@@ -20,4 +20,9 @@ class PullCursorStore(context: Context) {
     fun set(domain: String, cursor: String) {
         prefs.edit().putString(domain, cursor).apply()
     }
+
+    /** Forgets every cursor, so the next pull of each domain is a full one (logout, user switch). */
+    fun clearAll() {
+        prefs.edit().clear().apply()
+    }
 }

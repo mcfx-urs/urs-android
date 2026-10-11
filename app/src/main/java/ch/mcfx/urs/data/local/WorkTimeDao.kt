@@ -91,6 +91,20 @@ interface WorkTimeDao {
     @Query("DELETE FROM work_time_entry WHERE id = :id")
     suspend fun deleteEntryRow(id: Long)
 
+    @Query("SELECT COUNT(*) FROM work_time_entry")
+    suspend fun count(): Int
+
+    @Query("SELECT id FROM work_time_entry WHERE syncStatus = 'SYNCED' AND serverId IN (:serverIds)")
+    suspend fun findSyncedLocalIdsByServerIds(serverIds: List<Long>): List<Long>
+
+    /** Delta-pull delete: only SYNCED rows, breaks removed explicitly (no Room cascade). */
+    @Transaction
+    suspend fun deleteSyncedByServerIds(serverIds: List<Long>) {
+        serverIds.chunked(500).forEach { chunk ->
+            findSyncedLocalIdsByServerIds(chunk).forEach { deleteEntry(it) }
+        }
+    }
+
     // work_time_break rows have no Room-level foreign key/cascade (unlike
     // the backend's ON DELETE CASCADE) — deleted explicitly here.
     @Transaction

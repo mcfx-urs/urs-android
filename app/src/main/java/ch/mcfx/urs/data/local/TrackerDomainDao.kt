@@ -43,6 +43,16 @@ interface TrackerDomainDao {
         deleteSyncedAbsentFromServer(userId, domains.mapNotNull { it.serverId })
     }
 
+    /** Delta-pull write path: upserts only the changed rows, no reconciliation by absence. */
+    @Transaction
+    suspend fun upsertChangedFromServer(domains: List<TrackerDomainEntity>) {
+        domains.forEach { item ->
+            val serverId = item.serverId ?: return@forEach
+            val existingLocalId = findLocalIdByServerId(serverId)
+            replace(item.copy(id = existingLocalId ?: 0))
+        }
+    }
+
     @Query(
         "DELETE FROM tracker_domain WHERE userId = :userId AND syncStatus = 'SYNCED' " +
             "AND serverId NOT IN (:serverIds)",
@@ -57,4 +67,11 @@ interface TrackerDomainDao {
 
     @Query("DELETE FROM tracker_domain WHERE id = :id")
     suspend fun delete(id: Long)
+
+    @Query("SELECT COUNT(*) FROM tracker_domain")
+    suspend fun count(): Int
+
+    /** Delta-pull delete: only SYNCED rows. */
+    @Query("DELETE FROM tracker_domain WHERE syncStatus = 'SYNCED' AND serverId IN (:serverIds)")
+    suspend fun deleteSyncedByServerIds(serverIds: List<String>)
 }

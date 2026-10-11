@@ -74,4 +74,10 @@ interface NoteDao {
 
     @Query("DELETE FROM note WHERE id = :id")
     suspend fun delete(id: Long)
+
+    @Query("SELECT COUNT(*) FROM note")
+    suspend fun count(): Int
+
+    @Query("SELECT * FROM note WHERE serverId = :serverId AND syncStatus = 'SYNCED' LIMIT 1")
+    suspend fun getSyncedByServerId(serverId: String): NoteEntity?
 }

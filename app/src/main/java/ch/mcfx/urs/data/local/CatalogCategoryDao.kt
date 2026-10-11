@@ -29,6 +29,19 @@ interface CatalogCategoryDao {
     @Query("DELETE FROM catalog_category")
     suspend fun deleteAll()
 
+    @Query("SELECT COUNT(*) FROM catalog_category")
+    suspend fun count(): Int
+
+    @Query("DELETE FROM catalog_category WHERE id IN (:ids)")
+    suspend fun deleteByIds(ids: List<String>)
+
+    /** Delta write path: upserts the changed categories and removes the deleted ones; other rows stay untouched. */
+    @Transaction
+    suspend fun applyDelta(changed: List<CatalogCategoryEntity>, deletedIds: List<String>) {
+        insertAll(changed)
+        deletedIds.chunked(500).forEach { deleteByIds(it) }
+    }
+
     /** Backend-refresh write path — full replace, same shape as [CatalogProductDao.upsertAll]. */
     @Transaction
     suspend fun upsertAll(entities: List<CatalogCategoryEntity>) {

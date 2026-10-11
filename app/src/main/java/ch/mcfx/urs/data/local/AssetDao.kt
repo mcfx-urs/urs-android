@@ -20,6 +20,9 @@ interface AssetDao {
     @Query("SELECT * FROM asset WHERE outboxId = :outboxId LIMIT 1")
     suspend fun getByOutboxId(outboxId: Long): AssetEntity?
 
+    @Query("SELECT COUNT(*) FROM asset")
+    suspend fun count(): Int
+
     @Query("SELECT id FROM asset WHERE serverId = :serverId LIMIT 1")
     suspend fun findLocalIdByServerId(serverId: String): Long?
 
@@ -40,6 +43,13 @@ interface AssetDao {
             replace(asset.copy(id = existingLocalId ?: 0))
         }
         deleteSyncedAbsentFromServer(serverIds)
+    }
+
+    /** Single-asset write path without [upsertFromServer]'s absence reconciliation (delta pulls). */
+    @Transaction
+    suspend fun upsertOne(asset: AssetEntity) {
+        val serverId = asset.serverId ?: return
+        replace(asset.copy(id = findLocalIdByServerId(serverId) ?: 0))
     }
 
     // Reconciliation half of upsertFromServer — a synced row no longer

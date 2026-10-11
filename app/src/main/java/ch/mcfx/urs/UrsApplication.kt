@@ -290,14 +290,15 @@ class AppContainer(context: Context) {
     val choreOrderStore = ChoreOrderStore(context)
     val kanbanViewModeStore = KanbanViewModeStore(context)
 
+    val pullCursorStore = PullCursorStore(context)
+
     val authRepository = AuthRepository(
         ursApi, authTokenStore, database, wireGuardManager, workSettingsStore, defaultVehicleStore, choreOrderStore,
-        kanbanViewModeStore,
+        kanbanViewModeStore, pullCursorStore,
     )
 
     val reachabilityChecker = ReachabilityChecker()
     val syncStatusStore = SyncStatusStore(context)
-    val pullCursorStore = PullCursorStore(context)
     val syncManager = SyncManager(
         api = ursApi,
         fillDao = database.fillDao(),
@@ -362,10 +363,12 @@ class AppContainer(context: Context) {
         syncManager = syncManager,
         applicationScope = applicationScope,
         json = json,
+        cursorStore = pullCursorStore,
     )
     val vehicleRepository = VehicleRepository(
         api = ursApi,
         vehicleDao = database.vehicleDao(),
+        cursorStore = pullCursorStore,
     )
     val serviceRepository = ServiceRepository(
         api = ursApi,
@@ -374,6 +377,7 @@ class AppContainer(context: Context) {
         syncManager = syncManager,
         applicationScope = applicationScope,
         json = json,
+        cursorStore = pullCursorStore,
     )
     val inventoryRepository = InventoryRepository(
         api = ursApi,
@@ -384,6 +388,7 @@ class AppContainer(context: Context) {
         applicationScope = applicationScope,
         json = json,
         authTokenStore = authTokenStore,
+        cursorStore = pullCursorStore,
     )
     val catalogRepository = CatalogRepository(
         api = ursApi,
@@ -402,6 +407,7 @@ class AppContainer(context: Context) {
         syncManager = syncManager,
         applicationScope = applicationScope,
         json = json,
+        cursorStore = pullCursorStore,
     )
     val beerRepository = BeerRepository(
         api = retrofit.create(UrsApi::class.java),
@@ -417,6 +423,7 @@ class AppContainer(context: Context) {
         applicationScope = applicationScope,
         json = json,
         tokenStore = authTokenStore,
+        cursorStore = pullCursorStore,
     )
     val userRepository = UserRepository(retrofit.create(UrsApi::class.java), authTokenStore, defaultVehicleStore)
     val imageGenRepository = ImageGenRepository(retrofit.create(UrsApi::class.java))
@@ -447,6 +454,7 @@ class AppContainer(context: Context) {
         tokenStore = authTokenStore,
         applicationScope = applicationScope,
         json = json,
+        cursorStore = pullCursorStore,
     )
     // Device-local voice notes relayed from the watch (GitHub issue #41).
     val audioNoteRepository = AudioNoteRepository(appContext, database.audioNoteDao())
@@ -461,6 +469,7 @@ class AppContainer(context: Context) {
         tokenStore = authTokenStore,
         applicationScope = applicationScope,
         json = json,
+        cursorStore = pullCursorStore,
     )
     val kanbanRepository = KanbanRepository(
         context = appContext,
@@ -475,6 +484,7 @@ class AppContainer(context: Context) {
         syncManager = syncManager,
         applicationScope = applicationScope,
         json = json,
+        cursorStore = pullCursorStore,
     )
     val assetRepository = AssetRepository(
         api = ursApi,
@@ -485,6 +495,7 @@ class AppContainer(context: Context) {
         syncManager = syncManager,
         applicationScope = applicationScope,
         json = json,
+        cursorStore = pullCursorStore,
     )
 
     // Everything from here down needs one repository or another — that's

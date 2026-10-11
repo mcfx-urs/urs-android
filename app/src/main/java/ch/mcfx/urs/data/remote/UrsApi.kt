@@ -1,5 +1,6 @@
 package ch.mcfx.urs.data.remote
 
+import ch.mcfx.urs.data.sync.DeltaDto
 import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.Body
@@ -25,6 +26,10 @@ interface UrsApi {
     @GET("api/v1/vehicle")
     suspend fun getVehicles(): List<VehicleDto>
 
+    /** Delta form of [getVehicles] (`"0"` = full list). */
+    @GET("api/v1/vehicle")
+    suspend fun getVehiclesDelta(@Query("since") since: String): DeltaDto<VehicleDto>
+
     // The backend's response body just echoes the request DTO back (no
     // assigned vehicle_id — see postVehicle in urs-backend), so this isn't
     // decoded as a VehicleDto; the repository re-fetches the full list via
@@ -44,6 +49,10 @@ interface UrsApi {
     @GET("api/v1/vehicle-service")
     suspend fun getVehicleServices(): List<VehicleServiceDto>
 
+    /** Delta form of [getVehicleServices] (`"0"` = full list). */
+    @GET("api/v1/vehicle-service")
+    suspend fun getVehicleServicesDelta(@Query("since") since: String): DeltaDto<VehicleServiceDto>
+
     @PUT("api/v1/vehicle-service/{id}")
     suspend fun updateVehicleService(@Path("id") id: String, @Body payload: VehicleServicePayload): VehicleServiceDto
 
@@ -52,6 +61,10 @@ interface UrsApi {
 
     @GET("api/v1/get-filling-station")
     suspend fun getFillingStations(): List<FillingStationDto>
+
+    /** Delta form of [getFillingStations] (`"0"` = full list). */
+    @GET("api/v1/get-filling-station")
+    suspend fun getFillingStationsDelta(@Query("since") since: String): DeltaDto<FillingStationDto>
 
     // Super-user-gated server-side — lists the ad-hoc (gps_auto) stations
     // awaiting review, which getFillingStations() deliberately excludes.
@@ -71,6 +84,10 @@ interface UrsApi {
 
     @GET("api/v1/fill")
     suspend fun getFills(): List<FillDto>
+
+    /** Delta form of [getFills] (`"0"` = full list). */
+    @GET("api/v1/fill")
+    suspend fun getFillsDelta(@Query("since") since: String): DeltaDto<FillDto>
 
     @GET("api/v1/odometer/{vehicleId}")
     suspend fun getOdometer(@Path("vehicleId") vehicleId: String): List<OdometerEntryDto>
@@ -98,6 +115,12 @@ interface UrsApi {
 
     @GET("api/v1/inventory")
     suspend fun getInventories(): List<InventoryDto>
+
+    @GET("api/v1/inventory")
+    suspend fun getInventoriesDelta(@Query("since") since: String): DeltaDto<InventoryDto>
+
+    @GET("api/v1/inventory-product")
+    suspend fun getInventoryProductsDelta(@Query("since") since: String): DeltaDto<InventoryProductDto>
 
     @POST("api/v1/inventory")
     suspend fun createInventory(@Body payload: InventoryPayload): InventoryCreateResponseDto
@@ -171,6 +194,10 @@ interface UrsApi {
     @GET("api/v1/catalog-category")
     suspend fun getCatalogCategories(): List<CatalogCategoryDto>
 
+    /** Delta form of [getCatalogCategories] (`"0"` = full). */
+    @GET("api/v1/catalog-category")
+    suspend fun getCatalogCategoriesDelta(@Query("since") since: String): ch.mcfx.urs.data.sync.DeltaDto<CatalogCategoryDto>
+
     @POST("api/v1/catalog-category")
     suspend fun createCatalogCategory(@Body payload: NewCatalogCategoryPayload): NewCatalogCategoryResponseDto
 
@@ -212,6 +239,12 @@ interface UrsApi {
 
     @GET("api/v1/list")
     suspend fun getLists(): List<ListDto>
+
+    @GET("api/v1/list")
+    suspend fun getListsDelta(@Query("since") since: String): DeltaDto<ListDto>
+
+    @GET("api/v1/list-item")
+    suspend fun getListItemsDelta(@Query("since") since: String): DeltaDto<ListItemDto>
 
     @PUT("api/v1/list/{id}")
     suspend fun updateList(@Path("id") id: String, @Body payload: ListPayload)
@@ -291,6 +324,14 @@ interface UrsApi {
     suspend fun createWorkTimeEntry(@Body payload: WorkTimeEntryPayload): WorkTimeEntryDto
 
     @GET("api/v1/work-time-entry/{userId}/{limit}/{order}")
+    suspend fun getWorkTimeEntriesDelta(
+        @Path("userId") userId: String,
+        @Path("limit") limit: String,
+        @Path("order") order: String,
+        @Query("since") since: String,
+    ): DeltaDto<WorkTimeEntryDto>
+
+    @GET("api/v1/work-time-entry/{userId}/{limit}/{order}")
     suspend fun getWorkTimeEntries(
         @Path("userId") userId: String,
         @Path("limit") limit: String,
@@ -356,6 +397,9 @@ interface UrsApi {
     @GET("api/v1/note")
     suspend fun getNotes(@Query("status") status: String? = null): List<NoteDto>
 
+    @GET("api/v1/note")
+    suspend fun getNotesDelta(@Query("since") since: String): DeltaDto<NoteDto>
+
     @PUT("api/v1/note/{id}")
     suspend fun updateNote(@Path("id") id: String, @Body payload: NoteCreatePayload): NoteDto
 
@@ -370,6 +414,9 @@ interface UrsApi {
 
     @GET("api/v1/tracker-type")
     suspend fun getTrackerTypes(): List<TrackerTypeDto>
+
+    @GET("api/v1/tracker-type")
+    suspend fun getTrackerTypesDelta(@Query("since") since: String): DeltaDto<TrackerTypeDto>
 
     @PUT("api/v1/tracker-type/{id}")
     suspend fun updateTrackerType(@Path("id") id: String, @Body payload: TrackerTypePayload)
@@ -392,6 +439,9 @@ interface UrsApi {
         @Query("to") to: String? = null,
     ): List<TrackerEventDto>
 
+    @GET("api/v1/tracker-event")
+    suspend fun getTrackerEventsDelta(@Query("since") since: String): DeltaDto<TrackerEventDto>
+
     @PUT("api/v1/tracker-event/{id}")
     suspend fun updateTrackerEvent(@Path("id") id: String, @Body payload: TrackerEventPayload)
 
@@ -404,6 +454,9 @@ interface UrsApi {
     @GET("api/v1/journal-domain")
     suspend fun getTrackerDomains(): List<TrackerDomainDto>
 
+    @GET("api/v1/journal-domain")
+    suspend fun getTrackerDomainsDelta(@Query("since") since: String): DeltaDto<TrackerDomainDto>
+
     @PUT("api/v1/journal-domain/{id}")
     suspend fun updateTrackerDomain(@Path("id") id: String, @Body payload: TrackerDomainPayload)
 
@@ -415,6 +468,10 @@ interface UrsApi {
 
     @GET("api/v1/kanban/board")
     suspend fun getKanbanBoards(): List<KanbanBoardDto>
+
+    /** Delta form of [getKanbanBoards]: complete board trees changed after the cursor (`"0"` = full). */
+    @GET("api/v1/kanban/board")
+    suspend fun getKanbanBoardsDelta(@Query("since") since: String): ch.mcfx.urs.data.sync.DeltaDto<KanbanBoardDetailDto>
 
     @GET("api/v1/kanban/board/{id}")
     suspend fun getKanbanBoard(@Path("id") id: String): KanbanBoardDetailDto
@@ -476,6 +533,10 @@ interface UrsApi {
 
     @GET("api/v1/asset")
     suspend fun getAssets(): List<AssetDto>
+
+    /** Delta form of [getAssets]: complete assets changed after the cursor (`"0"` = full). */
+    @GET("api/v1/asset")
+    suspend fun getAssetsDelta(@Query("since") since: String): ch.mcfx.urs.data.sync.DeltaDto<AssetDto>
 
     @PUT("api/v1/asset/{id}")
     suspend fun updateAsset(@Path("id") id: String, @Body payload: AssetUpdatePayload)

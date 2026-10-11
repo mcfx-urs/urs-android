@@ -26,9 +26,11 @@ import ch.mcfx.urs.data.remote.TrackerDomainPayload
 import ch.mcfx.urs.data.remote.TrackerEventDto
 import ch.mcfx.urs.data.remote.TrackerTypeDto
 import ch.mcfx.urs.data.remote.UrsApi
+import ch.mcfx.urs.data.sync.PullCursorStore
 import ch.mcfx.urs.data.sync.PullOutcome
 import ch.mcfx.urs.data.sync.SyncManager
 import ch.mcfx.urs.data.sync.pullCatching
+import ch.mcfx.urs.data.sync.pullDelta
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -57,6 +59,7 @@ class ChoreRepository(
     private val tokenStore: AuthTokenStore,
     private val applicationScope: CoroutineScope,
     private val json: Json,
+    private val cursorStore: PullCursorStore,
 ) {
 
     fun observeTypes(): Flow<List<TrackerTypeEntity>> = trackerTypeDao.observeForUser(currentUserId())
@@ -418,14 +421,48 @@ class ChoreRepository(
     suspend fun refreshFromBackend(): PullOutcome {
         syncManager.syncNow()
         val userId = currentUserId()
-        return pullCatching("ChoreRepository") {
-            val domains = api.getTrackerDomains()
-            trackerDomainDao.upsertFromServer(userId, domains.map { it.toEntity(userId) })
-            val types = api.getTrackerTypes()
-            trackerTypeDao.upsertFromServer(userId, types.map { it.toEntity(userId) })
-            val events = api.getTrackerEvents()
-            trackerEventDao.upsertFromServer(userId, events.map { it.toEntity(userId) })
+        // Independent pulls: one failing list must not skip the others (the outcomes are combined).
+        val domains = pullCatching("ChoreRepository") {
+            cursorStore.pullDelta(
+                domain = DOMAIN_CURSOR_KEY,
+                hasLocalData = { trackerDomainDao.count() > 0 },
+                fetch = { since -> api.getTrackerDomainsDelta(since) },
+                applyFull = { items -> trackerDomainDao.upsertFromServer(userId, items.map { it.toEntity(userId) }) },
+                applyDelta = { items, deletedIds ->
+                    trackerDomainDao.upsertChangedFromServer(items.map { it.toEntity(userId) })
+                    trackerDomainDao.deleteSyncedByServerIds(deletedIds)
+                },
+            )
         }
+        val types = pullCatching("ChoreRepository") {
+            cursorStore.pullDelta(
+                domain = TYPE_CURSOR_KEY,
+                hasLocalData = { trackerTypeDao.count() > 0 },
+                fetch = { since -> api.getTrackerTypesDelta(since) },
+                applyFull = { items -> trackerTypeDao.upsertFromServer(userId, items.map { it.toEntity(userId) }) },
+                applyDelta = { items, deletedIds ->
+                    trackerTypeDao.upsertChangedFromServer(items.map { it.toEntity(userId) })
+                    // Types are normally archived, not deleted; a deleted one takes its events along.
+                    if (deletedIds.isNotEmpty()) {
+                        trackerEventDao.deleteSyncedByTrackerTypeIds(deletedIds)
+                        trackerTypeDao.deleteSyncedByServerIds(deletedIds)
+                    }
+                },
+            )
+        }
+        val events = pullCatching("ChoreRepository") {
+            cursorStore.pullDelta(
+                domain = EVENT_CURSOR_KEY,
+                hasLocalData = { trackerEventDao.count() > 0 },
+                fetch = { since -> api.getTrackerEventsDelta(since) },
+                applyFull = { items -> trackerEventDao.upsertFromServer(userId, items.map { it.toEntity(userId) }) },
+                applyDelta = { items, deletedIds ->
+                    trackerEventDao.upsertChangedFromServer(items.map { it.toEntity(userId) })
+                    trackerEventDao.deleteSyncedByServerIds(deletedIds)
+                },
+            )
+        }
+        return domains + types + events
     }
 
     /**
@@ -445,6 +482,12 @@ class ChoreRepository(
     }
 
     private fun currentUserId(): String = tokenStore.currentUserId.orEmpty()
+
+    private companion object {
+        const val DOMAIN_CURSOR_KEY = "ChoreDomain"
+        const val TYPE_CURSOR_KEY = "ChoreType"
+        const val EVENT_CURSOR_KEY = "ChoreEvent"
+    }
 }
 
 // The backend serializes DATETIME columns as "yyyy-MM-dd HH:mm:ss".

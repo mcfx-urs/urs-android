@@ -24,9 +24,11 @@ import ch.mcfx.urs.data.local.publicId
 import ch.mcfx.urs.data.remote.AssetComponentDto
 import ch.mcfx.urs.data.remote.AssetDto
 import ch.mcfx.urs.data.remote.UrsApi
+import ch.mcfx.urs.data.sync.PullCursorStore
 import ch.mcfx.urs.data.sync.PullOutcome
 import ch.mcfx.urs.data.sync.SyncManager
 import ch.mcfx.urs.data.sync.pullCatching
+import ch.mcfx.urs.data.sync.pullDelta
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
@@ -57,6 +59,7 @@ class AssetRepository(
     private val syncManager: SyncManager,
     private val applicationScope: CoroutineScope,
     private val json: Json,
+    private val cursorStore: PullCursorStore,
 ) {
     fun observeAssets(): Flow<List<AssetEntity>> = assetDao.observeAll()
 
@@ -232,17 +235,49 @@ class AssetRepository(
         applicationScope.launch { syncManager.syncNow() }
     }
 
-    /** Pulls the full asset list, including each asset's nested components/comments/tags. */
+    /** Pulls assets as complete objects (nested components/comments/tags) via one delta request. */
     suspend fun refreshFromBackend(): PullOutcome {
         syncManager.syncNow()
         return pullCatching("AssetRepository") {
-            val assets = api.getAssets()
-            assetDao.upsertFromServer(assets.map { it.toEntity() })
-            assets.forEach { dto ->
-                componentDao.upsertFromServer(dto.id, dto.components.map { it.toEntity(dto.id) })
-                commentDao.upsertFromServer(dto.id, dto.comments.map { AssetCommentEntity(serverId = it.id, outboxId = null, assetId = dto.id, text = it.text, date = it.date, syncStatus = SyncStatus.SYNCED) })
-            }
+            cursorStore.pullDelta(
+                domain = CURSOR_KEY,
+                hasLocalData = { assetDao.count() > 0 },
+                fetch = { since -> api.getAssetsDelta(since) },
+                applyFull = { assets ->
+                    assetDao.upsertFromServer(assets.map { it.toEntity() })
+                    assets.forEach { applyChildren(it) }
+                },
+                applyDelta = { assets, deletedIds ->
+                    assets.forEach { dto ->
+                        assetDao.upsertOne(dto.toEntity())
+                        applyChildren(dto)
+                    }
+                    deletedIds.forEach { deleteSyncedAssetFromServer(it) }
+                },
+            )
         }
+    }
+
+    private suspend fun applyChildren(dto: AssetDto) {
+        componentDao.upsertFromServer(dto.id, dto.components.map { it.toEntity(dto.id) })
+        commentDao.upsertFromServer(dto.id, dto.comments.map { AssetCommentEntity(serverId = it.id, outboxId = null, assetId = dto.id, text = it.text, date = it.date, syncStatus = SyncStatus.SYNCED) })
+    }
+
+    // Delta-pull delete of an asset removed on the server; assets with a pending local change are left alone.
+    private suspend fun deleteSyncedAssetFromServer(serverId: String) {
+        val localId = assetDao.findLocalIdByServerId(serverId) ?: return
+        val asset = assetDao.getById(localId) ?: return
+        if (asset.syncStatus != SyncStatus.SYNCED) return
+        val publicId = asset.publicId
+        componentDao.getByAssetId(publicId).forEach { it.outboxId?.let { id -> outboxDao.delete(id) } }
+        commentDao.getByAssetId(publicId).forEach { it.outboxId?.let { id -> outboxDao.delete(id) } }
+        componentDao.deleteByAssetId(publicId)
+        commentDao.deleteByAssetId(publicId)
+        assetDao.delete(localId)
+    }
+
+    private companion object {
+        const val CURSOR_KEY = "Asset"
     }
 }
 

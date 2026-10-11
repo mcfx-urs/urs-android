@@ -40,6 +40,16 @@ interface TrackerTypeDao {
         deleteSyncedAbsentFromServer(userId, types.mapNotNull { it.serverId })
     }
 
+    /** Delta-pull write path: upserts only the changed rows, no reconciliation by absence. */
+    @Transaction
+    suspend fun upsertChangedFromServer(types: List<TrackerTypeEntity>) {
+        types.forEach { item ->
+            val serverId = item.serverId ?: return@forEach
+            val existingLocalId = findLocalIdByServerId(serverId)
+            replace(item.copy(id = existingLocalId ?: 0))
+        }
+    }
+
     // Reconciliation half of [upsertFromServer] — same rationale as
     // [ListItemDao.deleteSyncedAbsentFromServer]. A type archived server-side
     // still comes back from the pull (archived types are returned), so this
@@ -77,4 +87,11 @@ interface TrackerTypeDao {
 
     @Query("DELETE FROM tracker_type WHERE id = :id")
     suspend fun delete(id: Long)
+
+    @Query("SELECT COUNT(*) FROM tracker_type")
+    suspend fun count(): Int
+
+    /** Delta-pull delete: only SYNCED rows. */
+    @Query("DELETE FROM tracker_type WHERE syncStatus = 'SYNCED' AND serverId IN (:serverIds)")
+    suspend fun deleteSyncedByServerIds(serverIds: List<String>)
 }

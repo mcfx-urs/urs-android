@@ -8,6 +8,7 @@ import ch.mcfx.urs.data.local.AppDatabase
 import ch.mcfx.urs.data.remote.ChangePasswordPayload
 import ch.mcfx.urs.data.remote.LoginPayload
 import ch.mcfx.urs.data.remote.UrsApi
+import ch.mcfx.urs.data.sync.PullCursorStore
 import ch.mcfx.urs.vpn.WireGuardManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -27,6 +28,7 @@ class AuthRepository(
     private val defaultVehicleStore: DefaultVehicleStore,
     private val choreOrderStore: ChoreOrderStore,
     private val kanbanViewModeStore: KanbanViewModeStore,
+    private val pullCursorStore: PullCursorStore,
 ) {
     suspend fun login(userName: String, password: String) {
         val tokens = api.login(LoginPayload(userName = userName, password = password))
@@ -50,6 +52,7 @@ class AuthRepository(
     suspend fun logout() {
         wireGuardManager.disconnect()
         withContext(Dispatchers.IO) { database.clearAllTables() }
+        pullCursorStore.clearAll()
         workSettingsStore.clear()
         defaultVehicleStore.clear()
         choreOrderStore.clear()

@@ -25,7 +25,9 @@ import ch.mcfx.urs.data.remote.FuelPriceDto
 import ch.mcfx.urs.data.remote.FuelPricePayload
 import ch.mcfx.urs.data.remote.GeocodeResultDto
 import ch.mcfx.urs.data.remote.UrsApi
+import ch.mcfx.urs.data.sync.PullCursorStore
 import ch.mcfx.urs.data.sync.pullCatching
+import ch.mcfx.urs.data.sync.pullDelta
 import ch.mcfx.urs.data.sync.PullOutcome
 import ch.mcfx.urs.data.sync.SyncManager
 import kotlinx.coroutines.CoroutineScope
@@ -46,6 +48,7 @@ class FuelRepository(
     private val syncManager: SyncManager,
     private val applicationScope: CoroutineScope,
     private val json: Json,
+    private val cursorStore: PullCursorStore,
 ) {
 
     // Vehicles are never created from this app, so there's no outbox/pending
@@ -335,12 +338,29 @@ class FuelRepository(
      * @return an ok [PullOutcome] if every domain below refreshed cleanly (see [PullCoordinator]).
      */
     suspend fun refreshFromBackend(): PullOutcome {
-        var outcome = refreshQuietly { api.getFillingStations().forEach { fillingStationDao.upsert(it.toEntity()) } }
-        outcome += refreshQuietly { api.getFills().forEach { fillDao.upsertFromServer(it.toEntity()) } }
+        var outcome = refreshQuietly {
+            cursorStore.pullDelta(
+                domain = STATION_CURSOR_KEY,
+                hasLocalData = { fillingStationDao.count() > 0 },
+                fetch = { since -> api.getFillingStationsDelta(since) },
+                applyFull = { items -> items.forEach { fillingStationDao.upsert(it.toEntity()) } },
+                applyDelta = { items, deletedIds -> fillingStationDao.applyDelta(items.map { it.toEntity() }, deletedIds) },
+            )
+        }
+        outcome += refreshQuietly {
+            cursorStore.pullDelta(
+                domain = FILL_CURSOR_KEY,
+                hasLocalData = { fillDao.count() > 0 },
+                fetch = { since -> api.getFillsDelta(since) },
+                applyFull = { items -> items.forEach { fillDao.upsertFromServer(it.toEntity()) } },
+                applyDelta = { items, deletedIds ->
+                    fillDao.applyDelta(items.map { it.toEntity() }, deletedIds.mapNotNull { it.toLongOrNull() })
+                },
+            )
+        }
         outcome += refreshQuietly {
             api.getCurrencies().takeIf { it.isNotEmpty() }?.let { currencyDao.upsertAll(it.map(CurrencyDto::toEntity)) }
         }
-        outcome += refreshQuietly { api.getVehicles().takeIf { it.isNotEmpty() }?.let { vehicleDao.upsertAll(it.map(VehicleDto::toEntity)) } }
         return outcome
     }
 
@@ -349,6 +369,9 @@ class FuelRepository(
     private fun formatKm(value: Float): String =
         if (value % 1f == 0f) value.toInt().toString() else value.toString()
 }
+
+private const val STATION_CURSOR_KEY = "FillingStation"
+private const val FILL_CURSOR_KEY = "Fill"
 
 private fun FillingStationDto.toEntity() = FillingStationEntity(
     id = id,

@@ -20,7 +20,9 @@ import ch.mcfx.urs.data.remote.InventoryProductQuantityPayload
 import ch.mcfx.urs.data.remote.InventoryProductSettingsPayload
 import ch.mcfx.urs.data.remote.InventorySharePayload
 import ch.mcfx.urs.data.remote.UrsApi
+import ch.mcfx.urs.data.sync.PullCursorStore
 import ch.mcfx.urs.data.sync.pullCatching
+import ch.mcfx.urs.data.sync.pullDelta
 import ch.mcfx.urs.data.sync.PullOutcome
 import ch.mcfx.urs.data.sync.SyncManager
 import java.time.LocalDateTime
@@ -59,6 +61,7 @@ class InventoryRepository(
     private val applicationScope: CoroutineScope,
     private val json: Json,
     private val authTokenStore: AuthTokenStore,
+    private val cursorStore: PullCursorStore,
 ) {
 
     fun observeInventories(): Flow<List<InventoryEntity>> =
@@ -290,33 +293,70 @@ class InventoryRepository(
 
     /**
      * Opportunistic backend refresh for the Room-cached inventories/products —
-     * same best-effort shape as [ShoppingListRepository.refreshFromBackend]:
-     * run when reachable, never blocking the UI or surfacing an error on
-     * failure. Products are only refreshed per inventory already known
-     * locally (matching the backend's own per-inventory endpoint
-     * granularity — no "all products" route exists), so a cold start still
-     * shows something for whichever inventory screen the user opens next.
-     * Never touches PENDING/FAILED rows, which exist solely via the outbox
-     * replay path above.
+     * best-effort: run when reachable, never blocking the UI or surfacing an
+     * error on failure. Two delta pulls (inventories, then the products of
+     * all visible inventories), each with its own cursor. Never touches
+     * PENDING/FAILED rows, which exist solely via the outbox replay path.
      *
-     * @return an ok [PullOutcome] if the inventory list and every inventory's products refreshed cleanly (see [PullCoordinator]).
+     * @return an ok [PullOutcome] if both pulls succeeded (see [PullCoordinator]).
      */
     suspend fun refreshFromBackend(): PullOutcome {
-        val inventoriesOutcome = refreshQuietly {
-            val inventories = api.getInventories()
-            inventoryDao.upsertFromServer(inventories.map { it.toEntity(currentUserId()) })
-        }
-        val productsOutcome = inventoryDao.observeAll(currentUserId()).first().mapNotNull { it.serverId }.map { inventoryId ->
-            refreshQuietly {
-                val products = api.getInventoryProducts(inventoryId)
-                inventoryProductDao.upsertFromServer(products.map { it.toEntity() })
-            }
-        }.fold(PullOutcome.OK) { acc, outcome -> acc + outcome }
+        val inventoriesOutcome = refreshQuietly { pullInventories() }
+        val productsOutcome = refreshQuietly { pullProducts() }
         return inventoriesOutcome + productsOutcome
+    }
+
+    private suspend fun pullInventories() {
+        val userId = currentUserId()
+        cursorStore.pullDelta(
+            domain = INVENTORY_CURSOR_KEY,
+            hasLocalData = { inventoryDao.count() > 0 },
+            fetch = { since -> api.getInventoriesDelta(since) },
+            applyFull = { inventories ->
+                val presentIds = inventories.map { it.id }.toSet()
+                inventoryDao.getSyncedServerIds(userId).filter { it !in presentIds }.forEach { removeSyncedInventory(it) }
+                inventoryDao.upsertFromServer(inventories.map { it.toEntity(userId) })
+            },
+            applyDelta = { inventories, deletedIds ->
+                deletedIds.forEach { removeSyncedInventory(it) }
+                inventoryDao.upsertFromServer(inventories.map { it.toEntity(userId) })
+            },
+        )
+    }
+
+    private suspend fun removeSyncedInventory(serverId: String) {
+        inventoryProductDao.deleteSyncedByInventoryId(serverId)
+        inventoryDao.deleteSyncedByServerId(serverId)
+    }
+
+    private suspend fun pullProducts() {
+        cursorStore.pullDelta(
+            domain = INVENTORY_PRODUCT_CURSOR_KEY,
+            hasLocalData = { inventoryProductDao.count() > 0 },
+            fetch = { since -> api.getInventoryProductsDelta(since) },
+            applyFull = { products ->
+                val byInventory = products.groupBy { it.inventoryId }
+                // Known inventories without any product are included so their SYNCED products get cleared.
+                val knownIds = inventoryDao.observeAll(currentUserId()).first().mapNotNull { it.serverId }
+                (knownIds + byInventory.keys).toSet().forEach { inventoryId ->
+                    inventoryProductDao.upsertAndReconcile(
+                        inventoryId,
+                        byInventory[inventoryId].orEmpty().map { it.toEntity() },
+                    )
+                }
+            },
+            applyDelta = { products, deletedIds ->
+                deletedIds.forEach { inventoryProductDao.deleteSyncedByServerId(it) }
+                inventoryProductDao.upsertFromServer(products.map { it.toEntity() })
+            },
+        )
     }
 
     private suspend fun refreshQuietly(block: suspend () -> Unit): PullOutcome = pullCatching("InventoryRepository", block)
 }
+
+private const val INVENTORY_CURSOR_KEY = "Inventory"
+private const val INVENTORY_PRODUCT_CURSOR_KEY = "InventoryProduct"
 
 private fun InventoryDto.toEntity(userId: String) = InventoryEntity(
     serverId = id,

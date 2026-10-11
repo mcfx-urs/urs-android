@@ -35,13 +35,28 @@ interface ListItemDao {
     /** Backend-refresh write path — see [ListDao.upsertFromServer]. */
     @Transaction
     suspend fun upsertFromServer(listId: String, items: List<ListItemEntity>) {
+        upsertChanged(items)
+        deleteSyncedAbsentFromServer(listId, items.mapNotNull { it.serverId })
+    }
+
+    /** Delta-pull write path: [upsertFromServer] without the absence reconcile. */
+    @Transaction
+    suspend fun upsertChanged(items: List<ListItemEntity>) {
         items.forEach { item ->
             val serverId = item.serverId ?: return@forEach
             val existingLocalId = findLocalIdByServerId(serverId)
             replace(item.copy(id = existingLocalId ?: 0))
         }
-        deleteSyncedAbsentFromServer(listId, items.mapNotNull { it.serverId })
     }
+
+    @Query("SELECT COUNT(*) FROM list_item")
+    suspend fun count(): Int
+
+    @Query("DELETE FROM list_item WHERE syncStatus = 'SYNCED' AND serverId = :serverId")
+    suspend fun deleteSyncedByServerId(serverId: String)
+
+    @Query("DELETE FROM list_item WHERE syncStatus = 'SYNCED' AND listId = :listId")
+    suspend fun deleteSyncedByListId(listId: String)
 
     // Reconciliation half of [upsertFromServer]: drop local SYNCED rows the
     // server no longer returns for this list, so an item deleted on another

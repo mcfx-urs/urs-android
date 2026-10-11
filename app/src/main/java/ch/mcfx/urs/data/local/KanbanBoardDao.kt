@@ -28,6 +28,9 @@ interface KanbanBoardDao {
     @Query("SELECT * FROM kanban_board WHERE outboxId = :outboxId LIMIT 1")
     suspend fun getByOutboxId(outboxId: Long): KanbanBoardEntity?
 
+    @Query("SELECT COUNT(*) FROM kanban_board")
+    suspend fun count(): Int
+
     @Query("SELECT id FROM kanban_board WHERE serverId = :serverId LIMIT 1")
     suspend fun findLocalIdByServerId(serverId: String): Long?
 

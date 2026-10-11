@@ -32,12 +32,13 @@ import ch.mcfx.urs.data.local.localIdStandIn
 import ch.mcfx.urs.data.local.localKanbanBoardId
 import ch.mcfx.urs.data.local.publicId
 import ch.mcfx.urs.data.remote.KanbanBoardDetailDto
-import ch.mcfx.urs.data.remote.KanbanBoardDto
 import ch.mcfx.urs.data.remote.KanbanCardDto
 import ch.mcfx.urs.data.remote.KanbanChecklistItemDto
 import ch.mcfx.urs.data.remote.KanbanColumnDto
 import ch.mcfx.urs.data.remote.UrsApi
+import ch.mcfx.urs.data.sync.PullCursorStore
 import ch.mcfx.urs.data.sync.pullCatching
+import ch.mcfx.urs.data.sync.pullDelta
 import ch.mcfx.urs.data.sync.PullOutcome
 import ch.mcfx.urs.data.sync.SyncManager
 import ch.mcfx.urs.notifications.KanbanCardAlarmScheduler
@@ -97,6 +98,7 @@ class KanbanRepository(
     private val syncManager: SyncManager,
     private val applicationScope: CoroutineScope,
     private val json: Json,
+    private val cursorStore: PullCursorStore,
 ) {
 
     fun observeBoards(): Flow<List<KanbanBoardEntity>> = boardDao.observeAll().map { it.sortedBy { b -> b.name.alphabeticSortKey() } }
@@ -535,23 +537,11 @@ class KanbanRepository(
     }
 
     /**
-     * Opportunistic backend refresh for the boards hub — pulls the (cheap,
-     * name-only) board list, same best-effort shape as [ShoppingListRepository
-     * .refreshFromBackend]. Board detail (columns/cards/checklist/tags) is
-     * pulled separately per board, see [refreshBoard].
-     */
-    suspend fun refreshBoards(): PullOutcome = refreshQuietly {
-        val boards = api.getKanbanBoards()
-        boardDao.upsertFromServer(boards.map { it.toEntity() })
-    }
-
-    /**
      * Opportunistic backend refresh for one board's full tree — the server
      * response is the whole nested board already, so this is a
      * straightforward cache-replace of that board's columns/cards/checklist/
-     * tags, same shape as [ShoppingListRepository.refreshFromBackend]'s
-     * per-list item pull. No-ops (returns `true`) for a board that hasn't
-     * synced yet — there's no server id to pull with.
+     * tags. No-ops (returns `true`) for a board that hasn't synced yet —
+     * there's no server id to pull with.
      */
     suspend fun refreshBoard(boardId: String): PullOutcome {
         val localId = localKanbanBoardId(boardId)
@@ -559,34 +549,62 @@ class KanbanRepository(
         if (serverId == null) return PullOutcome.OK
 
         return refreshQuietly {
-            val detail = api.getKanbanBoard(serverId)
-            boardDao.upsertOne(detail.toEntity())
-            columnDao.upsertFromServer(serverId, detail.columns.map { it.toEntity() })
-            detail.columns.forEach { column ->
-                val cards = column.cards
-                val resolvedLocalCardIds = cardDao.upsertFromServer(column.id, cards.map { it.toEntity() })
-                cards.zip(resolvedLocalCardIds).forEach { (cardDto, localCardId) ->
-                    checklistDao.upsertFromServer(cardDto.id, cardDto.checklist.map { it.toEntity() })
-                    tagDao.deleteByCardId(localCardId)
-                    tagDao.insertAll(cardDto.tags.map { TagEntity(cardId = localCardId, tagName = it.name, color = it.color) })
-                    rescheduleReminderFromServer(localCardId, cardDto)
-                }
+            applyBoardTree(api.getKanbanBoard(serverId))
+        }
+    }
+
+    // Applies one complete board (columns, cards, checklist, tags) and re-arms its card alarms.
+    private suspend fun applyBoardTree(detail: KanbanBoardDetailDto) {
+        boardDao.upsertOne(detail.toEntity())
+        columnDao.upsertFromServer(detail.id, detail.columns.map { it.toEntity() })
+        detail.columns.forEach { column ->
+            val cards = column.cards
+            val resolvedLocalCardIds = cardDao.upsertFromServer(column.id, cards.map { it.toEntity() })
+            cards.zip(resolvedLocalCardIds).forEach { (cardDto, localCardId) ->
+                checklistDao.upsertFromServer(cardDto.id, cardDto.checklist.map { it.toEntity() })
+                tagDao.deleteByCardId(localCardId)
+                tagDao.insertAll(cardDto.tags.map { TagEntity(cardId = localCardId, tagName = it.name, color = it.color) })
+                rescheduleReminderFromServer(localCardId, cardDto)
             }
         }
     }
 
+    // Delta-pull delete of a board removed on the server: board, columns, cards, checklist items,
+    // tags and card alarms. Boards with a pending local change are left alone.
+    private suspend fun deleteSyncedBoardFromServer(serverId: String) {
+        val localId = boardDao.findLocalIdByServerId(serverId) ?: return
+        val board = boardDao.getById(localId) ?: return
+        if (board.syncStatus != SyncStatus.SYNCED) return
+        val boardPublicId = board.publicId
+        columnDao.getByBoardId(boardPublicId).forEach { column ->
+            deleteColumnCascadeLocal(column.publicId)
+            column.outboxId?.let { outboxDao.delete(it) }
+        }
+        columnDao.deleteByBoardId(boardPublicId)
+        boardDao.delete(localId)
+    }
+
     /**
-     * Pulls every board's own detail after the board list itself — the
-     * PullCoordinator-facing entry point, same "list then per-item detail"
-     * two-level shape as [ShoppingListRepository.refreshFromBackend].
+     * Pulls all boards, each as its complete tree, in one delta request —
+     * the PullCoordinator-facing entry point.
      */
     suspend fun refreshFromBackend(): PullOutcome {
         syncManager.syncNow()
-        val boardsOutcome = refreshBoards()
-        val detailsOutcome = boardDao.observeAll().first().mapNotNull { it.serverId }.map { serverId ->
-            refreshBoard(serverId)
-        }.fold(PullOutcome.OK) { acc, outcome -> acc + outcome }
-        return boardsOutcome + detailsOutcome
+        return refreshQuietly {
+            cursorStore.pullDelta(
+                domain = CURSOR_KEY,
+                hasLocalData = { boardDao.count() > 0 },
+                fetch = { since -> api.getKanbanBoardsDelta(since) },
+                applyFull = { boards ->
+                    boards.forEach { applyBoardTree(it) }
+                    boardDao.deleteSyncedAbsentFromServer(boards.map { it.id })
+                },
+                applyDelta = { boards, deletedIds ->
+                    boards.forEach { applyBoardTree(it) }
+                    deletedIds.forEach { deleteSyncedBoardFromServer(it) }
+                },
+            )
+        }
     }
 
     // Re-syncs a pulled card's alarm against the server's own due date —
@@ -616,10 +634,9 @@ class KanbanRepository(
         // own call, see the feature's tracking issue).
         private val REMINDER_HOUR = LocalTime.of(8, 0).hour
         private const val KANBAN_CARD_REMINDER_ID_BASE = 400_000
+        private const val CURSOR_KEY = "KanbanBoard"
     }
 }
-
-private fun KanbanBoardDto.toEntity() = KanbanBoardEntity(serverId = id, outboxId = null, name = name, syncStatus = SyncStatus.SYNCED)
 
 private fun KanbanBoardDetailDto.toEntity() = KanbanBoardEntity(serverId = id, outboxId = null, name = name, syncStatus = SyncStatus.SYNCED)
 

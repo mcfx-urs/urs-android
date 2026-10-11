@@ -46,6 +46,28 @@ interface InventoryProductDao {
         }
     }
 
+    /** Per-inventory pull write path: upserts [products] and drops SYNCED rows of [inventoryId] missing from them. */
+    @Transaction
+    suspend fun upsertAndReconcile(inventoryId: String, products: List<InventoryProductEntity>) {
+        upsertFromServer(products)
+        deleteSyncedAbsentFromServer(inventoryId, products.mapNotNull { it.serverId })
+    }
+
+    @Query(
+        "DELETE FROM inventory_product WHERE inventoryId = :inventoryId AND syncStatus = 'SYNCED' " +
+            "AND serverId NOT IN (:serverIds)",
+    )
+    suspend fun deleteSyncedAbsentFromServer(inventoryId: String, serverIds: List<String>)
+
+    @Query("SELECT COUNT(*) FROM inventory_product")
+    suspend fun count(): Int
+
+    @Query("DELETE FROM inventory_product WHERE syncStatus = 'SYNCED' AND serverId = :serverId")
+    suspend fun deleteSyncedByServerId(serverId: String)
+
+    @Query("DELETE FROM inventory_product WHERE syncStatus = 'SYNCED' AND inventoryId = :inventoryId")
+    suspend fun deleteSyncedByInventoryId(inventoryId: String)
+
     // inventoryId is corrected here too (not just carried over from the
     // queued payload) — see InventoryProductEntity's doc comment: a product
     // queued while its parent inventory was still offline holds that

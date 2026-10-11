@@ -23,7 +23,9 @@ import ch.mcfx.urs.data.remote.ListDto
 import ch.mcfx.urs.data.remote.ListItemDto
 import ch.mcfx.urs.data.remote.ListSharePayload
 import ch.mcfx.urs.data.remote.UrsApi
+import ch.mcfx.urs.data.sync.PullCursorStore
 import ch.mcfx.urs.data.sync.pullCatching
+import ch.mcfx.urs.data.sync.pullDelta
 import ch.mcfx.urs.data.sync.PullOutcome
 import ch.mcfx.urs.data.sync.SyncManager
 import kotlinx.coroutines.CoroutineScope
@@ -63,6 +65,7 @@ class ShoppingListRepository(
     private val syncManager: SyncManager,
     private val applicationScope: CoroutineScope,
     private val json: Json,
+    private val cursorStore: PullCursorStore,
 ) {
 
     fun observeLists(): Flow<List<ListEntity>> = listDao.observeAll().map { it.sortedBy { l -> l.name.alphabeticSortKey() } }
@@ -345,21 +348,56 @@ class ShoppingListRepository(
      * that slipped through before this ordering existed) rather than
      * letting it linger forever. PENDING/FAILED rows are never touched —
      * they exist solely via the outbox replay path above.
+     *
+     * Two delta pulls: the lists, then the items of all visible lists, each
+     * with its own cursor.
      */
     /** @return an ok [PullOutcome] if the list and every list's items refreshed cleanly (see [PullCoordinator]). */
     suspend fun refreshFromBackend(): PullOutcome {
         syncManager.syncNow()
-        val listsOutcome = refreshQuietly {
-            val lists = api.getLists()
-            listDao.upsertFromServer(lists.map { it.toEntity() })
-        }
-        val itemsOutcome = listDao.observeAll().first().mapNotNull { it.serverId }.map { listId ->
-            refreshQuietly {
-                val items = api.getListItems(listId)
-                listItemDao.upsertFromServer(listId, items.map { it.toEntity() })
-            }
-        }.fold(PullOutcome.OK) { acc, outcome -> acc + outcome }
+        val listsOutcome = refreshQuietly { pullLists() }
+        val itemsOutcome = refreshQuietly { pullItems() }
         return listsOutcome + itemsOutcome
+    }
+
+    private suspend fun pullLists() {
+        cursorStore.pullDelta(
+            domain = LIST_CURSOR_KEY,
+            hasLocalData = { listDao.count() > 0 },
+            fetch = { since -> api.getListsDelta(since) },
+            applyFull = { lists ->
+                val presentIds = lists.map { it.id }.toSet()
+                listDao.getSyncedServerIds().filter { it !in presentIds }.forEach { listItemDao.deleteSyncedByListId(it) }
+                listDao.upsertFromServer(lists.map { it.toEntity() })
+            },
+            applyDelta = { lists, deletedIds ->
+                deletedIds.forEach { listId ->
+                    listItemDao.deleteSyncedByListId(listId)
+                    listDao.deleteSyncedByServerId(listId)
+                }
+                listDao.upsertChanged(lists.map { it.toEntity() })
+            },
+        )
+    }
+
+    private suspend fun pullItems() {
+        cursorStore.pullDelta(
+            domain = LIST_ITEM_CURSOR_KEY,
+            hasLocalData = { listItemDao.count() > 0 },
+            fetch = { since -> api.getListItemsDelta(since) },
+            applyFull = { items ->
+                val byList = items.groupBy { it.listId }
+                // Known lists without any item are included so their SYNCED items get cleared.
+                val knownIds = listDao.observeAll().first().mapNotNull { it.serverId }
+                (knownIds + byList.keys).toSet().forEach { listId ->
+                    listItemDao.upsertFromServer(listId, byList[listId].orEmpty().map { it.toEntity() })
+                }
+            },
+            applyDelta = { items, deletedIds ->
+                deletedIds.forEach { listItemDao.deleteSyncedByServerId(it) }
+                listItemDao.upsertChanged(items.map { it.toEntity() })
+            },
+        )
     }
 
     /**
@@ -387,6 +425,9 @@ class ShoppingListRepository(
 
     private suspend fun refreshQuietly(block: suspend () -> Unit): PullOutcome = pullCatching("ShoppingListRepository", block)
 }
+
+private const val LIST_CURSOR_KEY = "ShoppingList"
+private const val LIST_ITEM_CURSOR_KEY = "ShoppingListItem"
 
 private fun ListDto.toEntity() = ListEntity(
     serverId = id,

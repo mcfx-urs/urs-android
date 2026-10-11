@@ -41,6 +41,13 @@ interface ListDao {
     /** Backend-refresh write path — see [InventoryDao.upsertFromServer]. */
     @Transaction
     suspend fun upsertFromServer(lists: List<ListEntity>) {
+        upsertChanged(lists)
+        deleteSyncedAbsentFromServer(lists.mapNotNull { it.serverId })
+    }
+
+    /** Delta-pull write path: [upsertFromServer] without the absence reconcile. */
+    @Transaction
+    suspend fun upsertChanged(lists: List<ListEntity>) {
         lists.forEach { list ->
             val serverId = list.serverId ?: return@forEach
             val existingLocalId = findLocalIdByServerId(serverId)
@@ -56,8 +63,16 @@ interface ListDao {
                 ),
             )
         }
-        deleteSyncedAbsentFromServer(lists.mapNotNull { it.serverId })
     }
+
+    @Query("SELECT COUNT(*) FROM list")
+    suspend fun count(): Int
+
+    @Query("SELECT serverId FROM list WHERE syncStatus = 'SYNCED' AND serverId IS NOT NULL")
+    suspend fun getSyncedServerIds(): List<String>
+
+    @Query("DELETE FROM list WHERE syncStatus = 'SYNCED' AND serverId = :serverId")
+    suspend fun deleteSyncedByServerId(serverId: String)
 
     // Reconciliation half of [upsertFromServer] — same rationale as
     // [ListItemDao.deleteSyncedAbsentFromServer], scoped globally since a

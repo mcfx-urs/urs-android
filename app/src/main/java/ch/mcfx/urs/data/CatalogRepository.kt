@@ -19,6 +19,7 @@ import ch.mcfx.urs.data.remote.NewCatalogProductPayload
 import ch.mcfx.urs.data.remote.UrsApi
 import ch.mcfx.urs.data.sync.PullCursorStore
 import ch.mcfx.urs.data.sync.pullCatching
+import ch.mcfx.urs.data.sync.pullDelta
 import ch.mcfx.urs.data.sync.PullOutcome
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
@@ -94,8 +95,13 @@ class CatalogRepository(
             cursorStore.set(CURSOR_KEY, page.cursor)
         }
         val categoriesOutcome = refreshQuietly {
-            val categories = api.getCatalogCategories()
-            catalogCategoryDao.upsertAll(categories.map { it.toEntity() })
+            cursorStore.pullDelta(
+                domain = CATEGORY_CURSOR_KEY,
+                hasLocalData = { catalogCategoryDao.count() > 0 },
+                fetch = { since -> api.getCatalogCategoriesDelta(since) },
+                applyFull = { items -> catalogCategoryDao.upsertAll(items.map { it.toEntity() }) },
+                applyDelta = { items, deletedIds -> catalogCategoryDao.applyDelta(items.map { it.toEntity() }, deletedIds) },
+            )
         }
         val outcome = productsOutcome + categoriesOutcome
         if (outcome.ok) lastRefreshOkAt = SystemClock.elapsedRealtime()
@@ -363,6 +369,7 @@ class CatalogRepository(
 
     private companion object {
         const val CURSOR_KEY = "Catalog"
+        const val CATEGORY_CURSOR_KEY = "CatalogCategory"
         const val INITIAL_CURSOR = "0"
         const val MIN_REFRESH_INTERVAL_MILLIS = 60_000L
     }

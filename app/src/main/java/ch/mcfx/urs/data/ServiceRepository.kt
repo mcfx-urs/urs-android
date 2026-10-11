@@ -14,9 +14,11 @@ import ch.mcfx.urs.data.local.VehicleServiceWithTags
 import ch.mcfx.urs.data.remote.UrsApi
 import ch.mcfx.urs.data.remote.VehicleServiceDto
 import ch.mcfx.urs.data.remote.VehicleServiceTagDto
+import ch.mcfx.urs.data.sync.PullCursorStore
 import ch.mcfx.urs.data.sync.PullOutcome
 import ch.mcfx.urs.data.sync.SyncManager
 import ch.mcfx.urs.data.sync.pullCatching
+import ch.mcfx.urs.data.sync.pullDelta
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
@@ -30,6 +32,7 @@ class ServiceRepository(
     private val syncManager: SyncManager,
     private val applicationScope: CoroutineScope,
     private val json: Json,
+    private val cursorStore: PullCursorStore,
 ) {
 
     fun observeServices(vehicleId: String? = null): Flow<List<VehicleServiceWithTags>> =
@@ -201,11 +204,24 @@ class ServiceRepository(
      */
     /** @return an ok [PullOutcome] if the refresh completed cleanly (see [PullCoordinator]). */
     suspend fun refreshFromBackend(): PullOutcome = pullCatching("ServiceRepository") {
-        api.getVehicleServices().forEach { dto ->
-            vehicleServiceDao.upsertFromServer(dto.toEntity(), dto.tags.map { it.toEntity() })
-        }
+        cursorStore.pullDelta(
+            domain = CURSOR_KEY,
+            hasLocalData = { vehicleServiceDao.count() > 0 },
+            fetch = { since -> api.getVehicleServicesDelta(since) },
+            applyFull = { items ->
+                items.forEach { dto -> vehicleServiceDao.upsertFromServer(dto.toEntity(), dto.tags.map { it.toEntity() }) }
+            },
+            applyDelta = { items, deletedIds ->
+                vehicleServiceDao.applyDelta(
+                    items.map { dto -> dto.toEntity() to dto.tags.map { it.toEntity() } },
+                    deletedIds.mapNotNull { it.toLongOrNull() },
+                )
+            },
+        )
     }
 }
+
+private const val CURSOR_KEY = "Service"
 
 private fun VehicleServiceDto.toEntity() = VehicleServiceEntity(
     serverId = id.toLongOrNull(),

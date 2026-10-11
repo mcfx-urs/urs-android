@@ -62,6 +62,17 @@ interface InventoryDao {
         }
     }
 
+    @Query("SELECT COUNT(*) FROM inventory")
+    suspend fun count(): Int
+
+    // Delta/full pull reconciliation: SYNCED rows of this user that the server
+    // no longer lists are deleted (or unshared) there.
+    @Query("SELECT serverId FROM inventory WHERE syncStatus = 'SYNCED' AND userId = :userId AND serverId IS NOT NULL")
+    suspend fun getSyncedServerIds(userId: String): List<String>
+
+    @Query("DELETE FROM inventory WHERE syncStatus = 'SYNCED' AND serverId = :serverId")
+    suspend fun deleteSyncedByServerId(serverId: String)
+
     @Query(
         "UPDATE inventory SET name = :name, syncStatus = :syncStatus, outboxId = :outboxId WHERE id = :id",
     )
