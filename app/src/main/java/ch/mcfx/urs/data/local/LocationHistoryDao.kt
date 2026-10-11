@@ -45,8 +45,20 @@ interface LocationHistoryDao {
     @Query("DELETE FROM location_history WHERE syncStatus = 'SYNCED' AND serverId = :serverId")
     suspend fun deleteSyncedByServerId(serverId: Long)
 
+    @Query("SELECT COUNT(*) FROM location_history WHERE syncStatus = 'SYNCED'")
+    suspend fun syncedCount(): Int
+
+    /** Delta-pull write path: inserts or replaces the given points by serverId and never deletes anything. */
+    @Transaction
+    suspend fun upsertFromServer(serverPoints: List<LocationHistoryEntity>) {
+        serverPoints.forEach { point ->
+            val serverId = point.serverId ?: return@forEach
+            replace(point.copy(id = findLocalIdByServerId(serverId) ?: 0))
+        }
+    }
+
     /**
-     * Backend-refresh write path: replaces the local SYNCED set
+     * Full-pull write path: replaces the local SYNCED set
      * with exactly what the backend returned, deleting a local SYNCED row
      * whose serverId is no longer present server-side (e.g. pruned directly
      * in the DB) instead of just leaving it stale. PENDING/FAILED rows are

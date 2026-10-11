@@ -43,6 +43,7 @@ import ch.mcfx.urs.data.sync.PullCoordinator
 import ch.mcfx.urs.data.sync.ReachabilityChecker
 import ch.mcfx.urs.data.sync.SyncManager
 import ch.mcfx.urs.data.sync.PullByteCounter
+import ch.mcfx.urs.data.sync.PullCursorStore
 import ch.mcfx.urs.data.sync.SyncStatusStore
 import ch.mcfx.urs.data.sync.SyncWorker
 import ch.mcfx.urs.location.LocationActivityRecognitionManager
@@ -296,6 +297,7 @@ class AppContainer(context: Context) {
 
     val reachabilityChecker = ReachabilityChecker()
     val syncStatusStore = SyncStatusStore(context)
+    val pullCursorStore = PullCursorStore(context)
     val syncManager = SyncManager(
         api = ursApi,
         fillDao = database.fillDao(),
@@ -420,6 +422,7 @@ class AppContainer(context: Context) {
     val locationHistoryRepository = LocationHistoryRepository(
         api = ursApi,
         locationHistoryDao = database.locationHistoryDao(),
+        cursorStore = pullCursorStore,
     )
     val bakingRepository = BakingRepository(
         context = appContext,

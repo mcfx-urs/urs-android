@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Location history is pulled as a delta: only points added since the last pull are fetched, a full pull happens only on first start, after a local reset or when the server rejects the stored cursor (#121)
 - Automatic pulls are skipped for 2 minutes after a successful pull, a connectivity event starts one pull instead of two, and catalog refreshes share one serialized request that is skipped within a minute of the last one; manual sync is not limited (#120)
 - Category management no longer offers or shows a category image; tiles show the title only (#123)
 - Chores logged from the watch are timed events starting at the current time rounded down to 15 minutes instead of all-day events (#104)

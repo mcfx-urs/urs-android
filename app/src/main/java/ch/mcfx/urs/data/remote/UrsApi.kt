@@ -327,6 +327,13 @@ interface UrsApi {
         @Query("order") order: String,
     ): List<LocationHistoryDto>
 
+    /** Delta form of [getLocationHistory]: entries with an id after the `since` cursor (`"0"` = from the start). */
+    @GET("api/v1/location-history")
+    suspend fun getLocationHistoryDelta(
+        @Query("since") since: String,
+        @Query("limit") limit: String,
+    ): LocationHistoryDeltaDto
+
     @POST("api/v1/baking/plans")
     suspend fun createBakePlan(@Body payload: BakePlanCreatePayload): BakePlanDto
 

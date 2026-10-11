@@ -6,32 +6,31 @@ import ch.mcfx.urs.data.local.LocationHistoryEntity
 import ch.mcfx.urs.data.local.SyncStatus
 import ch.mcfx.urs.data.remote.LocationHistoryDto
 import ch.mcfx.urs.data.remote.UrsApi
+import ch.mcfx.urs.data.sync.PullCursorStore
 import ch.mcfx.urs.data.sync.pullCatching
 import ch.mcfx.urs.data.sync.PullOutcome
 import java.time.LocalDateTime
 import java.time.ZoneId
 
 /**
- * Pulls the authenticated user's full server-side location history down
- * into Room so Breadcrumbs shows every point regardless of which
- * device/install originally captured it — the upload-only outbox sync
+ * Pulls the authenticated user's server-side location history down into
+ * Room so Breadcrumbs shows every point regardless of which device/install
+ * originally captured it — the upload-only outbox sync
  * ([ch.mcfx.urs.data.sync.SyncManager.replayCreateLocationHistory]) never
  * had a pull path back down.
  *
- * Pages through the endpoint's hard cap (`sanitizeLimit`'s 10000 in
- * `urs-backend`) rather than trusting a single call: an always-on periodic
- * capture (as low as 1 minute between fixes) blows past 10000 rows within
- * ~7 weeks, let alone a year, so a single page is nowhere near "the whole
- * history" once Breadcrumbs has been running for a while. Fetching a single
- * short page (the endpoint's own default is only 50) or a single capped one
- * would both silently truncate the result and make
- * [LocationHistoryDao.reconcileFromServer] delete every local point past
- * whatever page boundary it stopped at, mistaking "not returned this call"
- * for "removed server-side".
+ * Delta pull: the backend's `since` cursor is the last pulled
+ * `location_history_id`, so a normal pull only fetches points added since.
+ * A full pull (no stored cursor, no synced rows locally, or a cursor the
+ * backend rejected and answered with `full`) walks every page from the start
+ * and reconciles the local SYNCED set against it, as the pre-delta pull did.
+ * Pages are capped by the backend's `sanitizeLimit` (10000), so the loop
+ * follows `has_more` instead of trusting a single call.
  */
 class LocationHistoryRepository(
     private val api: UrsApi,
     private val locationHistoryDao: LocationHistoryDao,
+    private val cursorStore: PullCursorStore,
 ) {
     /**
      * Opportunistic backend refresh — run when reachable, never blocking
@@ -40,39 +39,39 @@ class LocationHistoryRepository(
      */
     /** @return an ok [PullOutcome] if the refresh completed cleanly (see [PullCoordinator]). */
     suspend fun refreshFromBackend(): PullOutcome = refreshQuietly {
-        locationHistoryDao.reconcileFromServer(fetchAllPages().map { it.toEntity() })
-    }
-
-    /**
-     * Walks every page oldest-to-newest, advancing `from` to one second past
-     * the last row of each page — `location_history_captured_at >= from` on
-     * the backend side means re-sending that same last row's timestamp
-     * as-is would just re-fetch it forever. Safe under this app's own
-     * capture cadence (1 minute is the shortest interval it ever schedules,
-     * see `LocationCaptureScheduler`), so no two of a single user's rows can
-     * land in the same second. Stops at the first page shorter than
-     * [PAGE_SIZE] — the natural end of the data, not an arbitrary cutoff.
-     */
-    private suspend fun fetchAllPages(): List<LocationHistoryDto> {
-        val allPoints = mutableListOf<LocationHistoryDto>()
-        var from = EPOCH_START
+        val storedCursor = cursorStore.get(CURSOR_KEY)
+        var cursor = if (storedCursor != null && locationHistoryDao.syncedCount() > 0) storedCursor else INITIAL_CURSOR
+        val fullPoints = mutableListOf<LocationHistoryEntity>()
+        var isFull = false
+        var firstPage = true
         while (true) {
-            val page = api.getLocationHistory(from = from, limit = PAGE_SIZE, order = "ASC")
-            if (page.isEmpty()) break
-            allPoints += page
-            if (page.size < PAGE_SIZE.toInt()) break
-            from = LocalDateTime.parse(page.last().capturedAt, BeerStats.DATE_FORMAT)
-                .plusSeconds(1)
-                .format(BeerStats.DATE_FORMAT)
+            val page = api.getLocationHistoryDelta(since = cursor, limit = PAGE_SIZE)
+            if (firstPage) {
+                isFull = page.full
+                firstPage = false
+            }
+            val points = page.items.map { it.toEntity() }
+            if (isFull) {
+                fullPoints += points
+            } else {
+                locationHistoryDao.upsertFromServer(points)
+                cursorStore.set(CURSOR_KEY, page.cursor)
+            }
+            cursor = page.cursor
+            if (!page.hasMore) break
         }
-        return allPoints
+        if (isFull) {
+            locationHistoryDao.reconcileFromServer(fullPoints)
+            cursorStore.set(CURSOR_KEY, cursor)
+        }
     }
 
     private suspend fun refreshQuietly(block: suspend () -> Unit): PullOutcome = pullCatching("LocationHistoryRepository", block)
 
     companion object {
         private const val PAGE_SIZE = "10000"
-        private const val EPOCH_START = "1970-01-01 00:00:00"
+        private const val INITIAL_CURSOR = "0"
+        private const val CURSOR_KEY = "LocationHistory"
     }
 }
 

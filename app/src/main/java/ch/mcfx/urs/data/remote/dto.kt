@@ -724,6 +724,15 @@ data class LocationHistoryDto(
 )
 
 @Serializable
+data class LocationHistoryDeltaDto(
+    @SerialName("items") val items: List<LocationHistoryDto> = emptyList(),
+    @SerialName("deleted_ids") val deletedIds: List<String> = emptyList(),
+    @SerialName("cursor") val cursor: String,
+    @SerialName("has_more") val hasMore: Boolean = false,
+    @SerialName("full") val full: Boolean = false,
+)
+
+@Serializable
 data class LoginPayload(
     @SerialName("user_name") val userName: String,
     @SerialName("password") val password: String,
