@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.net.NetworkCapabilities
 import android.net.wifi.WifiInfo
-import android.os.Build
 import androidx.core.content.ContextCompat
 
 private const val UNKNOWN_SSID = "<unknown ssid>"
@@ -14,10 +13,10 @@ private const val UNKNOWN_SSID = "<unknown ssid>"
 // than queried synchronously: even a NetworkCallback-delivered WifiInfo comes
 // back redacted (SSID "<unknown ssid>") unless both ACCESS_FINE_LOCATION and
 // NEARBY_WIFI_DEVICES are granted, AND the callback itself is registered with
-// FLAG_INCLUDE_LOCATION_INFO (see NetworkGate.startObserving) — without that
+// FLAG_INCLUDE_LOCATION_INFO (see NetworkGate.probeSsid) — without that
 // flag, location-sensitive fields are stripped regardless of permissions
-// held. NetworkGate feeds this from the Wi-Fi NetworkCallback it already
-// keeps registered.
+// held. NetworkGate feeds this from a short-lived probe callback it registers
+// on every Wi-Fi connect.
 class WifiSsidReader(private val context: Context) {
 
     @Volatile
@@ -34,10 +33,6 @@ class WifiSsidReader(private val context: Context) {
     fun currentSsid(): String? = if (hasPermission()) lastKnownSsid else null
 
     fun onWifiCapabilitiesChanged(capabilities: NetworkCapabilities) {
-        // transportInfo requires API 29 — below that, there's no way to read
-        // the SSID via this path at all (a platform limitation, not a bug);
-        // currentSsid() simply never resolves, so the gate always tunnels.
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
         val info = capabilities.transportInfo as? WifiInfo ?: return
         val ssid = info.ssid?.trim('"')?.takeIf { it.isNotBlank() && it != UNKNOWN_SSID } ?: return
         lastKnownSsid = ssid

@@ -6,14 +6,15 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.util.concurrent.atomic.AtomicBoolean
+
+private const val SSID_PROBE_TIMEOUT_MILLIS = 10_000L
 
 // Decides whether the WireGuard tunnel needs to come up before reaching the
 // backend: skip it (and tear it down if already up) on the configured home
@@ -71,8 +72,8 @@ class NetworkGate(
     private var userDisabledTunnel = false
 
     // Startup can trigger ensureReachable() from two places at once (the
-    // initial app-launch check and startObserving()'s onCapabilitiesChanged,
-    // which fires immediately for an already-connected Wi-Fi network) —
+    // initial app-launch check and startObserving()'s SSID probe, which
+    // reports immediately for an already-connected Wi-Fi network) —
     // without serializing them, two concurrent runs could interleave and
     // reach opposite conclusions (one disconnecting, the other reconnecting)
     // off of inconsistent in-flight state.
@@ -175,75 +176,84 @@ class NetworkGate(
     // at app startup — otherwise arriving home (or leaving it) while the app
     // is already open would go unnoticed until the next cold start. Safe to
     // call more than once; only the first registration takes effect.
+    //
+    // This callback is registered without FLAG_INCLUDE_LOCATION_INFO on
+    // purpose: Android checks the location permission for the app on every
+    // delivery to a callback registered with it, and onCapabilitiesChanged
+    // fires every 20-90 s on a connected Wi-Fi (GitHub issue #124). The SSID
+    // is read by a short-lived flagged probe on connect instead, see
+    // probeSsid().
     fun startObserving(scope: CoroutineScope) {
         if (networkCallback != null) return
         val connectivityManager = ContextCompat.getSystemService(context, ConnectivityManager::class.java)
             ?: return
-        val request = NetworkRequest.Builder()
-            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-            .build()
-        // FLAG_INCLUDE_LOCATION_INFO (API 31+): without it, the WifiInfo
-        // delivered here always carries a redacted SSID ("<unknown ssid>")
-        // regardless of permissions held. Not available below API 31 — the
-        // plain no-arg constructor there means home-SSID detection simply
-        // can't work pre-31 (a real platform limitation, not a bug), so the
-        // gate always tunnels rather than risk skipping VPN on a network it
-        // can't actually verify.
-        val callback = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            wifiCallbackWithLocationInfo(scope)
-        } else {
-            wifiCallbackLegacy(scope)
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                probeSsid(scope)
+            }
+
+            override fun onLost(network: Network) {
+                ssidReader.onWifiLost()
+                reportHomeWifi()
+                scope.launch { ensureReachable() }
+            }
         }
-        connectivityManager.registerNetworkCallback(request, callback)
+        connectivityManager.registerNetworkCallback(wifiRequest(), callback)
         networkCallback = callback
         // No Wi-Fi at all means no callback will ever report it: say so, so a state remembered from before doesn't stay.
-        if (!isWifiConnectedNow()) onHomeWifiChanged(false)
+        if (!isWifiConnectedNow()) {
+            onHomeWifiChanged(false)
+        } else {
+            // A steady connection may not get an onAvailable dispatch on registration.
+            probeSsid(scope)
+        }
     }
 
-    // onCapabilitiesChanged fires on every routine capability tick (RSSI-only
-    // updates included, see ensureReachableLocked()'s own comment on this),
-    // not just on a genuine connectivity change. ensureReachableLocked()
-    // already calls onConnectivityAvailable() itself on every outcome that's
-    // actually reachable (OnHomeNetwork, already-Connected, freshly
-    // Connected) — an unconditional extra call here fired it a second time on
-    // every such tick, and even on outcomes that aren't reachable at all
-    // (e.g. ConnectFailed), triggering a redundant PullCoordinator.pullAll()
-    // pass each time (GitHub issue #71).
-    @RequiresApi(Build.VERSION_CODES.S)
-    private fun wifiCallbackWithLocationInfo(scope: CoroutineScope): ConnectivityManager.NetworkCallback =
-        object : ConnectivityManager.NetworkCallback(FLAG_INCLUDE_LOCATION_INFO) {
+    private fun wifiRequest() = NetworkRequest.Builder()
+        .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+        .build()
+
+    private var ssidProbe: ConnectivityManager.NetworkCallback? = null
+
+    // FLAG_INCLUDE_LOCATION_INFO is what makes the delivered WifiInfo carry the
+    // real SSID instead of "<unknown ssid>" — and what makes Android count a
+    // location access per delivery. So the flagged callback lives only until
+    // its first delivery (registering dispatches the current state at once),
+    // with a timeout as a safety net. Whatever the outcome, the home-Wi-Fi
+    // report and the reachability check run once afterwards.
+    @Synchronized
+    private fun probeSsid(scope: CoroutineScope) {
+        val connectivityManager = ContextCompat.getSystemService(context, ConnectivityManager::class.java)
+            ?: return
+        ssidProbe?.let { runCatching { connectivityManager.unregisterNetworkCallback(it) } }
+        val finished = AtomicBoolean(false)
+        lateinit var probe: ConnectivityManager.NetworkCallback
+        fun finish() {
+            if (!finished.compareAndSet(false, true)) return
+            runCatching { connectivityManager.unregisterNetworkCallback(probe) }
+            reportHomeWifi()
+            scope.launch { ensureReachable() }
+        }
+        probe = object : ConnectivityManager.NetworkCallback(FLAG_INCLUDE_LOCATION_INFO) {
             override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
                 ssidReader.onWifiCapabilitiesChanged(capabilities)
-                reportHomeWifi()
-                scope.launch { ensureReachable() }
-            }
-
-            override fun onLost(network: Network) {
-                ssidReader.onWifiLost()
-                reportHomeWifi()
-                scope.launch { ensureReachable() }
+                finish()
             }
         }
-
-    private fun wifiCallbackLegacy(scope: CoroutineScope): ConnectivityManager.NetworkCallback =
-        object : ConnectivityManager.NetworkCallback() {
-            override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
-                ssidReader.onWifiCapabilitiesChanged(capabilities)
-                reportHomeWifi()
-                scope.launch { ensureReachable() }
-            }
-
-            override fun onLost(network: Network) {
-                ssidReader.onWifiLost()
-                reportHomeWifi()
-                scope.launch { ensureReachable() }
-            }
+        ssidProbe = probe
+        connectivityManager.registerNetworkCallback(wifiRequest(), probe)
+        scope.launch {
+            delay(SSID_PROBE_TIMEOUT_MILLIS)
+            finish()
         }
+    }
 
     fun stopObserving() {
         val callback = networkCallback ?: return
         val connectivityManager = ContextCompat.getSystemService(context, ConnectivityManager::class.java)
         connectivityManager?.unregisterNetworkCallback(callback)
+        ssidProbe?.let { runCatching { connectivityManager?.unregisterNetworkCallback(it) } }
+        ssidProbe = null
         networkCallback = null
     }
 }
