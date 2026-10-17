@@ -5,6 +5,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-10-17
+
+### Changed
+
+- All other lists (vehicles, fuel, services, inventories, shopping lists, work time, notes, chores, kanban, assets, catalog categories, tags, work time month overrides) are pulled as a delta, currencies are fetched once per login; inventory products, shopping list items and kanban boards are fetched with one request each instead of one per parent (#121)
+- Catalog products are pulled as a delta: only products changed or deleted since the last pull are fetched, a full pull happens only on first start, after a local reset or when the server rejects the stored cursor (#121)
+- Location history is pulled as a delta: only points added since the last pull are fetched, a full pull happens only on first start, after a local reset or when the server rejects the stored cursor (#121)
+- Data is pulled when the app is opened (at most every 30 seconds) and every 15 minutes; a connectivity event only sends the outbox. Periodic pulls are skipped for 2 minutes after a successful pull, and catalog refreshes share one serialized request that is skipped within a minute of the last one; manual sync is not limited (#120)
+- Category management no longer offers or shows a category image; tiles show the title only (#123)
+- Chores logged from the watch are timed events starting at the current time rounded down to 15 minutes instead of all-day events (#104)
+- Completing or reopening a note saves it, returns to the previous list and shows a brief confirmation (#107)
+- Notes Home tile has a "+" shortcut badge that opens a new note and shows the Notes overview after saving it (#106)
+- Product Management marks products without a category or without an image with a badge on their tile (#102)
+- Default Home layout reworked and the K, Gokart and Price Monitor placeholder tiles removed (#97)
+- Location History settings have a "Pause on home Wi-Fi" toggle: capture pauses while connected to one of the home Wi-Fi networks from the VPN settings and resumes when leaving it, with one fix captured on connecting to and on leaving it (#108)
+
+### Fixed
+
+- A Kanban card dragged across columns stays fully visible instead of being cut off at the column edge (#112)
+- Dragging a Kanban card shows a faded copy at the drop slot while the cards below make room, the board and the column scroll when the card is held near their edges, and a card or column is picked up after a shorter hold (#112)
+- Kanban cards can be dragged in the list layout too (#112)
+- A dragged Kanban column moves as a whole while the other columns make room, and the board scrolls when it is held near the left or right edge (#112)
+
 ## [1.10.0] - 2026-10-09
 
 ### Fixed

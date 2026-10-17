@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-10-17
+
 ### Changed
 
 - All other lists (vehicles, fuel, services, inventories, shopping lists, work time, notes, chores, kanban, assets, catalog categories, tags, work time month overrides) are pulled as a delta, currencies are fetched once per login; inventory products, shopping list items and kanban boards are fetched with one request each instead of one per parent (#121)
