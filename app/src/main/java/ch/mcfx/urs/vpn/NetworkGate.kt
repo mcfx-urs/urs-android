@@ -34,6 +34,11 @@ class NetworkGate(
     // No WorkManager dependency here; the caller supplies what "available"
     // should do.
     private val onConnectivityAvailable: () -> Unit = {},
+    // Invoked from the Wi-Fi callback with whether the phone is on one of the
+    // configured home networks (false when none is configured, the location
+    // permission is missing or Wi-Fi is gone) — the caller decides what to do
+    // with a change, e.g. pausing location capture at home.
+    private val onHomeWifiChanged: (Boolean) -> Unit = {},
 ) {
 
     sealed interface Result {
@@ -47,6 +52,11 @@ class NetworkGate(
     }
 
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
+
+    private fun reportHomeWifi() {
+        val homeSsids = configRepository.getHomeSsids()
+        onHomeWifiChanged(homeSsids.isNotEmpty() && ssidReader.currentSsid() in homeSsids)
+    }
 
     // Set by userDisconnect() (the Settings screen's manual "Disconnect"
     // button) and cleared by userConnect() (manual "Connect"). Without this,
@@ -186,6 +196,8 @@ class NetworkGate(
         }
         connectivityManager.registerNetworkCallback(request, callback)
         networkCallback = callback
+        // No Wi-Fi at all means no callback will ever report it: say so, so a state remembered from before doesn't stay.
+        if (!isWifiConnectedNow()) onHomeWifiChanged(false)
     }
 
     // onCapabilitiesChanged fires on every routine capability tick (RSSI-only
@@ -202,11 +214,13 @@ class NetworkGate(
         object : ConnectivityManager.NetworkCallback(FLAG_INCLUDE_LOCATION_INFO) {
             override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
                 ssidReader.onWifiCapabilitiesChanged(capabilities)
+                reportHomeWifi()
                 scope.launch { ensureReachable() }
             }
 
             override fun onLost(network: Network) {
                 ssidReader.onWifiLost()
+                reportHomeWifi()
                 scope.launch { ensureReachable() }
             }
         }
@@ -215,11 +229,13 @@ class NetworkGate(
         object : ConnectivityManager.NetworkCallback() {
             override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
                 ssidReader.onWifiCapabilitiesChanged(capabilities)
+                reportHomeWifi()
                 scope.launch { ensureReachable() }
             }
 
             override fun onLost(network: Network) {
                 ssidReader.onWifiLost()
+                reportHomeWifi()
                 scope.launch { ensureReachable() }
             }
         }

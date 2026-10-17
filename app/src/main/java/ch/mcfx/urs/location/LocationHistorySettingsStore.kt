@@ -60,6 +60,11 @@ private const val KEY_ACTIVITY_PENDING_STILL_STREAK = "activity_pending_still_st
 private const val KEY_ACTIVITY_LAST_LABEL = "activity_last_label"
 private const val KEY_ACTIVITY_LAST_CONFIDENCE = "activity_last_confidence"
 
+private const val KEY_HOME_WIFI_PAUSE_ENABLED = "home_wifi_pause_enabled"
+// Sub-state: whether the phone is connected to one of the configured home
+// Wi-Fi networks right now, fed by NetworkGate's Wi-Fi callback.
+private const val KEY_ON_HOME_WIFI = "on_home_wifi"
+
 private const val KEY_TRACK_COLOR_OLD = "track_color_old"
 private const val KEY_TRACK_COLOR_MID = "track_color_mid"
 private const val KEY_TRACK_COLOR_NEW = "track_color_new"
@@ -251,6 +256,21 @@ class LocationHistorySettingsStore(context: Context) {
 
     fun setActivityStillFallbackMinutes(minutes: Long) {
         prefs.edit().putLong(KEY_ACTIVITY_STILL_FALLBACK_MINUTES, minutes).apply()
+    }
+
+    fun isHomeWifiPauseEnabled(): Boolean = prefs.getBoolean(KEY_HOME_WIFI_PAUSE_ENABLED, false)
+
+    fun setHomeWifiPauseEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_HOME_WIFI_PAUSE_ENABLED, enabled).apply()
+    }
+
+    fun isOnHomeWifi(): Boolean = prefs.getBoolean(KEY_ON_HOME_WIFI, false)
+
+    /** Returns whether the stored value changed. */
+    fun setOnHomeWifi(onHomeWifi: Boolean): Boolean {
+        if (onHomeWifi == isOnHomeWifi()) return false
+        prefs.edit().putBoolean(KEY_ON_HOME_WIFI, onHomeWifi).apply()
+        return true
     }
 
     fun isCurrentlyStill(): Boolean = prefs.getBoolean(KEY_ACTIVITY_IS_STILL, false)

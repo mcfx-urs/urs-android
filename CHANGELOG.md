@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Completing or reopening a note saves it, returns to the previous list and shows a brief confirmation (#107)
 - Notes Home tile has a "+" shortcut badge that opens a new note and shows the Notes overview after saving it (#106)
 - Product Management marks products without a category or without an image with a badge on their tile (#102)
+- Location History settings have a "Pause on home Wi-Fi" toggle: capture pauses while connected to one of the home Wi-Fi networks from the VPN settings and resumes when leaving it, with one fix captured on connecting to and on leaving it (#108)
 
 ### Fixed
 

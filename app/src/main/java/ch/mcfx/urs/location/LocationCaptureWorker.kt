@@ -40,7 +40,10 @@ class LocationCaptureWorker(context: Context, params: WorkerParameters) : Corout
         // since this run was scheduled, and would otherwise misreport that
         // change as scheduling drift.
         val runStartMillis = System.currentTimeMillis()
-        val scheduledForMillis = store.nextScheduledForMillis().takeIf { it > 0L }
+        // A forced run is a one-off capture outside the schedule (LocationCaptureScheduler.captureOnce):
+        // it runs even while capture is paused and leaves the schedule alone.
+        val forced = inputData.getBoolean(INPUT_FORCED, false)
+        val scheduledForMillis = if (forced) null else store.nextScheduledForMillis().takeIf { it > 0L }
         val mode = LocationCaptureModeManager.currentModeLabel(store)
 
         if (!store.isEnabled()) return Result.success()
@@ -71,25 +74,27 @@ class LocationCaptureWorker(context: Context, params: WorkerParameters) : Corout
         // from wherever the pause was triggered, and re-arming here would
         // undo that.
         val intervalMinutes = LocationCaptureModeManager.effectiveIntervalMinutes(store)
-        if (intervalMinutes == null) {
-            app.container.locationCaptureDebugLog.logCapture(
-                "SKIPPED",
-                "paused",
-                mode = mode,
-                startMillis = runStartMillis,
-                endMillis = runStartMillis,
-                scheduledForMillis = scheduledForMillis,
-            )
-            return Result.success()
-        }
-        if (!store.isPrecisionModeEnabled()) {
-            if (intervalMinutes < LocationCaptureScheduler.PERIODIC_FLOOR_MINUTES) {
-                LocationCaptureScheduler.scheduleNext(applicationContext, intervalMinutes, ExistingWorkPolicy.APPEND_OR_REPLACE)
-            } else {
-                // Periodic WorkManager mode re-triggers itself automatically —
-                // nothing else stamps the next expected fire time, so this run
-                // does it based on its own effective interval.
-                store.setNextScheduledForMillis(runStartMillis + intervalMinutes * 60_000L)
+        if (!forced) {
+            if (intervalMinutes == null) {
+                app.container.locationCaptureDebugLog.logCapture(
+                    "SKIPPED",
+                    "paused",
+                    mode = mode,
+                    startMillis = runStartMillis,
+                    endMillis = runStartMillis,
+                    scheduledForMillis = scheduledForMillis,
+                )
+                return Result.success()
+            }
+            if (!store.isPrecisionModeEnabled()) {
+                if (intervalMinutes < LocationCaptureScheduler.PERIODIC_FLOOR_MINUTES) {
+                    LocationCaptureScheduler.scheduleNext(applicationContext, intervalMinutes, ExistingWorkPolicy.APPEND_OR_REPLACE)
+                } else {
+                    // Periodic WorkManager mode re-triggers itself automatically —
+                    // nothing else stamps the next expected fire time, so this run
+                    // does it based on its own effective interval.
+                    store.setNextScheduledForMillis(runStartMillis + intervalMinutes * 60_000L)
+                }
             }
         }
 
@@ -111,7 +116,9 @@ class LocationCaptureWorker(context: Context, params: WorkerParameters) : Corout
         // across many consecutive captures would never register — an
         // accepted trade-off for this coarse breadcrumbs use case, not a
         // precise-tracking one.
-        val stationaryThresholdMeters = store.stationaryThresholdMeters()
+        // A forced capture (connecting to or leaving a home Wi-Fi) is stored regardless: it marks the
+        // arrival or departure even if the last point is close.
+        val stationaryThresholdMeters = if (forced) 0L else store.stationaryThresholdMeters()
         if (stationaryThresholdMeters > 0) {
             val lastPoint = app.container.database.locationHistoryDao().getLatest()
             if (lastPoint != null) {
@@ -148,7 +155,7 @@ class LocationCaptureWorker(context: Context, params: WorkerParameters) : Corout
         )
         app.container.locationCaptureDebugLog.logCapture(
             "FIRED",
-            "every $intervalMinutes min",
+            if (forced) "home Wi-Fi change" else "every $intervalMinutes min",
             mode = mode,
             startMillis = runStartMillis,
             endMillis = System.currentTimeMillis(),
@@ -196,6 +203,7 @@ class LocationCaptureWorker(context: Context, params: WorkerParameters) : Corout
     }
 
     companion object {
+        const val INPUT_FORCED = "forced"
         private const val SETTLE_FIX_COUNT = 3
     }
 }

@@ -129,6 +129,7 @@ class AboutViewModel(
     private fun locationCaptureStatus(): LocationCaptureStatus {
         val store = locationHistorySettingsStore
         if (!store.isEnabled()) return LocationCaptureStatus.DISABLED
+        if (store.isHomeWifiPauseEnabled() && store.isOnHomeWifi()) return LocationCaptureStatus.PAUSED
         if (store.isActivityPauseEnabled() && store.isCurrentlyStill() && store.activityStillFallbackMinutes() <= 0L) {
             return LocationCaptureStatus.PAUSED
         }

@@ -11,7 +11,8 @@ import ch.mcfx.urs.UrsApplication
  * outcome: a toggle flipping, a geofence transition, an activity-state
  * change, or the worker's own settle-check.
  *
- * Precedence: STILL (if the activity toggle is on) pauses/throttles
+ * Precedence: being on a home Wi-Fi (if that toggle is on) pauses capture
+ * entirely; then STILL (if the activity toggle is on) pauses/throttles
  * regardless of geofence state; otherwise the geofence toggle's dense/
  * sparse sub-state decides; otherwise the plain fixed interval applies.
  * Geofence monitoring itself keeps running in the background (cheap,
@@ -22,6 +23,7 @@ object LocationCaptureModeManager {
 
     /** Null means capture should be paused entirely. */
     fun effectiveIntervalMinutes(store: LocationHistorySettingsStore): Long? {
+        if (store.isHomeWifiPauseEnabled() && store.isOnHomeWifi()) return null
         if (store.isActivityPauseEnabled() && store.isCurrentlyStill()) {
             val fallback = store.activityStillFallbackMinutes()
             return if (fallback <= 0L) null else fallback
@@ -41,6 +43,7 @@ object LocationCaptureModeManager {
      */
     fun currentModeLabel(store: LocationHistorySettingsStore): String {
         val parts = buildList {
+            if (store.isHomeWifiPauseEnabled()) add(if (store.isOnHomeWifi()) "home-wifi" else "away")
             if (store.isActivityPauseEnabled()) add(if (store.isCurrentlyStill()) "still" else "moving")
             if (store.isGeofenceAdaptiveEnabled()) add(if (store.isGeofenceDense()) "geofence-dense" else "geofence-sparse")
         }

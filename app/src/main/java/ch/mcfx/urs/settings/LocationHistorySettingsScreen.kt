@@ -100,6 +100,7 @@ fun LocationHistorySettingsScreen(
     val geofenceRadiusMeters by viewModel.geofenceRadiusMeters.collectAsStateWithLifecycle()
     val geofenceSparseIntervalMinutes by viewModel.geofenceSparseIntervalMinutes.collectAsStateWithLifecycle()
     val activityPauseEnabled by viewModel.activityPauseEnabled.collectAsStateWithLifecycle()
+    val homeWifiPauseEnabled by viewModel.homeWifiPauseEnabled.collectAsStateWithLifecycle()
     val activityStillFallbackMinutes by viewModel.activityStillFallbackMinutes.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
@@ -405,6 +406,29 @@ fun LocationHistorySettingsScreen(
                             modifier = Modifier.fillMaxWidth().padding(top = Spacing.s),
                         )
                     }
+                }
+            }
+
+            UrsCard(
+                radius = Radius.row,
+                contentPadding = PaddingValues(horizontal = Spacing.l, vertical = 14.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        UrsText(stringResource(R.string.location_history_home_wifi_pause), style = UrsTheme.typography.body)
+                        UrsCheckbox(checked = homeWifiPauseEnabled, onCheckedChange = viewModel::setHomeWifiPauseEnabled)
+                    }
+                    UrsText(
+                        stringResource(R.string.location_history_home_wifi_pause_description),
+                        style = UrsTheme.typography.caption,
+                        color = colors.onSurfaceMuted,
+                        modifier = Modifier.padding(top = Spacing.s),
+                    )
                 }
             }
         }

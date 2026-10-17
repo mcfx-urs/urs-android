@@ -394,6 +394,8 @@
     <string name="location_history_geofence_sparse_interval_label">Interval inside the circle</string>
     <string name="location_history_activity_pause">Activity-based pause on stillness</string>
     <string name="location_history_activity_pause_description">Detects genuine stillness (e.g. a break) and pauses or throttles capture during it, regardless of the geofence state above. Combinable with the geofence-based toggle.</string>
+    <string name="location_history_home_wifi_pause">Pause on home Wi-Fi</string>
+    <string name="location_history_home_wifi_pause_description">Pauses capture while connected to one of the home Wi-Fi networks from the VPN settings, and resumes when leaving it. Needs the home networks set up there and the location and nearby devices permissions.</string>
     <string name="location_history_activity_permission_label">Activity recognition access</string>
     <string name="location_history_still_fallback_label">While still</string>
     <string name="location_history_still_fallback_pause">Pause capture</string>

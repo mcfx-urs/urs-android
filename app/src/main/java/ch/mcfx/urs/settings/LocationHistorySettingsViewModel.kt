@@ -69,6 +69,9 @@ class LocationHistorySettingsViewModel(
     private val _geofenceSparseIntervalMinutes = MutableStateFlow(settingsStore.geofenceSparseIntervalMinutes())
     val geofenceSparseIntervalMinutes: StateFlow<Long> = _geofenceSparseIntervalMinutes.asStateFlow()
 
+    private val _homeWifiPauseEnabled = MutableStateFlow(settingsStore.isHomeWifiPauseEnabled())
+    val homeWifiPauseEnabled: StateFlow<Boolean> = _homeWifiPauseEnabled.asStateFlow()
+
     private val _activityPauseEnabled = MutableStateFlow(settingsStore.isActivityPauseEnabled())
     val activityPauseEnabled: StateFlow<Boolean> = _activityPauseEnabled.asStateFlow()
 
@@ -168,6 +171,14 @@ class LocationHistorySettingsViewModel(
         _geofenceSparseIntervalMinutes.value = minutes
         if (settingsStore.isEnabled() && settingsStore.isGeofenceAdaptiveEnabled()) {
             LocationCaptureModeManager.applyEffectiveCapture(context, "geofence-sparse-interval-changed")
+        }
+    }
+
+    fun setHomeWifiPauseEnabled(enabled: Boolean) {
+        settingsStore.setHomeWifiPauseEnabled(enabled)
+        _homeWifiPauseEnabled.value = enabled
+        if (settingsStore.isEnabled()) {
+            LocationCaptureModeManager.applyEffectiveCapture(context, if (enabled) "home-wifi-enabled" else "home-wifi-disabled")
         }
     }
 

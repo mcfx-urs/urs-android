@@ -11,6 +11,7 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import androidx.work.workDataOf
 import ch.mcfx.urs.UrsApplication
 import java.util.concurrent.TimeUnit
 
@@ -47,6 +48,7 @@ import java.util.concurrent.TimeUnit
  */
 object LocationCaptureScheduler {
     const val WORK_NAME = "breadcrumbs-capture"
+    private const val ONCE_WORK_NAME = "breadcrumbs-capture-once"
     const val PERIODIC_FLOOR_MINUTES = 15L
     private const val ALARM_REQUEST_CODE = 9010
 
@@ -63,6 +65,18 @@ object LocationCaptureScheduler {
             }
             else -> scheduleNext(context, intervalMinutes, ExistingWorkPolicy.REPLACE)
         }
+    }
+
+    /**
+     * One immediate capture outside the schedule (e.g. when connecting to or leaving a home Wi-Fi,
+     * see [LocationCaptureModeManager]). Runs under its own work name so pausing or re-arming the
+     * regular schedule neither cancels it nor is changed by it.
+     */
+    fun captureOnce(context: Context) {
+        val request = OneTimeWorkRequestBuilder<LocationCaptureWorker>()
+            .setInputData(workDataOf(LocationCaptureWorker.INPUT_FORCED to true))
+            .build()
+        WorkManager.getInstance(context).enqueueUniqueWork(ONCE_WORK_NAME, ExistingWorkPolicy.KEEP, request)
     }
 
     /** Arms a single delayed run — [LocationCaptureWorker] calls this itself to chain the next one (non-precision-mode only). */

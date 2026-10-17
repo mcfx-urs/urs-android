@@ -51,6 +51,7 @@ import ch.mcfx.urs.location.LocationActivityRecognitionManager
 import ch.mcfx.urs.location.LocationCapture
 import ch.mcfx.urs.location.LocationCaptureDebugLog
 import ch.mcfx.urs.location.LocationCaptureModeManager
+import ch.mcfx.urs.location.LocationCaptureScheduler
 import ch.mcfx.urs.location.LocationGeofenceManager
 import ch.mcfx.urs.location.LocationHistorySettingsStore
 import ch.mcfx.urs.location.LocationProvider
@@ -222,9 +223,23 @@ class AppContainer(context: Context) {
     val vpnConfigRepository = VpnConfigRepository(context, authTokenStore)
     val wireGuardManager = WireGuardManager(context, vpnConfigRepository)
 
+    @Volatile
+    private var homeWifiReported = false
+
     val networkGate = NetworkGate(
         context, WifiSsidReader(context), vpnConfigRepository, wireGuardManager,
         onConnectivityAvailable = { SyncWorker.enqueueOneTime(appContext) },
+        onHomeWifiChanged = { onHome ->
+            // The first report after a process start only syncs the remembered state: a restart
+            // while at home is no arrival. Later changes are real, so one fix is captured on each.
+            val firstReport = !homeWifiReported
+            homeWifiReported = true
+            val changed = locationHistorySettingsStore.setOnHomeWifi(onHome)
+            if (changed && locationHistorySettingsStore.isHomeWifiPauseEnabled()) {
+                if (!firstReport && locationHistorySettingsStore.isEnabled()) LocationCaptureScheduler.captureOnce(appContext)
+                LocationCaptureModeManager.applyEffectiveCapture(appContext, if (onHome) "home-wifi-joined" else "home-wifi-left")
+            }
+        },
     )
 
     val biometricGate = BiometricGate(context)
