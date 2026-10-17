@@ -14,6 +14,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Category management no longer offers or shows a category image; tiles show the title only (#123)
 - Chores logged from the watch are timed events starting at the current time rounded down to 15 minutes instead of all-day events (#104)
 
+### Fixed
+
+- A Kanban card dragged across columns stays fully visible instead of being cut off at the column edge (#112)
+- Dragging a Kanban card shows a faded copy at the drop slot while the cards below make room, the board and the column scroll when the card is held near their edges, and a card or column is picked up after a shorter hold (#112)
+- Kanban cards can be dragged in the list layout too (#112)
+- A dragged Kanban column moves as a whole while the other columns make room, and the board scrolls when it is held near the left or right edge (#112)
+
 ## [1.10.0] - 2026-10-09
 
 ### Fixed
