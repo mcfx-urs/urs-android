@@ -412,11 +412,17 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                         BakePlanDetailScreen(planId = planId)
                     }
                     composable(BakingRoutes.HISTORY) { BakingHistoryScreen() }
-                    composable(Destination.NOTES.route) {
+                    composable(Destination.NOTES.route) { backStackEntry ->
+                        // The entry's own SavedStateHandle, not the ViewModel's: that is the one the detail screen writes to.
+                        val noteCompleted by backStackEntry.savedStateHandle
+                            .getStateFlow(NotesRoutes.NOTE_COMPLETED_RESULT, false)
+                            .collectAsStateWithLifecycle()
                         NotesHubScreen(
                             onOpenNote = { noteId -> navController.navigate(NotesRoutes.detail(noteId)) },
                             onNewNote = { navController.navigate(NotesRoutes.NEW) },
                             onOpenHistory = { navController.navigate(NotesRoutes.HISTORY) },
+                            noteCompleted = noteCompleted,
+                            onNoteCompletedShown = { backStackEntry.savedStateHandle[NotesRoutes.NOTE_COMPLETED_RESULT] = false },
                         )
                     }
                     composable(NotesRoutes.NEW) {
@@ -434,12 +440,25 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                         val noteId = backStackEntry.arguments?.getString("noteId") ?: return@composable
                         NoteDetailScreen(
                             noteId = noteId,
+                            onCompleted = {
+                                navController.previousBackStackEntry?.savedStateHandle?.set(NotesRoutes.NOTE_COMPLETED_RESULT, true)
+                            },
+                            onReopened = {
+                                navController.previousBackStackEntry?.savedStateHandle?.set(NotesRoutes.NOTE_REOPENED_RESULT, true)
+                            },
                             onDone = { navController.popBackStack() },
                             onDirtyChanged = { currentScreenHasUnsavedChanges = it },
                         )
                     }
-                    composable(NotesRoutes.HISTORY) {
-                        NotesHistoryScreen(onOpenNote = { noteId -> navController.navigate(NotesRoutes.detail(noteId)) })
+                    composable(NotesRoutes.HISTORY) { backStackEntry ->
+                        val noteReopened by backStackEntry.savedStateHandle
+                            .getStateFlow(NotesRoutes.NOTE_REOPENED_RESULT, false)
+                            .collectAsStateWithLifecycle()
+                        NotesHistoryScreen(
+                            onOpenNote = { noteId -> navController.navigate(NotesRoutes.detail(noteId)) },
+                            noteReopened = noteReopened,
+                            onNoteReopenedShown = { backStackEntry.savedStateHandle[NotesRoutes.NOTE_REOPENED_RESULT] = false },
+                        )
                     }
                     composable(
                         route = Destination.CHORES.route,

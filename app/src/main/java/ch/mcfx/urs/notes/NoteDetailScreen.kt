@@ -80,6 +80,10 @@ private val FormErrorColor = Color(0xFFD64545)
 @Composable
 fun NoteDetailScreen(
     onDone: () -> Unit,
+    /** Called right before [onDone] when the screen was left by completing the note. */
+    onCompleted: () -> Unit = {},
+    /** Called right before [onDone] when the screen was left by reopening the note. */
+    onReopened: () -> Unit = {},
     /** Null creates a new note; set edits that note (its publicId, see [ch.mcfx.urs.data.local.publicId]). */
     noteId: String? = null,
     viewModel: NoteDetailViewModel = viewModel(factory = NoteDetailViewModel.Factory),
@@ -88,7 +92,15 @@ fun NoteDetailScreen(
     val form by viewModel.formState.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) { if (noteId != null) viewModel.loadForEdit(noteId) else viewModel.startNew() }
-    LaunchedEffect(form.finished) { if (form.finished) onDone() }
+    LaunchedEffect(form.finished) {
+        if (form.finished) {
+            when (form.statusChangedTo) {
+                NoteRepository.STATUS_COMPLETED -> onCompleted()
+                NoteRepository.STATUS_ACTIVE -> onReopened()
+            }
+            onDone()
+        }
+    }
     LaunchedEffect(form.dirty) { onDirtyChanged(form.dirty) }
 
     var confirmingDelete by remember { mutableStateOf(false) }

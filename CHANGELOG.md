@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Data is pulled when the app is opened (at most every 30 seconds) and every 15 minutes; a connectivity event only sends the outbox. Periodic pulls are skipped for 2 minutes after a successful pull, and catalog refreshes share one serialized request that is skipped within a minute of the last one; manual sync is not limited (#120)
 - Category management no longer offers or shows a category image; tiles show the title only (#123)
 - Chores logged from the watch are timed events starting at the current time rounded down to 15 minutes instead of all-day events (#104)
+- Completing or reopening a note saves it, returns to the previous list and shows a brief confirmation (#107)
 
 ### Fixed
 

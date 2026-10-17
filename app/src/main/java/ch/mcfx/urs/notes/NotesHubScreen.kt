@@ -30,6 +30,7 @@ import ch.mcfx.urs.chores.parseChoreColor
 import ch.mcfx.urs.data.local.NoteWithTags
 import ch.mcfx.urs.data.local.publicId
 import ch.mcfx.urs.ui.components.UrsCard
+import ch.mcfx.urs.ui.components.UrsConfirmBar
 import ch.mcfx.urs.ui.components.UrsFab
 import ch.mcfx.urs.ui.components.UrsPill
 import ch.mcfx.urs.ui.components.UrsProgressIndicator
@@ -40,8 +41,12 @@ import ch.mcfx.urs.ui.tokens.Spacing
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.delay
 
 private val FabIconStyle = TextStyle(fontSize = 28.sp)
+
+// How long the note-completed confirmation bar stays up before it dismisses itself.
+private const val CompletionConfirmationTimeoutMillis = 2500L
 private val ReminderDisplayFormat = DateTimeFormatter.ofPattern("EEE, d MMM · HH:mm")
 
 /** Shared by [NoteRow] here and [ch.mcfx.urs.notes.NoteDetailScreen] — same display format as Baking's own plan-time display. */
@@ -53,12 +58,21 @@ fun NotesHubScreen(
     onOpenNote: (String) -> Unit,
     onNewNote: () -> Unit,
     onOpenHistory: () -> Unit,
+    /** True right after a note was completed in the detail screen; the bar is shown until [onNoteCompletedShown]. */
+    noteCompleted: Boolean = false,
+    onNoteCompletedShown: () -> Unit = {},
     viewModel: NotesViewModel = viewModel(factory = NotesViewModel.Factory),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val selectedTags by viewModel.tagFilter.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) { viewModel.refresh() }
+    LaunchedEffect(noteCompleted) {
+        if (noteCompleted) {
+            delay(CompletionConfirmationTimeoutMillis)
+            onNoteCompletedShown()
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         when (val state = uiState) {
@@ -97,6 +111,13 @@ fun NotesHubScreen(
                 }
                 NoteList(visible, onOpenNote)
             }
+        }
+
+        if (noteCompleted) {
+            UrsConfirmBar(
+                message = stringResource(R.string.note_completed_confirmation),
+                modifier = Modifier.align(Alignment.TopCenter).padding(Spacing.l),
+            )
         }
 
         UrsFab(

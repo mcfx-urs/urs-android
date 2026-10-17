@@ -13,5 +13,11 @@ object NotesRoutes {
     const val HISTORY = "notes/history"
     const val NEW = "notes/new"
 
+    /** Saved-state key the detail screen sets on the hub's back stack entry after completing a note. */
+    const val NOTE_COMPLETED_RESULT = "noteCompleted"
+
+    /** Same for reopening: set on the history's back stack entry. */
+    const val NOTE_REOPENED_RESULT = "noteReopened"
+
     fun detail(noteId: String): String = "notes/list/${Uri.encode(noteId)}"
 }

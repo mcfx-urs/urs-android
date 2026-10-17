@@ -46,6 +46,8 @@ data class NoteDetailFormState(
     // back on this, same "state flag, not a callback" shape as
     // WorkTimeViewModel's showForm.
     val finished: Boolean = false,
+    // Set together with [finished] when the screen was left by completing or reopening the note.
+    val statusChangedTo: String? = null,
     // Guards startNew()/loadForEdit() against re-running on a config change
     // (the ViewModel survives rotation, but its LaunchedEffect(Unit) caller
     // doesn't, so it fires again) — without this, a fresh load overwrites
@@ -159,16 +161,30 @@ class NoteDetailViewModel(private val repository: NoteRepository) : ViewModel() 
         }
     }
 
-    /** Optimistic: updates the form's own [NoteDetailFormState.status] immediately, doesn't leave the screen. */
+    /**
+     * Saves pending edits, switches the note between active and completed and leaves the screen
+     * ([NoteDetailFormState.statusChangedTo] tells the caller which way).
+     */
     fun toggleStatus() {
-        val localId = _formState.value.localId ?: return
-        val newStatus = if (_formState.value.status == NoteRepository.STATUS_ACTIVE) {
-            NoteRepository.STATUS_COMPLETED
-        } else {
-            NoteRepository.STATUS_ACTIVE
+        val form = _formState.value
+        val localId = form.localId ?: return
+        if (form.submitting) return
+        val newStatus = if (form.status == NoteRepository.STATUS_ACTIVE) NoteRepository.STATUS_COMPLETED else NoteRepository.STATUS_ACTIVE
+        viewModelScope.launch {
+            _formState.update { it.copy(submitting = true, submitFailed = false) }
+            try {
+                if (form.dirty && form.isValid) {
+                    val reminderMillis = if (form.reminderEnabled) dateAndTimeToMillis(form.reminderDate, form.reminderTime) else null
+                    repository.updateNote(localId, form.title.trim(), form.content, reminderMillis, form.tags)
+                }
+                repository.setStatus(localId, newStatus)
+                _formState.update { it.copy(status = newStatus, finished = true, statusChangedTo = newStatus, dirty = false) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                _formState.update { it.copy(submitting = false, submitFailed = true) }
+            }
         }
-        _formState.update { it.copy(status = newStatus) }
-        viewModelScope.launch { repository.setStatus(localId, newStatus) }
     }
 
     fun delete() {

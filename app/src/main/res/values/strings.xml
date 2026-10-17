@@ -155,6 +155,8 @@
     <string name="note_reminder_time">Time</string>
     <string name="note_complete">Complete</string>
     <string name="note_reopen">Reopen</string>
+    <string name="note_completed_confirmation">Note completed</string>
+    <string name="note_reopened_confirmation">Note reopened</string>
     <string name="note_delete">Delete</string>
     <string name="note_delete_confirm_title">Delete this note?</string>
     <string name="note_delete_confirm_body">This can\'t be undone.</string>
