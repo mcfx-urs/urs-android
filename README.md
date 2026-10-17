@@ -33,8 +33,9 @@ and sync design fit together.
   target, a full wage breakdown (hourly rate, surcharges, tax/social
   deductions), and per-month overrides.
 - **Life map** — opt-in periodic background GPS capture with
-  combinable adaptive intervals (geofence- and activity-based), shown
-  afterward as a gradient track on a map filtered by time range.
+  combinable adaptive intervals (geofence- and activity-based) and an
+  optional pause while on a home Wi-Fi, shown afterward as a gradient
+  track on a map filtered by time range.
 - **Baking** — step-by-step bake plans with timers and a history of
   past bakes.
 - **Notes** — rich-text notes (bold/italic/underline/links/lists) with
@@ -58,8 +59,7 @@ and sync design fit together.
   preferences.
 
 A few more areas (health tracking, go-kart race times, a barcode-based
-price monitor) are planned but not built yet — the Home screen reserves
-a spot for each as "coming soon" until it lands.
+price monitor) are planned but not built yet.
 
 ## The urs family
 
