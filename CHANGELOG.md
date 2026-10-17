@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed a crash when opening About or the Location capture log with a large capture log by limiting the list to the latest 500 entries and reading the export in pages (#125)
+- Fixed the Settings resume re-arm restarting activity recognition and the geofence centre capture while Breadcrumbs capture is off (#125)
+
 ### Changed
 
 - The app-wide location refresh uses the latest Breadcrumbs point instead of a GPS read while Breadcrumbs capture is on (#108)

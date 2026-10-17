@@ -122,7 +122,7 @@ class AboutViewModel(
     // GitHub issue #60 — recomputed on every log write, since that's every
     // moment the underlying store flags could have changed; a plain
     // SharedPreferences read otherwise has nothing to observe reactively.
-    val locationCaptureStatus: StateFlow<LocationCaptureStatus> = locationCaptureLogDao.observeRecent()
+    val locationCaptureStatus: StateFlow<LocationCaptureStatus> = locationCaptureLogDao.observeChanges()
         .map { locationCaptureStatus() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), locationCaptureStatus())
 

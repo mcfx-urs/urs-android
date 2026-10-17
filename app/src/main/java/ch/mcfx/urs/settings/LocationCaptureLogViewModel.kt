@@ -8,6 +8,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import ch.mcfx.urs.UrsApplication
 import ch.mcfx.urs.data.local.LocationCaptureLogDao
+import ch.mcfx.urs.data.local.LocationCaptureLogEntity
 import ch.mcfx.urs.location.LocationHistorySettingsStore
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -86,12 +87,21 @@ class LocationCaptureLogViewModel(
     // cares about is followed by a log write (ACTIVITY_POLL fires on every
     // activity-recognition callback, which is also when setLastActivity()
     // and setCurrentlyStill() run).
-    val currentState: StateFlow<LocationCaptureCurrentStateUi> = locationCaptureLogDao.observeRecent()
+    val currentState: StateFlow<LocationCaptureCurrentStateUi> = locationCaptureLogDao.observeChanges()
         .map { currentState() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), currentState())
 
     /** The full retained log (not just what's displayed), oldest first — for CSV export (GitHub issue #86). */
-    suspend fun exportEntries() = locationCaptureLogDao.getAllForExport()
+    suspend fun exportEntries(): List<LocationCaptureLogEntity> {
+        val all = mutableListOf<LocationCaptureLogEntity>()
+        var afterId = 0L
+        while (true) {
+            val page = locationCaptureLogDao.getExportPage(afterId, EXPORT_PAGE_SIZE)
+            if (page.isEmpty()) return all
+            all += page
+            afterId = page.last().id
+        }
+    }
 
     private fun currentState() = LocationCaptureCurrentStateUi(
         activityEnabled = settingsStore.isActivityPauseEnabled(),
@@ -105,6 +115,8 @@ class LocationCaptureLogViewModel(
     )
 
     companion object {
+        private const val EXPORT_PAGE_SIZE = 500
+
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as UrsApplication

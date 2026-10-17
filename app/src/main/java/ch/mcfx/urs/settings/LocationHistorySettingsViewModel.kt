@@ -248,7 +248,8 @@ class LocationHistorySettingsViewModel(
      * is idempotent.
      */
     fun rearmIfNeeded() {
-        if (settingsStore.isEnabled() && settingsStore.isPrecisionModeEnabled()) {
+        if (!settingsStore.isEnabled()) return
+        if (settingsStore.isPrecisionModeEnabled()) {
             LocationCaptureModeManager.applyEffectiveCapture(context, "resume-rearm")
         }
         // Same permission-granted-after-the-fact rationale as above, for the
