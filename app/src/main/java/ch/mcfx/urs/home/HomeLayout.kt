@@ -55,25 +55,25 @@ const val NEW_FUEL_FILL_TILE_ID = "NEW_FUEL_FILL"
 
 object HomeLayoutEngine {
 
-    // Mirrors today's hardcoded FEATURE_TILES order and the current
-    // full-width treatment of Work Time / New Fuel Fill / Breadcrumbs / Gokart.
-    // Breadcrumbs gets height 2 by default (unlike every other seed tile) — its
-    // live map preview reads as too cramped at a single 112dp row, closer to
-    // its previous bespoke 190dp card height at two stacked rows.
+    // The seed layout for fresh installs and "reset to default", placed by pack():
+    // Work Time full width; Shopping List | Inventory; New Fuel Fill | Kanban;
+    // Life Map (tall) beside Journal over Notes; Beer | Voice Notes;
+    // Vehicle | Baking; Assets. Chores stays a destination, reachable via the
+    // add-tile picker.
     private val DEFAULT_ORDER: List<HomeTileSpec> = listOf(
         HomeTileSpec(Destination.WORK_TIME.name, 2, 1),
-        HomeTileSpec(NEW_FUEL_FILL_TILE_ID, 2, 1),
-        HomeTileSpec(Destination.BREADCRUMBS.name, 2, 2),
         HomeTileSpec(Destination.SHOPPING_LIST.name, 1, 1),
-        HomeTileSpec(Destination.VEHICLE.name, 1, 1),
         HomeTileSpec(Destination.INVENTORY.name, 1, 1),
-        HomeTileSpec(Destination.BEER.name, 1, 1),
-        HomeTileSpec(Destination.BAKING.name, 1, 1),
+        HomeTileSpec(NEW_FUEL_FILL_TILE_ID, 1, 1),
+        HomeTileSpec(Destination.KANBAN.name, 1, 1),
+        HomeTileSpec(Destination.BREADCRUMBS.name, 1, 2),
+        HomeTileSpec(Destination.JOURNAL.name, 1, 1),
         HomeTileSpec(Destination.NOTES.name, 1, 1),
-        HomeTileSpec(Destination.CHORES.name, 1, 1),
-        HomeTileSpec(Destination.PRICE_MONITOR.name, 1, 1),
-        HomeTileSpec(Destination.K.name, 1, 1),
-        HomeTileSpec(Destination.GOKART.name, 2, 1),
+        HomeTileSpec(Destination.BEER.name, 1, 1),
+        HomeTileSpec(Destination.VOICE_NOTES.name, 1, 1),
+        HomeTileSpec(Destination.VEHICLE.name, 1, 1),
+        HomeTileSpec(Destination.BAKING.name, 1, 1),
+        HomeTileSpec(Destination.ASSETS.name, 1, 1),
     )
 
     fun defaultOrder(): List<HomeTileSpec> = DEFAULT_ORDER
@@ -189,5 +189,8 @@ class HomeLayoutStore(context: Context, private val json: Json) {
             // BREADCRUMBS — remap an already-persisted layout's tile id so
             // existing users don't silently lose the tile.
             if (spec.destinationId == "LIFE_MAP") spec.copy(destinationId = "BREADCRUMBS") else spec
+        }?.filter { spec ->
+            // Drop tiles whose destination no longer exists (e.g. the removed placeholder tiles).
+            spec.destinationId == NEW_FUEL_FILL_TILE_ID || Destination.entries.any { it.name == spec.destinationId }
         }
 }

@@ -147,9 +147,6 @@ private val TILE_IMAGE: Map<String, Int> = mapOf(
     Destination.CHORES.name to R.drawable.tile_placeholder,
     Destination.JOURNAL.name to R.drawable.tile_journal,
     Destination.ASSETS.name to R.drawable.tile_assets,
-    Destination.PRICE_MONITOR.name to R.drawable.tile_price_monitor,
-    Destination.K.name to R.drawable.tile_placeholder,
-    Destination.GOKART.name to R.drawable.tile_gokart,
     Destination.BREADCRUMBS.name to R.drawable.tile_breadcrumbs,
     Destination.KANBAN.name to R.drawable.tile_kanban,
 )

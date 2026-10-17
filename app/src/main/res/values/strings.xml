@@ -26,9 +26,6 @@
     <string name="nav_inventory">Inventory</string>
     <string name="nav_shopping_list">Shopping List</string>
     <string name="nav_beer">Beer</string>
-    <string name="nav_gokart">Gokart</string>
-    <string name="nav_price_monitor">Price Monitor</string>
-    <string name="nav_k">K</string>
     <string name="nav_work_time">Work Time</string>
     <string name="nav_breadcrumbs">Breadcrumbs</string>
     <string name="nav_baking">Baking</string>

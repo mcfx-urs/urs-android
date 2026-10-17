@@ -19,9 +19,6 @@
     <string name="nav_inventory">Inventar</string>
     <string name="nav_shopping_list">Postiliste</string>
     <string name="nav_beer">Bier</string>
-    <string name="nav_gokart">Gokart</string>
-    <string name="nav_price_monitor">Pris Monitor</string>
-    <string name="nav_k">K</string>
     <string name="nav_work_time">Arbetszit</string>
     <string name="nav_breadcrumbs">Spure</string>
     <string name="nav_baking">Backplan</string>

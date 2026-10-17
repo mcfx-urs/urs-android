@@ -41,11 +41,5 @@ enum class Destination(
     VOICE_NOTES(VoiceNotesRoutes.LIST, R.string.nav_voice_notes, isAvailable = true),
     KANBAN(KanbanRoutes.BOARDS, R.string.nav_kanban, isAvailable = true),
     ASSETS(AssetsRoutes.LIST, R.string.nav_assets, isAvailable = true),
-    // Placeholder only — purpose not decided yet, reserves a Home grid slot
-    // the same way GOKART/PRICE_MONITOR already do for their own
-    // not-yet-built features.
-    K("k", R.string.nav_k, isAvailable = false),
-    GOKART("gokart", R.string.nav_gokart, isAvailable = false),
-    PRICE_MONITOR("price_monitor", R.string.nav_price_monitor, isAvailable = false),
     SETTINGS(SettingsRoutes.HUB, R.string.nav_settings, isAvailable = true),
 }
