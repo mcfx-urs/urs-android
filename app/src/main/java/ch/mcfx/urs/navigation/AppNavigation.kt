@@ -428,6 +428,17 @@ fun AppNavigation(onNavControllerReady: (NavHostController) -> Unit = {}) {
                     composable(NotesRoutes.NEW) {
                         NoteDetailScreen(
                             onDone = { navController.popBackStack() },
+                            // Opened from the Home tile's shortcut there is no Notes overview underneath: show it after saving.
+                            onSaved = {
+                                if (navController.previousBackStackEntry?.destination?.route == Destination.NOTES.route) {
+                                    navController.popBackStack()
+                                } else {
+                                    navController.navigate(Destination.NOTES.route) {
+                                        popUpTo(NotesRoutes.NEW) { inclusive = true }
+                                        launchSingleTop = true
+                                    }
+                                }
+                            },
                             onDirtyChanged = { currentScreenHasUnsavedChanges = it },
                         )
                     }

@@ -80,6 +80,8 @@ private val FormErrorColor = Color(0xFFD64545)
 @Composable
 fun NoteDetailScreen(
     onDone: () -> Unit,
+    /** Called instead of [onDone] when the screen is left by saving (or deleting) the note. */
+    onSaved: () -> Unit = onDone,
     /** Called right before [onDone] when the screen was left by completing the note. */
     onCompleted: () -> Unit = {},
     /** Called right before [onDone] when the screen was left by reopening the note. */
@@ -95,10 +97,10 @@ fun NoteDetailScreen(
     LaunchedEffect(form.finished) {
         if (form.finished) {
             when (form.statusChangedTo) {
-                NoteRepository.STATUS_COMPLETED -> onCompleted()
-                NoteRepository.STATUS_ACTIVE -> onReopened()
+                NoteRepository.STATUS_COMPLETED -> { onCompleted(); onDone() }
+                NoteRepository.STATUS_ACTIVE -> { onReopened(); onDone() }
+                else -> onSaved()
             }
-            onDone()
         }
     }
     LaunchedEffect(form.dirty) { onDirtyChanged(form.dirty) }

@@ -93,6 +93,7 @@ import ch.mcfx.urs.kanban.KanbanRoutes
 import ch.mcfx.urs.location.LOCATION_PERMISSIONS
 import ch.mcfx.urs.location.hasLocationPermission
 import ch.mcfx.urs.navigation.Destination
+import ch.mcfx.urs.notes.NotesRoutes
 import ch.mcfx.urs.settings.SettingsRoutes
 import ch.mcfx.urs.shoppinglist.ShoppingListRoutes
 import ch.mcfx.urs.ui.components.UrsBottomSheet
@@ -949,6 +950,7 @@ private fun HomeTileBody(
                 // like the three cases above — same badge mechanism, just
                 // one fixed target (mcfx-urs/urs-android#87).
                 NEW_FUEL_FILL_TILE_ID -> listOf(FavoriteBadgeItem("🛢️", null, FuelRoutes.TRANSFER))
+                Destination.NOTES.name -> listOf(FavoriteBadgeItem("+", null, NotesRoutes.NEW))
                 else -> emptyList()
             }
             if (favorites.isNotEmpty()) {
