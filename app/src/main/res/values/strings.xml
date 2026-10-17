@@ -735,6 +735,8 @@
     <string name="product_management_catalog_search_hint">Search across manual and imported products.</string>
     <string name="product_management_catalog_search_empty">No products match your search.</string>
     <string name="product_management_empty_products">No manually-created products yet.</string>
+    <string name="product_management_badge_no_category">No cat.</string>
+    <string name="product_management_badge_no_image">No img</string>
     <string name="product_management_empty_categories">No manually-created categories yet.</string>
     <string name="product_management_add_product">New product</string>
     <string name="product_management_edit_product">Edit product</string>

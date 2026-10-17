@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Chores logged from the watch are timed events starting at the current time rounded down to 15 minutes instead of all-day events (#104)
 - Completing or reopening a note saves it, returns to the previous list and shows a brief confirmation (#107)
 - Notes Home tile has a "+" shortcut badge that opens a new note and shows the Notes overview after saving it (#106)
+- Product Management marks products without a category or without an image with a badge on their tile (#102)
 
 ### Fixed
 

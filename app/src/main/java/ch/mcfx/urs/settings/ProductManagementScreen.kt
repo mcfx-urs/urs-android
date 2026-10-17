@@ -205,6 +205,8 @@ private fun ProductGrid(products: List<CatalogProductEntity>, onSelect: (Catalog
                 title = product.name,
                 catalogImageId = product.catalogImageId,
                 onClick = { onSelect(product) },
+                quantityBadge = if (product.catalogCategoryId == null) stringResource(R.string.product_management_badge_no_category) else null,
+                topEndBadge = if (product.catalogImageId == null) stringResource(R.string.product_management_badge_no_image) else null,
             )
         }
     }
