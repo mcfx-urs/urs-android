@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.11.1] - 2026-10-17
+
 ### Fixed
 
 - Fixed a crash when opening About or the Location capture log with a large capture log by limiting the list to the latest 500 entries and reading the export in pages (#125)
