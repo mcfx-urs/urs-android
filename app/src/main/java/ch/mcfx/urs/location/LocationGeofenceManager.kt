@@ -24,6 +24,11 @@ object LocationGeofenceManager {
 
     @SuppressLint("MissingPermission") // caller checks location permission before arming
     fun arm(context: Context, latitude: Double, longitude: Double, radiusMeters: Float) {
+        val app = context.applicationContext as UrsApplication
+        if (isPausedByHomeWifi(app.container.locationHistorySettingsStore)) {
+            app.container.locationCaptureDebugLog.log("GEOFENCE_SKIPPED", "arm skipped during the home Wi-Fi pause")
+            return
+        }
         val geofence = Geofence.Builder()
             .setRequestId(GEOFENCE_ID)
             .setCircularRegion(latitude, longitude, radiusMeters)
@@ -40,7 +45,7 @@ object LocationGeofenceManager {
         // still throw SecurityException synchronously before this Task is
         // even created, which is why call sites also log their own skip
         // reason in that case.
-        val debugLog = (context.applicationContext as UrsApplication).container.locationCaptureDebugLog
+        val debugLog = app.container.locationCaptureDebugLog
         client(context).addGeofences(request, pendingIntent(context))
             .addOnSuccessListener {
                 debugLog.log("GEOFENCE_ARMED", "circle at %.5f, %.5f, radius %d m".format(latitude, longitude, radiusMeters.toInt()))
@@ -48,6 +53,31 @@ object LocationGeofenceManager {
             .addOnFailureListener { e ->
                 debugLog.log("GEOFENCE_ERROR", "arm failed: ${e.message}")
             }
+    }
+
+    private fun isPausedByHomeWifi(store: LocationHistorySettingsStore) =
+        store.isHomeWifiPauseEnabled() && store.isOnHomeWifi()
+
+    /**
+     * Follows the home Wi-Fi pause: disarms the circle while paused and re-arms the stored one
+     * afterwards. Call when the pause toggle or the home Wi-Fi state changes.
+     */
+    fun syncHomeWifiPause(context: Context) {
+        val app = context.applicationContext as UrsApplication
+        val store = app.container.locationHistorySettingsStore
+        if (!store.isEnabled() || !store.isGeofenceAdaptiveEnabled()) return
+        if (isPausedByHomeWifi(store)) {
+            disarm(context)
+            app.container.locationCaptureDebugLog.log("GEOFENCE_DISARMED", "home Wi-Fi pause")
+        } else if (hasLocationPermission(context)) {
+            store.geofenceCenter()?.let { (lat, lon) ->
+                try {
+                    arm(context, lat, lon, store.geofenceRadiusMeters().toFloat())
+                } catch (e: SecurityException) {
+                    // Permission revoked since the toggle was turned on — the settings screen surfaces it.
+                }
+            }
+        }
     }
 
     fun disarm(context: Context) {

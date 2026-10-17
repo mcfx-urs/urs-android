@@ -238,6 +238,7 @@ class AppContainer(context: Context) {
             if (changed && locationHistorySettingsStore.isHomeWifiPauseEnabled()) {
                 if (!firstReport && locationHistorySettingsStore.isEnabled()) LocationCaptureScheduler.captureOnce(appContext)
                 LocationCaptureModeManager.applyEffectiveCapture(appContext, if (onHome) "home-wifi-joined" else "home-wifi-left")
+                LocationGeofenceManager.syncHomeWifiPause(appContext)
             }
         },
     )

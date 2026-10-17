@@ -179,6 +179,7 @@ class LocationHistorySettingsViewModel(
         _homeWifiPauseEnabled.value = enabled
         if (settingsStore.isEnabled()) {
             LocationCaptureModeManager.applyEffectiveCapture(context, if (enabled) "home-wifi-enabled" else "home-wifi-disabled")
+            LocationGeofenceManager.syncHomeWifiPause(context)
         }
     }
 

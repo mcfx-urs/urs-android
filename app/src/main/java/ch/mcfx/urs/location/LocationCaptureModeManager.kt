@@ -17,7 +17,9 @@ import ch.mcfx.urs.UrsApplication
  * sparse sub-state decides; otherwise the plain fixed interval applies.
  * Geofence monitoring itself keeps running in the background (cheap,
  * Play-Services-managed) even while paused for stillness — only the app's
- * own periodic capture loop is gated here.
+ * own periodic capture loop is gated here. The home Wi-Fi pause is the
+ * exception: [LocationGeofenceManager.syncHomeWifiPause] disarms the circle
+ * for its duration.
  */
 object LocationCaptureModeManager {
 

@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- The home Wi-Fi pause also disarms the geofence and re-arms it when leaving the home Wi-Fi (#108)
 - Home Wi-Fi detection reads the SSID once per Wi-Fi connect instead of on every Wi-Fi capability update, which removes the periodic location accesses while connected to Wi-Fi (#124)
 - The app-wide location refresh uses the latest Breadcrumbs point instead of a GPS read while Breadcrumbs capture is on (#108)
 
