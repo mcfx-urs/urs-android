@@ -2,6 +2,8 @@ package ch.mcfx.urs.location
 
 import android.content.Context
 import android.location.Location
+import ch.mcfx.urs.data.local.LocationHistoryDao
+import ch.mcfx.urs.data.local.LocationHistoryEntity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,7 +20,12 @@ private const val KEY_HAS_PROMPTED = "has_prompted_permission"
  * worker keep using unchanged — a fresh fetch at the moment of capture
  * matters more than latency for those two.
  */
-class LocationProvider(context: Context, private val locationCapture: LocationCapture) {
+class LocationProvider(
+    context: Context,
+    private val locationCapture: LocationCapture,
+    private val locationHistoryDao: LocationHistoryDao,
+    private val historySettingsStore: LocationHistorySettingsStore,
+) {
 
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
@@ -33,9 +40,24 @@ class LocationProvider(context: Context, private val locationCapture: LocationCa
         prefs.edit().putBoolean(KEY_HAS_PROMPTED, true).apply()
     }
 
-    /** No-ops without permission or on a failed/timed-out fix — keeps whatever value it already had. */
+    /**
+     * With Breadcrumbs capture on, takes the latest stored point and makes no GPS read of its own
+     * (capture may be paused, e.g. on a home Wi-Fi). With it off, reads a fix. No-ops without
+     * permission or on a failed/timed-out fix — keeps whatever value it already had.
+     */
     suspend fun refresh() {
         if (!hasPermission()) return
+        if (historySettingsStore.isEnabled()) {
+            locationHistoryDao.getLatest()?.let { _currentLocation.value = it.toLocation() }
+            return
+        }
         locationCapture.captureLocation("ambient-refresh")?.let { _currentLocation.value = it }
+    }
+
+    private fun LocationHistoryEntity.toLocation() = Location("breadcrumbs").also {
+        it.latitude = latitude
+        it.longitude = longitude
+        accuracyMeters?.let { accuracy -> it.accuracy = accuracy }
+        it.time = capturedAt
     }
 }

@@ -357,8 +357,8 @@ class AppContainer(context: Context) {
     )
     val locationCaptureDebugLog = LocationCaptureDebugLog(context, database.locationCaptureLogDao(), applicationScope)
     val locationCapture = LocationCapture(context, locationCaptureDebugLog)
-    val locationProvider = LocationProvider(context, locationCapture)
     val locationHistorySettingsStore = LocationHistorySettingsStore(context)
+    val locationProvider = LocationProvider(context, locationCapture, database.locationHistoryDao(), locationHistorySettingsStore)
     val watchRelaySettingsStore = WatchRelaySettingsStore(context)
     val themeSettingsStore = ThemeSettingsStore(context)
 
