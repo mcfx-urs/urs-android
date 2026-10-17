@@ -142,8 +142,8 @@ private val TILE_IMAGE: Map<String, Int> = mapOf(
     Destination.BAKING.name to R.drawable.tile_baking,
     Destination.NOTES.name to R.drawable.tile_notes,
     Destination.VOICE_NOTES.name to R.drawable.tile_voice_notes,
-    // Interim: reuses the generic placeholder tile until Chores gets its own
-    // commissioned piece (GitHub issue #27, part B).
+    // Chores is going to be replaced by Journal, so it keeps the generic
+    // placeholder tile instead of getting an image of its own.
     Destination.CHORES.name to R.drawable.tile_placeholder,
     Destination.JOURNAL.name to R.drawable.tile_journal,
     Destination.ASSETS.name to R.drawable.tile_assets,
