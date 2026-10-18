@@ -693,6 +693,11 @@ private val KANBAN_ROUTE_LABELS = mapOf(
     KanbanRoutes.BOARD_DETAIL to R.string.kanban_board_detail_title,
 )
 
+private val JOURNAL_ROUTE_LABELS = mapOf(
+    JournalRoutes.DAY to R.string.nav_journal,
+    JournalRoutes.OVERVIEW to R.string.nav_journal,
+)
+
 private val ASSETS_ROUTE_LABELS = mapOf(
     AssetsRoutes.ADD to R.string.assets_add_title,
 )
@@ -720,5 +725,6 @@ private fun currentScreenLabel(route: String): Int =
         ?: BAKING_ROUTE_LABELS[route]
         ?: NOTES_ROUTE_LABELS[route]
         ?: KANBAN_ROUTE_LABELS[route]
+        ?: JOURNAL_ROUTE_LABELS[route]
         ?: ASSETS_ROUTE_LABELS[route]
         ?: R.string.app_name

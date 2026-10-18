@@ -1,10 +1,11 @@
 package ch.mcfx.urs.journal
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -32,8 +33,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -71,16 +72,16 @@ import java.util.Locale
 
 // Slightly smaller than the design system's own `caption` (13sp) - these
 // labels sit inside a fixed-height chip/bar with no room to wrap, so they
-// also always render single-line, clipped rather than ellipsized (the
-// owner's explicit preference - just cut off whatever's longer than the bar).
+// always render single-line and end in an ellipsis when cut off.
 private val CalendarLabelFontSize = 10.sp
 private const val MAX_LANES = 2
 private const val MAX_CHIPS_PER_DAY = 4
-private const val MonthSwipeThresholdPx = 64f
 private val WeekNumberGutterWidth = 20.dp
 private val DayNumberHeight = 20.dp
 private val BarHeight = 16.dp
 private val BarGap = 2.dp
+private val ChipSlotHeight = 17.dp
+private val OverflowLabelHeight = 16.dp
 
 @Composable
 fun JournalScreen(
@@ -125,16 +126,21 @@ fun JournalScreen(
             onAdd = { entryEditor = JournalEntryEditorTarget.New(LocalDate.now()) },
         )
         Spacer(Modifier.height(Spacing.xs))
-        JournalMonthGrid(
-            month = month,
-            events = visibleEvents,
-            typesByPublicId = typesByPublicId,
-            domainsByPublicId = domainsByPublicId,
-            onDayClick = onOpenDay,
-            onSwipePrev = viewModel::previousMonth,
-            onSwipeNext = viewModel::nextMonth,
+        JournalSwipePager(
+            key = month,
+            step = { m, delta -> m.plusMonths(delta.toLong()) },
+            onSettled = viewModel::showMonth,
             modifier = Modifier.weight(1f),
-        )
+        ) { pageMonth ->
+            JournalMonthGrid(
+                month = pageMonth,
+                events = visibleEvents,
+                typesByPublicId = typesByPublicId,
+                domainsByPublicId = domainsByPublicId,
+                onDayClick = onOpenDay,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
     }
 
     if (filterOpen) {
@@ -328,30 +334,14 @@ private fun JournalMonthGrid(
     typesByPublicId: Map<String, TrackerTypeEntity>,
     domainsByPublicId: Map<String, TrackerDomainEntity>,
     onDayClick: (LocalDate) -> Unit,
-    onSwipePrev: () -> Unit,
-    onSwipeNext: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val firstOfMonth = month.atDay(1)
     val gridStart = firstOfMonth.minusDays((firstOfMonth.dayOfWeek.value - 1).toLong())
     val weekdayLabels = remember { (1..7).map { DayOfWeek.of(it).getDisplayName(JavaTextStyle.SHORT, Locale.getDefault()) } }
-    var dragAccum by remember(month) { mutableStateOf(0f) }
     val today = LocalDate.now()
 
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .pointerInput(month) {
-                detectHorizontalDragGestures(
-                    onDragStart = { dragAccum = 0f },
-                    onDragEnd = {
-                        if (dragAccum <= -MonthSwipeThresholdPx) onSwipeNext() else if (dragAccum >= MonthSwipeThresholdPx) onSwipePrev()
-                        dragAccum = 0f
-                    },
-                    onDragCancel = { dragAccum = 0f },
-                ) { change, amount -> change.consume(); dragAccum += amount }
-            },
-    ) {
+    Column(modifier = modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth()) {
             Spacer(Modifier.width(WeekNumberGutterWidth))
             weekdayLabels.forEach { label ->
@@ -431,8 +421,8 @@ private fun JournalWeekRow(
     modifier: Modifier = Modifier,
 ) {
     Row(modifier = modifier.fillMaxWidth()) {
-        Box(modifier = Modifier.width(WeekNumberGutterWidth).fillMaxHeight(), contentAlignment = Alignment.TopCenter) {
-            UrsText(weekNumber.toString(), style = UrsTheme.typography.caption, color = UrsTheme.colors.onSurfaceMuted, modifier = Modifier.padding(top = Spacing.xs))
+        Box(modifier = Modifier.width(WeekNumberGutterWidth).fillMaxHeight(), contentAlignment = Alignment.Center) {
+            UrsText(weekNumber.toString(), style = UrsTheme.typography.caption, color = UrsTheme.colors.onSurfaceMuted)
         }
         Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
             Row(Modifier.matchParentSize()) {
@@ -466,30 +456,50 @@ private fun JournalWeekRow(
                             val type = typesByPublicId[bar.event.trackerTypeId]
                             val domain = type?.domainId?.let { domainsByPublicId[it] }
                             val span = (bar.endCol - bar.startCol + 1).coerceAtLeast(1)
+                            val barColor = domain?.color?.let(::parseChoreColor) ?: UrsTheme.colors.onSurfaceMuted
                             Box(
                                 modifier = Modifier
                                     .weight(span.toFloat())
                                     .fillMaxHeight()
                                     .padding(horizontal = 1.dp)
                                     .clip(RoundedCornerShape(4.dp))
-                                    .background(domain?.color?.let(::parseChoreColor) ?: UrsTheme.colors.onSurfaceMuted)
+                                    .background(barColor)
                                     .clickable { onDayClick(LocalDate.parse(bar.event.occurredOn)) }
                                     .padding(horizontal = 2.dp),
                                 contentAlignment = Alignment.CenterStart,
                             ) {
-                                UrsText(
-                                    type?.name.orEmpty(),
-                                    style = UrsTheme.typography.caption.copy(fontSize = CalendarLabelFontSize),
-                                    color = UrsTheme.colors.onAccent,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Clip,
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    JournalTypeDot(type?.color?.let(::parseChoreColor) ?: UrsTheme.colors.onSurfaceMuted, readableOn(barColor))
+                                    UrsText(
+                                        type?.name.orEmpty(),
+                                        style = UrsTheme.typography.caption.copy(fontSize = CalendarLabelFontSize),
+                                        color = readableOn(barColor),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                }
                             }
                             col = bar.endCol + 1
                         } else {
                             Spacer(Modifier.weight(1f).fillMaxHeight())
                             col += 1
                         }
+                    }
+                }
+            }
+            // Drawn last so multi-day bars crossing today's cell do not cover its frame.
+            val todayIndex = days.indexOf(today)
+            if (todayIndex >= 0) {
+                Row(Modifier.matchParentSize()) {
+                    for (i in 0 until 7) {
+                        Box(
+                            Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .padding(1.dp)
+                                .then(if (i == todayIndex) Modifier.border(1.5.dp, UrsTheme.colors.accent, RoundedCornerShape(6.dp)) else Modifier),
+                        )
                     }
                 }
             }
@@ -515,45 +525,69 @@ private fun JournalDayCell(
         date == today -> UrsTheme.colors.accent
         else -> UrsTheme.colors.onSurface
     }
-    val overflow = events.size > MAX_CHIPS_PER_DAY
-    val visibleCount = if (overflow) MAX_CHIPS_PER_DAY - 1 else events.size
 
     // The whole cell is one clickable target (number, lane gap, and chips
     // alike) instead of separate clickable sub-areas with a dead zone
     // between them.
-    Column(modifier = modifier.clickable(onClick = onClick).padding(horizontal = 1.dp)) {
+    Column(
+        modifier = modifier
+            .padding(1.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .clickable(onClick = onClick),
+    ) {
         Box(modifier = Modifier.fillMaxWidth().height(DayNumberHeight), contentAlignment = Alignment.TopCenter) {
             UrsText(date.dayOfMonth.toString(), style = UrsTheme.typography.caption, color = numberColor)
         }
         Spacer(Modifier.height(laneSpacerHeight))
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-            events.take(visibleCount).forEach { event ->
-                val type = typesByPublicId[event.trackerTypeId]
-                val domain = type?.domainId?.let { domainsByPublicId[it] }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(domain?.color?.let(::parseChoreColor) ?: UrsTheme.colors.onSurfaceMuted)
-                        .padding(horizontal = 2.dp, vertical = 1.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(2.dp),
-                ) {
-                    Box(Modifier.size(6.dp).clip(CircleShape).background(type?.color?.let(::parseChoreColor) ?: UrsTheme.colors.onSurfaceMuted))
+        BoxWithConstraints(modifier = Modifier.weight(1f)) {
+            // How many chips fit below the day number and the multi-day bar lanes; a cut-off chip is never shown,
+            // the remainder is counted in "+N" instead.
+            val fitting = (maxHeight / ChipSlotHeight).toInt().coerceAtMost(MAX_CHIPS_PER_DAY)
+            val overflow = events.size > fitting
+            val visibleCount = if (overflow) ((maxHeight - OverflowLabelHeight) / ChipSlotHeight).toInt().coerceIn(0, fitting) else events.size
+            Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                events.take(visibleCount).forEach { event ->
+                    val type = typesByPublicId[event.trackerTypeId]
+                    val domain = type?.domainId?.let { domainsByPublicId[it] }
+                    val chipColor = domain?.color?.let(::parseChoreColor) ?: UrsTheme.colors.onSurfaceMuted
+                    val contentColor = readableOn(chipColor)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(chipColor)
+                            .padding(horizontal = 2.dp, vertical = 1.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        JournalTypeDot(type?.color?.let(::parseChoreColor) ?: UrsTheme.colors.onSurfaceMuted, contentColor)
+                        UrsText(
+                            type?.name.orEmpty(),
+                            style = UrsTheme.typography.caption.copy(fontSize = CalendarLabelFontSize),
+                            color = contentColor,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+                if (overflow) {
                     UrsText(
-                        type?.name.orEmpty(),
-                        style = UrsTheme.typography.caption.copy(fontSize = CalendarLabelFontSize),
-                        color = UrsTheme.colors.onAccent,
-                        maxLines = 1,
-                        overflow = TextOverflow.Clip,
+                        "+${events.size - visibleCount}",
+                        style = UrsTheme.typography.caption.copy(textAlign = TextAlign.Center),
+                        color = UrsTheme.colors.onSurfaceMuted,
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
             }
-            if (overflow) {
-                UrsText("+${events.size - visibleCount}", style = UrsTheme.typography.caption, color = UrsTheme.colors.onSurfaceMuted)
-            }
         }
     }
+}
+
+/** Type-color dot with a thin outline in the chip's content color so it stays visible on any chip background. */
+@Composable
+internal fun JournalTypeDot(color: Color, outline: Color, size: androidx.compose.ui.unit.Dp = 8.dp) {
+    Box(Modifier.size(size).clip(CircleShape).background(color).border(0.5.dp, outline.copy(alpha = 0.8f), CircleShape))
 }
 
 @Composable

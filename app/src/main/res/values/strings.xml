@@ -104,6 +104,7 @@
     <string name="journal_start_date_label">From</string>
     <string name="journal_end_date_label">To</string>
     <string name="journal_end_time_label">End time</string>
+    <string name="journal_end_before_start">The end time must be after the start time.</string>
     <string name="journal_all_day">All day</string>
 
     <string name="baking_step_alarm_body">Time for your next baking step</string>

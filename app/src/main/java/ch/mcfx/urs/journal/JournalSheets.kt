@@ -70,7 +70,7 @@ sealed interface JournalTypeEditorTarget {
 }
 
 sealed interface JournalEntryEditorTarget {
-    data class New(val date: LocalDate) : JournalEntryEditorTarget
+    data class New(val date: LocalDate, val startTime: String? = null) : JournalEntryEditorTarget
     data class Edit(val event: TrackerEventEntity) : JournalEntryEditorTarget
 }
 
@@ -454,7 +454,9 @@ fun JournalEntryEditorSheet(
         when (target) {
             is JournalEntryEditorTarget.New -> {
                 val firstType = activeTypes.first()
-                EntryDraft(firstType.domainId ?: domains.first().publicId, firstType.publicId, target.date.toString(), target.date.toString(), false, "09:00", "09:30", "")
+                val start = target.startTime ?: defaultStartTime()
+                val end = (timeToMinutes(start) + 30).mod(24 * 60)
+                EntryDraft(firstType.domainId ?: domains.first().publicId, firstType.publicId, target.date.toString(), target.date.toString(), false, start, "%02d:%02d".format(end / 60, end % 60), "")
             }
             is JournalEntryEditorTarget.Edit -> {
                 val event = target.event
@@ -479,6 +481,7 @@ fun JournalEntryEditorSheet(
     var allDay by rememberSaveable(target) { mutableStateOf(initial.allDay) }
     var startTime by rememberSaveable(target) { mutableStateOf(initial.startTime) }
     var endTime by rememberSaveable(target) { mutableStateOf(initial.endTime) }
+    val endBeforeStart = !allDay && endDate == startDate && timeToMinutes(endTime) <= timeToMinutes(startTime)
     var note by rememberSaveable(target) { mutableStateOf(initial.note) }
 
     val typesInDomain = activeTypes.filter { it.domainId == domainId }
@@ -532,15 +535,19 @@ fun JournalEntryEditorSheet(
                 UrsTimeField(
                     value = startTime,
                     onValueChange = { value ->
+                        val oldStart = timeToMinutes(startTime)
+                        val duration = (timeToMinutes(endTime) - oldStart).mod(24 * 60).takeIf { it > 0 } ?: 30
                         startTime = value
-                        val (h, m) = value.split(":").map { it.toIntOrNull() ?: 0 }
-                        val endMinutes = (h * 60 + m + 30).mod(24 * 60)
+                        val endMinutes = (timeToMinutes(value) + duration).mod(24 * 60)
                         endTime = "%02d:%02d".format(endMinutes / 60, endMinutes % 60)
                     },
                     label = stringResource(R.string.chores_time_label),
                     modifier = Modifier.weight(1f),
                 )
                 UrsTimeField(value = endTime, onValueChange = { endTime = it }, label = stringResource(R.string.journal_end_time_label), modifier = Modifier.weight(1f))
+            }
+            if (endBeforeStart) {
+                UrsText(stringResource(R.string.journal_end_before_start), style = UrsTheme.typography.caption, color = JournalErrorColor)
             }
         }
 
@@ -558,11 +565,22 @@ fun JournalEntryEditorSheet(
                     note,
                 )
             },
-            enabled = startDate.isNotBlank() && endDate >= startDate && effectiveTypeId.isNotBlank(),
+            enabled = startDate.isNotBlank() && endDate >= startDate && !endBeforeStart && effectiveTypeId.isNotBlank(),
             modifier = Modifier.fillMaxWidth(),
         )
         if (target is JournalEntryEditorTarget.Edit && onDelete != null) {
             UrsOutlinedButton(text = stringResource(R.string.chores_delete_event), onClick = onDelete, modifier = Modifier.fillMaxWidth())
         }
     }
+}
+
+private fun timeToMinutes(time: String): Int {
+    val (h, m) = time.split(":").map { it.toIntOrNull() ?: 0 }
+    return h * 60 + m
+}
+
+/** The current time rounded down to the last full quarter hour. */
+private fun defaultStartTime(): String {
+    val now = java.time.LocalTime.now()
+    return "%02d:%02d".format(now.hour, now.minute / 15 * 15)
 }
