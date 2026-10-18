@@ -5,6 +5,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-10-18
+
+### Changed
+
+- Journal month and day view: entry text and icons pick a readable color on the domain color, type dots get an outline, long names end in an ellipsis
+- Journal month view: the current day has a frame, the week number is centered in its row, the "+N" overflow label is centered
+- Journal day view: overlapping entries are shown side by side, the hour grid has half-hour lines and centered hour labels, a line marks the current time on today, larger entry text, entry titles stay on the top edge and follow the scroll inside long entries, the date header lines up with the month view title, tapping a half-hour slot opens a new entry at that time
+- Journal month and day view: swiping between months and days follows the finger and shows the neighbouring page while dragging
+
+### Fixed
+
+- Fixed the Journal month view cutting off entries in a full day cell without showing the "+N" overflow label
+- Fixed Journal entries with a start and end time on different days showing as 30 minutes in the day view; they now cover the hours of each day they span
+- Fixed multi-day Journal bars in the month view missing the type dot
+- Fixed new Journal entries starting at 09:00 instead of the current time rounded down to a quarter hour
+- Fixed the top bar title of the Journal day view and overview showing the app name instead of "Journal"
+- Fixed the Journal entry editor resetting the end time to start + 30 minutes when the start time is changed after the end time; the entry duration is kept
+- Fixed the Journal entry editor accepting an end time before the start time on a single-day entry
+
 ## [1.11.1] - 2026-10-17
 
 ### Fixed

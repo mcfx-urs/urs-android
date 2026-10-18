@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-10-18
+
 ### Changed
 
 - Journal month and day view: entry text and icons pick a readable color on the domain color, type dots get an outline, long names end in an ellipsis
